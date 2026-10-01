@@ -17,7 +17,10 @@ import {
   ChevronDown,
   ChevronLeft,
   AlertTriangle,
-  Save
+  Save,
+  Archive,
+  RotateCcw,
+  Printer
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -89,12 +92,25 @@ export default function App() {
     }));
   });
 
-  // Helper: get only the students belonging to a specific user email
+  // Helper: get only the ACTIVE (non-archived) students belonging to a specific user email
   const getStudentsForUser = (allStudents, userObj) => {
     if (!userObj || !userObj.email) return [];
     const targetEmail = userObj.email.trim().toLowerCase();
     return (allStudents || []).filter(
-      (s) => (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail
+      (s) =>
+        (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail &&
+        !s.archived
+    );
+  };
+
+  // Helper: get only the ARCHIVED students belonging to a specific user email
+  const getArchivedStudentsForUser = (allStudents, userObj) => {
+    if (!userObj || !userObj.email) return [];
+    const targetEmail = userObj.email.trim().toLowerCase();
+    return (allStudents || []).filter(
+      (s) =>
+        (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail &&
+        Boolean(s.archived)
     );
   };
 
@@ -105,8 +121,13 @@ export default function App() {
   const [studentSearch, setStudentSearch] = useState('');
   // Clustered by educationalFramework — collapsed by default
   const [expandedFrameworks, setExpandedFrameworks] = useState({});
-  // Student deletion confirmation modal state
+  // Student deletion & archive confirmation modal states
   const [studentToDelete, setStudentToDelete] = useState(null);
+  const [studentToArchive, setStudentToArchive] = useState(null);
+  // Archive viewer modal states
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [archiveSearch, setArchiveSearch] = useState('');
+  const [selectedArchivedStudentId, setSelectedArchivedStudentId] = useState(null);
   // Unsaved data tracking for logout confirmation modal
   const [unsavedDraftState, setUnsavedDraftState] = useState({
     isDirty: false,
@@ -277,7 +298,66 @@ export default function App() {
       const remainingMine = getStudentsForUser(remainingAll, currentUser);
       setSelectedStudentId(remainingMine[0]?.id || null);
     }
+    if (selectedArchivedStudentId === id) {
+      const remainingArchived = getArchivedStudentsForUser(remainingAll, currentUser);
+      setSelectedArchivedStudentId(remainingArchived[0]?.id || null);
+    }
     setStudentToDelete(null);
+  };
+
+  const handleRequestArchiveStudent = (studentObj, e) => {
+    if (e) e.stopPropagation();
+    setStudentToArchive(studentObj);
+  };
+
+  const confirmArchiveStudent = (overrideStudent = null) => {
+    const target = overrideStudent || studentToArchive;
+    if (!target) return;
+    const id = target.id;
+    const archivedDate = new Date().toLocaleDateString('he-IL');
+
+    const updatedAll = students.map((s) => {
+      if (s.id !== id) return s;
+      const baseData =
+        unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === id
+          ? unsavedDraftState.draftData
+          : s;
+      return {
+        ...baseData,
+        archived: true,
+        archivedAt: archivedDate,
+        status: 'הושלם – בארכיב'
+      };
+    });
+
+    setStudents(updatedAll);
+    if (selectedStudentId === id) {
+      const remainingActive = getStudentsForUser(updatedAll, currentUser);
+      setSelectedStudentId(remainingActive[0]?.id || null);
+      setUnsavedDraftState({ isDirty: false, draftData: null });
+    }
+    setSelectedArchivedStudentId(id);
+    setStudentToArchive(null);
+    setStudentToDelete(null);
+  };
+
+  const handleRestoreFromArchive = (studentId) => {
+    const updatedAll = students.map((s) =>
+      s.id === studentId
+        ? { ...s, archived: false, status: 'פעיל' }
+        : s
+    );
+    setStudents(updatedAll);
+    const restoredStudent = updatedAll.find((s) => s.id === studentId);
+    if (restoredStudent) {
+      const fwKey =
+        (restoredStudent.educationalFramework || '').trim() ||
+        'ללא מסגרת חינוכית מוגדרת';
+      setExpandedFrameworks((prev) => ({ ...prev, [fwKey]: true }));
+      setSelectedStudentId(studentId);
+    }
+    const remainingArchived = getArchivedStudentsForUser(updatedAll, currentUser);
+    setSelectedArchivedStudentId(remainingArchived[0]?.id || null);
   };
 
   const handleSaveStudentPlan = (updatedStudent) => {
@@ -390,6 +470,7 @@ export default function App() {
   }
 
   const userStudents = getStudentsForUser(students, currentUser);
+  const archivedUserStudents = getArchivedStudentsForUser(students, currentUser);
   const selectedStudent = userStudents.find((s) => s.id === selectedStudentId);
   const filteredStudents = userStudents.filter(
     (s) =>
@@ -406,6 +487,16 @@ export default function App() {
   }, {});
   const frameworkClusters = Object.entries(studentsByFramework);
   const sortedBank = getSortedGoalBank(goalBank);
+
+  const filteredArchivedStudents = archivedUserStudents.filter(
+    (s) =>
+      (s.name || '').includes(archiveSearch) ||
+      (s.educationalFramework || '').includes(archiveSearch)
+  );
+  const activeArchivedStudent =
+    archivedUserStudents.find((s) => s.id === selectedArchivedStudentId) ||
+    filteredArchivedStudents[0] ||
+    null;
 
   return (
     <div className="tala-app-root" dir="rtl">
@@ -434,6 +525,21 @@ export default function App() {
           >
             <TrendingUp size={16} />
             <span>מאגר מטרות דינמי ({goalBank.length})</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-header-bank"
+            onClick={() => {
+              if (!selectedArchivedStudentId && archivedUserStudents.length > 0) {
+                setSelectedArchivedStudentId(archivedUserStudents[0].id);
+              }
+              setShowArchiveModal(true);
+            }}
+            title="צפה בתלמידים שהועברו לארכיב ובדוחות שלהם"
+          >
+            <Archive size={16} />
+            <span>ארכיב ({archivedUserStudents.length})</span>
           </button>
 
           {currentUser.role === 'admin' && (
@@ -554,14 +660,25 @@ export default function App() {
                               )}
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            className="btn-delete-st"
-                            onClick={(e) => handleDeleteStudent(st, e)}
-                            title="מחק תלמיד"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                            <button
+                              type="button"
+                              className="btn-delete-st"
+                              onClick={(e) => handleRequestArchiveStudent(st, e)}
+                              title="העבר תלמיד/ה לארכיב (סיום תוכנית)"
+                              style={{ color: '#6b5b95' }}
+                            >
+                              <Archive size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-delete-st"
+                              onClick={(e) => handleDeleteStudent(st, e)}
+                              title="מחק תלמיד"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -970,10 +1087,146 @@ export default function App() {
                   padding: '10px 12px',
                   borderRadius: '8px',
                   fontSize: '12.5px',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  marginBottom: !studentToDelete.archived ? '10px' : 0
                 }}
               >
                 ⚠️ שים/י לב: פעולה זו תמחק את התלמיד/ה ותכנית העבודה לצמיתות ולא ניתן לשחזר אותה.
+              </div>
+
+              {!studentToDelete.archived && (
+                <div
+                  style={{
+                    background: '#f3eefc',
+                    border: '1px solid #d4c4f0',
+                    color: '#4c1d95',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    fontSize: '12.5px',
+                    fontWeight: 600
+                  }}
+                >
+                  💡 במידה והתלמיד/ה סיים/ה את התוכנית, ניתן להעביר אותו/ה ל<strong>ארכיב</strong> לשמירת ההיסטוריה והדוחות במקום למחוק.
+                </div>
+              )}
+            </div>
+
+            <div
+              className="modal-footer"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '10px'
+              }}
+            >
+              <button
+                type="button"
+                className="btn-secondary-sm"
+                onClick={() => setStudentToDelete(null)}
+                style={{ padding: '8px 16px', fontSize: '13px' }}
+              >
+                ביטול
+              </button>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {!studentToDelete.archived && (
+                  <button
+                    type="button"
+                    onClick={() => confirmArchiveStudent(studentToDelete)}
+                    style={{
+                      background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 14px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Archive size={15} />
+                    <span>העבר לארכיב במקום מחיקה</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={confirmDeleteStudent}
+                  style={{
+                    background: '#d9534f',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Trash2 size={15} />
+                  <span>כן, מחק לצמיתות</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Archive Confirmation Popup Modal */}
+      {studentToArchive && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setStudentToArchive(null)}
+          dir="rtl"
+        >
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '480px', borderTopColor: '#8b6fc0' }}
+          >
+            <div className="modal-header">
+              <div className="modal-header-title" style={{ color: '#4c1d95' }}>
+                <Archive size={22} style={{ color: '#8b6fc0' }} />
+                <h3>העברת תלמיד/ה לארכיב (סיום תוכנית)</h3>
+              </div>
+              <button
+                type="button"
+                className="btn-icon-close"
+                onClick={() => setStudentToArchive(null)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <p style={{ margin: '0 0 12px 0', fontSize: '14.5px', lineHeight: 1.5, color: '#24344d' }}>
+                האם להעביר את{' '}
+                <strong>"{studentToArchive.name || 'ללא שם'}"</strong>
+                {studentToArchive.educationalFramework
+                  ? ` (${studentToArchive.educationalFramework})`
+                  : ''}{' '}
+                לארכיב?
+              </p>
+              <div
+                style={{
+                  background: '#f3eefc',
+                  border: '1px solid #d4c4f0',
+                  color: '#4c1d95',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 600
+                }}
+              >
+                📁 התלמיד/ה יוסר/תוסר מרשימת התלמידים הפעילה, וכל הדוחות ותכנית העבודה יישמרו במלואם תחת כפתור <strong>"ארכיב"</strong> בסרגל העליון.
               </div>
             </div>
 
@@ -988,16 +1241,16 @@ export default function App() {
               <button
                 type="button"
                 className="btn-secondary-sm"
-                onClick={() => setStudentToDelete(null)}
+                onClick={() => setStudentToArchive(null)}
                 style={{ padding: '8px 16px', fontSize: '13px' }}
               >
                 ביטול
               </button>
               <button
                 type="button"
-                onClick={confirmDeleteStudent}
+                onClick={() => confirmArchiveStudent(studentToArchive)}
                 style={{
-                  background: '#d9534f',
+                  background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '6px',
@@ -1010,8 +1263,428 @@ export default function App() {
                   gap: '6px'
                 }}
               >
-                <Trash2 size={15} />
-                <span>כן, מחק תלמיד/ה</span>
+                <Archive size={15} />
+                <span>כן, העבר לארכיב</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archive Viewer Modal (ארכיב תלמידים ודוחות) */}
+      {showArchiveModal && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowArchiveModal(false)}
+          dir="rtl"
+        >
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '1080px', width: '96%', borderTopColor: '#4a88c7' }}
+          >
+            <div className="modal-header">
+              <div className="modal-header-title">
+                <Archive size={22} style={{ color: '#4a88c7' }} />
+                <h3>
+                  ארכיב תלמידים ותכניות עבודה ({archivedUserStudents.length} תלמידים בארכיב)
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="btn-icon-close"
+                onClick={() => setShowArchiveModal(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '18px 20px', maxHeight: '78vh' }}>
+              {archivedUserStudents.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '48px 20px',
+                    color: '#5c6f8c'
+                  }}
+                >
+                  <Archive size={44} style={{ color: '#8b6fc0', marginBottom: '10px', opacity: 0.75 }} />
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '17px', color: '#2b4c73' }}>
+                    הארכיב ריק כעת
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '13.5px' }}>
+                    תלמידים שסיימו את התוכנית ויועברו לארכיב יופיעו כאן יחד עם כל הדוחות, המטרות והמידע האישי שלהם.
+                  </p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '270px 1fr',
+                    gap: '18px',
+                    alignItems: 'start'
+                  }}
+                >
+                  {/* Right Column: Archived Students List */}
+                  <div
+                    style={{
+                      background: '#f8faff',
+                      border: '1px solid #d3dff0',
+                      borderRadius: '12px',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px'
+                    }}
+                  >
+                    <div className="sidebar-search-box">
+                      <Search size={14} />
+                      <input
+                        type="text"
+                        placeholder="חיפוש בארכיב..."
+                        value={archiveSearch}
+                        onChange={(e) => setArchiveSearch(e.target.value)}
+                      />
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        maxHeight: '58vh',
+                        overflowY: 'auto'
+                      }}
+                    >
+                      {filteredArchivedStudents.map((st) => {
+                        const isSelected = activeArchivedStudent?.id === st.id;
+                        return (
+                          <div
+                            key={st.id}
+                            className={`sidebar-student-card ${isSelected ? 'selected' : ''}`}
+                            onClick={() => setSelectedArchivedStudentId(st.id)}
+                          >
+                            <div className="st-card-info">
+                              <strong>{st.name || 'ללא שם'}</strong>
+                              <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
+                              <div className="st-card-meta">
+                                <span className="st-goals-badge">
+                                  {(st.goals || []).filter((g) => g.title).length} מטרות
+                                </span>
+                                {st.archivedAt && (
+                                  <span className="st-saved-time">
+                                    ארכיב: {st.archivedAt}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Left Column: Selected Archived Student Full Report & Info */}
+                  {activeArchivedStudent && (
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        border: '1.5px solid #d3dff0',
+                        borderRadius: '12px',
+                        padding: '18px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px'
+                      }}
+                    >
+                      {/* Top Header & Actions for Archived Student */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '10px',
+                          borderBottom: '2px solid #e4ecf7',
+                          paddingBottom: '12px'
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <h3 style={{ margin: 0, fontSize: '18px', color: '#2b4c73' }}>
+                              {activeArchivedStudent.name || 'ללא שם'}
+                            </h3>
+                            <span
+                              style={{
+                                background: '#f3eefc',
+                                color: '#563d82',
+                                border: '1px solid #b8a2e3',
+                                fontSize: '11.5px',
+                                fontWeight: 700,
+                                padding: '2px 9px',
+                                borderRadius: '12px'
+                              }}
+                            >
+                              {activeArchivedStudent.status || 'בארכיב'}
+                            </span>
+                          </div>
+                          <small style={{ color: '#5c6f8c', fontSize: '12.5px' }}>
+                            {activeArchivedStudent.planType || 'תל"א / תח"י'} • שנת לימודים:{' '}
+                            {activeArchivedStudent.schoolYear || '—'}
+                            {activeArchivedStudent.archivedAt
+                              ? ` • הועבר לארכיב: ${activeArchivedStudent.archivedAt}`
+                              : ''}
+                          </small>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreFromArchive(activeArchivedStudent.id)}
+                            style={{
+                              background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '7px 13px',
+                              fontSize: '12.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                            title="החזר תלמיד/ה לרשימת התלמידים הפעילה"
+                          >
+                            <RotateCcw size={15} />
+                            <span>שחזר לרשימה הפעילה</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteStudent(activeArchivedStudent, e)}
+                            style={{
+                              background: '#fdf2f2',
+                              color: '#b83f3f',
+                              border: '1px solid #f3b4b4',
+                              borderRadius: '8px',
+                              padding: '7px 12px',
+                              fontSize: '12.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px'
+                            }}
+                            title="מחק תלמיד/ה לצמיתות מהארכיב"
+                          >
+                            <Trash2 size={14} />
+                            <span>מחק לצמיתות</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Personal Info Grid */}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))',
+                          gap: '10px',
+                          background: '#f4f7fc',
+                          border: '1px solid #d3dff0',
+                          borderRadius: '10px',
+                          padding: '12px 14px',
+                          fontSize: '13px'
+                        }}
+                      >
+                        <div>
+                          <strong style={{ color: '#5c6f8c' }}>שם הילד/ה:</strong>{' '}
+                          <span>{activeArchivedStudent.name || '—'}</span>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#5c6f8c' }}>מסגרת חינוכית:</strong>{' '}
+                          <span>{activeArchivedStudent.educationalFramework || '—'}</span>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#5c6f8c' }}>ת.ז:</strong>{' '}
+                          <span>{activeArchivedStudent.idNumber || '—'}</span>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#5c6f8c' }}>תאריך לידה:</strong>{' '}
+                          <span>{activeArchivedStudent.birthDate || '—'}</span>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#5c6f8c' }}>טלפון:</strong>{' '}
+                          <span>{activeArchivedStudent.phone || '—'}</span>
+                        </div>
+                        <div>
+                          <strong style={{ color: '#5c6f8c' }}>כתובת:</strong>{' '}
+                          <span>{activeArchivedStudent.address || '—'}</span>
+                        </div>
+                      </div>
+
+                      {/* Background, Strengths & Recommendations */}
+                      {(activeArchivedStudent.teacherFreeText ||
+                        activeArchivedStudent.strengthsExisting ||
+                        activeArchivedStudent.strengthsToEmpower ||
+                        activeArchivedStudent.recommendations) && (
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                            gap: '10px'
+                          }}
+                        >
+                          {activeArchivedStudent.teacherFreeText && (
+                            <div
+                              style={{
+                                background: '#f8faff',
+                                border: '1px solid #e4ecf7',
+                                borderRadius: '8px',
+                                padding: '10px 12px',
+                                fontSize: '12.5px'
+                              }}
+                            >
+                              <strong style={{ color: '#2b4c73', display: 'block', marginBottom: '4px' }}>
+                                רקע ותיאור תפקוד חופשי:
+                              </strong>
+                              <div style={{ whiteSpace: 'pre-wrap' }}>
+                                {activeArchivedStudent.teacherFreeText}
+                              </div>
+                            </div>
+                          )}
+
+                          {activeArchivedStudent.strengthsExisting && (
+                            <div
+                              style={{
+                                background: '#f8faff',
+                                border: '1px solid #e4ecf7',
+                                borderRadius: '8px',
+                                padding: '10px 12px',
+                                fontSize: '12.5px'
+                              }}
+                            >
+                              <strong style={{ color: '#2b4c73', display: 'block', marginBottom: '4px' }}>
+                                מוקדי כוח קיימים:
+                              </strong>
+                              <div style={{ whiteSpace: 'pre-wrap' }}>
+                                {activeArchivedStudent.strengthsExisting}
+                              </div>
+                            </div>
+                          )}
+
+                          {activeArchivedStudent.strengthsToEmpower && (
+                            <div
+                              style={{
+                                background: '#f8faff',
+                                border: '1px solid #e4ecf7',
+                                borderRadius: '8px',
+                                padding: '10px 12px',
+                                fontSize: '12.5px'
+                              }}
+                            >
+                              <strong style={{ color: '#2b4c73', display: 'block', marginBottom: '4px' }}>
+                                מוקדי כוח להעצמה:
+                              </strong>
+                              <div style={{ whiteSpace: 'pre-wrap' }}>
+                                {activeArchivedStudent.strengthsToEmpower}
+                              </div>
+                            </div>
+                          )}
+
+                          {activeArchivedStudent.recommendations && (
+                            <div
+                              style={{
+                                background: '#f8faff',
+                                border: '1px solid #e4ecf7',
+                                borderRadius: '8px',
+                                padding: '10px 12px',
+                                fontSize: '12.5px'
+                              }}
+                            >
+                              <strong style={{ color: '#2b4c73', display: 'block', marginBottom: '4px' }}>
+                                המלצות והתאמות:
+                              </strong>
+                              <div style={{ whiteSpace: 'pre-wrap' }}>
+                                {activeArchivedStudent.recommendations}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Full Goals & Objectives Report Table */}
+                      <div>
+                        <h4 style={{ margin: '0 0 8px 0', fontSize: '14.5px', color: '#2b4c73' }}>
+                          דוח מטרות ויעדים בתכנית העבודה ({(activeArchivedStudent.goals || []).length})
+                        </h4>
+                        <div style={{ overflowX: 'auto' }}>
+                          <table
+                            className="allowed-users-table"
+                            style={{
+                              border: '1px solid #d3dff0',
+                              borderRadius: '8px',
+                              fontSize: '12.5px'
+                            }}
+                          >
+                            <thead>
+                              <tr style={{ background: '#eaf3fc' }}>
+                                <th>סביבת פעילות</th>
+                                <th>פעילות והשתתפות</th>
+                                <th>מטרה ויעדים אופרטיביים</th>
+                                <th>הזדמנויות ואמצעים</th>
+                                <th>שותפים ומשך</th>
+                                <th>אמות מידה להערכה</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(activeArchivedStudent.goals || []).map((g, idx) => (
+                                <tr key={g.id || idx}>
+                                  <td style={{ fontWeight: 700, color: '#2b4c73' }}>
+                                    {g.environment || '—'}
+                                  </td>
+                                  <td style={{ whiteSpace: 'pre-wrap' }}>
+                                    {g.activityParticipation || '—'}
+                                  </td>
+                                  <td>
+                                    {g.title && (
+                                      <strong style={{ display: 'block', marginBottom: '4px', color: '#4c1d95' }}>
+                                        {g.title}
+                                      </strong>
+                                    )}
+                                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                                      {g.objectives || '—'}
+                                    </div>
+                                  </td>
+                                  <td style={{ whiteSpace: 'pre-wrap' }}>
+                                    {g.opportunities || '—'}
+                                  </td>
+                                  <td>
+                                    <div><strong>שותפים:</strong> {g.partners || '—'}</div>
+                                    <div><strong>משך:</strong> {g.duration || '—'}</div>
+                                  </td>
+                                  <td style={{ whiteSpace: 'pre-wrap' }}>
+                                    {g.evaluationCriteria || '—'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ textAlign: 'left' }}>
+              <button
+                type="button"
+                className="btn-primary-sm"
+                onClick={() => setShowArchiveModal(false)}
+              >
+                סגור ארכיב
               </button>
             </div>
           </div>
