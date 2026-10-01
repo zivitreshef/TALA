@@ -880,14 +880,14 @@ ${bankReference}
             .stained-glass-strip {
               height: 6px;
               width: 100%;
-              background: linear-gradient(90deg, #eb8f78 0%, #f3ce7a 25%, #8dc3a7 50%, #6fa3b8 75%, #c2a0c9 100%);
+              background: linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%);
               border-radius: 6px 6px 0 0;
             }
             .print-banner {
-              background: linear-gradient(135deg, #36687d 0%, #4a859e 50%, #5b9e81 100%);
+              background: linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 50%, #8e7cc3 100%);
               color: #ffffff;
               padding: 14px 20px;
-              border-bottom: 4px solid #eb8f78;
+              border-bottom: 4px solid #c5aef2;
               border-radius: 0 0 10px 10px;
               display: flex;
               align-items: center;
@@ -904,8 +904,8 @@ ${bankReference}
               height: 56px;
               border-radius: 50%;
               object-fit: cover;
-              border: 2px solid #f3ce7a;
-              background: #f7f6f1;
+              border: 2px solid #d6c6f7;
+              background: #f4f7fc;
             }
             .doc-main-title {
               margin: 0;
@@ -915,16 +915,16 @@ ${bankReference}
             }
             .doc-meta-side {
               font-size: 12.5px;
-              color: #fef9ec;
+              color: #f5f0ff;
             }
             .student-details-bar {
               display: flex;
               flex-wrap: wrap;
               gap: 20px;
               padding: 10px 14px;
-              border: 1.5px solid #4a859e;
-              border-right: 5px solid #eb8f78;
-              background: #eff4f1;
+              border: 1.5px solid #5b9bd5;
+              border-right: 5px solid #8b6fc0;
+              background: #eef3fb;
               border-radius: 8px;
               margin-bottom: 14px;
               font-size: 13px;
@@ -937,38 +937,38 @@ ${bankReference}
               background: #ffffff;
             }
             .eco-table th, .eco-table td {
-              border: 1.5px solid #5a7d8c;
+              border: 1.5px solid #7997be;
               padding: 8px 10px;
               vertical-align: top;
               text-align: right;
               white-space: pre-line;
             }
             .summary-table th.th-existing {
-              background: #56997b;
+              background: #5b9bd5;
               color: #ffffff;
               font-size: 13.5px;
               font-weight: 700;
               text-align: center;
             }
             .summary-table th.th-empower {
-              background: #4a859e;
+              background: #8b6fc0;
               color: #ffffff;
               font-size: 13.5px;
               font-weight: 700;
               text-align: center;
             }
             .env-header-row td {
-              background: #eff4f1;
-              border-top: 3px solid #4a859e;
+              background: #eef3fb;
+              border-top: 3px solid #5b9bd5;
             }
             .sub-instruction {
               font-size: 11px;
-              color: #5a717d;
+              color: #5c6f8c;
               font-weight: normal;
             }
             .columns-header-row th {
-              background: #e2f0f5;
-              color: #2b5366;
+              background: #eaf3fc;
+              color: #2b4c73;
               font-weight: 700;
               font-size: 12.5px;
               text-align: center;
@@ -977,15 +977,15 @@ ${bankReference}
               font-weight: 400;
               font-size: 10.5px;
               display: block;
-              color: #46697a;
+              color: #4f6585;
             }
             .doc-footer-section {
               margin-top: 14px;
               page-break-inside: avoid;
             }
             .recommendations-box {
-              border: 1.5px solid #4a859e;
-              background: #eff4f1;
+              border: 1.5px solid #5b9bd5;
+              background: #eef3fb;
               border-radius: 8px;
               padding: 10px 12px;
               min-height: 46px;
@@ -997,7 +997,7 @@ ${bankReference}
               justify-content: space-between;
               margin-top: 22px;
               font-weight: 600;
-              color: #2b5366;
+              color: #2b4c73;
             }
           </style>
         </head>
@@ -1378,17 +1378,17 @@ ${bankReference}
 
           <div className="preview-paper-sheet">
             <div className="stained-glass-top-strip" style={{ borderRadius: '6px 6px 0 0' }} />
-            <div style={{ background: 'linear-gradient(135deg, #36687d 0%, #4a859e 50%, #5b9e81 100%)', color: '#fff', padding: '12px 18px', borderBottom: '3px solid #eb8f78', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ background: 'linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 50%, #8e7cc3 100%)', color: '#fff', padding: '12px 18px', borderBottom: '3px solid #c5aef2', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <span style={{ fontSize: '12.5px' }}><strong>תאריך:</strong> {formData.date}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <img src="./tala-logo.png" alt="TALA Logo" style={{ width: '46px', height: '46px', borderRadius: '50%', border: '2px solid #f3ce7a', objectFit: 'cover' }} />
+                <img src="./tala-logo.png" alt="TALA Logo" style={{ width: '46px', height: '46px', borderRadius: '50%', border: '2px solid #d6c6f7', objectFit: 'cover' }} />
                 <h4 style={{ margin: 0, fontSize: '17px', color: '#ffffff' }}>
                   {getFullDocTitle()}
                 </h4>
               </div>
               <span style={{ fontSize: '12.5px' }}><strong>שנת לימודים:</strong> {formData.schoolYear}</span>
             </div>
-            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#eff4f1', border: '1.5px solid #4a859e', borderRight: '4px solid #eb8f78', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
+            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#eef3fb', border: '1.5px solid #5b9bd5', borderRight: '4px solid #8b6fc0', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
               <span><strong>שם הילד/ה:</strong> {getDisplayStudentName()}</span>
               <span><strong>מין:</strong> {currentGender === 'girl' ? 'בת' : 'בן'}</span>
               <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
@@ -1402,8 +1402,8 @@ ${bankReference}
             <table className="preview-doc-table">
               <thead>
                 <tr>
-                  <th style={{ width: '50%', background: '#56997b', color: '#fff', textAlign: 'center' }}>מוקדי כוח: כוחות קיימים</th>
-                  <th style={{ width: '50%', background: '#4a859e', color: '#fff', textAlign: 'center' }}>כוחות להעצמה וחיזוק</th>
+                  <th style={{ width: '50%', background: '#5b9bd5', color: '#fff', textAlign: 'center' }}>מוקדי כוח: כוחות קיימים</th>
+                  <th style={{ width: '50%', background: '#8b6fc0', color: '#fff', textAlign: 'center' }}>כוחות להעצמה וחיזוק</th>
                 </tr>
               </thead>
               <tbody>
@@ -1417,12 +1417,12 @@ ${bankReference}
             {(formData.goals || []).map((g) => (
               <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
                 <tbody>
-                  <tr style={{ background: '#eff4f1' }}>
+                  <tr style={{ background: '#eef3fb' }}>
                     <td colSpan={6}>
                       <strong>סביבה: {g.environment}</strong> | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
                     </td>
                   </tr>
-                  <tr style={{ background: '#e2f0f5', color: '#2b5366', fontWeight: 'bold' }}>
+                  <tr style={{ background: '#eaf3fc', color: '#2b4c73', fontWeight: 'bold' }}>
                     <td>מטרה (מה אנחנו רוצים שיקרה?)</td>
                     <td>יעדים, ציוני דרך (צעדים אופרטיביים)</td>
                     <td>הזדמנויות, אמצעים ואיך נגרום לזה לקרות?</td>

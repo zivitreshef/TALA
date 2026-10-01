@@ -1,37 +1,35 @@
 :root {
-  /* הצבעוניות נגזרה ישירות מלוגו עץ ה-ZR בצבעי מים רכים (Watercolor Pastel Botanical):
-     מרווה/מנטה (גזע העץ), תכלת-טורקיז סלייט (האות Z), קורל-אפרסק חם (הלב והאות R),
-     צהוב חמאה רך (עלים וכוכבים), לבנדר פסטלי ורקע נייר שמנת טבעי */
-  --bg-page: #f6f5f0;
+  /* פלטת צבעים: לילך (Lilac) ותכלת שמיים (Sky / Light Blue) */
+  --bg-page: #f4f7fc;
   --bg-card: #ffffff;
-  --bg-warm-subtle: #eff4f1;
-  --primary: #4a859e;
-  --primary-hover: #386b82;
-  --primary-light: #ecf5f8;
-  --primary-deep: #2b5366;
-  --accent-emerald: #56997b;
-  --accent-emerald-soft: #7ec2a3;
-  --accent-emerald-light: #edf7f2;
-  --accent-gold: #efc568;
-  --accent-gold-dark: #966b14;
-  --accent-gold-light: #fef9ec;
-  --accent-terracotta: #df7b63;
-  --accent-terracotta-soft: #eb8f78;
-  --accent-terracotta-light: #fdf1ee;
-  --accent-purple: #9e78a8;
-  --accent-purple-light: #f6f0f8;
-  --border: #d5e0dc;
-  --border-soft: #e5ece9;
-  --text-main: #243b47;
-  --text-muted: #5a717d;
-  --danger: #d15241;
+  --bg-warm-subtle: #eef3fb;
+  --primary: #4a88c7;
+  --primary-hover: #3872ad;
+  --primary-light: #eaf3fc;
+  --primary-deep: #2b4c73;
+  --accent-emerald: #8b6fc0;
+  --accent-emerald-soft: #b39ddb;
+  --accent-emerald-light: #f3eefc;
+  --accent-gold: #b8a2e3;
+  --accent-gold-dark: #563d82;
+  --accent-gold-light: #f5f0ff;
+  --accent-terracotta: #7c65b8;
+  --accent-terracotta-soft: #9a84d4;
+  --accent-terracotta-light: #f2edfc;
+  --accent-purple: #8b6fc0;
+  --accent-purple-light: #f3eefc;
+  --border: #d3dff0;
+  --border-soft: #e4ecf7;
+  --text-main: #24344d;
+  --text-muted: #5c6f8c;
+  --danger: #d9534f;
   --stained-glass-gradient: linear-gradient(
     90deg,
-    #eb8f78 0%,
-    #f3ce7a 25%,
-    #8dc3a7 50%,
-    #6fa3b8 75%,
-    #c2a0c9 100%
+    #7ec8e3 0%,
+    #64a8e0 25%,
+    #8b80d6 50%,
+    #a98eda 75%,
+    #c5aef2 100%
   );
 }
 
@@ -45,9 +43,9 @@ body {
   font-family: 'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif;
   background-color: var(--bg-page);
   background-image:
-    radial-gradient(circle at 12% 15%, rgba(141, 195, 167, 0.16) 0%, transparent 38%),
-    radial-gradient(circle at 88% 20%, rgba(235, 143, 120, 0.12) 0%, transparent 38%),
-    radial-gradient(circle at 80% 85%, rgba(111, 163, 184, 0.14) 0%, transparent 42%);
+    radial-gradient(circle at 12% 15%, rgba(126, 200, 227, 0.18) 0%, transparent 38%),
+    radial-gradient(circle at 88% 20%, rgba(169, 142, 218, 0.16) 0%, transparent 38%),
+    radial-gradient(circle at 80% 85%, rgba(100, 168, 224, 0.15) 0%, transparent 42%);
   color: var(--text-main);
   direction: rtl;
   text-align: right;
@@ -69,7 +67,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 20%, #f7f6f1 0%, #e7f1ed 52%, #dce9ee 100%);
+  background: radial-gradient(circle at 50% 20%, #f7f9fe 0%, #e8f1fc 52%, #ece6fa 100%);
   padding: 24px;
 }
 
@@ -81,7 +79,7 @@ input, textarea, select, button {
   max-width: 480px;
   border-radius: 22px;
   padding: 36px 32px 30px 32px;
-  box-shadow: 0 20px 50px rgba(43, 83, 102, 0.14), 0 0 0 2px rgba(141, 195, 167, 0.45);
+  box-shadow: 0 20px 50px rgba(43, 76, 115, 0.14), 0 0 0 2px rgba(179, 157, 219, 0.45);
   text-align: center;
 }
 
@@ -99,9 +97,9 @@ input, textarea, select, button {
   height: 132px;
   border-radius: 50%;
   padding: 4px;
-  background: linear-gradient(135deg, #8dc3a7 0%, #6fa3b8 50%, #eb8f78 100%);
+  background: linear-gradient(135deg, #7ec8e3 0%, #64a8e0 50%, #a98eda 100%);
   margin: 0 auto 14px auto;
-  box-shadow: 0 10px 26px rgba(74, 133, 158, 0.22);
+  box-shadow: 0 10px 26px rgba(74, 136, 199, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -113,7 +111,7 @@ input, textarea, select, button {
   border-radius: 50%;
   object-fit: cover;
   display: block;
-  border: 2.5px solid #f7f6f1;
+  border: 2.5px solid #f4f7fc;
 }
 
 .auth-title {
@@ -134,9 +132,9 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: var(--accent-emerald-light);
-  border: 1px solid #b5decb;
-  color: #32634d;
+  background: var(--primary-light);
+  border: 1px solid #bdd8f4;
+  color: var(--primary-deep);
   padding: 9px 12px;
   border-radius: 10px;
   font-size: 12px;
@@ -148,9 +146,9 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--accent-terracotta-light);
-  border: 1px solid #f3c0b4;
-  color: #a8432b;
+  background: #fdf2f2;
+  border: 1px solid #f3b4b4;
+  color: #a82b2b;
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 13px;
@@ -195,7 +193,7 @@ input, textarea, select, button {
 .form-field textarea:focus,
 .form-field select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(74, 133, 158, 0.16);
+  box-shadow: 0 0 0 3px rgba(74, 136, 199, 0.16);
 }
 
 .input-with-icon {
@@ -218,7 +216,7 @@ input, textarea, select, button {
 .btn-auth-submit {
   margin-top: 6px;
   padding: 12px;
-  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -229,13 +227,13 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 6px 18px rgba(74, 133, 158, 0.26);
+  box-shadow: 0 6px 18px rgba(91, 155, 213, 0.28);
   transition: transform 0.12s, box-shadow 0.12s;
 }
 
 .btn-auth-submit:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 22px rgba(74, 133, 158, 0.34);
+  box-shadow: 0 8px 22px rgba(139, 111, 192, 0.34);
 }
 
 .auth-quick-access {
@@ -273,8 +271,8 @@ input, textarea, select, button {
 }
 
 .quick-chip:hover {
-  background: var(--accent-gold-light);
-  border-color: var(--accent-gold);
+  background: var(--accent-purple-light);
+  border-color: var(--accent-purple);
 }
 
 /* === HEADER & MAIN WORKSPACE === */
@@ -285,7 +283,7 @@ input, textarea, select, button {
 }
 
 .tala-header {
-  background: linear-gradient(135deg, #36687d 0%, #4a859e 48%, #5b9e81 100%);
+  background: linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 48%, #8e7cc3 100%);
   color: #ffffff;
   padding: 12px 24px;
   display: flex;
@@ -293,8 +291,8 @@ input, textarea, select, button {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 14px;
-  border-bottom: 3px solid #eb8f78;
-  box-shadow: 0 4px 18px rgba(43, 83, 102, 0.14);
+  border-bottom: 3px solid #c5aef2;
+  box-shadow: 0 4px 18px rgba(43, 76, 115, 0.14);
 }
 
 .tala-brand {
@@ -308,11 +306,11 @@ input, textarea, select, button {
   height: 56px;
   border-radius: 50%;
   padding: 2.5px;
-  background: linear-gradient(135deg, #f3ce7a, #eb8f78, #8dc3a7);
+  background: linear-gradient(135deg, #7ec8e3, #c5aef2, #64a8e0);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 12px rgba(36, 59, 71, 0.22);
+  box-shadow: 0 3px 12px rgba(36, 52, 77, 0.22);
   flex-shrink: 0;
 }
 
@@ -321,7 +319,7 @@ input, textarea, select, button {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid #f7f6f1;
+  border: 1.5px solid #f4f7fc;
 }
 
 .tala-brand h1 {
@@ -334,7 +332,7 @@ input, textarea, select, button {
 
 .brand-subtitle {
   font-size: 12.5px;
-  color: #fef3d6;
+  color: #eef4ff;
 }
 
 .tala-header-controls {
@@ -352,8 +350,8 @@ input, textarea, select, button {
   padding: 6px 11px;
   border-radius: 8px;
   font-size: 12px;
-  border: 1px solid rgba(243, 206, 122, 0.5);
-  color: #fef9ec;
+  border: 1px solid rgba(220, 208, 250, 0.55);
+  color: #f5f0ff;
 }
 
 .api-key-pill input {
@@ -379,7 +377,7 @@ input, textarea, select, button {
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid rgba(243, 206, 122, 0.55);
+  border: 1px solid rgba(220, 208, 250, 0.6);
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
   transition: background 0.15s;
@@ -390,8 +388,8 @@ input, textarea, select, button {
 }
 
 .btn-header-admin {
-  background: linear-gradient(135deg, #df7b63 0%, #c9644c 100%);
-  border-color: #f3ce7a;
+  background: linear-gradient(135deg, #8b6fc0 0%, #7356ab 100%);
+  border-color: #d6c6f7;
 }
 
 .current-user-chip {
@@ -417,13 +415,13 @@ input, textarea, select, button {
 
 .user-chip-text small {
   font-size: 10.5px;
-  color: #fef3d6;
+  color: #eef4ff;
 }
 
 .btn-logout {
-  background: rgba(223, 123, 99, 0.32);
-  color: #fff5f2;
-  border: 1px solid rgba(243, 206, 122, 0.45);
+  background: rgba(124, 101, 184, 0.35);
+  color: #f7f4ff;
+  border: 1px solid rgba(220, 208, 250, 0.5);
   border-radius: 8px;
   padding: 7px 9px;
   cursor: pointer;
@@ -440,13 +438,13 @@ input, textarea, select, button {
 }
 
 .tala-students-sidebar {
-  background: #fbfaf7;
+  background: #f8faff;
   border-left: 1.5px solid var(--border);
   padding: 18px 16px;
   display: flex;
   flex-direction: column;
   gap: 13px;
-  box-shadow: -4px 0 16px rgba(43, 83, 102, 0.04);
+  box-shadow: -4px 0 16px rgba(43, 76, 115, 0.04);
 }
 
 .sidebar-top-row {
@@ -468,7 +466,7 @@ input, textarea, select, button {
 }
 
 .student-count-pill {
-  background: var(--accent-gold-light);
+  background: var(--accent-purple-light);
   color: var(--accent-gold-dark);
   border: 1px solid var(--accent-gold);
   font-size: 12px;
@@ -478,7 +476,7 @@ input, textarea, select, button {
 }
 
 .btn-new-student {
-  background: linear-gradient(135deg, #df7b63 0%, #eb8f78 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -489,7 +487,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 4px;
-  box-shadow: 0 2px 8px rgba(223, 123, 99, 0.28);
+  box-shadow: 0 2px 8px rgba(91, 155, 213, 0.28);
 }
 
 .sidebar-search-box {
@@ -524,7 +522,7 @@ input, textarea, select, button {
   padding: 12px 13px;
   border-radius: 11px;
   border: 1px solid var(--border-soft);
-  background: #f6f5f0;
+  background: #f3f6fc;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -535,10 +533,10 @@ input, textarea, select, button {
 }
 
 .sidebar-student-card.selected {
-  background: linear-gradient(135deg, #ecf5f8 0%, #edf7f2 100%);
+  background: linear-gradient(135deg, #eaf3fc 0%, #f3eefc 100%);
   border: 2px solid var(--primary);
-  border-right: 5px solid var(--accent-terracotta);
-  box-shadow: 0 4px 12px rgba(74, 133, 158, 0.12);
+  border-right: 5px solid var(--accent-purple);
+  box-shadow: 0 4px 12px rgba(74, 136, 199, 0.12);
 }
 
 .st-card-info {
@@ -567,7 +565,7 @@ input, textarea, select, button {
 .st-goals-badge {
   background: var(--accent-emerald-light);
   color: var(--accent-emerald);
-  border: 1px solid #b5decb;
+  border: 1px solid #d4c4f0;
   font-size: 11px;
   font-weight: 700;
   padding: 1px 8px;
@@ -610,10 +608,10 @@ input, textarea, select, button {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(251, 250, 247, 0.96);
+  background: rgba(248, 250, 255, 0.96);
   backdrop-filter: blur(8px);
   border: 1.5px solid var(--border);
-  border-top: 4px solid #8dc3a7;
+  border-top: 4px solid #8b6fc0;
   border-radius: 12px;
   padding: 11px 16px;
   display: flex;
@@ -621,7 +619,7 @@ input, textarea, select, button {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  box-shadow: 0 6px 20px rgba(43, 83, 102, 0.07);
+  box-shadow: 0 6px 20px rgba(43, 76, 115, 0.07);
 }
 
 .action-bar-right,
@@ -633,7 +631,7 @@ input, textarea, select, button {
 }
 
 .btn-save-progress {
-  background: linear-gradient(135deg, #56997b 0%, #438065 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #427cb8 100%);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -644,13 +642,13 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(86, 153, 123, 0.28);
+  box-shadow: 0 2px 8px rgba(91, 155, 213, 0.28);
 }
 
 .save-toast-badge {
   background: var(--accent-emerald-light);
   color: var(--accent-emerald);
-  border: 1px solid #9bd4b9;
+  border: 1px solid #ccb8ed;
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 12.5px;
@@ -676,12 +674,12 @@ input, textarea, select, button {
   user-select: none;
   border: 1.5px solid var(--accent-gold);
   background: var(--accent-gold-light);
-  color: #7c560b;
+  color: var(--accent-gold-dark);
 }
 
 .privacy-checkbox-label.unchecked {
   border-color: var(--border);
-  background: #f6f5f0;
+  background: #f4f7fc;
   color: var(--text-muted);
 }
 
@@ -689,7 +687,7 @@ input, textarea, select, button {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: var(--accent-terracotta);
+  accent-color: var(--accent-purple);
 }
 
 .btn-preview-doc {
@@ -707,7 +705,7 @@ input, textarea, select, button {
 }
 
 .btn-print-doc {
-  background: linear-gradient(135deg, #4a859e 0%, #36687d 100%);
+  background: linear-gradient(135deg, #7c65b8 0%, #5b9bd5 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -718,17 +716,17 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 3px 10px rgba(74, 133, 158, 0.26);
+  box-shadow: 0 3px 10px rgba(124, 101, 184, 0.26);
 }
 
 /* Document Title Card */
 .document-title-card {
-  background: linear-gradient(135deg, #36687d 0%, #4a859e 50%, #5b9e81 100%);
+  background: linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 50%, #8e7cc3 100%);
   color: #ffffff;
   border-radius: 14px;
   padding: 18px 24px;
-  border-bottom: 4px solid #eb8f78;
-  box-shadow: 0 6px 18px rgba(54, 104, 125, 0.15);
+  border-bottom: 4px solid #c5aef2;
+  box-shadow: 0 6px 18px rgba(59, 110, 165, 0.15);
 }
 
 .doc-title-top-row {
@@ -750,7 +748,7 @@ input, textarea, select, button {
   height: 60px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2.5px solid #f3ce7a;
+  border: 2.5px solid #d6c6f7;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
@@ -759,12 +757,12 @@ input, textarea, select, button {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #fef9ec;
+  color: #f5f0ff;
 }
 
 .inline-meta-field input {
   background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(243, 206, 122, 0.55);
+  border: 1px solid rgba(220, 208, 250, 0.6);
   color: #ffffff;
   padding: 6px 10px;
   border-radius: 6px;
@@ -787,7 +785,7 @@ input, textarea, select, button {
   border: 1.5px solid var(--border);
   border-radius: 14px;
   padding: 20px 22px;
-  box-shadow: 0 2px 12px rgba(43, 83, 102, 0.04);
+  box-shadow: 0 2px 12px rgba(43, 76, 115, 0.04);
 }
 
 .section-header-line {
@@ -815,7 +813,7 @@ input, textarea, select, button {
 
 .privacy-active-pill {
   background: var(--accent-gold-light);
-  color: #855a08;
+  color: var(--accent-gold-dark);
   border: 1px solid var(--accent-gold);
   padding: 4px 12px;
   border-radius: 16px;
@@ -830,7 +828,7 @@ input, textarea, select, button {
   gap: 14px;
   background: var(--bg-warm-subtle);
   border: 1.5px solid var(--border);
-  border-right: 5px solid #8dc3a7;
+  border-right: 5px solid #8b6fc0;
   border-radius: 10px;
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -869,17 +867,17 @@ input, textarea, select, button {
 }
 
 .plan-type-radio-card.selected {
-  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
   color: #ffffff;
-  border-color: #36687d;
-  box-shadow: 0 3px 10px rgba(74, 133, 158, 0.22);
+  border-color: #4a88c7;
+  box-shadow: 0 3px 10px rgba(91, 155, 213, 0.22);
 }
 
 .plan-type-radio-card input[type="radio"] {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: var(--accent-terracotta);
+  accent-color: var(--accent-purple);
 }
 
 .personal-details-grid {
@@ -967,7 +965,7 @@ input, textarea, select, button {
 }
 
 .btn-submit-generate-summary {
-  background: linear-gradient(135deg, #df7b63 0%, #eb8f78 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
   color: #ffffff;
   border: none;
   border-radius: 9px;
@@ -978,7 +976,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 7px;
-  box-shadow: 0 4px 12px rgba(223, 123, 99, 0.28);
+  box-shadow: 0 4px 12px rgba(91, 155, 213, 0.28);
 }
 
 .interactive-summary-table {
@@ -987,25 +985,25 @@ input, textarea, select, button {
 }
 
 .interactive-summary-table th:first-child {
-  background: linear-gradient(135deg, #56997b 0%, #6eb394 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #76b4eb 100%);
   color: #ffffff;
-  border: 1.5px solid #458066;
+  border: 1.5px solid #4580b5;
   padding: 11px;
   font-size: 14.5px;
   text-align: center;
 }
 
 .interactive-summary-table th:last-child {
-  background: linear-gradient(135deg, #4a859e 0%, #639db6 100%);
+  background: linear-gradient(135deg, #8b6fc0 0%, #a58bd4 100%);
   color: #ffffff;
-  border: 1.5px solid #386b82;
+  border: 1.5px solid #7356ab;
   padding: 11px;
   font-size: 14.5px;
   text-align: center;
 }
 
 .interactive-summary-table td {
-  border: 1.5px solid #9ab5bf;
+  border: 1.5px solid #b5c7e3;
   padding: 8px;
   width: 50%;
   background: #ffffff;
@@ -1023,14 +1021,14 @@ input, textarea, select, button {
 
 .interactive-summary-table textarea:focus {
   border-color: var(--primary);
-  background: #f6f5f0;
+  background: #f4f7fc;
   border-radius: 6px;
 }
 
 /* Section 3: Ecological Goal Blocks */
 .btn-add-goal-block,
 .btn-add-goal-block-large {
-  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
   color: #ffffff;
   border: none;
   border-radius: 9px;
@@ -1041,7 +1039,7 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 3px 10px rgba(74, 133, 158, 0.22);
+  box-shadow: 0 3px 10px rgba(91, 155, 213, 0.22);
 }
 
 .goals-blocks-list {
@@ -1051,16 +1049,16 @@ input, textarea, select, button {
 }
 
 .ecological-goal-card {
-  border: 2px solid #b8d3dc;
+  border: 2px solid #c5d5eb;
   border-top: 5px solid var(--primary);
   border-radius: 13px;
   background: #ffffff;
   overflow: hidden;
-  box-shadow: 0 4px 14px rgba(54, 104, 125, 0.06);
+  box-shadow: 0 4px 14px rgba(59, 110, 165, 0.06);
 }
 
 .goal-card-top-bar {
-  background: linear-gradient(90deg, #ecf5f8 0%, #eff6f2 100%);
+  background: linear-gradient(90deg, #eaf3fc 0%, #f3eefc 100%);
   border-bottom: 1px solid var(--border);
   padding: 11px 15px;
   display: flex;
@@ -1078,8 +1076,8 @@ input, textarea, select, button {
 }
 
 .goal-number-badge {
-  background: linear-gradient(135deg, #36687d 0%, #4a859e 100%);
-  color: #fef3d6;
+  background: linear-gradient(135deg, #4a88c7 0%, #8b6fc0 100%);
+  color: #ffffff;
   font-size: 12px;
   font-weight: 700;
   padding: 4px 11px;
@@ -1100,9 +1098,9 @@ input, textarea, select, button {
 }
 
 .btn-remove-goal {
-  background: var(--accent-terracotta-light);
-  color: var(--accent-terracotta);
-  border: 1px solid #f2bfb3;
+  background: #f5f0ff;
+  color: #6b4fa3;
+  border: 1px solid #d4c4f0;
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 12px;
@@ -1115,7 +1113,7 @@ input, textarea, select, button {
 
 .activity-participation-box {
   padding: 12px 15px;
-  background: #f8faf8;
+  background: #f7f9fe;
   border-bottom: 1.5px solid var(--border);
 }
 
@@ -1140,8 +1138,8 @@ input, textarea, select, button {
 /* HL Goal Picker & AI Facilitating Questions */
 .hl-goal-selector-section {
   padding: 15px;
-  background: linear-gradient(135deg, #eef6f2 0%, #f5f7f3 100%);
-  border-bottom: 1.5px solid #c5dbd0;
+  background: linear-gradient(135deg, #eaf3fc 0%, #f3eefc 100%);
+  border-bottom: 1.5px solid #cbd9ef;
 }
 
 .hl-goal-header-row {
@@ -1185,9 +1183,9 @@ input, textarea, select, button {
 }
 
 .btn-toggle-ai-questions {
-  background: #eaf4ef;
-  color: #2d6a52;
-  border: 1.5px solid #8dc3a7;
+  background: #f3eefc;
+  color: #5e4394;
+  border: 1.5px solid #bfa8e8;
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 12.5px;
@@ -1200,14 +1198,14 @@ input, textarea, select, button {
 }
 
 .btn-toggle-ai-questions:hover {
-  background: #dceee5;
-  border-color: #56997b;
+  background: #e8def8;
+  border-color: #8b6fc0;
 }
 
 .btn-toggle-ai-questions.active {
-  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
   color: #ffffff;
-  border-color: #386b82;
+  border-color: #4a88c7;
 }
 
 .hl-goal-input-wrapper {
@@ -1247,7 +1245,7 @@ input, textarea, select, button {
   border: 2px solid var(--primary);
   border-radius: 10px;
   padding: 12px;
-  box-shadow: 0 10px 28px rgba(54, 104, 125, 0.16);
+  box-shadow: 0 10px 28px rgba(74, 136, 199, 0.16);
 }
 
 .goal-bank-dropdown-header {
@@ -1261,7 +1259,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f6f5f0;
+  background: #f4f7fc;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 7px 10px;
@@ -1282,7 +1280,7 @@ input, textarea, select, button {
 }
 
 .env-pill {
-  background: #eff4f1;
+  background: #eef3fb;
   color: var(--text-main);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -1314,7 +1312,7 @@ input, textarea, select, button {
   padding: 9px 12px;
   border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: #f8faf8;
+  background: #f7f9fe;
   transition: background 0.12s;
 }
 
@@ -1338,7 +1336,7 @@ input, textarea, select, button {
 
 .popularity-rank-badge {
   background: var(--primary-deep);
-  color: #fef3d6;
+  color: #f5f0ff;
   font-size: 11px;
   font-weight: 700;
   padding: 2px 7px;
@@ -1348,7 +1346,7 @@ input, textarea, select, button {
 .env-tag-chip {
   background: var(--accent-emerald-light);
   color: var(--accent-emerald);
-  border: 1px solid #b5decb;
+  border: 1px solid #d4c4f0;
   font-size: 11px;
   font-weight: 600;
   padding: 2px 8px;
@@ -1356,9 +1354,9 @@ input, textarea, select, button {
 }
 
 .usage-count-badge {
-  background: var(--accent-gold-light);
-  color: var(--accent-gold-dark);
-  border: 1px solid var(--accent-gold);
+  background: var(--primary-light);
+  color: var(--primary-deep);
+  border: 1px solid #b8d4f2;
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
@@ -1426,8 +1424,8 @@ input, textarea, select, button {
 /* AI Facilitating Questions Panel */
 .ai-facilitating-panel {
   margin-top: 12px;
-  background: #f2f8f5;
-  border: 1.5px solid #a8d1bd;
+  background: #f4f1fc;
+  border: 1.5px solid #c5b3e6;
   border-radius: 10px;
   padding: 14px;
 }
@@ -1451,8 +1449,8 @@ input, textarea, select, button {
 
 .btn-refresh-ai-q {
   background: #ffffff;
-  color: #2d6a52;
-  border: 1px solid #8dc3a7;
+  color: #5e4394;
+  border: 1px solid #bfa8e8;
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 11.5px;
@@ -1464,7 +1462,7 @@ input, textarea, select, button {
 }
 
 .btn-refresh-ai-q:hover {
-  background: #eaf4ef;
+  background: #ede6fa;
 }
 
 .btn-close-ai-q {
@@ -1483,7 +1481,7 @@ input, textarea, select, button {
 
 .ai-question-box {
   background: #ffffff;
-  border: 1px solid #c5dbd0;
+  border: 1px solid #d2c4ed;
   border-radius: 8px;
   padding: 10px;
   display: flex;
@@ -1505,9 +1503,9 @@ input, textarea, select, button {
 }
 
 .ai-sug-chip {
-  background: #eaf4ef;
-  color: #245743;
-  border: 1px solid #b5decb;
+  background: #eaf3fc;
+  color: #2b4c73;
+  border: 1px solid #bdd6f2;
   border-radius: 12px;
   padding: 3px 8px;
   font-size: 11px;
@@ -1516,7 +1514,7 @@ input, textarea, select, button {
 }
 
 .ai-sug-chip:hover {
-  background: #d8ece2;
+  background: #dcebfa;
 }
 
 .ai-question-box input {
@@ -1533,7 +1531,7 @@ input, textarea, select, button {
 }
 
 .btn-apply-ai-answers {
-  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -1558,9 +1556,9 @@ input, textarea, select, button {
 }
 
 .ecological-6col-table th {
-  background: #e2f0f5;
+  background: linear-gradient(180deg, #e6f1fc 0%, #efeafa 100%);
   color: var(--primary-deep);
-  border: 1px solid #b5cfd9;
+  border: 1px solid #c2d4ec;
   padding: 11px 8px;
   font-size: 14px;
   text-align: center;
@@ -1570,7 +1568,7 @@ input, textarea, select, button {
   display: block;
   font-size: 11.5px;
   font-weight: 400;
-  color: #46697a;
+  color: #4f6585;
   margin-top: 3px;
 }
 
@@ -1598,7 +1596,7 @@ input, textarea, select, button {
 
 .ecological-6col-table textarea:focus {
   border-color: var(--primary);
-  background: #f6f5f0;
+  background: #f4f7fc;
 }
 
 .quick-objectives-bank {
@@ -1614,15 +1612,15 @@ input, textarea, select, button {
   gap: 8px;
   cursor: pointer;
   padding: 4px 8px;
-  background: #eff4f1;
-  border: 1px solid #d4e0d8;
+  background: #eef3fb;
+  border: 1px solid #cddbef;
   border-radius: 6px;
   user-select: none;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .quick-objectives-toggle-header:hover {
-  background: #e3ece6;
+  background: #e2ecf9;
   border-color: var(--primary);
 }
 
@@ -1654,7 +1652,7 @@ input, textarea, select, button {
 }
 
 .btn-toggle-quick-obj.expanded {
-  background: var(--accent-terracotta, #b85d3b);
+  background: var(--accent-purple);
 }
 
 .btn-toggle-quick-obj:hover {
@@ -1669,7 +1667,7 @@ input, textarea, select, button {
 }
 
 .chip-add-obj {
-  background: #f8faf8;
+  background: #f7f9fe;
   color: var(--text-main);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1686,7 +1684,7 @@ input, textarea, select, button {
 
 /* Preview Sheet */
 .preview-paper-sheet {
-  border: 1.5px solid #4a859e;
+  border: 1.5px solid #5b9bd5;
   padding: 18px;
   border-radius: 8px;
   background: #ffffff;
@@ -1699,7 +1697,7 @@ input, textarea, select, button {
 
 .preview-doc-table th,
 .preview-doc-table td {
-  border: 1px solid #7295a6;
+  border: 1px solid #8ea8c8;
   padding: 7px 9px;
   font-size: 12.5px;
   vertical-align: top;
@@ -1730,7 +1728,7 @@ input, textarea, select, button {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(36, 59, 71, 0.48);
+  background: rgba(36, 52, 77, 0.48);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -1743,8 +1741,8 @@ input, textarea, select, button {
   width: 100%;
   border-radius: 16px;
   overflow: hidden;
-  border-top: 5px solid #8dc3a7;
-  box-shadow: 0 20px 50px rgba(36, 59, 71, 0.24);
+  border-top: 5px solid #8b6fc0;
+  box-shadow: 0 20px 50px rgba(36, 52, 77, 0.24);
 }
 
 .modal-header {
@@ -1784,11 +1782,11 @@ input, textarea, select, button {
 .modal-footer {
   padding: 12px 20px;
   border-top: 1px solid var(--border-soft);
-  background: #f6f5f0;
+  background: #f4f7fc;
 }
 
 .add-allowed-user-box {
-  background: #f6f5f0;
+  background: #f4f7fc;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;
@@ -1846,13 +1844,13 @@ input, textarea, select, button {
 }
 
 .status-pill.active {
-  background: var(--accent-emerald-light);
-  color: var(--accent-emerald);
+  background: var(--primary-light);
+  color: var(--primary-deep);
 }
 
 .status-pill.suspended {
-  background: var(--accent-terracotta-light);
-  color: var(--accent-terracotta);
+  background: #fdf2f2;
+  color: #b83f3f;
 }
 
 .btn-primary-sm {
@@ -1892,7 +1890,7 @@ input, textarea, select, button {
 
 /* === AI Reverse Engineering (Raw Data -> Formal Report) Styles === */
 .ai-raw-data-badge {
-  background: linear-gradient(135deg, #f6f0f8 0%, #ecf5f8 100%);
+  background: linear-gradient(135deg, #f3eefc 0%, #eaf3fc 100%);
   color: var(--primary-deep);
   border: 1px solid var(--accent-purple);
   font-size: 12px;
@@ -1909,9 +1907,9 @@ input, textarea, select, button {
 }
 
 .btn-reverse-engineer-report {
-  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
+  background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
   color: #ffffff;
-  border: 2px solid #f3ce7a;
+  border: 2px solid #d6c6f7;
   border-radius: 9px;
   padding: 10px 18px;
   font-size: 13.5px;
@@ -1920,13 +1918,13 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(74, 133, 158, 0.24);
+  box-shadow: 0 4px 14px rgba(91, 155, 213, 0.24);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-reverse-engineer-report:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(74, 133, 158, 0.32);
+  box-shadow: 0 6px 18px rgba(139, 111, 192, 0.32);
 }
 
 .btn-reverse-engineer-report:disabled {
@@ -1936,9 +1934,9 @@ input, textarea, select, button {
 
 .reverse-engineer-success-banner {
   margin-top: 12px;
-  background: var(--accent-emerald-light);
-  border: 1.5px solid var(--accent-emerald);
-  color: #2d5e48;
+  background: linear-gradient(135deg, #eaf3fc 0%, #f3eefc 100%);
+  border: 1.5px solid #8b6fc0;
+  color: var(--primary-deep);
   border-radius: 9px;
   padding: 10px 14px;
   font-size: 13.5px;
@@ -1959,7 +1957,7 @@ input, textarea, select, button {
 }
 
 .btn-admin-add-bank-goal {
-  background: linear-gradient(135deg, #56997b 0%, #4a859e 100%);
+  background: linear-gradient(135deg, #8b6fc0 0%, #5b9bd5 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -1971,13 +1969,13 @@ input, textarea, select, button {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(86, 153, 123, 0.25);
+  box-shadow: 0 3px 10px rgba(139, 111, 192, 0.25);
 }
 
 .admin-bank-goal-editor {
-  background: #f6f5f0;
+  background: #f4f7fc;
   border: 2px solid var(--primary);
-  border-right: 5px solid #eb8f78;
+  border-right: 5px solid #8b6fc0;
   border-radius: 11px;
   padding: 14px 16px;
   margin-bottom: 14px;
@@ -2051,7 +2049,7 @@ input, textarea, select, button {
 }
 
 .btn-save-bank-goal {
-  background: linear-gradient(135deg, #56997b 0%, #4a859e 100%);
+  background: linear-gradient(135deg, #8b6fc0 0%, #5b9bd5 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -2068,7 +2066,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f8faf8;
+  background: #f7f9fe;
   border: 1.5px solid var(--border);
   border-radius: 8px;
   padding: 7px 11px;
@@ -2110,9 +2108,9 @@ input, textarea, select, button {
 }
 
 .btn-admin-delete-goal {
-  background: var(--accent-terracotta-light);
-  color: #b8563f;
-  border: 1px solid var(--accent-terracotta);
+  background: #fdf2f2;
+  color: #b83f3f;
+  border: 1px solid #f0b6b6;
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 12px;
@@ -2124,7 +2122,7 @@ input, textarea, select, button {
 }
 
 .btn-admin-delete-goal:hover {
-  background: var(--accent-terracotta);
+  background: var(--danger);
   color: #ffffff;
 }
 
@@ -2168,7 +2166,7 @@ body {
     border-left: none;
     border-bottom: 2px solid var(--border);
     padding: 14px 16px;
-    box-shadow: 0 4px 14px rgba(43, 83, 102, 0.05);
+    box-shadow: 0 4px 14px rgba(43, 76, 115, 0.05);
   }
 
   .sidebar-students-list {
@@ -2442,13 +2440,13 @@ body {
     border-radius: 10px;
     margin-bottom: 12px;
     padding: 10px;
-    border: 1.5px solid #9ab5bf;
+    border: 1.5px solid #b5c7e3;
   }
 
   .interactive-summary-table td::before {
     content: attr(data-label);
     display: block;
-    background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
+    background: linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%);
     color: #ffffff;
     font-weight: 700;
     font-size: 14.5px;
@@ -2567,7 +2565,7 @@ body {
   .ecological-6col-table td::before {
     content: attr(data-label);
     display: block;
-    background: #e2f0f5;
+    background: linear-gradient(90deg, #e6f1fc 0%, #f1ebfa 100%);
     color: var(--primary-deep);
     border-right: 4px solid var(--primary);
     font-weight: 700;
