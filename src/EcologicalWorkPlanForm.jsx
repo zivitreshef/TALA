@@ -1162,18 +1162,15 @@ ${bankReference}
         </div>
       </section>
 
-      {/* Section 2: Teacher Free Text (Raw Data) + AI Reverse Engineering + Submit Button + Top Summary Table */}
+      {/* Section 2: Teacher Free Text + עיבוד המידע Button + Top Summary Table */}
       <section className="form-section-card highlight-summary-section">
         <div className="section-header-line">
           <h3>2. תיאור חופשי של המורה וטבלת מוקדי כוח מסכמת (בראש המסמך)</h3>
-          <span className="ai-raw-data-badge">
-            ✨ חדש: ניתן להזין כאן מידע גולמי (Raw Data) ולהפיק ממנו דוח רשמי מלא בלחיצה!
-          </span>
         </div>
 
         <div className="free-text-area-box">
           <label className="bold-label">
-            ✍️ תיאור חופשי / מידע גולמי (Raw Data) של המורה על הילד/ה (אופי, תחומי עניין, חוזקות, קשיים ותפקוד יומיומי):
+            ✍️ תיאור חופשי של הילד/ה במילים שלך (אופי, תחומי עניין, חוזקות, קשיים ותפקוד יומיומי):
           </label>
           <textarea
             rows={4}
@@ -1184,38 +1181,19 @@ ${bankReference}
 
           <div className="submit-summary-action-row">
             <span className="submit-helper-text">
-              בחרי האם להפוך את הטקסט הגולמי לתוכנית עבודה רשמית מלאה (הנדסה לאחור ב-AI של כל הטופס והמטרות) או לעדכן את טבלת הסיכום העליונה:
+              לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את טבלת מוקדי הכוח, המטרות והיעדים ושאר סעיפי הטופס:
             </span>
-            <div className="raw-data-ai-buttons-group">
-              <button
-                type="button"
-                className="btn-reverse-engineer-report"
-                onClick={handleReverseEngineerFullReport}
-                disabled={isReverseEngineering || isGeneratingSummary}
-                title="מנתח את הטקסט הגולמי וממלא אוטומטית את כל הדוח הרשמי: מוקדי כוח, מטרות ויעדים ב-6 עמודות והמלצות"
-              >
-                <Wand2 size={17} />
-                <span>
-                  {isReverseEngineering
-                    ? 'מבצע הנדסה לאחור ומייצר דוח רשמי מלא...'
-                    : '✨ הנדסה לאחור ב-AI – הפוך מידע גולמי לדוח רשמי מלא'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="btn-submit-generate-summary"
-                onClick={handleSubmitGenerateSummaryTable}
-                disabled={isGeneratingSummary || isReverseEngineering}
-              >
-                <Sparkles size={17} />
-                <span>
-                  {isGeneratingSummary
-                    ? 'מנתח מטרות וטקסט חופשי...'
-                    : 'Submit – צור/עדכן טבלת מוקדי כוח וסיכום בראש המסמך'}
-                </span>
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn-submit-generate-summary"
+              onClick={handleReverseEngineerFullReport}
+              disabled={isReverseEngineering}
+            >
+              <Sparkles size={17} />
+              <span>
+                {isReverseEngineering ? 'מעבד מידע ומייצר מטרות ודוח...' : 'עיבוד המידע'}
+              </span>
+            </button>
           </div>
 
           {reverseEngineerBanner && (
@@ -1855,7 +1833,7 @@ ${bankReference}
       {/* Section 4: Recommendations & Bottom Actions */}
       <section className="form-section-card">
         <div className="section-header-line">
-          <h3>4. המלצות וחתימות</h3>
+          <h3>4. המלצות</h3>
         </div>
         <div className="form-field">
           <label>המלצות להמשך (לצוות החינוכי ולהורים):</label>
@@ -1867,12 +1845,7 @@ ${bankReference}
           />
         </div>
 
-        <div className="bottom-signatures-preview">
-          <div>חתימת הצוות החינוכי: _________________________</div>
-          <div>חתימת הורים: _________________________</div>
-        </div>
-
-        <div className="bottom-final-actions">
+        <div className="bottom-final-actions" style={{ marginTop: '16px' }}>
           <button type="button" className="btn-save-progress" onClick={handleSaveProgress}>
             <Save size={18} />
             <span>שמור התקדמות לעריכה עתידית</span>
@@ -1881,10 +1854,11 @@ ${bankReference}
           <button
             type="button"
             className="btn-submit-generate-summary"
-            onClick={handleSubmitGenerateSummaryTable}
+            onClick={handleReverseEngineerFullReport}
+            disabled={isReverseEngineering}
           >
             <Sparkles size={18} />
-            <span>Submit – עדכן טבלת סיכום עליונה ושמור הכל</span>
+            <span>עיבוד המידע</span>
           </button>
 
           <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
