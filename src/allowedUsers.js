@@ -5,7 +5,7 @@ export const DEFAULT_ALLOWED_USERS = [
     email: 'zivit.reshef@gmail.com',
     name: 'זיוית רשף',
     role: 'admin', // 'admin' | 'teacher'
-    title: 'מנהלת מערכת ומדריכה פדגוגית',
+    title: 'מנהלת מערכת',
     accessCode: 'TALA2026',
     active: true
   },
@@ -37,7 +37,14 @@ export function loadAllowedUsers() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        const migrated = parsed.map((u) =>
+          (u.email?.toLowerCase() === 'zivit.reshef@gmail.com' || u.id === 'u_admin_1') &&
+          u.title === 'מנהלת מערכת ומדריכה פדגוגית'
+            ? { ...u, title: 'מנהלת מערכת' }
+            : u
+        );
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+        return migrated;
       }
     }
   } catch (e) {

@@ -13,7 +13,9 @@ import {
   FileSpreadsheet,
   Edit2,
   Check,
-  X
+  X,
+  ChevronDown,
+  ChevronLeft
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -99,6 +101,15 @@ export default function App() {
     return initialUserStudents[0]?.id || null;
   });
   const [studentSearch, setStudentSearch] = useState('');
+  // Clustered by educationalFramework — collapsed by default
+  const [expandedFrameworks, setExpandedFrameworks] = useState({});
+
+  const toggleFrameworkCluster = (frameworkKey) => {
+    setExpandedFrameworks((prev) => ({
+      ...prev,
+      [frameworkKey]: !prev[frameworkKey]
+    }));
+  };
 
   // Dynamic Goal Bank (shared across all users; only Admin can delete/edit)
   const [goalBank, setGoalBank] = useState(() => loadGoalBank());
@@ -200,6 +211,10 @@ export default function App() {
 
     setStudents((prev) => [newStudentPlan, ...prev]);
     setSelectedStudentId(newId);
+    setExpandedFrameworks((prev) => ({
+      ...prev,
+      'ללא מסגרת חינוכית מוגדרת': true
+    }));
   };
 
   const handleDeleteStudent = (id, name, e) => {
@@ -329,6 +344,15 @@ export default function App() {
       (s.name || '').includes(studentSearch) ||
       (s.educationalFramework || '').includes(studentSearch)
   );
+  const studentsByFramework = filteredStudents.reduce((acc, st) => {
+    const fwKey = (st.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
+    if (!acc[fwKey]) {
+      acc[fwKey] = [];
+    }
+    acc[fwKey].push(st);
+    return acc;
+  }, {});
+  const frameworkClusters = Object.entries(studentsByFramework);
   const sortedBank = getSortedGoalBank(goalBank);
 
   return (
@@ -421,36 +445,78 @@ export default function App() {
           </div>
 
           <div className="sidebar-students-list">
-            {filteredStudents.map((st) => (
-              <div
-                key={st.id}
-                className={`sidebar-student-card ${
-                  selectedStudentId === st.id ? 'selected' : ''
-                }`}
-                onClick={() => setSelectedStudentId(st.id)}
-              >
-                <div className="st-card-info">
-                  <strong>{st.name || 'ללא שם'}</strong>
-                  <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
-                  <div className="st-card-meta">
-                    <span className="st-goals-badge">
-                      {(st.goals || []).filter((g) => g.title).length} מטרות
-                    </span>
-                    {st.lastSavedAt && (
-                      <span className="st-saved-time">עודכן: {st.lastSavedAt}</span>
-                    )}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn-delete-st"
-                  onClick={(e) => handleDeleteStudent(st.id, st.name, e)}
-                  title="מחק תלמיד"
+            {frameworkClusters.map(([frameworkName, clusterStudents]) => {
+              const isExpanded =
+                Boolean(expandedFrameworks[frameworkName]) ||
+                Boolean(studentSearch.trim());
+              const hasSelectedStudent = clusterStudents.some(
+                (st) => st.id === selectedStudentId
+              );
+
+              return (
+                <div
+                  key={frameworkName}
+                  className={`sidebar-framework-cluster ${
+                    hasSelectedStudent ? 'has-selected' : ''
+                  }`}
                 >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    className={`sidebar-framework-header ${
+                      isExpanded ? 'expanded' : ''
+                    }`}
+                    onClick={() => toggleFrameworkCluster(frameworkName)}
+                  >
+                    <div className="framework-header-title">
+                      {isExpanded ? (
+                        <ChevronDown size={16} className="framework-chevron" />
+                      ) : (
+                        <ChevronLeft size={16} className="framework-chevron" />
+                      )}
+                      <strong>{frameworkName}</strong>
+                    </div>
+                    <span className="framework-student-count">
+                      {clusterStudents.length}
+                    </span>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="sidebar-framework-students">
+                      {clusterStudents.map((st) => (
+                        <div
+                          key={st.id}
+                          className={`sidebar-student-card ${
+                            selectedStudentId === st.id ? 'selected' : ''
+                          }`}
+                          onClick={() => setSelectedStudentId(st.id)}
+                        >
+                          <div className="st-card-info">
+                            <strong>{st.name || 'ללא שם'}</strong>
+                            <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
+                            <div className="st-card-meta">
+                              <span className="st-goals-badge">
+                                {(st.goals || []).filter((g) => g.title).length} מטרות
+                              </span>
+                              {st.lastSavedAt && (
+                                <span className="st-saved-time">עודכן: {st.lastSavedAt}</span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn-delete-st"
+                            onClick={(e) => handleDeleteStudent(st.id, st.name, e)}
+                            title="מחק תלמיד"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </aside>
 
