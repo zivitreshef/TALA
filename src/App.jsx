@@ -15,7 +15,9 @@ import {
   Check,
   X,
   ChevronDown,
-  ChevronLeft
+  ChevronLeft,
+  AlertTriangle,
+  Save
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -103,6 +105,14 @@ export default function App() {
   const [studentSearch, setStudentSearch] = useState('');
   // Clustered by educationalFramework — collapsed by default
   const [expandedFrameworks, setExpandedFrameworks] = useState({});
+  // Student deletion confirmation modal state
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  // Unsaved data tracking for logout confirmation modal
+  const [unsavedDraftState, setUnsavedDraftState] = useState({
+    isDirty: false,
+    draftData: null
+  });
+  const [showLogoutUnsavedModal, setShowLogoutUnsavedModal] = useState(false);
 
   const toggleFrameworkCluster = (frameworkKey) => {
     setExpandedFrameworks((prev) => ({
@@ -164,10 +174,46 @@ export default function App() {
     setStudentSearch('');
   };
 
-  const handleLogout = () => {
+  const performLogout = () => {
+    setShowLogoutUnsavedModal(false);
+    setUnsavedDraftState({ isDirty: false, draftData: null });
     setCurrentUser(null);
     setSelectedStudentId(null);
     localStorage.removeItem(SESSION_USER_KEY);
+  };
+
+  const handleLogout = () => {
+    if (unsavedDraftState.isDirty && unsavedDraftState.draftData) {
+      setShowLogoutUnsavedModal(true);
+      return;
+    }
+    performLogout();
+  };
+
+  const handleSaveAndLogout = () => {
+    if (unsavedDraftState.draftData) {
+      const updated = {
+        ...unsavedDraftState.draftData,
+        lastSavedAt: new Date().toLocaleTimeString('he-IL', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      };
+      const updatedStudents = students.map((s) =>
+        s.id === updated.id ? updated : s
+      );
+      setStudents(updatedStudents);
+      localStorage.setItem(
+        STUDENTS_STORAGE_KEY,
+        JSON.stringify(updatedStudents)
+      );
+      (updated.goals || []).forEach((g) => {
+        if (g.title && g.title.trim()) {
+          handleUseOrAddGoalToBank(g);
+        }
+      });
+    }
+    performLogout();
   };
 
   // Create a new student owned strictly by the currently logged-in user
@@ -217,15 +263,21 @@ export default function App() {
     }));
   };
 
-  const handleDeleteStudent = (id, name, e) => {
+  const handleDeleteStudent = (studentObj, e) => {
     e.stopPropagation();
-    if (!window.confirm(`האם למחוק את תכנית העבודה של "${name}"?`)) return;
+    setStudentToDelete(studentObj);
+  };
+
+  const confirmDeleteStudent = () => {
+    if (!studentToDelete) return;
+    const id = studentToDelete.id;
     const remainingAll = students.filter((s) => s.id !== id);
     setStudents(remainingAll);
     if (selectedStudentId === id) {
       const remainingMine = getStudentsForUser(remainingAll, currentUser);
       setSelectedStudentId(remainingMine[0]?.id || null);
     }
+    setStudentToDelete(null);
   };
 
   const handleSaveStudentPlan = (updatedStudent) => {
@@ -505,7 +557,7 @@ export default function App() {
                           <button
                             type="button"
                             className="btn-delete-st"
-                            onClick={(e) => handleDeleteStudent(st.id, st.name, e)}
+                            onClick={(e) => handleDeleteStudent(st, e)}
                             title="מחק תלמיד"
                           >
                             <Trash2 size={15} />
@@ -531,6 +583,7 @@ export default function App() {
               onOpenGoalBankManager={() => setShowGoalBankOverview(true)}
               onSaveStudentPlan={handleSaveStudentPlan}
               onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
+              onDraftStateChange={setUnsavedDraftState}
             />
           ) : (
             <div className="empty-student-selection">
@@ -869,6 +922,220 @@ export default function App() {
               >
                 סגור
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Deletion Confirmation Popup Modal ("Are you sure?") */}
+      {studentToDelete && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setStudentToDelete(null)}
+          dir="rtl"
+        >
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '460px', borderTopColor: '#d9534f' }}
+          >
+            <div className="modal-header">
+              <div className="modal-header-title" style={{ color: '#b83f3f' }}>
+                <AlertTriangle size={22} style={{ color: '#d9534f' }} />
+                <h3>האם את/ה בטוח/ה? (אישור מחיקת תלמיד/ה)</h3>
+              </div>
+              <button
+                type="button"
+                className="btn-icon-close"
+                onClick={() => setStudentToDelete(null)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <p style={{ margin: '0 0 12px 0', fontSize: '14.5px', lineHeight: 1.5, color: '#24344d' }}>
+                האם את/ה בטוח/ה שברצונך למחוק את תכנית העבודה של{' '}
+                <strong>"{studentToDelete.name || 'ללא שם'}"</strong>
+                {studentToDelete.educationalFramework
+                  ? ` (${studentToDelete.educationalFramework})`
+                  : ''}
+                ?
+              </p>
+              <div
+                style={{
+                  background: '#fdf2f2',
+                  border: '1px solid #f3b4b4',
+                  color: '#a82b2b',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 600
+                }}
+              >
+                ⚠️ שים/י לב: פעולה זו תמחק את התלמיד/ה ותכנית העבודה לצמיתות ולא ניתן לשחזר אותה.
+              </div>
+            </div>
+
+            <div
+              className="modal-footer"
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '10px'
+              }}
+            >
+              <button
+                type="button"
+                className="btn-secondary-sm"
+                onClick={() => setStudentToDelete(null)}
+                style={{ padding: '8px 16px', fontSize: '13px' }}
+              >
+                ביטול
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteStudent}
+                style={{
+                  background: '#d9534f',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Trash2 size={15} />
+                <span>כן, מחק תלמיד/ה</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unsaved Changes on Logout Confirmation Popup Modal */}
+      {showLogoutUnsavedModal && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowLogoutUnsavedModal(false)}
+          dir="rtl"
+        >
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '500px', borderTopColor: '#f59e0b' }}
+          >
+            <div className="modal-header">
+              <div className="modal-header-title" style={{ color: '#92400e' }}>
+                <AlertTriangle size={22} style={{ color: '#f59e0b' }} />
+                <h3>שינויים שלא נשמרו לפני התנתקות</h3>
+              </div>
+              <button
+                type="button"
+                className="btn-icon-close"
+                onClick={() => setShowLogoutUnsavedModal(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <p
+                style={{
+                  margin: '0 0 12px 0',
+                  fontSize: '14.5px',
+                  lineHeight: 1.5,
+                  color: '#24344d'
+                }}
+              >
+                קיימים שינויים שלא נשמרו בתכנית העבודה של{' '}
+                <strong>
+                  "{unsavedDraftState.draftData?.name || 'התלמיד/ה'}"
+                </strong>
+                . האם ברצונך לשמור את הנתונים לפני ההתנתקות מהמערכת?
+              </p>
+              <div
+                style={{
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  color: '#92400e',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 600
+                }}
+              >
+                💡 אם תבחר/י להתעלם מהשינויים, כל השינויים שבוצעו מאז השמירה האחרונה יאבדו.
+              </div>
+            </div>
+
+            <div
+              className="modal-footer"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '10px'
+              }}
+            >
+              <button
+                type="button"
+                className="btn-secondary-sm"
+                onClick={() => setShowLogoutUnsavedModal(false)}
+                style={{ padding: '8px 14px', fontSize: '13px' }}
+              >
+                ביטול (המשך עבודה)
+              </button>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={performLogout}
+                  style={{
+                    background: '#fdf2f2',
+                    color: '#b83f3f',
+                    border: '1px solid #f3b4b4',
+                    borderRadius: '6px',
+                    padding: '8px 14px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <LogOut size={15} />
+                  <span>התעלם והתנתק</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveAndLogout}
+                  style={{
+                    background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '8px 16px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Save size={15} />
+                  <span>שמור שינויים והתנתק</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
