@@ -1204,17 +1204,17 @@ ${bankReference}
             </thead>
             <tbody>
               <tr>
-                <td>
+                <td data-label="💪 מוקדי כוח: כוחות קיימים">
                   <textarea
-                    rows={5}
+                    rows={Math.max(6, (formData.strengthsExisting || '').split('\n').length + 1)}
                     value={formData.strengthsExisting || ''}
                     onChange={(e) => handleFieldChange('strengthsExisting', e.target.value)}
-                    placeholder="כוחות קיימים של הילד/ה (מתמלא אוטומטית בלחיצה על Submit וניתן לעריכה חופשית)..."
+                    placeholder="כוחות קיימים של הילד/ה (מתמלא אוטומטית בלחיצה על עיבוד המידע וניתן לעריכה חופשית)..."
                   />
                 </td>
-                <td>
+                <td data-label="🌱 כוחות להעצמה וחיזוק">
                   <textarea
-                    rows={5}
+                    rows={Math.max(6, (formData.strengthsToEmpower || '').split('\n').length + 1)}
                     value={formData.strengthsToEmpower || ''}
                     onChange={(e) => handleFieldChange('strengthsToEmpower', e.target.value)}
                     placeholder="כוחות להעצמה וחיזוק (מתמלא אוטומטית מתוך הטקסט החופשי וכל המטרות שהוגדרו)..."
@@ -1403,7 +1403,7 @@ ${bankReference}
                     </span>
                   </label>
                   <textarea
-                    rows={2}
+                    rows={Math.max(3, (goalRow.activityParticipation || '').split('\n').length + 1)}
                     value={goalRow.activityParticipation || ''}
                     onChange={(e) =>
                       handleGoalChange(goalRow.id, 'activityParticipation', e.target.value)
@@ -1412,11 +1412,11 @@ ${bankReference}
                   />
                 </div>
 
-                {/* HL Goal Selector / Autocomplete Bar */}
+                {/* Goal Selector / Autocomplete Bar */}
                 <div className="hl-goal-selector-section">
                   <div className="hl-goal-header-row">
                     <label className="hl-goal-label">
-                      🎯 מטרה עליונה (HL Goal) – מה אנחנו רוצים שיקרה?
+                      🎯 מטרה עליונה – מה אנחנו רוצים שיקרה?
                     </label>
                     <div className="hl-goal-actions">
                       <button
@@ -1456,7 +1456,7 @@ ${bankReference}
                     </div>
                   </div>
 
-                  {/* Autocomplete / Free-define Input for HL Goal */}
+                  {/* Autocomplete / Free-define Input for Goal */}
                   <div className="hl-goal-input-wrapper">
                     <input
                       type="text"
@@ -1691,19 +1691,19 @@ ${bankReference}
                   <table className="ecological-6col-table">
                     <thead>
                       <tr>
-                        <th style={{ width: '18%' }}>
+                        <th style={{ width: '17%' }}>
                           מטרה
                           <span className="col-sub">מה אנחנו רוצים שיקרה?</span>
                         </th>
-                        <th style={{ width: '23%' }}>
+                        <th style={{ width: '24%' }}>
                           יעדים, ציוני דרך
                           <span className="col-sub">פירוט צעדים אופרטיביים</span>
                         </th>
-                        <th style={{ width: '23%' }}>
+                        <th style={{ width: '24%' }}>
                           הזדמנויות, אמצעים
                           <span className="col-sub">ואיך נגרום לזה לקרות?</span>
                         </th>
-                        <th style={{ width: '13%' }}>
+                        <th style={{ width: '12%' }}>
                           שותפים
                           <span className="col-sub">מי ובאיזה אופן?</span>
                         </th>
@@ -1713,9 +1713,9 @@ ${bankReference}
                     </thead>
                     <tbody>
                       <tr>
-                        <td>
+                        <td data-label="מטרה – מה אנחנו רוצים שיקרה?">
                           <textarea
-                            rows={5}
+                            rows={Math.max(8, (goalRow.title || '').split('\n').length + 2)}
                             value={goalRow.title || ''}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'title', e.target.value)
@@ -1724,9 +1724,9 @@ ${bankReference}
                             style={{ fontWeight: 600 }}
                           />
                         </td>
-                        <td>
+                        <td data-label="יעדים, ציוני דרך (פירוט צעדים אופרטיביים)">
                           <textarea
-                            rows={5}
+                            rows={Math.max(8, (goalRow.objectives || '').split('\n').length + 2)}
                             value={goalRow.objectives || ''}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'objectives', e.target.value)
@@ -1751,9 +1751,9 @@ ${bankReference}
                             </div>
                           )}
                         </td>
-                        <td>
+                        <td data-label="הזדמנויות, אמצעים (ואיך נגרום לזה לקרות?)">
                           <textarea
-                            rows={5}
+                            rows={Math.max(8, (goalRow.opportunities || '').split('\n').length + 2)}
                             value={goalRow.opportunities || ''}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'opportunities', e.target.value)
@@ -1761,9 +1761,9 @@ ${bankReference}
                             placeholder="אמצעים, תיווך והזדמנויות בסדר היום..."
                           />
                         </td>
-                        <td>
+                        <td data-label="שותפים (מי ובאיזה אופן?)">
                           <textarea
-                            rows={5}
+                            rows={Math.max(8, (goalRow.partners || '').split('\n').length + 2)}
                             value={goalRow.partners || ''}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'partners', e.target.value)
@@ -1771,9 +1771,9 @@ ${bankReference}
                             placeholder="צוות הגן, סייעת, מרפאה בעיסוק..."
                           />
                         </td>
-                        <td>
+                        <td data-label="משך">
                           <textarea
-                            rows={5}
+                            rows={Math.max(8, (goalRow.duration || '').split('\n').length + 2)}
                             value={goalRow.duration || ''}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'duration', e.target.value)
@@ -1781,9 +1781,9 @@ ${bankReference}
                             placeholder="כשלושה חודשים / עד סוף השנה"
                           />
                         </td>
-                        <td>
+                        <td data-label="אמות מידה להערכה">
                           <textarea
-                            rows={5}
+                            rows={Math.max(8, (goalRow.evaluationCriteria || '').split('\n').length + 2)}
                             value={goalRow.evaluationCriteria || ''}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'evaluationCriteria', e.target.value)
