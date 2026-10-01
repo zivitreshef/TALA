@@ -888,6 +888,40 @@ input, textarea, select, button {
   gap: 14px;
 }
 
+.gender-toggle-group {
+  display: flex;
+  gap: 8px;
+}
+
+.gender-toggle-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: #ffffff;
+  color: var(--text-main);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.gender-toggle-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.gender-toggle-btn.active {
+  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
+  color: #ffffff;
+  border-color: #36687d;
+  box-shadow: 0 3px 10px rgba(74, 133, 158, 0.22);
+}
+
 /* Section 2: Teacher Free Text & Top Summary Table */
 .free-text-area-box {
   background: var(--bg-warm-subtle);
@@ -1531,13 +1565,15 @@ input, textarea, select, button {
 
 .ecological-6col-table textarea {
   width: 100%;
-  min-height: 190px;
+  min-height: 175px;
   border: 1px solid var(--border-soft);
   border-radius: 8px;
   padding: 10px 11px;
   font-size: 14.5px;
   line-height: 1.6;
   color: var(--text-main);
+  overflow-y: hidden;
+  field-sizing: content;
   resize: vertical;
   outline: none;
 }

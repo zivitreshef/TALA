@@ -24,6 +24,8 @@ import {
   getSortedGoalBank,
   generateDefaultQuestionsForCustomGoal,
   reverseEngineerRawTextLocally,
+  adaptTextToGender,
+  adaptGoalToGender,
   toHebrewAcronym,
   maskSensitiveValue,
   redactStudentNameInText
@@ -38,7 +40,16 @@ export default function EcologicalWorkPlanForm({
   onSaveStudentPlan,
   onUseOrAddGoalToBank
 }) {
-  const [formData, setFormData] = useState(() => ({ ...student }));
+  const containerRef = useRef(null);
+
+  const [formData, setFormData] = useState(() => {
+    const initialGender = student?.gender || 'boy';
+    return {
+      ...student,
+      gender: initialGender,
+      goals: (student?.goals || []).map((g) => adaptGoalToGender(g, initialGender))
+    };
+  });
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
   const [saveBanner, setSaveBanner] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -59,19 +70,57 @@ export default function EcologicalWorkPlanForm({
 
   // Sync when switching selected student from the sidebar list
   useEffect(() => {
-    setFormData({ ...student });
+    const initialGender = student?.gender || 'boy';
+    setFormData({
+      ...student,
+      gender: initialGender,
+      goals: (student?.goals || []).map((g) => adaptGoalToGender(g, initialGender))
+    });
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
   }, [student?.id]);
 
+  // Automatically expand all textareas to their full scrollHeight so NO scrollbar ever appears
+  useEffect(() => {
+    const resizeAllTextareas = () => {
+      if (!containerRef.current) return;
+      const allTextareas = containerRef.current.querySelectorAll('textarea');
+      allTextareas.forEach((ta) => {
+        ta.style.overflowY = 'hidden';
+        ta.style.height = 'auto';
+        const isGoalTableCell = Boolean(ta.closest('.ecological-6col-table'));
+        const minH = isGoalTableCell ? 175 : 88;
+        ta.style.height = `${Math.max(ta.scrollHeight + 10, minH)}px`;
+      });
+    };
+
+    resizeAllTextareas();
+    const timer = setTimeout(resizeAllTextareas, 40);
+    window.addEventListener('resize', resizeAllTextareas);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', resizeAllTextareas);
+    };
+  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview]);
+
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
+  const currentGender = formData.gender || 'boy';
 
   // Update personal or top-level field
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  // Update student gender ('boy' = בן / זכר, 'girl' = בת / נקבה) and automatically inflect all goals & objectives
+  const handleGenderChange = (newGender) => {
+    setFormData((prev) => ({
+      ...prev,
+      gender: newGender,
+      goals: (prev.goals || []).map((g) => adaptGoalToGender(g, newGender))
     }));
   };
 
@@ -118,13 +167,23 @@ export default function EcologicalWorkPlanForm({
     }));
   };
 
-  // Select a goal from the Dynamic Goal Bank
+  // Select a goal from the Dynamic Goal Bank (automatically adjusted to student's gender!)
   const handleSelectGoalFromBank = (goalRowId, bankItem, fillTemplate = true) => {
-    const studentFirstName = (formData.name || 'הילד/ה').trim().split(/\s+/)[0];
+    const genderToUse = formData.gender || 'boy';
+    const studentFirstName = (formData.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד'))
+      .trim()
+      .split(/\s+/)[0];
     const personalizedOpportunities = (bankItem.defaultOpportunities || '').replace(
       /הילד/g,
       studentFirstName
     );
+
+    const genderTitle = adaptTextToGender(bankItem.title || '', genderToUse);
+    const genderActivity = adaptTextToGender(bankItem.defaultActivity || '', genderToUse);
+    const genderObjectives = (bankItem.suggestedObjectives || [])
+      .map((o) => `• ${adaptTextToGender(o, genderToUse)}`)
+      .join('\n');
+    const genderEval = adaptTextToGender(bankItem.defaultEvaluation || '', genderToUse);
 
     setFormData((prev) => ({
       ...prev,
@@ -133,22 +192,20 @@ export default function EcologicalWorkPlanForm({
         if (!fillTemplate) {
           return {
             ...g,
-            title: bankItem.title,
+            title: genderTitle,
             environment: bankItem.environment || g.environment
           };
         }
         return {
           ...g,
-          title: bankItem.title,
+          title: genderTitle,
           environment: bankItem.environment || g.environment,
-          activityParticipation: g.activityParticipation || bankItem.defaultActivity || '',
-          objectives:
-            g.objectives ||
-            (bankItem.suggestedObjectives || []).map((o) => `• ${o}`).join('\n'),
+          activityParticipation: g.activityParticipation || genderActivity || '',
+          objectives: g.objectives || genderObjectives,
           opportunities: g.opportunities || personalizedOpportunities || '',
           partners: g.partners || bankItem.defaultPartners || 'צוות חינוכי, הורים',
           duration: g.duration || bankItem.defaultDuration || 'עד סוף השנה',
-          evaluationCriteria: g.evaluationCriteria || bankItem.defaultEvaluation || ''
+          evaluationCriteria: g.evaluationCriteria || genderEval || ''
         };
       })
     }));
@@ -159,11 +216,11 @@ export default function EcologicalWorkPlanForm({
       environment: bankItem.environment
     });
 
-    // Load the 3 Facilitating Questions for this HL Goal
+    // Load the 3 Facilitating Questions for this Goal
     const questions =
       bankItem.facilitatingQuestions && bankItem.facilitatingQuestions.length > 0
         ? bankItem.facilitatingQuestions.slice(0, 3)
-        : generateDefaultQuestionsForCustomGoal(bankItem.title, bankItem.environment);
+        : generateDefaultQuestionsForCustomGoal(genderTitle, bankItem.environment);
 
     setAiQuestionsMap((prev) => ({
       ...prev,
@@ -173,7 +230,7 @@ export default function EcologicalWorkPlanForm({
     setOpenPickerGoalId(null);
   };
 
-  // Define a brand new custom HL Goal and trigger AI Facilitating Questions
+  // Define a brand new custom Goal and trigger AI Facilitating Questions
   const handleConfirmCustomGoal = async (goalRow) => {
     if (!goalRow.title || !goalRow.title.trim()) return;
 
@@ -194,7 +251,11 @@ export default function EcologicalWorkPlanForm({
     setLoadingAiForGoalId(goalRow.id);
 
     // Check if bank already has tailored questions and no API key is set
-    const existingBankItem = sortedGoals.find((b) => b.title.trim() === goalTitle);
+    const existingBankItem = sortedGoals.find(
+      (b) =>
+        adaptTextToGender(b.title.trim(), currentGender) ===
+        adaptTextToGender(goalTitle, currentGender)
+    );
     const fallbackQuestions =
       existingBankItem?.facilitatingQuestions?.slice(0, 3) ||
       generateDefaultQuestionsForCustomGoal(goalTitle, goalRow.environment);
@@ -210,14 +271,15 @@ export default function EcologicalWorkPlanForm({
 
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+      const genderLabel = currentGender === 'girl' ? 'בת (לשון נקבה)' : 'בן (לשון זכר)';
       const prompt = `אתה מדריך פדגוגי מומחה לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית" ותח"י.
-המורה הגדירה את המטרה העליונה (HL Goal) הבאה:
+המורה הגדירה את המטרה העליונה הבאה עבור תלמיד/ה (${genderLabel}):
 מטרה: "${goalTitle}"
 סביבה / תחום: "${goalRow.environment || 'מרחב הגן / הכיתה'}"
-מידע חופשי על הילד: "${formData.teacherFreeText || ''}"
+מידע חופשי על הילד/ה: "${formData.teacherFreeText || ''}"
 
-נסח בדיוק 3 שאלות מנחות (Facilitating Questions) קצרות, מכוונות ומעשיות בעברית שיסייעו למורה לדייק את מילוי השדות של מטרה זו בטבלה:
-- שאלה 1: על התפקוד הנוכחי של הילד והגורמים המאפשרים/המגבילים בסביבה (עבור שדה "פעילות והשתתפות").
+נסח בדיוק 3 שאלות מנחות (Facilitating Questions) קצרות, מכוונות ומעשיות בעברית (מותאמות ל${genderLabel}) שיסייעו למורה לדייק את מילוי השדות של מטרה זו בטבלה:
+- שאלה 1: על התפקוד הנוכחי של הילד/ה והגורמים המאפשרים/המגבילים בסביבה (עבור שדה "פעילות והשתתפות").
 - שאלה 2: על צעדים אופרטיביים הדרגתיים ואמצעי תיווך של הצוות (עבור שדות "יעדים וציוני דרך" ו-"הזדמנויות ואמצעים").
 - שאלה 3: על השותפים לתהליך ואמות המידה להערכה בסוף התקופה.
 
@@ -270,7 +332,14 @@ export default function EcologicalWorkPlanForm({
     const ans1 = (answers[0] || '').trim();
     const ans2 = (answers[1] || '').trim();
     const ans3 = (answers[2] || '').trim();
-    const firstName = (formData.name || 'הילד/ה').trim().split(/\s+/)[0];
+    const genderToUse = formData.gender || 'boy';
+    const genderLabel =
+      genderToUse === 'girl'
+        ? 'בת (לשון נקבה בלבד – למשל: תשתתף, תמתין, תבחר)'
+        : 'בן (לשון זכר בלבד – למשל: ישתתף, ימתין, יבחר)';
+    const firstName = (formData.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד'))
+      .trim()
+      .split(/\s+/)[0];
 
     setLoadingAiForGoalId(goalRow.id);
 
@@ -279,6 +348,7 @@ export default function EcologicalWorkPlanForm({
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
         const prompt = `אתה מומחה לכתיבת תכנית עבודה אקולוגית ותח"י בעברית.
 שם הילד/ה: ${firstName}
+מין הילד/ה: ${genderLabel}
 סביבה: ${goalRow.environment}
 מטרה (מה אנחנו רוצים שיקרה?): ${goalRow.title}
 
@@ -287,7 +357,7 @@ export default function EcologicalWorkPlanForm({
 2. צעדים אופרטיביים ואמצעי תיווך: ${ans2 || 'לא צוין'}
 3. שותפים, משך ואמות מידה להערכה: ${ans3 || 'לא צוין'}
 
-נסח באופן מקצועי, בהיר ומותאם לטבלה האקולוגית את השדות הבאים והחזר JSON בלבד:
+נסח באופן מקצועי, בהיר ומותאם למין הילד/ה (${genderLabel}) את השדות הבאים והחזר JSON בלבד:
 {
   "activityParticipation": "תיאור פעילות והשתתפות בסביבה...",
   "objectives": "• יעד 1\\n• יעד 2\\n• יעד 3",
@@ -313,15 +383,19 @@ export default function EcologicalWorkPlanForm({
               ...prev,
               goals: (prev.goals || []).map((g) =>
                 g.id === goalRow.id
-                  ? {
-                      ...g,
-                      activityParticipation: enriched.activityParticipation || g.activityParticipation,
-                      objectives: enriched.objectives || g.objectives,
-                      opportunities: enriched.opportunities || g.opportunities,
-                      partners: enriched.partners || g.partners,
-                      duration: enriched.duration || g.duration,
-                      evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria
-                    }
+                  ? adaptGoalToGender(
+                      {
+                        ...g,
+                        activityParticipation:
+                          enriched.activityParticipation || g.activityParticipation,
+                        objectives: enriched.objectives || g.objectives,
+                        opportunities: enriched.opportunities || g.opportunities,
+                        partners: enriched.partners || g.partners,
+                        duration: enriched.duration || g.duration,
+                        evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria
+                      },
+                      genderToUse
+                    )
                   : g
               )
             }));
@@ -339,41 +413,48 @@ export default function EcologicalWorkPlanForm({
       ...prev,
       goals: (prev.goals || []).map((g) => {
         if (g.id !== goalRow.id) return g;
-        return {
-          ...g,
-          activityParticipation:
-            ans1
+        return adaptGoalToGender(
+          {
+            ...g,
+            activityParticipation: ans1
               ? `${ans1}${g.activityParticipation ? `\n${g.activityParticipation}` : ''}`
-              : g.activityParticipation || `בסביבת ${g.environment}, ${firstName} מתנסה בפעילות עם תיווך מותאם של הצוות.`,
-          objectives:
-            ans2
+              : g.activityParticipation ||
+                `בסביבת ${g.environment}, ${firstName} מתנסה בפעילות עם תיווך מותאם של הצוות.`,
+            objectives: ans2
               ? `${g.objectives ? g.objectives + '\n' : ''}• ${ans2}`
               : g.objectives || `• יתקדם בהדרגה לעבר המטרה: ${g.title}.`,
-          opportunities:
-            ans2
+            opportunities: ans2
               ? `${g.opportunities ? g.opportunities + '\n' : ''}• הצוות יתווך ל${firstName} באמצעות: ${ans2}.`
               : g.opportunities || `• המבוגר יזמין ויתווך ל${firstName} באופן יומיומי ומדורג.`,
-          partners: ans3 ? ans3 : g.partners || 'צוות הגן / הכיתה, סייעת אישית, הורים',
-          duration: g.duration || 'עד סוף השנה',
-          evaluationCriteria:
-            ans3 && ans3.length > 15
-              ? ans3
-              : g.evaluationCriteria || `יישום עצמאי ועקבי של המטרה (${g.title}) בסביבת ${g.environment}.`
-        };
+            partners: ans3 ? ans3 : g.partners || 'צוות הגן / הכיתה, סייעת אישית, הורים',
+            duration: g.duration || 'עד סוף השנה',
+            evaluationCriteria:
+              ans3 && ans3.length > 15
+                ? ans3
+                : g.evaluationCriteria ||
+                  `יישום עצמאי ועקבי של המטרה (${g.title}) בסביבת ${g.environment}.`
+          },
+          genderToUse
+        );
       })
     }));
     setLoadingAiForGoalId(null);
   };
 
-  // Toggle an operative objective chip from the Matya/Ecological bank
+  // Add an operative objective chip from the Goal Bank (automatically adjusted to student's gender!)
   const handleAddSuggestedObjective = (goalRowId, objText) => {
+    const genderToUse = formData.gender || 'boy';
+    const genderAdjustedObj = adaptTextToGender(objText, genderToUse);
+
     setFormData((prev) => ({
       ...prev,
       goals: (prev.goals || []).map((g) => {
         if (g.id !== goalRowId) return g;
         const current = (g.objectives || '').trim();
-        if (current.includes(objText)) return g;
-        const nextObjectives = current ? `${current}\n• ${objText}` : `• ${objText}`;
+        if (current.includes(genderAdjustedObj)) return g;
+        const nextObjectives = current
+          ? `${current}\n• ${genderAdjustedObj}`
+          : `• ${genderAdjustedObj}`;
         return { ...g, objectives: nextObjectives };
       })
     }));
@@ -477,6 +558,7 @@ ${goalsSummary}
     const updated = {
       ...formData,
       name: engineered?.name || formData.name,
+      gender: engineered?.gender || formData.gender || 'boy',
       educationalFramework: engineered?.educationalFramework || formData.educationalFramework,
       strengthsExisting: engineered?.strengthsExisting || formData.strengthsExisting,
       strengthsToEmpower: engineered?.strengthsToEmpower || formData.strengthsToEmpower,
@@ -491,7 +573,7 @@ ${goalsSummary}
     setTimeout(() => setSaveBanner(false), 3000);
   };
 
-  // === NEW FEATURE: AI Reverse Engineering from Raw Data Text to Full Formal Report ===
+  // === AI Reverse Engineering from Raw Data Text to Full Formal Report ===
   const handleReverseEngineerFullReport = async () => {
     const rawText = (formData.teacherFreeText || '').trim();
     if (!rawText) {
@@ -502,20 +584,28 @@ ${goalsSummary}
     setIsReverseEngineering(true);
     setReverseEngineerBanner('');
 
+    const genderToUse = formData.gender || 'boy';
+    const genderInstruction =
+      genderToUse === 'girl'
+        ? 'בת (נקבה) – חובה לנסח את כל המטרות, היעדים והתיאורים בלשון נקבה בלבד (למשל: תשתתף, תמתין, תבחר, תגיב)!'
+        : 'בן (זכר) – חובה לנסח את כל המטרות, היעדים והתיאורים בלשון זכר בלבד (למשל: ישתתף, ימתין, יבחר, יגיב)!';
+
     // 1. Try Live Gemini AI if API key is provided
     if (geminiApiKey && geminiApiKey.trim()) {
       const bankReference = sortedGoals
         .slice(0, 20)
         .map(
           (b) =>
-            `- סביבת השתתפות: "${b.environment}" | מטרה: "${b.title}" | יעדים אפשריים: ${(b.suggestedObjectives || []).join(' ; ')}`
+            `- סביבת השתתפות: "${b.environment}" | מטרה: "${adaptTextToGender(b.title, genderToUse)}" | יעדים אפשריים: ${(b.suggestedObjectives || []).map((o) => adaptTextToGender(o, genderToUse)).join(' ; ')}`
         )
         .join('\n');
 
       const prompt = `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
 המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות (העלול להכיל שגיאות כתיב, שגיאות הקלדה או ניסוח יומיומי).
+מין הילד/ה שהוגדר בטופס: ${genderInstruction}
+
 הנחיות קריטיות לעיבוד המידע:
-1. אל תעתיק משפטים גולמיים מהטקסט "As-Is"! עליך לפרש את המשמעות מתוך ההקשר, לתקן כל שגיאת כתיב או דקדוק, ולנסח מחדש בעברית פדגוגית מקצועית, רהוטה ותקנית.
+1. אל תעתיק משפטים גולמיים מהטקסט "As-Is"! עליך לפרש את המשמעות מתוך ההקשר, לתקן כל שגיאת כתיב או דקדוק, ולנסח מחדש בעברית פדגוגית מקצועית, רהוטה ותקנית המותאמת למין הילד/ה (${genderToUse === 'girl' ? 'לשון נקבה' : 'לשון זכר'}).
 2. עבור "strengthsExisting" (מוקדי כוח: כוחות קיימים) ו-"strengthsToEmpower" (כוחות להעצמה וחיזוק) כתוב **תקציר מנהלים (Executive Summary) תמציתי ומזוקק לפי נושאים** – לכל היותר 3 עד 4 נקודות קצרות בכל עמודה (במבנה: "• [נושא/תחום]: [תמצית קצרה של 5-9 מילים]"). אל תעמיס מלל ואל תחזור על משפטים ארוכים!
 
 הדוח הרשמי ב-JSON חייב לכלול:
@@ -523,7 +613,7 @@ ${goalsSummary}
 2. "educationalFramework": מסגרת חינוכית/גן אם הוזכרו בטקסט (או השאר ריק).
 3. "strengthsExisting": תקציר מנהלים תמציתי (3-4 נקודות קצרות לפי נושאים) של מוקדי הכוח הקיימים.
 4. "strengthsToEmpower": תקציר מנהלים תמציתי (2-4 נקודות קצרות לפי נושאים) של הכוחות להעצמה וחיזוק.
-5. "goals": מערך של 2 עד 4 מטרות מותאמות לקשיים שתוארו בטקסט מתוך מאגר המטרות והסביבות שלהלן. לכל מטרה מלא את כל 6 העמודות בניסוח מקצועי וללא שגיאות כתיב:
+5. "goals": מערך של 2 עד 4 מטרות מותאמות לקשיים שתוארו בטקסט מתוך מאגר המטרות והסביבות שלהלן. לכל מטרה מלא את כל 6 העמודות בניסוח מקצועי וללא שגיאות כתיב (בלשון ${genderToUse === 'girl' ? 'נקבה' : 'זכר'}):
    - "environment": סביבת השתתפות מתוך הרשימה (${ENVIRONMENTS_LIST.join(', ')})
    - "activityParticipation": סינתזה פדגוגית מקצועית ותמציתית של תפקוד הילד/ה בסביבה זו (ללא העתקת הטקסט הגולמי כפי שהוא!)
    - "title": מטרה מתוך מאגר המטרות
@@ -566,17 +656,22 @@ ${bankReference}
 
       const parsed = await callGeminiJson(prompt);
       if (parsed && Array.isArray(parsed.goals) && parsed.goals.length > 0) {
-        const formattedGoals = parsed.goals.map((g, i) => ({
-          id: 'g_airev_' + Date.now() + '_' + i,
-          environment: g.environment || ENVIRONMENTS_LIST[0],
-          activityParticipation: g.activityParticipation || '',
-          title: g.title || '',
-          objectives: g.objectives || '',
-          opportunities: g.opportunities || '',
-          partners: g.partners || 'צוות הגן, הורים',
-          duration: g.duration || 'עד סוף השנה',
-          evaluationCriteria: g.evaluationCriteria || ''
-        }));
+        const formattedGoals = parsed.goals.map((g, i) =>
+          adaptGoalToGender(
+            {
+              id: 'g_airev_' + Date.now() + '_' + i,
+              environment: g.environment || ENVIRONMENTS_LIST[0],
+              activityParticipation: g.activityParticipation || '',
+              title: g.title || '',
+              objectives: g.objectives || '',
+              opportunities: g.opportunities || '',
+              partners: g.partners || 'צוות הגן, הורים',
+              duration: g.duration || 'עד סוף השנה',
+              evaluationCriteria: g.evaluationCriteria || ''
+            },
+            genderToUse
+          )
+        );
 
         const updated = {
           ...formData,
@@ -617,6 +712,7 @@ ${bankReference}
       const updated = {
         ...formData,
         name: engineered.name || formData.name,
+        gender: engineered.gender || formData.gender || 'boy',
         educationalFramework: engineered.educationalFramework || formData.educationalFramework,
         strengthsExisting: engineered.strengthsExisting,
         strengthsToEmpower: engineered.strengthsToEmpower,
@@ -961,8 +1057,17 @@ ${bankReference}
     }, 400);
   };
 
+  const handleTextareaAutoResize = (e) => {
+    const ta = e.currentTarget;
+    ta.style.overflowY = 'hidden';
+    ta.style.height = 'auto';
+    const isGoalTableCell = Boolean(ta.closest('.ecological-6col-table'));
+    const minH = isGoalTableCell ? 175 : 88;
+    ta.style.height = `${Math.max(ta.scrollHeight + 10, minH)}px`;
+  };
+
   return (
-    <div className="workplan-form-container" dir="rtl">
+    <div className="workplan-form-container" dir="rtl" ref={containerRef}>
       {/* Sticky Top Action & Print Privacy Toolbar */}
       <div className="sticky-action-bar">
         <div className="action-bar-right">
@@ -1100,6 +1205,26 @@ ${bankReference}
           </div>
 
           <div className="form-field">
+            <label>מין הילד/ה (מתאים אוטומטית את היעדים ללשון זכר/נקבה):</label>
+            <div className="gender-toggle-group">
+              <button
+                type="button"
+                className={`gender-toggle-btn ${currentGender === 'boy' ? 'active' : ''}`}
+                onClick={() => handleGenderChange('boy')}
+              >
+                👦 בן (לשון זכר)
+              </button>
+              <button
+                type="button"
+                className={`gender-toggle-btn ${currentGender === 'girl' ? 'active' : ''}`}
+                onClick={() => handleGenderChange('girl')}
+              >
+                👧 בת (לשון נקבה)
+              </button>
+            </div>
+          </div>
+
+          <div className="form-field">
             <label>ת.ז:</label>
             <input
               type="text"
@@ -1164,6 +1289,7 @@ ${bankReference}
           <textarea
             rows={4}
             value={formData.teacherFreeText || ''}
+            onInput={handleTextareaAutoResize}
             onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
             placeholder="הזיני כאן מידע גולמי וחופשי על התלמיד/ה... למשל: ילד נעים, חברותי וסקרן בעל יכולת ריכוז טובה, וורבלי ומלא אנרגיות. מתקשה במשחק משותף עם חברים ומשחק לידם באופן תבניתי, לא ניגש לשולחן הסדנא מיוזמתו ומתקשה בתכנון והתארגנות, וזקוק לתיווך בגמילה בשירותים ובוויסות רגשי..."
           />
@@ -1206,16 +1332,18 @@ ${bankReference}
               <tr>
                 <td data-label="💪 מוקדי כוח: כוחות קיימים">
                   <textarea
-                    rows={Math.max(6, (formData.strengthsExisting || '').split('\n').length + 1)}
+                    rows={5}
                     value={formData.strengthsExisting || ''}
+                    onInput={handleTextareaAutoResize}
                     onChange={(e) => handleFieldChange('strengthsExisting', e.target.value)}
                     placeholder="כוחות קיימים של הילד/ה (מתמלא אוטומטית בלחיצה על עיבוד המידע וניתן לעריכה חופשית)..."
                   />
                 </td>
                 <td data-label="🌱 כוחות להעצמה וחיזוק">
                   <textarea
-                    rows={Math.max(6, (formData.strengthsToEmpower || '').split('\n').length + 1)}
+                    rows={5}
                     value={formData.strengthsToEmpower || ''}
+                    onInput={handleTextareaAutoResize}
                     onChange={(e) => handleFieldChange('strengthsToEmpower', e.target.value)}
                     placeholder="כוחות להעצמה וחיזוק (מתמלא אוטומטית מתוך הטקסט החופשי וכל המטרות שהוגדרו)..."
                   />
@@ -1251,6 +1379,7 @@ ${bankReference}
             </div>
             <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#eff4f1', border: '1.5px solid #4a859e', borderRight: '4px solid #eb8f78', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
               <span><strong>שם הילד/ה:</strong> {getDisplayStudentName()}</span>
+              <span><strong>מין:</strong> {currentGender === 'girl' ? 'בת' : 'בן'}</span>
               <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
               <span><strong>ת.ל:</strong> {getDisplayMaskedField(formData.birthDate)}</span>
               <span><strong>מסגרת חינוכית:</strong> {hideStudentDetailsOnPrint ? maskSensitiveValue(formData.educationalFramework) : formData.educationalFramework}</span>
@@ -1311,7 +1440,7 @@ ${bankReference}
           <div>
             <h3>3. הגדרת מטרות ויעדים לפי סביבות פעילות ותחומי תפקוד</h3>
             <p className="section-sub-desc">
-              בחרי מטרה מתוך מאגר המטרות הדינמי (המטרות הנפוצות ביותר מופיעות ראשונות) או הקלידי מטרה חדשה שתישמר אוטומטית לשימוש עתידי.
+              בחרי מטרה מתוך מאגר המטרות הדינמי (המטרות והיעדים מותאמים אוטומטית למין הילד/ה: <strong>{currentGender === 'girl' ? 'בת – לשון נקבה' : 'בן – לשון זכר'}</strong>) או הקלידי מטרה חדשה.
             </p>
           </div>
           <button type="button" className="btn-add-goal-block" onClick={handleAddGoalRow}>
@@ -1324,9 +1453,13 @@ ${bankReference}
           {(formData.goals || []).map((goalRow, index) => {
             const isPickerOpen = openPickerGoalId === goalRow.id;
             const isAiOpen = activeAiGoalId === goalRow.id;
-            const matchedBankItem = sortedGoals.find(
-              (b) => b.title.trim() === (goalRow.title || '').trim()
-            );
+            const matchedBankItem =
+              sortedGoals.find(
+                (b) =>
+                  adaptTextToGender(b.title.trim(), currentGender) ===
+                  adaptTextToGender((goalRow.title || '').trim(), currentGender)
+              ) ||
+              sortedGoals.find((b) => b.environment === goalRow.environment);
             const currentQuestions =
               aiQuestionsMap[goalRow.id] ||
               matchedBankItem?.facilitatingQuestions?.slice(0, 3) ||
@@ -1337,11 +1470,15 @@ ${bankReference}
               const matchesEnv =
                 pickerEnvFilter === 'הכל' || item.environment === pickerEnvFilter;
               const q = (pickerSearch || '').trim();
+              const inflectedTitle = adaptTextToGender(item.title, currentGender);
               const matchesQuery =
                 !q ||
                 item.title.includes(q) ||
+                inflectedTitle.includes(q) ||
                 (item.environment && item.environment.includes(q)) ||
-                (item.suggestedObjectives || []).some((o) => o.includes(q));
+                (item.suggestedObjectives || []).some(
+                  (o) => o.includes(q) || adaptTextToGender(o, currentGender).includes(q)
+                );
               return matchesEnv && matchesQuery;
             });
 
@@ -1403,8 +1540,9 @@ ${bankReference}
                     </span>
                   </label>
                   <textarea
-                    rows={Math.max(3, (goalRow.activityParticipation || '').split('\n').length + 1)}
+                    rows={3}
                     value={goalRow.activityParticipation || ''}
+                    onInput={handleTextareaAutoResize}
                     onChange={(e) =>
                       handleGoalChange(goalRow.id, 'activityParticipation', e.target.value)
                     }
@@ -1474,17 +1612,22 @@ ${bankReference}
                       }}
                       placeholder="הקלידי מטרה חדשה או בחרי מתוך ההשלמה האוטומטית של המטרות הנפוצות..."
                     />
-                    {goalRow.title && !matchedBankItem && (
-                      <button
-                        type="button"
-                        className="btn-save-new-goal-to-bank"
-                        onClick={() => handleConfirmCustomGoal(goalRow)}
-                        title="שמור מטרה חדשה זו במאגר המטרות לשימוש עתידי וקבל 3 שאלות מנחות"
-                      >
-                        <Plus size={15} />
-                        <span>שמור מטרה חדשה במאגר + הפעל שאלות מנחות</span>
-                      </button>
-                    )}
+                    {goalRow.title &&
+                      !sortedGoals.some(
+                        (b) =>
+                          adaptTextToGender(b.title.trim(), currentGender) ===
+                          adaptTextToGender((goalRow.title || '').trim(), currentGender)
+                      ) && (
+                        <button
+                          type="button"
+                          className="btn-save-new-goal-to-bank"
+                          onClick={() => handleConfirmCustomGoal(goalRow)}
+                          title="שמור מטרה חדשה זו במאגר המטרות לשימוש עתידי וקבל 3 שאלות מנחות"
+                        >
+                          <Plus size={15} />
+                          <span>שמור מטרה חדשה במאגר + הפעל שאלות מנחות</span>
+                        </button>
+                      )}
                   </div>
 
                   {/* Light UX Dropdown: Dynamic Usage-Sorted Goal Bank */}
@@ -1522,50 +1665,64 @@ ${bankReference}
                       </div>
 
                       <div className="goal-bank-items-scroll">
-                        {filteredBankGoals.map((bankItem, rankIdx) => (
-                          <div key={bankItem.id} className="goal-bank-option-row">
-                            <div
-                              className="goal-bank-option-main"
-                              onClick={() => handleSelectGoalFromBank(goalRow.id, bankItem, true)}
-                            >
-                              <div className="goal-option-title-line">
-                                <span className="popularity-rank-badge">
-                                  #{rankIdx + 1}
-                                </span>
-                                <strong>{bankItem.title}</strong>
-                                <span className="env-tag-chip">{bankItem.environment}</span>
-                                <span className="usage-count-badge">
-                                  <TrendingUp size={12} />
-                                  <span>נבחר {bankItem.usageCount || 1} פעמים</span>
-                                </span>
-                              </div>
-                              {bankItem.suggestedObjectives && bankItem.suggestedObjectives.length > 0 && (
-                                <div className="goal-option-sub-preview">
-                                  יעדים במאגר: {bankItem.suggestedObjectives.slice(0, 2).join(' | ')}
-                                </div>
-                              )}
-                            </div>
-                            <div className="goal-bank-option-buttons">
-                              <button
-                                type="button"
-                                className="btn-use-full-goal"
+                        {filteredBankGoals.map((bankItem, rankIdx) => {
+                          const displayBankTitle = adaptTextToGender(
+                            bankItem.title,
+                            currentGender
+                          );
+                          return (
+                            <div key={bankItem.id} className="goal-bank-option-row">
+                              <div
+                                className="goal-bank-option-main"
                                 onClick={() => handleSelectGoalFromBank(goalRow.id, bankItem, true)}
                               >
-                                בחר ומלא תבנית מלאה
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-use-title-only"
-                                onClick={() => handleSelectGoalFromBank(goalRow.id, bankItem, false)}
-                              >
-                                רק כותרת מטרה
-                              </button>
+                                <div className="goal-option-title-line">
+                                  <span className="popularity-rank-badge">
+                                    #{rankIdx + 1}
+                                  </span>
+                                  <strong>{displayBankTitle}</strong>
+                                  <span className="env-tag-chip">{bankItem.environment}</span>
+                                  <span className="usage-count-badge">
+                                    <TrendingUp size={12} />
+                                    <span>נבחר {bankItem.usageCount || 1} פעמים</span>
+                                  </span>
+                                </div>
+                                {bankItem.suggestedObjectives && bankItem.suggestedObjectives.length > 0 && (
+                                  <div className="goal-option-sub-preview">
+                                    יעדים במאגר:{' '}
+                                    {bankItem.suggestedObjectives
+                                      .slice(0, 2)
+                                      .map((o) => adaptTextToGender(o, currentGender))
+                                      .join(' | ')}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="goal-bank-option-buttons">
+                                <button
+                                  type="button"
+                                  className="btn-use-full-goal"
+                                  onClick={() => handleSelectGoalFromBank(goalRow.id, bankItem, true)}
+                                >
+                                  בחר ומלא תבנית מלאה
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-use-title-only"
+                                  onClick={() => handleSelectGoalFromBank(goalRow.id, bankItem, false)}
+                                >
+                                  רק כותרת מטרה
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
 
                         {pickerSearch.trim() &&
-                          !sortedGoals.some((b) => b.title.trim() === pickerSearch.trim()) && (
+                          !sortedGoals.some(
+                            (b) =>
+                              adaptTextToGender(b.title.trim(), currentGender) ===
+                              adaptTextToGender(pickerSearch.trim(), currentGender)
+                          ) && (
                             <div className="create-custom-goal-from-search">
                               <span>לא מצאת את המטרה המדויקת?</span>
                               <button
@@ -1629,25 +1786,28 @@ ${bankReference}
                               <label className="ai-q-text">{qObj.q}</label>
                               {qObj.suggestions && qObj.suggestions.length > 0 && (
                                 <div className="ai-suggestion-chips">
-                                  {qObj.suggestions.map((sug, sIdx) => (
-                                    <button
-                                      key={sIdx}
-                                      type="button"
-                                      className="ai-sug-chip"
-                                      onClick={() => {
-                                        const prevAns = aiAnswersMap[goalRow.id] || {};
-                                        const nextVal = prevAns[qIdx]
-                                          ? `${prevAns[qIdx]}, ${sug}`
-                                          : sug;
-                                        setAiAnswersMap({
-                                          ...aiAnswersMap,
-                                          [goalRow.id]: { ...prevAns, [qIdx]: nextVal }
-                                        });
-                                      }}
-                                    >
-                                      + {sug}
-                                    </button>
-                                  ))}
+                                  {qObj.suggestions.map((sug, sIdx) => {
+                                    const inflectedSug = adaptTextToGender(sug, currentGender);
+                                    return (
+                                      <button
+                                        key={sIdx}
+                                        type="button"
+                                        className="ai-sug-chip"
+                                        onClick={() => {
+                                          const prevAns = aiAnswersMap[goalRow.id] || {};
+                                          const nextVal = prevAns[qIdx]
+                                            ? `${prevAns[qIdx]}, ${inflectedSug}`
+                                            : inflectedSug;
+                                          setAiAnswersMap({
+                                            ...aiAnswersMap,
+                                            [goalRow.id]: { ...prevAns, [qIdx]: nextVal }
+                                          });
+                                        }}
+                                      >
+                                        + {inflectedSug}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               )}
                               <input
@@ -1691,7 +1851,7 @@ ${bankReference}
                   <table className="ecological-6col-table">
                     <thead>
                       <tr>
-                        <th style={{ width: '17%' }}>
+                        <th style={{ width: '15%' }}>
                           מטרה
                           <span className="col-sub">מה אנחנו רוצים שיקרה?</span>
                         </th>
@@ -1703,20 +1863,21 @@ ${bankReference}
                           הזדמנויות, אמצעים
                           <span className="col-sub">ואיך נגרום לזה לקרות?</span>
                         </th>
-                        <th style={{ width: '12%' }}>
+                        <th style={{ width: '11%' }}>
                           שותפים
                           <span className="col-sub">מי ובאיזה אופן?</span>
                         </th>
-                        <th style={{ width: '9%' }}>משך</th>
-                        <th style={{ width: '14%' }}>אמות מידה להערכה</th>
+                        <th style={{ width: '8%' }}>משך</th>
+                        <th style={{ width: '18%' }}>אמות מידה להערכה</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
                         <td data-label="מטרה – מה אנחנו רוצים שיקרה?">
                           <textarea
-                            rows={Math.max(8, (goalRow.title || '').split('\n').length + 2)}
+                            rows={6}
                             value={goalRow.title || ''}
+                            onInput={handleTextareaAutoResize}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'title', e.target.value)
                             }
@@ -1726,8 +1887,9 @@ ${bankReference}
                         </td>
                         <td data-label="יעדים, ציוני דרך (פירוט צעדים אופרטיביים)">
                           <textarea
-                            rows={Math.max(8, (goalRow.objectives || '').split('\n').length + 2)}
+                            rows={6}
                             value={goalRow.objectives || ''}
+                            onInput={handleTextareaAutoResize}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'objectives', e.target.value)
                             }
@@ -1735,26 +1897,34 @@ ${bankReference}
                           />
                           {matchedBankItem?.suggestedObjectives?.length > 0 && (
                             <div className="quick-objectives-bank">
-                              <small>הוסף יעד מהמאגר בלחיצה:</small>
+                              <small>
+                                הוסף יעד מהמאגר בלחיצה ({currentGender === 'girl' ? 'מותאם לבת' : 'מותאם לבן'}):
+                              </small>
                               <div className="quick-obj-chips">
-                                {matchedBankItem.suggestedObjectives.map((obj, oIdx) => (
-                                  <button
-                                    key={oIdx}
-                                    type="button"
-                                    className="chip-add-obj"
-                                    onClick={() => handleAddSuggestedObjective(goalRow.id, obj)}
-                                  >
-                                    + {obj}
-                                  </button>
-                                ))}
+                                {matchedBankItem.suggestedObjectives.map((obj, oIdx) => {
+                                  const inflectedObj = adaptTextToGender(obj, currentGender);
+                                  return (
+                                    <button
+                                      key={oIdx}
+                                      type="button"
+                                      className="chip-add-obj"
+                                      onClick={() =>
+                                        handleAddSuggestedObjective(goalRow.id, inflectedObj)
+                                      }
+                                    >
+                                      + {inflectedObj}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
                         </td>
                         <td data-label="הזדמנויות, אמצעים (ואיך נגרום לזה לקרות?)">
                           <textarea
-                            rows={Math.max(8, (goalRow.opportunities || '').split('\n').length + 2)}
+                            rows={6}
                             value={goalRow.opportunities || ''}
+                            onInput={handleTextareaAutoResize}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'opportunities', e.target.value)
                             }
@@ -1763,8 +1933,9 @@ ${bankReference}
                         </td>
                         <td data-label="שותפים (מי ובאיזה אופן?)">
                           <textarea
-                            rows={Math.max(8, (goalRow.partners || '').split('\n').length + 2)}
+                            rows={6}
                             value={goalRow.partners || ''}
+                            onInput={handleTextareaAutoResize}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'partners', e.target.value)
                             }
@@ -1773,8 +1944,9 @@ ${bankReference}
                         </td>
                         <td data-label="משך">
                           <textarea
-                            rows={Math.max(8, (goalRow.duration || '').split('\n').length + 2)}
+                            rows={6}
                             value={goalRow.duration || ''}
+                            onInput={handleTextareaAutoResize}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'duration', e.target.value)
                             }
@@ -1783,8 +1955,9 @@ ${bankReference}
                         </td>
                         <td data-label="אמות מידה להערכה">
                           <textarea
-                            rows={Math.max(8, (goalRow.evaluationCriteria || '').split('\n').length + 2)}
+                            rows={6}
                             value={goalRow.evaluationCriteria || ''}
+                            onInput={handleTextareaAutoResize}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'evaluationCriteria', e.target.value)
                             }
