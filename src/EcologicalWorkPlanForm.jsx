@@ -1467,17 +1467,6 @@ ${bankReference}
                         <HelpCircle size={15} />
                         <span>3 שאלות מנחות AI למילוי המטרה</span>
                       </button>
-
-                      {isAdmin && onOpenGoalBankManager && (
-                        <button
-                          type="button"
-                          className="btn-admin-manage-bank-inline"
-                          onClick={onOpenGoalBankManager}
-                          title="הוסף, ערוך או הסר מטרות במאגר המטרות הדינמי (Admin)"
-                        >
-                          <span>👑 עריכת מאגר מטרות (Admin)</span>
-                        </button>
-                      )}
                     </div>
                   </div>
 
