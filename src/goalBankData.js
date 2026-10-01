@@ -582,281 +582,542 @@ export function deleteGoalByAdmin(goalId, currentBank) {
   return bank;
 }
 
-// === מנוע "הנדסה לאחור" (Reverse Engineering) מטקסט גולמי של המורה לדוח רשמי מלא ===
+// === מנוע "הנדסה לאחור" פדגוגי (Reverse Engineering) מטקסט גולמי של המורה לדוח רשמי קוהרנטי ומדויק ===
 export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank) {
   const text = (rawText || '').trim();
   const bank = getSortedGoalBank(goalBank);
   if (!text) return null;
 
-  // 1. ניסיון לחלץ שם תלמיד/ה או מסגרת אם צוינו בטקסט הגולמי והשדה ריק/ברירת מחדל
+  // 1. זיהוי מין התלמיד/ה (זכר/נקבה) מתוך פעלים, שמות תואר וכינויים בטקסט
+  const femaleIndicators = [
+    /\bילדה\b/, /\bתלמידה\b/, /\bהיא\b/, /\bשלה\b/, /\bלה\b/, /\bאותה\b/, /\bבעצמה\b/,
+    /\bאוהבת\b/, /\bקוראת\b/, /\bכותבת\b/, /\bיושבת\b/, /\bניגשת\b/, /\bמשחקת\b/,
+    /\bמשתתפת\b/, /\bמדברת\b/, /\bנעימה\b/, /\bחברותית\b/, /\bסקרנית\b/, /\bחכמה\b/,
+    /\bנבונה\b/, /\bזקוקה\b/, /\bצריכה\b/, /\bמוסחת\b/, /\bמתעייפת\b/, /\bנמנעת\b/,
+    /\bמתנגדת\b/, /\bמבינה\b/, /\bמזהה\b/, /\bמצליחה\b/, /\bעצמאית\b/, /\bרגישה\b/,
+    /\bמתוקה\b/, /\bמקסימה\b/, /\bשקטה\b/, /\bפעילה\b/, /\bקשובה\b/, /\bמפנימה\b/
+  ];
+  const maleIndicators = [
+    /\bילד\b/, /\bתלמיד\b/, /\bהוא\b/, /\bשלו\b/, /\bלו\b/, /\bאותו\b/, /\bבעצמו\b/,
+    /\bאוהב\b/, /\bקורא\b/, /\bכותב\b/, /\bיושב\b/, /\bניגש\b/, /\bמשחק\b/,
+    /\bמשתתף\b/, /\bמדבר\b/, /\bנעים\b/, /\bחברותי\b/, /\bסקרן\b/, /\bחכם\b/,
+    /\bנבון\b/, /\bזקוק\b/, /\bצריך\b/, /\bמוסח\b/, /\bמתעייף\b/, /\bנמנע\b/,
+    /\bמתנגד\b/, /\bמבין\b/, /\bמזהה\b/, /\bמצליח\b/, /\bעצמאי\b/, /\bרגיש\b/,
+    /\bמתוק\b/, /\bמקסים\b/, /\bשקט\b/, /\bפעיל\b/, /\bקשוב\b/, /\bמפנים\b/
+  ];
+
+  let femaleScore = 0;
+  let maleScore = 0;
+  femaleIndicators.forEach((rx) => { if (rx.test(text)) femaleScore += 1; });
+  maleIndicators.forEach((rx) => { if (rx.test(text)) maleScore += 1; });
+  const isFemale = femaleScore > maleScore;
+
+  // מילון הטיות מגדר לניסוח קוהרנטי ומדויק
+  const g = {
+    childNoun: isFemale ? 'הילדה' : 'הילד',
+    studentNoun: isFemale ? 'התלמידה' : 'התלמיד',
+    pronoun: isFemale ? 'היא' : 'הוא',
+    toPronoun: isFemale ? 'לה' : 'לו',
+    possessive: isFemale ? 'שלה' : 'שלו',
+    develop: isFemale ? 'תפתח' : 'יפתח',
+    improve: isFemale ? 'תשפר' : 'ישפר',
+    expand: isFemale ? 'תרחיב ותשכלל' : 'ירחיב וישכלל',
+    acquire: isFemale ? 'תרכוש' : 'ירכוש',
+    practice: isFemale ? 'תתרגל' : 'יתרגל',
+    use: isFemale ? 'תשתמש' : 'ישתמש',
+    participate: isFemale ? 'תשתתף' : 'ישתתף',
+    persevere: isFemale ? 'תתמיד' : 'יתמיד',
+    initiate: isFemale ? 'תיזום' : 'ייזום',
+    approach: isFemale ? 'תיגש' : 'ייגש',
+    express: isFemale ? 'תביע' : 'יביע',
+    read: isFemale ? 'תקרא' : 'יקרא',
+    write: isFemale ? 'תכתוב' : 'יכתוב',
+    understand: isFemale ? 'תבין' : 'יבין',
+    organize: isFemale ? 'תתארגן ותתכנן' : 'יתארגן ויתכנן',
+    regulate: isFemale ? 'תווסת' : 'יווסת',
+    identify: isFemale ? 'תזהה' : 'יזהה',
+    apply: isFemale ? 'תיישם' : 'יישם',
+    succeed: isFemale ? 'תצליח' : 'יצליח',
+    characterized: isFemale ? 'מתאפיינת' : 'מתאפיין',
+    demonstrates: isFemale ? 'מגלה' : 'מגלה',
+    functions: isFemale ? 'מתפקדת' : 'מתפקד',
+    needs: isFemale ? 'זקוקה' : 'זקוק',
+    struggles: isFemale ? 'מתקשה' : 'מתקשה',
+    assisted: isFemale ? 'תסתייע' : 'יסתייע',
+    independentAdj: isFemale ? 'עצמאית' : 'עצמאי'
+  };
+
+  // 2. חילוץ שם התלמיד/ה ומסגרת חינוכית אם צוינו בטקסט הגולמי
   let detectedName = currentFormData.name || '';
+  const nonNameWords = new Set([
+    'ילד', 'ילדה', 'תלמיד', 'תלמידה', 'נעים', 'נעימה', 'חמוד', 'חמודה', 'מתוק', 'מתוקה',
+    'חברותי', 'חברותית', 'סקרן', 'סקרנית', 'הוא', 'היא', 'בעל', 'בעלת', 'לומד', 'לומדת',
+    'נבון', 'נבונה', 'חכם', 'חכמה', 'שקט', 'שקטה', 'בגן', 'בכיתה', 'מגלה', 'מתקשה'
+  ]);
+
   if (!detectedName || detectedName === 'תלמיד/ה חדש/ה') {
-    const nameMatch =
-      text.match(/(?:התלמיד\/ה|התלמיד|התלמידה|הילד\/ה|הילד|הילדה|שם הילד:?|שם:?)\s+([א-ת]{2,12}(?:\s+[א-ת]{2,12})?)/) ||
-      text.match(/^([א-ת]{2,10})\s+(?:הוא|היא|ילד|ילדה|תלמיד|תלמידה|בן|בת)\b/);
-    if (nameMatch && nameMatch[1]) {
-      const candidate = nameMatch[1].trim();
-      const stopWords = ['ילד', 'ילדה', 'תלמיד', 'תלמידה', 'נעים', 'נעימה', 'חמוד', 'חמודה', 'מתוק', 'מתוקה'];
-      if (!stopWords.includes(candidate.split(/\s+/)[0])) {
-        detectedName = candidate;
-      }
+    const explicitMatch =
+      text.match(/(?:שם הילד\/ה|שם התלמיד\/ה|שם הילד|שם הילדה|שם התלמיד|שם התלמידה|התלמיד|התלמידה|הילד|הילדה)\s*[:\-]?\s*([א-ת]{2,11})/) ||
+      text.match(/^([א-ת]{2,11})\s+(?:הוא|היא|ילד|ילדה|תלמיד|תלמידה|בן|בת|לומד|לומדת)\b/);
+    if (explicitMatch && explicitMatch[1] && !nonNameWords.has(explicitMatch[1])) {
+      detectedName = explicitMatch[1].trim();
     }
   }
 
-  const firstName = (detectedName && detectedName !== 'תלמיד/ה חדש/ה' ? detectedName : 'הילד/ה')
-    .trim()
-    .split(/\s+/)[0];
+  const firstName =
+    detectedName && detectedName !== 'תלמיד/ה חדש/ה'
+      ? detectedName.trim().split(/\s+/)[0]
+      : g.studentNoun;
 
-  // 2. פירוק הטקסט הגולמי למשפטים וסיווגם למוקדי כוח קיימים מול מוקדים להעצמה/קשיים
-  const clauses = text
-    .split(/[.,;\n]+/)
+  // זיהוי מסגרת (גן מול בית ספר/כיתה)
+  let detectedFramework = currentFormData.educationalFramework || '';
+  if (!detectedFramework) {
+    const fwMatch = text.match(/(?:לומד|לומדת|נמצא|נמצאת)?\s*(?:ב|מסגרת:?)\s*((?:גן|כיתה|בית ספר|בי"ס)\s+[א-ת0-9"']+)/);
+    if (fwMatch && fwMatch[1]) {
+      detectedFramework = fwMatch[1].trim();
+    }
+  }
+
+  const schoolMarkers = ['כיתה', 'בית ספר', 'שיעור', 'לוח', 'מחברת', 'קריאה', 'כתיבה', 'כתיב', 'הבנת הנקרא', 'חשבון', 'תלמיד', 'תלמידה', 'מבחן', 'הפסקה', 'ש.ב'];
+  const kdgMarkers = ['גן', 'גננת', 'פינות הגן', 'סדנא', 'משחק סוציודרמטי', 'גמילה', 'צואה'];
+  const schoolCount = schoolMarkers.filter((m) => text.includes(m)).length;
+  const kdgCount = kdgMarkers.filter((m) => text.includes(m)).length;
+  const isSchoolSetting = schoolCount >= kdgCount && kdgCount === 0 ? true : schoolCount > kdgCount;
+
+  const subjectLabel = isSchoolSetting ? g.studentNoun : g.childNoun;
+  const defaultStaffPartners = isSchoolSetting
+    ? 'מחנכת הכיתה, מורת שילוב / הוראה מותאמת, הורים'
+    : 'צוות הגן, גננת שילוב, סייעת אישית, הורים';
+
+  // 3. פירוק חכם של הטקסט ליחידות משמעותיות (מבלי לחתוך משפטים באמצע על כל פסיק!)
+  // מפצלים לפי נקודה, שורה חדשה, נקודה-פסיק, או מילות ניגוד/קישור מובהקות
+  const rawSentences = text
+    .replace(/\r\n/g, '\n')
+    .split(/(?:[.\n;]+|\s+(?:אבל|אך|אולם|יחד עם זאת|עם זאת|לעומת זאת|מאידך|מצד שני|בנוסף לכך)\s+)/)
     .map((s) => s.trim())
     .filter((s) => s.length > 2);
 
-  const challengeKeywords = [
-    'מתקשה', 'קושי', 'קשיים', 'זקוק', 'זקוקה', 'צריך', 'צריכה', 'לא ניגש', 'לא ניגשת',
-    'נמנע', 'נמנעת', 'מתנגד', 'מתנגדת', 'חזרתי', 'תבניתי', 'נוקשות', 'ויסות', 'התפרצויות',
-    'בכי', 'תסכול', 'מוסח', 'מוסחת', 'קשב', 'ריכוז נמוך', 'מתעייף', 'מתעייפת', 'שגיאות',
-    'איטי', 'איטית', 'דל', 'דלה', 'קטוע', 'גמילה', 'צואה', 'פיפי', 'שירותים', 'לבד', 'ליד הילדים',
-    'חיזוק', 'העצמה', 'שיפור', 'לפתח', 'לשפר', 'להרחיב', 'מתסכל', 'חסר', 'חסרה'
+  // בתוך משפט ארוך, נפצל בפסיק רק אם אחרי הפסיק מופיעה פתיחה חדשה מובהקת של קושי או חוזק
+  const semanticClauses = [];
+  rawSentences.forEach((sent) => {
+    const subParts = sent
+      .split(/,\s*(?=(?:מתקשה|זקוק|זקוקה|צריך|צריכה|לא מצליח|לא מצליחה|לא ניגש|לא ניגשת|נמנע|נמנעת|מוסח|מוסחת|מתעייף|מתעייפת|אוהב|אוהבת|מצטיין|מצטיינת|בעל|בעלת|מגלה|קשה לו|קשה לה|יש לו קושי|יש לה קושי)\b)/)
+      .map((p) => p.replace(/^[,\-•*]\s*/, '').trim())
+      .filter((p) => p.length > 2);
+    semanticClauses.push(...subParts);
+  });
+
+  // 4. סיווג מדויק של כל יחידת משמעות ל"חוזקות וכוחות קיימים" מול "אתגרים ומוקדים לחיזוק"
+  const challengePatterns = [
+    /מתקשה/, /קושי/, /קשיים/, /קשה ל[וה]/, /זקוק/, /זקוקה/, /צריך/, /צריכה/, /נדרש/, /נדרשת/,
+    /\bלא\s+/, /\bאינ[וה]\s+/, /נמנע/, /נמנעת/, /מתנגד/, /מתנגדת/, /חזרתי/, /תבניתי/, /נוקשות/,
+    /התפרצו/, /בכי/, /תסכול/, /מוסח/, /מוסחת/, /מתעייף/, /מתעייפת/, /שגיאות/, /איטי/, /איטית/,
+    /\bדל\b/, /\bדלה\b/, /קטוע/, /גמילה/, /צואה/, /קקי/, /מכנסיים/, /ליד הילדים/, /חולמנ/,
+    /קם\b/, /קמה\b/, /מסתובב/, /תלות/, /חסר/, /חסרה/, /לשפר/, /לפתח/, /לחזק/, /חיזוק/, /מעכב/
   ];
 
-  const positiveKeywords = [
-    'נעים', 'נעימה', 'חברותי', 'חברותית', 'סקרן', 'סקרנית', 'חכם', 'חכמה', 'נבון', 'נבונה',
-    'וורבלי', 'ורבלי', 'אנרגיות', 'הומור', 'טוב לב', 'קשוב', 'קשובה', 'מפנים', 'מפנימה',
-    'אהוב', 'אהובה', 'משתף פעולה', 'משתפת פעולה', 'מוטיבציה', 'אוהב', 'אוהבת', 'מצליח', 'מצליחה',
-    'טובה', 'טוב', 'יפה', 'יצירתי', 'יצירתית', 'עצמאי', 'עצמאית', 'בולט', 'בולטת', 'חיובי', 'שמח'
+  const positivePatterns = [
+    /נעים/, /נעימה/, /חברותי/, /חברותית/, /סקרן/, /סקרנית/, /חכם/, /חכמה/, /נבון/, /נבונה/,
+    /וורבלי/, /ורבלי/, /אנרגי/, /הומור/, /טוב לב/, /טובת לב/, /קשוב/, /קשובה/, /מפנים/, /מפנימה/,
+    /אהוב/, /אהובה/, /משתף פעולה/, /משתפת פעולה/, /מוטיבציה/, /אוהב/, /אוהבת/, /מצליח/, /מצליחה/,
+    /מצטיין/, /מצטיינת/, /שולט/, /שולטת/, /יצירתי/, /יצירתית/, /עצמאי/, /עצמאית/, /שמח/, /חייכנ/,
+    /ידע כללי/, /ידע עולם/, /זיכרון טוב/, /יכולת טובה/, /ריכוז טובה/, /קשר טוב/, /עוזר/, /עוזרת/
   ];
 
-  const existingList = [];
-  const empowerList = [];
+  const strengthClauses = [];
+  const challengeClauses = [];
 
-  clauses.forEach((clause) => {
-    // אם משפט מכיל "אך" / "אבל" / "יחד עם זאת", נפצל אותו לחוזק ולקושי
-    const contrastSplit = clause.split(/\s+(?:אך|אבל|אולם|יחד עם זאת|מאידך)\s+/);
-    if (contrastSplit.length === 2) {
-      const partA = contrastSplit[0].trim();
-      const partB = contrastSplit[1].trim();
-      if (partA.length > 2) existingList.push(partA);
-      if (partB.length > 2) empowerList.push(partB);
-      return;
-    }
+  semanticClauses.forEach((clause) => {
+    const isChallenge =
+      challengePatterns.some((rx) => rx.test(clause)) &&
+      !/ללא\s+(?:קושי|קשיים|בעיות)/.test(clause);
+    const isPositive = positivePatterns.some((rx) => rx.test(clause));
 
-    const hasChallenge = challengeKeywords.some((kw) => clause.includes(kw));
-    const hasPositive = positiveKeywords.some((kw) => clause.includes(kw));
-
-    if (hasChallenge && ! clause.startsWith('ללא קושי')) {
-      empowerList.push(clause);
-    } else if (hasPositive) {
-      existingList.push(clause);
-    } else if (existingList.length <= empowerList.length) {
-      existingList.push(clause);
+    if (isChallenge) {
+      challengeClauses.push(clause);
+    } else if (isPositive) {
+      strengthClauses.push(clause);
     } else {
-      empowerList.push(clause);
+      // משפט תיאורי ניטרלי: אם יש בו מילים לימודיות/תפקודיות של קושי נסווג לאתגר, אחרת לרקע חיובי
+      strengthClauses.push(clause);
     }
   });
 
-  // ניסוח פורמלי ומקצועי למוקדי כוח קיימים
-  const formattedExisting =
-    existingList.length > 0
-      ? existingList
-          .map((item) => {
-            const clean = item.replace(/^[•\-*]\s*/, '').trim();
-            return `• ${clean}`;
-          })
-          .join('\n')
-      : '• ילד/ה בעל/ת סקרנות טבעית ורצון להצליח\n• מגיב/ה היטב לחיזוקים חיוביים ולקשר אישי חם עם הצוות החינוכי\n• בעל/ת פוטנציאל למידה והתפתחות בסביבה מתווכת ותומכת';
+  // 5. פונקציה להפיכת משפט גולמי של חוזק לניסוח פדגוגי רשמי וקוהרנטי
+  const formalizeStrengthClause = (rawClause) => {
+    let c = rawClause
+      .replace(/^(?:הילד\/ה|התלמיד\/ה|הילד|הילדה|התלמיד|התלמידה)\s+/i, '')
+      .replace(new RegExp(`^${firstName}\\s+(?:הוא|היא)?\\s*`), '')
+      .replace(/^(?:הוא|היא)\s+/, '')
+      .trim();
 
-  // 3. זיהוי מטרות מתאימות מתוך מאגר המטרות הדינמי + יצירת מטרות מותאמות אישית מהטקסט הגולמי
-  const domainMatchers = [
+    if (!c) return '';
+
+    // העשרה סמנטית של ביטויים יומיומיים לשפה פדגוגית מקצועית
+    c = c
+      .replace(/\bילד מתוק\b|\bילדה מתוקה\b|\bמתוק\b|\bמתוקה\b/g, isFemale ? 'בעלת מזג נעים ונוח' : 'בעל מזג נעים ונוח')
+      .replace(/\bילד נעים\b|\bילדה נעימה\b/g, isFemale ? 'בעלת נוכחות נעימה וחיובית' : 'בעל נוכחות נעימה וחיובית')
+      .replace(/\bעוזר לחברים\b|\bעוזרת לחברים\b/g, isFemale ? 'מגלה אמפתיה ונכונות לסייע לחבריה' : 'מגלה אמפתיה ונכונות לסייע לחבריו')
+      .replace(/\bיש לו ידע כללי רחב\b|\bיש לה ידע כללי רחב\b/g, isFemale ? 'בעלת ידע עולם רחב ועשיר' : 'בעל ידע עולם רחב ועשיר')
+      .replace(/\bאוהב ללמוד\b|\bאוהבת ללמוד\b/g, isFemale ? 'מגלה סקרנות לימודית ומוטיבציה ללמידה' : 'מגלה סקרנות לימודית ומוטיבציה ללמידה');
+
+    if (!/^(?:בעל|בעלת|מגלה|מקיים|מקיימת|יוצר|יוצרת|משתף|משתפת|מפנים|מפנימה|אוהב|אוהבת|שולט|שולטת|יכולת|ניכר|ניכרת)/.test(c)) {
+      c = `${g.characterized} ב${c.startsWith('כך ש') ? c : `תפקוד חיובי: ${c}`}`;
+    }
+    return `• ${c.charAt(0).toUpperCase() + c.slice(1)}`;
+  };
+
+  // פונקציה להפיכת משפט קושי גולמי לניסוח מקצועי עבור עמודת "כוחות להעצמה וחיזוק"
+  const formalizeEmpowerClause = (rawClause) => {
+    let c = rawClause
+      .replace(/^(?:אבל|אך|אולם| עם זאת|יחד עם זאת|כמו כן|בנוסף)\s+/g, '')
+      .replace(new RegExp(`^${firstName}\\s+`), '')
+      .replace(/^(?:הוא|היא)\s+/, '')
+      .trim();
+
+    if (c.startsWith('קשה לו ל') || c.startsWith('קשה לה ל')) {
+      c = 'חיזוק היכולת ל' + c.replace(/^קשה ל[וה] ל/, '');
+    } else if (c.startsWith('מתקשה ב')) {
+      c = 'חיזוק ופיתוח מיומנויות ב' + c.replace(/^מתקשה ב/, '');
+    } else if (c.startsWith('מתקשה ל')) {
+      c = 'ביסוס היכולת ל' + c.replace(/^מתקשה ל/, '');
+    } else if (c.startsWith('זקוק לחיזוק ב') || c.startsWith('זקוקה לחיזוק ב')) {
+      c = 'העצמה וחיזוק בתחום ' + c.replace(/^זקוקה? לחיזוק ב/, '');
+    } else if (c.startsWith('זקוק ל') || c.startsWith('זקוקה ל')) {
+      c = 'מתן מענה ותיווך מותאם ל' + c.replace(/^זקוקה? ל/, '');
+    } else if (c.startsWith('לא מצליח ל') || c.startsWith('לא מצליחה ל')) {
+      c = 'פיתוח מסוגלות וכלים ל' + c.replace(/^לא מצליחה? ל/, '');
+    } else if (!/^(?:חיזוק|פיתוח|שיפור|הרחבת|ביסוס|ויסות|רכישת)/.test(c)) {
+      c = `חיזוק והעצמה סביב: ${c}`;
+    }
+
+    return `• ${c}`;
+  };
+
+  // 6. מאגר תבניות פדגוגיות מקיף (14 תחומים) הבונה מטרות מדויקות אך ורק מתוך משפטי הקושי של התלמיד/ה!
+  const pedagogicalDomains = [
     {
-      bankId: 'gb_eco_1',
-      keywords: ['משחק', 'סוציודרמטי', 'חברתי', 'חברים', 'ליד הילדים', 'תפקיד', 'פינות הגן', 'אינטראקציות חברתיות', 'נוקשות', 'תבניתי']
-    },
-    {
-      bankId: 'gb_eco_2',
-      keywords: ['סדנא', 'יצירה', 'שולחן פעילות', 'תכנון', 'התארגנות', 'תוצר', 'חומרים', 'גזירה', 'הדבקה', 'ציור']
-    },
-    {
-      bankId: 'gb_eco_3',
-      keywords: ['שירותים', 'גמילה', 'צואה', 'קקי', 'פיפי', 'להתפנות', 'מכנסיים', 'צרכים']
-    },
-    {
+      id: 'dom_reading_fluency',
       bankId: 'gb_matya_read_1',
-      keywords: ['קריאה', 'פענוח', 'שטף', 'אותיות', 'ניקוד', 'תנועות', 'קורא', 'קוראת', 'טקסטים']
+      environment: 'קריאה - רמת פענוח ושטף',
+      triggerRx: /קריאה|קורא|קוראת|פענוח|שטף|אותיות|ניקוד|תנועות|צופן אלפביתי|מילים חדשות/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'קריאה - רמת פענוח ושטף',
+        activityParticipation: `בהתאם להערכת הצוות בחלק הקריאה: ${matchedClauses.join('. ')}. ${firstName} ${g.needs} לתיווך מדורג לביסוס שליטה אוטומטית באבני היסוד של הקריאה ושיפור הדיוק והשטף.`,
+        title: `${subjectLabel} ${g.read} קריאה שוטפת, רהוטה ומדויקת של טקסטים מותאמים תוך שליטה בצופן האלפביתי והבנת הכתוב`,
+        objectives: `• ${g.identify} ${isFemale ? 'ותשלוט' : 'וישלוט'} באופן אוטומטי באותיות, תנועות, סימני ניקוד וצירופים.\n• ${g.apply} את הידע האלפביתי בפענוח מילים חדשות ומשפטים ברמת הכיתה.\n• ${g.read} בקצב מותאם ותוך התייחסות לסימני פיסוק והטעמה.`,
+        opportunities: `• תרגול יומיומי מובנה עם כרטיסיות תנועות, הברות וצירופים עבור ${firstName}.\n• קריאה מתווכת וחוזרת של פסקאות קצרות ומנוקדות לחיזוק האוטומטיות והשטף.\n• סימון חזותי של תנועות וסימני פיסוק בטקסט ומתן משוב חיובי מיידי.`,
+        partners: 'מורת שילוב / הוראה מותאמת, מחנכת הכיתה, הורים (תרגול קריאה קצר בבית)',
+        duration: 'מחצית שנת לימודים עד סוף השנה',
+        evaluationCriteria: `קריאה קולית מדויקת ושוטפת של טקסט מותאם לרמת ${firstName} תוך צמצום משמעותי בשגיאות פענוח.`
+      })
     },
     {
+      id: 'dom_phonological',
       bankId: 'gb_matya_read_2',
-      keywords: ['פונולוגית', 'פונולוגי', 'שמיעתית', 'צליל פותח', 'צליל סוגר', 'הברות', 'חריזה', 'מוכנות לקריאה']
+      environment: 'מוכנות לקריאה והבחנה שמיעתית',
+      triggerRx: /פונולוג|שמיעתי|צליל פותח|צליל סוגר|הברות|חריזה|מוכנות לקריאה|מיזוג צלילים/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'מוכנות לקריאה והבחנה שמיעתית',
+        activityParticipation: `בתחום המוכנות לקריאה והמודעות הפונולוגית: ${matchedClauses.join('. ')}. סביבה רב-חושית ומשחקית מאפשרת ל${firstName} גיוס קשב ושיתוף פעולה.`,
+        title: `${subjectLabel} ${g.develop} הבחנה שמיעתית ומודעות פונולוגית מבוססת כתשתית לרכישת הקריאה והכתיבה`,
+        objectives: `• ${g.identify} ${isFemale ? 'ותפריד' : 'ויפריד'} צליל פותח וצליל סוגר במילה באופן עצמאי.\n• ${isFemale ? 'תפרקותרכיב' : 'יפרק וירכיב'} מילים למרכיביהן השמיעתיים (הברות ופונמות).\n• ${g.identify} חריזה וצירופי צלילים בפעילויות שפתיות.`,
+        opportunities: `• משחקי מודעות פונולוגית מבוססי תמונות, חפצים מוחשיים ותנועה עם ${firstName}.\n• פירוק והרכבת מילים בעזרת עזרים חזותיים (דסקיות צבעוניות, מחיאות כף).`,
+        partners: isSchoolSetting ? 'מורת שילוב, קלינאית תקשורת, מחנכת והורים' : 'גננת, גננת שילוב, קלינאית תקשורת והורים',
+        duration: 'כשלושה חודשים',
+        evaluationCriteria: 'זיהוי מדויק ועצמאי של צליל פותח/סוגר ופירוק מילים להברות ב-85% מהמקרים.'
+      })
     },
     {
+      id: 'dom_reading_comp',
       bankId: 'gb_matya_comp_1',
-      keywords: ['הבנת הנקרא', 'משמעות סמויה', 'משמעות גלויה', 'רעיון מרכזי', 'עיקר וטפל', 'הסקת מסקנות', 'אוצר מילים']
+      environment: 'הבנת הנקרא',
+      triggerRx: /הבנת הנקרא|משמעות סמויה|משמעות גלויה|רעיון מרכזי|עיקר וטפל|הסקת מסקנות|להבין טקסט|שאלות הבנה|שחזור סיפור/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'הבנת הנקרא',
+        activityParticipation: `בתחום הבנת הנקרא ועיבוד טקסט: ${matchedClauses.join('. ')}. ${firstName} ${g.needs} לתיווך וארגון חזותי של המידע לשם הפקת משמעות גלויה וסמויה.`,
+        title: `${subjectLabel} ${g.understand} משמעות גלויה וסמויה בטקסט ${isFemale ? 'ותפיק' : 'ויפיק'} מידע ברמת משפט, פסקה וקטע שלם`,
+        objectives: `• ${isFemale ? 'תאתר' : 'יאתר'} פרטים רלוונטיים בטקסט ${isFemale ? 'ותסדר' : 'ויסדר'} אירועים ברצף הגיוני.\n• ${isFemale ? 'תבחין' : 'יבחין'} בין עיקר לטפל ${isFemale ? 'ותזהה' : 'ויזהה'} את הרעיון המרכזי בפסקה.\n• ${isFemale ? 'תסיק' : 'יסיק'} מסקנות מתוך הכתוב ${isFemale ? 'ותענה' : 'ויענה'} תשובות מנומקות בעל-פה ובכתב.`,
+        opportunities: `• הטרמת אוצר מילים ומושגים מרכזיים עבור ${firstName} טרם קריאת הטקסט.\n• שימוש במארגנים גרפיים, מפת סיפור וכרטיסיית "פיצוח שאלה".\n• סימון מילות מפתח ומילות קישור בצבעים ותיווך מדורג מגלוי לסמוי.`,
+        partners: 'מורת הוראה מותאמת / שילוב, מחנכת הכיתה',
+        duration: 'עד סוף השנה',
+        evaluationCriteria: 'מענה עצמאי, מדויק ומנומק על שאלות הבנה ברמה גלויה וסמויה בטקסט מותאם.'
+      })
     },
     {
-      bankId: 'gb_matya_comp_2',
-      keywords: ['שחזור סיפור', 'תוכן הסיפור', 'רצף סיפורי', 'פתיחה אמצע סוף', 'האזנה לסיפור']
-    },
-    {
-      bankId: 'gb_matya_strat_1',
-      keywords: ['אסטרטגיות קריאה', 'טרום קריאה', 'מקדמי ארגון', 'משפטי מפתח', 'פיצוח שאלות', 'סיכום']
-    },
-    {
+      id: 'dom_graphomotor_writing',
       bankId: 'gb_matya_write_1',
-      keywords: ['גרפומוטורי', 'גרפומוטוריקה', 'כתב יד', 'אחיזת עיפרון', 'שורה', 'רווחים', 'עיצוב אותיות', 'העתקה מהלוח', 'מתעייף בכתיבה']
+      environment: 'כתיבה, גרפומוטוריקה וכתב',
+      triggerRx: /גרפומוטור|כתב יד|אחיזת עיפרון|העתקה מהלוח|להעתיק|שורה|רווחים בין מילים|עיצוב אותיות|מתעייף בכתיבה|מתעייפת בכתיבה|קצב כתיבה/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'כתיבה, גרפומוטוריקה וכתב',
+        activityParticipation: `בתפקודי הכתיבה והגרפומוטוריקה: ${matchedClauses.join('. ')}. התאמת כלי הכתיבה והפחתת עומס מוטורי מסייעים ל${firstName} לשמר פניות ללמידה.`,
+        title: `${subjectLabel} ${g.develop} מיומנויות גרפומוטוריות, התארגנות תקינה בדף וכתיבה קריאה ושוטפת`,
+        objectives: `• ${g.write} בתוך השורה תוך שמירה על גודל אותיות אחיד ורווחים תקינים בין מילים.\n• ${isFemale ? 'תעצב' : 'יעצב'} אותיות בכיווניות נכונה ובכתב יד קריא וברור.\n• ${g.persevere} במשימות כתיבה והעתקה מותאמות לאורך זמן מבלי להתעייף.`,
+        opportunities: `• שימוש במחברת בעלת שורות מודגשות, סרגל רווח חזותי ומאחז עיפרון מותאם ל${firstName}.\n• חלוקת משימות כתיבה והעתקה מהלוח למקטעים קצרים ומתן דפי עזר מודפסים במידת הצורך.\n• תרגול ממוקד בהדרכת מרפאה בעיסוק ומורת שילוב.`,
+        partners: 'מורת שילוב, מרפאה בעיסוק, מחנכת הכיתה',
+        duration: 'מחצית שנת לימודים',
+        evaluationCriteria: 'כתיבת פסקה בכתב קריא, מאורגן בשורה ובעל רווחים תקינים בקצב מותאם.'
+      })
     },
     {
+      id: 'dom_spelling',
       bankId: 'gb_matya_spell_1',
-      keywords: ['כתיב', 'שגיאות כתיב', 'הומופוניות', 'אותיות סופיות', 'אימות קריאה']
+      environment: 'כתיב',
+      triggerRx: /שגיאות כתיב|כתיב|הומופוניות|אותיות סופיות|אימות קריאה|השמטות אותיות/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'כתיב',
+        activityParticipation: `בתחום הכתיב: ${matchedClauses.join('. ')}. ${firstName} ${g.needs} להקניית תבניות מילה חזותיות וחוקי כתיב מובנים.`,
+        title: `${subjectLabel} ${g.develop} שליטה בכתיב נכון ומודעות מורפולוגית וחזותית בכתיבה`,
+        objectives: `• ${g.write} מילים שכיחות בכתיב תקין תוך ייצוג מלא של כלל מרכיבי המילה.\n• ${g.apply} חוקי כתיב בסיסיים (אותיות סופיות, אימות קריאה, מוספיות ושורשים).\n• ${isFemale ? 'תפעיל' : 'יפעיל'} בקרה עצמית לבדיקת ותיקון שגיאות כתיב לאחר הכתיבה.`,
+        opportunities: `• הוראת משפחות מילים ושורשים והדגשת תבניות כתיב חוזרות בצבע עבור ${firstName}.\n• בניית "מילון אישי" של מילים שכיחות וכרטיסיית בקרה לבדיקת הטקסט.`,
+        partners: 'מורת הוראה מותאמת / שילוב, מחנכת הכיתה',
+        duration: 'עד סוף השנה',
+        evaluationCriteria: 'צמצום משמעותי בשגיאות הכתיב במילים שכיחות ויישום חוקי כתיב בכתיבה חופשית.'
+      })
     },
     {
+      id: 'dom_written_expression',
       bankId: 'gb_matya_expr_write_1',
-      keywords: ['הבעה בכתב', 'מבע רעיוני', 'ניסוח בכתב', 'מילות קישור', 'כתיבת פסקה', 'כתיבה חופשית']
+      environment: 'מבע רעיוני והבעה בכתב',
+      triggerRx: /הבעה בכתב|מבע רעיוני|ניסוח בכתב|מילות קישור|כתיבת פסקה|כתיבה חופשית|לנסח משפט|אוצר מילים בכתב/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'מבע רעיוני והבעה בכתב',
+        activityParticipation: `בתחום ההבעה בכתב והמבע הרעיוני: ${matchedClauses.join('. ')}. שימוש במארגני חשיבה ותבניות כתיבה מקל על ${firstName} לארגן ולהרחיב את רעיונותי${isFemale ? 'ה' : 'ו'}.`,
+        title: `${subjectLabel} ${g.develop} ${g.improve} יכולת הבעה בכתב (מבע רעיוני) בהירה, ממוקדת ולכידה`,
+        objectives: `• ${g.express} רעיון שלם בכתב ברמת משפט ופסקה תוך שמירה על מבנה תחבירי תקין.\n• ${g.use} במילות קישור מתאימות ובאוצר מילים עשיר ומותאם לנושא.\n• ${g.organize} טקסט קצר בעל פתיחה, גוף וסיום לפני ובזמן הכתיבה.`,
+        opportunities: `• תכנון מוקדם של הכתיבה עם ${firstName} באמצעות "שמש אסוציאציות" או תבנית פסקה.\n• הצמדת דף עזר אישי עם מחסן מילות קישור ופתילי משפטים.`,
+        partners: 'מורת שילוב, מחנכת הכיתה',
+        duration: 'עד סוף השנה',
+        evaluationCriteria: 'כתיבת פסקה לכידה, ממוקדת ובעלת רצף הגיוני ושימוש הולם במילות קישור.'
+      })
     },
     {
+      id: 'dom_oral_expression',
       bankId: 'gb_matya_oral_1',
-      keywords: ['הבעה בעל פה', 'הבעה בעל-פה', 'שיח', 'שיחה', 'דיבור', 'מפגש', 'מליאה', 'להשתתף בשיחה', 'בעל פה']
+      environment: 'הבעה בעל-פה ושיח',
+      triggerRx: /הבעה בעל|שיח|שיחה|דיבור|אוצר מילים דל|לנסח בעל|שליפה|שפה|קלינאית תקשורת|משפטים קצרים בעל/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'הבעה בעל-פה ושיח',
+        activityParticipation: `בתחום השפה וההבעה בעל-פה: ${matchedClauses.join('. ')}. בסביבה אינטימית ומתווכת ${firstName} ${isFemale ? 'משתפת' : 'משתף'} פעולה באופן מיטבי יותר.`,
+        title: `${subjectLabel} ${g.develop} ${g.improve} יכולת הבעה בעל-פה, ארגון מסר מילולי והשתלבות בשיח`,
+        objectives: `• ${isFemale ? 'תענה' : 'יענה'} תשובות שלמות, מנומקות וענייניות ברצף הגיוני.\n• ${isFemale ? 'תתאר ותשחזר' : 'יתאר וישחזר'} חוויה, אירוע או תוכן נלמד באופן בהיר ותקין תחבירית.\n• ${g.participate} בשיח קבוצתי תוך הקשבה והתייחסות מותאמת לדברי האחר.`,
+        opportunities: `• תרגול שיח מונחה בקבוצה קטנה עם תבניות מענה ("אני חושב/ת ש... מפני ש...").\n• שימוש בשאלות מכוונות (מי, מתי, איפה, מה קרה) לתמיכה בארגון המסר המילולי של ${firstName}.`,
+        partners: 'צוות חינוכי, קלינאית תקשורת / מורת שילוב, הורים',
+        duration: 'עד סוף השנה',
+        evaluationCriteria: 'השתתפות פעילה בשיח ומתן תשובות שלמות, מאורגנות ומנומקות בעל-פה.'
+      })
+    },
+    {
+      id: 'dom_attention_circle',
+      bankId: null,
+      environment: isSchoolSetting ? 'למידה בכיתה / קשב וריכוז' : 'מפגש מליאה / קבוצה',
+      triggerRx: /קשב|ריכוז|מוסח|מוסחת|לשבת במפגש|לשבת בשיעור|קם|קמה|מסתובב|מסתובבת|חולמנות|טווח קשב|מיקוד/,
+      buildGoal: (matchedClauses) => ({
+        environment: isSchoolSetting ? 'למידה בכיתה / קשב וריכוז' : 'מפגש מליאה / קבוצה',
+        activityParticipation: `בזמן ${isSchoolSetting ? 'שיעור ולמידה בכיתה' : 'מפגש מליאה ופעילות קבוצתית'}: ${matchedClauses.join('. ')}. מיקום מותאם, משימות קצרות וגירויים חזותיים מסייעים ל${firstName} בגיוס ושימור הקשב.`,
+        title: `${subjectLabel} ${isFemale ? 'תאריך' : 'יאריך'} את טווח הקשב והריכוז ${isFemale ? 'ותשתתף' : 'וישתתף'} באופן מווסת ופעיל ב${isSchoolSetting ? 'שיעור' : 'מפגש'}`,
+        objectives: `• ${isFemale ? 'תשמור' : 'ישמור'} על ישיבה מווסתת ומיקוד קשב לאורך פרקי זמן מתארכים ב${isSchoolSetting ? 'שיעור' : 'מפגש'}.\n• ${isFemale ? 'תשלים' : 'ישלים'} משימה לימודית מוגדרת תוך הפחתת מסיחים סביבתיים.\n• ${g.participate} באופן פעיל ומותאם בעזרת איתות מוסכם עם המבוגר.`,
+        opportunities: `• הושבת ${firstName} במיקום קרוב ומופחת גירויים והטרמה על מבנה ה${isSchoolSetting ? 'שיעור' : 'מפגש'}.\n• פירוק מטלות ליחידות קצרות ותחומות בזמן ושילוב הפוגות תנועתיות יזומות.\n• מתן חיזוקים חיוביים מיידיים על שמירה על קשב והתמדה.`,
+        partners: defaultStaffPartners,
+        duration: 'עד סוף השנה',
+        evaluationCriteria: `הארכת משך הקשב והמעורבות הפעילה ב${isSchoolSetting ? 'שיעורים' : 'מפגשים'} והשלמת משימות באופן עקבי.`
+      })
+    },
+    {
+      id: 'dom_emotional_sensory_reg',
+      bankId: null,
+      environment: 'ויסות רגשי וחושי',
+      triggerRx: /ויסות|תסכול|התפרצו|בכי|כעס|הצפה|רגשי|חושי|מעברים|שינויים|מתנגד|מתנגדת|סף תסכול/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'ויסות רגשי וחושי',
+        activityParticipation: `בתחום הוויסות הרגשי והחושי והתמודדות עם מעברים: ${matchedClauses.join('. ')}. קשר בטוח, הטרמה מראש ומענה רגשי מכיל מסייעים ל${firstName} להירגע ולחזור לתפקוד.`,
+        title: `${subjectLabel} ${g.develop} מיומנויות ויסות רגשי וחושי ויכולת התמודדות מותאמת במצבי תסכול, קושי ומעברים`,
+        objectives: `• ${g.identify} סימני הצפה או תסכול מוקדמים ${isFemale ? 'ותיעזר' : 'וייעזר'} במבוגר או באסטרטגיית הרגעה מוסכמת.\n• ${g.express} תחושות, קושי או צורך באופן מילולי מותאם במקום תגובה התנהגותית/הימנעות.\n• ${isFemale ? 'תעבור' : 'יעבור'} בין פעילויות ושינויים בסדר היום באופן רגוע ומווסת בעזרת הטרמה.`,
+        opportunities: `• הטרמה חזותית ומילולית ל${firstName} לפני מעברים ושינויים צפויים בסדר היום.\n• שיקוף רגשי, תיקוף ("אני רואה שזה מתסכל...") והקניית "ארגז כלים להרגעה" (פינת רוגע, נשימות, פנייה לאיש צוות).\n• הדרכה ושיתוף פעולה עם מטפלת רגשית / מרפאה בעיסוק.`,
+        partners: `${defaultStaffPartners}, מטפלת רגשית / מרפאה בעיסוק`,
+        duration: 'עד סוף השנה',
+        evaluationCriteria: 'הפחתה ניכרת בעוצמת ותדירות מצבי התסכול, שימוש עצמאי יותר בכלי ויסות ומעבר רגוע בין פעילויות.'
+      })
+    },
+    {
+      id: 'dom_social_play',
+      bankId: 'gb_eco_1',
+      environment: isSchoolSetting ? 'אינטראקציה חברתית והפסקה' : 'מרחב הגן / אינטראקציה חברתית',
+      triggerRx: /משחק סוציודרמטי|משחק משותף|ליד הילדים|אינטראקציות חברתיות|קושי חברתי|קשיים חברתיים|חברתית|תפקיד במשחק|תור במשחק|נוקשות|תבניתי|להצטרף למשחק|בהפסקה עם חברים/,
+      buildGoal: (matchedClauses) => ({
+        environment: isSchoolSetting ? 'אינטראקציה חברתית והפסקה' : 'מרחב הגן',
+        activityParticipation: `בתחום החברתי והמשחק המשותף: ${matchedClauses.join('. ')}. תיווך בקבוצה קטנה ומודלינג של איש צוות תומכים ב${firstName} ביצירת קשר הדדי עם קבוצת השווים.`,
+        title: isSchoolSetting
+          ? `${subjectLabel} ${g.expand} מיומנויות חברתיות, תקשורת בינאישית ושיתוף פעולה עם בני קבוצת השווים`
+          : `${subjectLabel} ${g.expand} את מיומנויותי${isFemale ? 'ה' : 'ו'} במשחק המשותף והסוציודרמטי ובאינטראקציה חברתית`,
+        objectives: `• ${isFemale ? 'תצטרף' : 'יצטרף'} למשחק או פעילות משותפת עם חבר/ה אחד/ת או שניים באופן מותאם.\n• ${isFemale ? 'תגלה' : 'יגלה'} גמישות מחשבתית, שמירה על תור והדדיות בשיח ובמשחק.\n• ${isFemale ? 'תגוון' : 'יגוון'} בבחירת המשחקים, הפעילויות והשותפים לאינטראקציה.`,
+        opportunities: `• הזמנה יזומה של ${firstName} למשחק/פעילות מובנית בזוג או בקבוצה קטנה תוך תיווך ומודלינג של מבוגר.\n• תרגול מיומנויות הצטרפות למשחק, פתרון קונפליקטים וגמישות בבחירת תפקידים.\n• עידוד וחיזוק יוזמות חברתיות חיוביות לאורך היום.`,
+        partners: `${defaultStaffPartners}, מטפלת רגשית`,
+        duration: 'עד סוף השנה',
+        evaluationCriteria: `השתתפות פעילה, הדדית ומווסתת של ${firstName} במשחק ובאינטראקציה חברתית עם בני גיל${isFemale ? 'ה' : 'ו'}.`
+      })
+    },
+    {
+      id: 'dom_workshop_planning',
+      bankId: 'gb_eco_2',
+      environment: isSchoolSetting ? 'תכנון, התארגנות ותפקודים ניהוליים' : 'סדנא',
+      triggerRx: /סדנא|יצירה|תכנון|התארגנות|תוצר|שולחן פעילות|ציוד|ילקוט|מוטוריקה עדינה|גזירה|הדבקה|מתחיל משימה|רצף עבודה/,
+      buildGoal: (matchedClauses) => ({
+        environment: isSchoolSetting ? 'תכנון, התארגנות ולמידה' : 'סדנא',
+        activityParticipation: `בתחום התכנון, ההתארגנות והביצוע: ${matchedClauses.join('. ')}. פירוק המשימה לשלבים חזותיים ברורים מסייע ל${firstName} להתארגן ולהתמיד עד להפקת תוצר.`,
+        title: isSchoolSetting
+          ? `${subjectLabel} ${g.develop} מיומנויות תכנון, התארגנות עם ציוד לימודי ועבודה עצמאית בשלבים`
+          : `${subjectLabel} ${isFemale ? 'תתנסה' : 'יתנסה'} בפעילויות השונות בסדנא תוך שימוש במיומנויות תכנון, התארגנות והפקת תוצר מתאים`,
+        objectives: `• ${g.approach} למשימה/לשולחן הפעילות ו${g.organize} עם הציוד והחומרים הנדרשים בעזרת תיווך מדורג.\n• ${isFemale ? 'תפעל' : 'יפעל'} לפי רצף שלבים מובנה (תכנון, ביצוע ובקרה).\n• ${g.persevere} בפעילות במשך כ-10-15 דקות או עד להשלמת המשימה/התוצר.`,
+        opportunities: `• הכנה מראש עם כרטיסיות שלבי עבודה וסדר יום חזותי עבור ${firstName}.\n• צמצום היסחים והצעת בחירה ממוקדת בין 2 אפשרויות.\n• תיווך שלבי ההתארגנות והתכנון על ידי מבוגר ומתן משוב מעצים על התהליך.`,
+        partners: `${defaultStaffPartners}, מרפאה בעיסוק`,
+        duration: 'עד סוף השנה',
+        evaluationCriteria: `גישה עצמאית יותר למשימה, התארגנות יעילה והתמדה עד להשלמת תוצר מותאם.`
+      })
+    },
+    {
+      id: 'dom_toilet_adl',
+      bankId: 'gb_eco_3',
+      environment: 'שירותים / עצמאות בתפקודי יומיום (ADL)',
+      triggerRx: /שירותים|גמילה|צואה|קקי|פיפי|להתפנות|מכנסיים|צרכים|היגיינה|עצמאות ב/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'שירותים',
+        activityParticipation: `בתחום העצמאות והתפקוד בשירותים: ${matchedClauses.join('. ')}. תהליך עקבי, רגוע ומתואם בין הצוות להורים תומך בביטחון של ${firstName}.`,
+        title: `${subjectLabel} ${g.approach} לשירותים באופן עצמאי ומווסת לצורך התפנות ושמירה על היגיינה אישית`,
+        objectives: `• ${g.express} באופן מילולי או במוסכם כאשר ${g.pronoun} ${g.needs} להתפנות.\n• ${g.approach} לשירותים באופן סדיר עם הפחתה הדרגתית של תזכורות ממבוגר.`,
+        opportunities: `• הזמנה יזומה וקבועה של ${firstName} לשירותים בנקודות זמן מוגדרות בסדר היום.\n• הכנה ותמיכה באמצעות כרטיסיות סדר יום חזותיות וחיזוק חיובי לאורך התהליך.\n• תיאום רציף ואחידות במענה בין צוות המסגרת להורים בבית.`,
+        partners: 'צוות הגן / המסגרת, סייעת אישית, הורים',
+        duration: 'כשלושה חודשים',
+        evaluationCriteria: 'הליכה עצמאית, רגועה וסדירה לשירותים.'
+      })
+    },
+    {
+      id: 'dom_math',
+      bankId: null,
+      environment: 'חשבון וחשיבה מתמטית',
+      triggerRx: /חשבון|מתמטיקה|מספרים|כמות|חיבור|חיסור|כפל|חילוק|בעיות מילוליות|הנדסה|חשיבה כמותית/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'חשבון וחשיבה מתמטית',
+        activityParticipation: `בתחום החשבון והחשיבה הכמותית: ${matchedClauses.join('. ')}. שימוש באמצעי המחשה וייצוגים חזותיים מסייע ל${firstName} בהבנת מושגים מתמטיים.`,
+        title: `${subjectLabel} ${g.develop} הבנה כמותית, שליטה בפעולות החשבון ויישום אסטרטגיות לפתרון תרגילים ובעיות`,
+        objectives: `• ${isFemale ? 'תבין ותיישם' : 'יבין ויישם'} את המושגים הכמותיים ופעולות החשבון הנלמדות בעזרת אמצעי המחשה.\n• ${isFemale ? 'תפתור' : 'יפתור'} תרגילים ובעיות מילוליות מותאמות תוך עבודה לפי שלבים מובנים.\n• ${isFemale ? 'תבסס' : 'יבסס'} שליטה בעובדות יסוד מתמטיות בקצב מותאם אישית.`,
+        opportunities: `• עבודה עם אביזרים מוחשיים, ישר המספרים וכרטיסיות שלבי פתרון עבור ${firstName}.\n• פירוק בעיות מילוליות לשלבים (מה ידוע, מה נשאל, בחירת הפעולה ופתרון).\n• תרגול הדרגתי ממוחשי לחצי-מוחשי ולמופשט.`,
+        partners: 'מורת שילוב / הוראה מותאמת, מורה לחשבון / מחנכת, הורים',
+        duration: 'עד סוף השנה',
+        evaluationCriteria: 'פתרון נכון ועצמאי של תרגילים ומשימות חשבוניות מותאמות לרמת הלימוד.'
+      })
+    },
+    {
+      id: 'dom_gross_motor_yard',
+      bankId: null,
+      environment: 'חצר / מוטוריקה גסה ומרחב',
+      triggerRx: /חצר|מוטוריקה גסה|מתקנים|ריצה|קפיצה|כדור|שיווי משקל|תנועה במרחב|מסורבל/,
+      buildGoal: (matchedClauses) => ({
+        environment: 'חצר',
+        activityParticipation: `בפעילות בחצר ובמוטוריקה הגסה: ${matchedClauses.join('. ')}. תיווך תנועתי ומשחקים מובנים בחצר מעודדים את ${firstName} להתנסות בטוחה.`,
+        title: `${subjectLabel} ${g.expand} את המיומנויות המוטוריות והשתתפות הפעילה והמווסתת במרחב החצר`,
+        objectives: `• ${isFemale ? 'תתנסה' : 'יתנסה'} במגוון מתקנים ומשחקי תנועה וכדור בחצר בביטחון.\n• ${g.participate} במשחקי חצר מובנים עם בני קבוצת השווים תוך שמירה על כללי בטיחות ווויסות גופני.`,
+        opportunities: `• הזמנת ${firstName} למסלולי תנועה ומשחקי חצר מובנים בקבוצה קטנה.\n• עידוד ותיווך הדרגתי להתנסות במתקנים ובמשחקי כדור.`,
+        partners: defaultStaffPartners,
+        duration: 'עד סוף השנה',
+        evaluationCriteria: 'השתתפות פעילה, בטוחה ומווסתת בפעילויות ובמשחקים במרחב החצר.'
+      })
     }
   ];
 
+  // 7. שיוך משפטי הקושי של התלמיד/ה לתחומים הפדגוגיים (רק מתוך challengeClauses, לעולם לא מתוך חוזקות!)
   const matchedGoals = [];
-  const usedBankIds = new Set();
+  const consumedClauseIndices = new Set();
 
-  domainMatchers.forEach((matcher) => {
-    const isMatched = matcher.keywords.some((kw) => text.includes(kw));
-    if (isMatched) {
-      const bankItem = bank.find((b) => b.id === matcher.bankId);
-      if (bankItem && !usedBankIds.has(bankItem.id)) {
-        usedBankIds.add(bankItem.id);
-        // אתר משפטים רלוונטיים מהטקסט הגולמי עבור תיאור הפעילות וההשתתפות
-        const relevantClauses = clauses.filter((c) =>
-          matcher.keywords.some((kw) => c.includes(kw))
-        );
-        const rawContextActivity =
-          relevantClauses.length > 0
-            ? relevantClauses.join('. ') + '.'
-            : bankItem.defaultActivity;
+  // אם לא זוהה אף משפט קושי מפורש, נבדוק את כלל המשפטים
+  const candidateChallengeClauses =
+    challengeClauses.length > 0 ? challengeClauses : semanticClauses;
 
-        const personalizedOpps = (bankItem.defaultOpportunities || '')
-          .replace(/הילד\/ה/g, firstName)
-          .replace(/הילד/g, firstName);
-
-        matchedGoals.push({
-          id: 'g_rev_' + Date.now() + '_' + matchedGoals.length,
-          environment: bankItem.environment,
-          activityParticipation: rawContextActivity || bankItem.defaultActivity || '',
-          title: bankItem.title,
-          objectives: (bankItem.suggestedObjectives || []).map((o) => `• ${o}`).join('\n'),
-          opportunities: personalizedOpps,
-          partners: bankItem.defaultPartners || 'צוות חינוכי, הורים',
-          duration: bankItem.defaultDuration || 'עד סוף השנה',
-          evaluationCriteria: bankItem.defaultEvaluation || ''
-        });
+  pedagogicalDomains.forEach((dom) => {
+    const matchingForDomain = [];
+    candidateChallengeClauses.forEach((cl, idx) => {
+      if (dom.triggerRx.test(cl)) {
+        matchingForDomain.push(cl);
+        consumedClauseIndices.add(idx);
       }
-    }
-  });
+    });
 
-  // בדיקה נוספת מול כל מטרה מותאמת אישית במאגר (לפי התאמת מילים בכותרת או בסביבה)
-  bank.forEach((bankItem) => {
-    if (usedBankIds.has(bankItem.id)) return;
-    const significantWords = bankItem.title
-      .split(/\s+/)
-      .filter((w) => w.length >= 4 && !['התלמיד', 'הילד', 'יפתח', 'ישפר', 'באופן', 'בצורה'].includes(w));
-    const hits = significantWords.filter((w) => text.includes(w));
-    if (hits.length >= 2) {
-      usedBankIds.add(bankItem.id);
+    if (matchingForDomain.length > 0) {
+      const built = dom.buildGoal(matchingForDomain);
       matchedGoals.push({
-        id: 'g_rev_custom_' + Date.now() + '_' + matchedGoals.length,
-        environment: bankItem.environment,
-        activityParticipation: bankItem.defaultActivity || `בסביבת ${bankItem.environment}, ${firstName} זקוק/ה לתיווך מותאם לחיזוק תפקוד זה.`,
-        title: bankItem.title,
-        objectives: (bankItem.suggestedObjectives || []).map((o) => `• ${o}`).join('\n'),
-        opportunities: (bankItem.defaultOpportunities || '').replace(/הילד/g, firstName),
-        partners: bankItem.defaultPartners || 'צוות חינוכי, הורים',
-        duration: bankItem.defaultDuration || 'עד סוף השנה',
-        evaluationCriteria: bankItem.defaultEvaluation || ''
+        id: 'g_rev_' + Date.now() + '_' + matchedGoals.length,
+        ...built
       });
     }
   });
 
-  // אם הטקסט מזכיר ויסות רגשי/חושי או קשב/ריכוז ולא נוצרה לכך מטרה ייעודית, נייצר מטרה פורמלית מותאמת
-  if (
-    (text.includes('ויסות') || text.includes('תסכול') || text.includes('רגשי') || text.includes('מעברים')) &&
-    matchedGoals.length < 4
-  ) {
-    const regClauses = clauses.filter(
-      (c) => c.includes('ויסות') || c.includes('תסכול') || c.includes('רגשי') || c.includes('מעברים')
-    );
-    matchedGoals.push({
-      id: 'g_rev_reg_' + Date.now(),
-      environment: 'מרחב הגן / הכיתה',
-      activityParticipation:
-        regClauses.length > 0
-          ? regClauses.join('. ') + '.'
-          : `${firstName} מתקשה לעיתים בוויסות רגשי וחושי במצבי תסכול או במעברים בין פעילויות וזקוק/ה לתיווך מרגיע ומכיל.`,
-      title: 'יפתח/תפתח מיומנויות ויסות רגשי וחושי והתמודדות מותאמת במצבי תסכול ומעברים',
-      objectives:
-        '• יזהה/תזהה מצבי הצפה או תסכול וייעזר/תיעזר במבוגר או באמצעי הרגעה מוסכם.\n• יעבור/תעבור בין פעילויות בסדר היום באופן רגוע ומווסת בעזרת הטרמה.\n• יביע/תביע רגשות וצרכים באופן מילולי מותאם.',
-      opportunities: `• הטרמה מראש לפני מעברים ושינויים בסדר היום באמצעות כרטיסיות חזותיות.\n• הקצאת "פינת רוגע" או פעילות סנסו-מוטורית מווסתת ל${firstName} בליווי איש צוות.\n• שיקוף רגשי ותיווך מילולי למציאת פתרונות במצבי תסכול.`,
-      partners: 'צוות חינוכי, סייעת אישית, מטפלת רגשית / מרפאה בעיסוק, הורים',
-      duration: 'עד סוף השנה',
-      evaluationCriteria: 'הפחתה בעוצמת ותדירות מצבי התסכול ומעבר מווסת ועצמאי בין פעילויות.'
-    });
-  }
+  // 8. עבור כל משפט קושי ספציפי של המורה שלא נכנס לאחד מ-14 התחומים המוגדרים – נייצר מטרה קוהרנטית ומותאמת אישית!
+  candidateChallengeClauses.forEach((cl, idx) => {
+    if (consumedClauseIndices.has(idx)) return;
+    if (matchedGoals.length >= 5) return; // עד 5 מטרות מרכזיות וממוקדות בדוח
 
-  // אם עדיין לא זוהו מטרות ספציפיות מתוך מילות מפתח, נייצר מטרות פורמליות מתוך משפטי הקושי/העצמה עצמם!
-  if (matchedGoals.length === 0) {
-    const sourceEmpower = empowerList.length > 0 ? empowerList.slice(0, 3) : [text];
-    sourceEmpower.forEach((empClause, idx) => {
-      const cleanClause = empClause
-        .replace(/^(?:מתקשה ב|זקוק לחיזוק ב|זקוקה לחיזוק ב|קושי ב)/, '')
-        .trim();
-      matchedGoals.push({
-        id: 'g_rev_gen_' + Date.now() + '_' + idx,
-        environment: 'מרחב הגן / הכיתה',
-        activityParticipation: `על פי תצפיות הצוות: ${empClause}. נדרש תיווך מדורג והתאמת הסביבה החינוכית.`,
-        title: `חיזוק ושיפור התפקוד בתחום: ${cleanClause}`,
-        objectives: `• יגלה/תגלה מעורבות ויוזמה בפעילויות הקשורות ל${cleanClause}.\n• יתנסה/תתנסה בהדרגה במשימות מותאמות תוך היעזרות בתיווך של מבוגר.\n• יפעל/תפעל באופן עצמאי ומווסת יותר בסביבה הטבעית.`,
-        opportunities: `• מתן הטרמה, מודלינג ופירוק המשימה לשלבים קצרים וברורים עבור ${firstName}.\n• מתן חיזוקים חיוביים ומשוב מעצים בזמן אמת.`,
-        partners: 'צוות חינוכי, סייעת אישית, הורים',
-        duration: 'עד סוף השנה',
-        evaluationCriteria: `שיפור עקבי וניכר ב${cleanClause} והשתתפות פעילה בסדר היום.`
-      });
-    });
-  }
-
-  // 4. בניית עמודת "כוחות להעצמה וחיזוק" מתוך משפטי הקושי + המטרות שחולצו
-  const formattedEmpowerItems = [];
-  empowerList.forEach((emp) => {
-    const cleaned = emp
-      .replace(/^(?:אך|אבל|ומנגד)\s+/, '')
-      .replace(/^(?:זקוק לחיזוק ב|זקוקה לחיזוק ב|מתקשה ב|מתקשה עם)\s*/, '')
+    const coreTopic = cl
+      .replace(/^(?:אבל|אך|אולם|כמו כן|בנוסף)\s+/g, '')
+      .replace(new RegExp(`^${firstName}\\s+`), '')
+      .replace(/^(?:הוא|היא)\s+/, '')
+      .replace(/^(?:מתקשה ב|מתקשה ל|קשה לו ב|קשה לה ב|קשה לו ל|קשה לה ל|זקוק לחיזוק ב|זקוקה לחיזוק ב|זקוק ל|זקוקה ל|יש קושי ב)/, '')
       .trim();
-    if (cleaned) {
-      formattedEmpowerItems.push(`• ${cleaned}`);
-    }
+
+    if (coreTopic.length < 3) return;
+
+    const defaultEnv = isSchoolSetting ? 'מרחב הכיתה והלמידה' : 'מרחב הגן';
+    matchedGoals.push({
+      id: 'g_rev_custom_' + Date.now() + '_' + idx,
+      environment: defaultEnv,
+      activityParticipation: `על פי הערכת הצוות החינוכי: ${cl}. מתן תיווך מותאם, הטרמה ופירוק לשלבים מאפשרים ל${firstName} להתקדם בתחום זה.`,
+      title: `${subjectLabel} ${g.develop} ${g.improve} את יכולותי${isFemale ? 'ה' : 'ו'} בתחום: ${coreTopic}`,
+      objectives: `• ${isFemale ? 'תגלה' : 'יגלה'} מעורבות ונכונות להתנסות בפעילויות הקשורות ל${coreTopic} בעזרת תיווך מבוגר.\n• ${isFemale ? 'תיישם' : 'יישם'} אסטרטגיות וכלים מותאמים לשיפור התפקוד ב${coreTopic}.\n• ${isFemale ? 'תפעל' : 'יפעל'} באופן עצמאי ומווסת יותר במצבים אלו לאורך סדר היום.`,
+      opportunities: `• תיווך אישי, מודלינג ופירוק המשימה לשלבים קצרים וברורים עבור ${firstName}.\n• שימוש בעזרים חזותיים ומתן משוב חיובי ומעצים בזמן אמת.`,
+      partners: defaultStaffPartners,
+      duration: 'עד סוף השנה',
+      evaluationCriteria: `שיפור עקבי וניכר בתפקוד של ${firstName} ב${coreTopic} והשתתפות פעילה בסביבה החינוכית.`
+    });
   });
-  matchedGoals.forEach((g) => {
-    const shortGoal = `${g.environment}: ${g.title}`;
-    if (!formattedEmpowerItems.some((item) => item.includes(g.environment))) {
-      formattedEmpowerItems.push(`• ${shortGoal}`);
+
+  // 9. הרכבת טבלת הסיכום העליונה (מוקדי כוח קיימים + כוחות להעצמה וחיזוק) בניסוח פדגוגי רשמי וקוהרנטי
+  const formattedExistingLines = strengthClauses
+    .map(formalizeStrengthClause)
+    .filter(Boolean);
+
+  const formattedExisting =
+    formattedExistingLines.length > 0
+      ? formattedExistingLines.join('\n')
+      : `• ${subjectLabel} ${g.characterized} בסקרנות טבעית וברצון להצליח ולהתקדם\n• ${isFemale ? 'מגיבה' : 'מגיב'} היטב לחיזוקים חיוביים, לעידוד ולקשר אישי חם ובטוח עם הצוות החינוכי\n• ${isFemale ? 'בעלת' : 'בעל'} פוטנציאל למידה והתפתחות משמעותי בסביבה מתווכת ומותאמת`;
+
+  const formattedEmpowerLines = challengeClauses
+    .map(formalizeEmpowerClause)
+    .filter(Boolean);
+
+  matchedGoals.forEach((goalObj) => {
+    if (formattedEmpowerLines.length < 6) {
+      const summaryLine = `• ${goalObj.environment}: ${goalObj.title.replace(/^(?:התלמיד\/ה|התלמיד|התלמידה|הילד\/ה|הילד|הילדה)\s+/, '')}`;
+      if (!formattedEmpowerLines.some((l) => l.includes(goalObj.environment))) {
+        formattedEmpowerLines.push(summaryLine);
+      }
     }
   });
 
   const formattedEmpower =
-    formattedEmpowerItems.length > 0
-      ? formattedEmpowerItems.join('\n')
-      : '• הרחבת העצמאות והתפקוד בסביבות הפעילות השונות\n• חיזוק מיומנויות חברתיות, לימודיות ורגשיות בהתאם למטרות התוכנית';
+    formattedEmpowerLines.length > 0
+      ? formattedEmpowerLines.join('\n')
+      : '• הרחבת העצמאות והתפקוד המווסת בסביבות הפעילות והלמידה השונות\n• חיזוק מיומנויות רגשיות, חברתיות ולימודיות בהתאם למטרות התוכנית';
 
-  // 5. בניית המלצות פורמליות לראש/תחתית המסמך
-  const environmentsMentioned = [...new Set(matchedGoals.map((g) => g.environment))].join(', ');
+  // 10. בניית פרק המלצות מערכתיות קוהרנטי ומותאם אישית לתלמיד/ה
+  const environmentsMentioned = [...new Set(matchedGoals.map((item) => item.environment))].join(', ');
   const formalRecommendations =
-    `1. המשך עבודה מערכתית ועקבית של הצוות החינוכי והטיפולי בסביבות הפעילות (${environmentsMentioned}), תוך הדרגתיות והתבססות על מוקדי הכוח של ${firstName}.\n` +
-    `2. שילוב עזרים חזותיים (כרטיסיות סדר יום, הטרמה מראש לפני מעברים ומודלינג) לתמיכה בהתארגנות, ויסות וביטחון עצמי.\n` +
+    `1. עבודה מערכתית ועקבית של הצוות החינוכי והטיפולי בתחומי המיקוד שהוגדרו (${environmentsMentioned}), תוך הישענות על מוקדי הכוח של ${firstName} ומתן חוויות הצלחה.\n` +
+    `2. התאמת הסביבה הלימודית: שימוש בהטרמה, עזרים חזותיים, פירוק משימות לשלבים קצרים ותיווך מדורג המותאם לקצב של ${firstName}.\n` +
     `3. שמירה על קשר רציף, שיתוף ותיאום ציפיות עם ההורים לחיזוק העקביות והעברת המיומנויות בין המסגרת החינוכית לבית.`;
 
   return {
     name: detectedName || currentFormData.name,
+    educationalFramework: detectedFramework || currentFormData.educationalFramework,
     strengthsExisting: formattedExisting,
     strengthsToEmpower: formattedEmpower,
     goals: matchedGoals,

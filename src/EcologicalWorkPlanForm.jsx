@@ -379,27 +379,62 @@ export default function EcologicalWorkPlanForm({
     }));
   };
 
-  // === SUBMIT BUTTON: Generate Top Summary Table from Teacher's Free Text + All Goals ===
-  const handleSubmitGenerateSummaryTable = async () => {
-    setIsGeneratingSummary(true);
+  // Helper to call Gemini API across available Flash models with JSON mode
+  const callGeminiJson = async (promptText) => {
+    const cleanKey = (geminiApiKey || '').trim();
+    if (!cleanKey) return null;
 
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    for (const modelName of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+          })
+        });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const jsonMatch = textOut.match(/[\{\[][\s\S]*[\}\]]/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[0]);
+        }
+      } catch (err) {
+        console.warn(`Model ${modelName} call failed, trying next`, err);
+      }
+    }
+    return null;
+  };
+
+  // === SUBMIT BUTTON: Generate Top Summary Table (and Goals if empty) from Teacher's Free Text + All Goals ===
+  const handleSubmitGenerateSummaryTable = async () => {
     const freeText = (formData.teacherFreeText || '').trim();
     const goalsList = (formData.goals || []).filter((g) => g.title && g.title.trim());
 
-    if (geminiApiKey) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-        const goalsSummary = goalsList
-          .map(
-            (g, idx) =>
-              `${idx + 1}. סביבה: ${g.environment} | מטרה: ${g.title} | תפקוד: ${g.activityParticipation || ''} | יעדים: ${g.objectives || ''}`
-          )
-          .join('\n');
+    // If the teacher pasted raw text and hasn't defined any goals yet, run full reverse engineering so Goals + Summary are both generated!
+    if (freeText && goalsList.length === 0) {
+      await handleReverseEngineerFullReport();
+      return;
+    }
 
-        const prompt = `אתה מומחה פדגוגי לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית".
-בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל כלל המטרות שהוגדרו בתכנית, צור את טבלת הסיכום העליונה של המסמך המורכבת משתי עמודות:
-1. "מוקדי כוח: כוחות קיימים" (תכונות חיוביות, חוזקות, יכולות קיימות, מוטיבציה, קשר עם הצוות והסביבה).
-2. "כוחות להעצמה וחיזוק" (התחומים והמיומנויות שדורשים חיזוק והעצמה, נגזרים מהטקסט החופשי ומהמטרות שהוגדרו).
+    setIsGeneratingSummary(true);
+
+    if (geminiApiKey && freeText) {
+      const goalsSummary = goalsList
+        .map(
+          (g, idx) =>
+            `${idx + 1}. סביבה: ${g.environment} | מטרה: ${g.title} | תפקוד: ${g.activityParticipation || ''} | יעדים: ${g.objectives || ''}`
+        )
+        .join('\n');
+
+      const prompt = `אתה מומחה פדגוגי לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י).
+בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל כלל המטרות שהוגדרו בתכנית, נסח בשפה פדגוגית מקצועית, קוהרנטית ומדויקת את טבלת הסיכום העליונה של המסמך המורכבת משתי עמודות:
+1. "strengthsExisting": מוקדי כוח וכוחות קיימים של התלמיד/ה (ניסוח פדגוגי מקצועי ומכבד, נקודות • מופרדות בשורות חדשות).
+2. "strengthsToEmpower": כוחות להעצמה וחיזוק (התחומים והמיומנויות שדורשים חיזוק והעצמה, מנוסחים באופן מקצועי ונגזרים מהטקסט החופשי ומהמטרות שהוגדרו).
 
 טקסט חופשי של המורה:
 "${freeText}"
@@ -407,99 +442,55 @@ export default function EcologicalWorkPlanForm({
 המטרות שהוגדרו לתלמיד/ה:
 ${goalsSummary}
 
-החזר פלט בפורמט JSON בלבד עם שני שדות טקסט (עם נקודות • מופרדות בשורות חדשות):
+החזר JSON בלבד:
 {
   "strengthsExisting": "• נקודת חוזק 1\\n• נקודת חוזק 2...",
   "strengthsToEmpower": "• תחום להעצמה 1\\n• תחום להעצמה 2..."
 }`;
 
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            const updated = {
-              ...formData,
-              strengthsExisting: parsed.strengthsExisting || formData.strengthsExisting,
-              strengthsToEmpower: parsed.strengthsToEmpower || formData.strengthsToEmpower,
-              status: 'מוכן להדפסה',
-              lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-            };
-            setFormData(updated);
-            onSaveStudentPlan(updated);
-            setIsGeneratingSummary(false);
-            setSaveBanner(true);
-            setTimeout(() => setSaveBanner(false), 3000);
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn('Fallback to smart local summary generation', e);
+      const parsed = await callGeminiJson(prompt);
+      if (parsed && (parsed.strengthsExisting || parsed.strengthsToEmpower)) {
+        const updated = {
+          ...formData,
+          strengthsExisting: parsed.strengthsExisting || formData.strengthsExisting,
+          strengthsToEmpower: parsed.strengthsToEmpower || formData.strengthsToEmpower,
+          status: 'מוכן להדפסה',
+          lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+        };
+        setFormData(updated);
+        onSaveStudentPlan(updated);
+        setIsGeneratingSummary(false);
+        setSaveBanner(true);
+        setTimeout(() => setSaveBanner(false), 3000);
+        return;
       }
     }
 
-    // Smart Heuristic Extraction from Free Text + All Defined Goals
-    const existingLines = [];
-    const empowerLines = [];
+    // Use the coherent Hebrew Pedagogical NLP Synthesizer
+    const engineered = reverseEngineerRawTextLocally(freeText, formData, goalBank);
+    const empowerFromGoals = goalsList.map(
+      (g) => `• ${g.environment ? g.environment + ': ' : ''}${g.title.replace(/^(?:התלמיד\/ה|התלמיד|התלמידה|הילד\/ה|הילד|הילדה)\s+/, '')}`
+    );
 
-    if (freeText) {
-      const sentences = freeText
-        .split(/[.,;\n]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+    const baseEmpowerLines = engineered?.strengthsToEmpower
+      ? engineered.strengthsToEmpower.split('\n').filter(Boolean)
+      : [];
 
-      sentences.forEach((s) => {
-        if (
-          s.includes('זקוק') ||
-          s.includes('מתקשה') ||
-          s.includes('קושי') ||
-          s.includes('חיזוק') ||
-          s.includes('נוקשות') ||
-          s.includes('גמילה') ||
-          s.includes('ויסות')
-        ) {
-          const cleaned = s
-            .replace(/^זקוק לחיזוק ב/, '')
-            .replace(/^מתקשה ב/, '')
-            .trim();
-          if (cleaned) empowerLines.push(`• ${cleaned}`);
-        } else {
-          existingLines.push(`• ${s}`);
-        }
-      });
-    }
-
-    // Derive empowerment points directly from all defined goals & environments
-    goalsList.forEach((g) => {
-      const envAndGoal = `${g.environment ? g.environment + ' – ' : ''}${g.title}`;
-      if (!empowerLines.some((line) => line.includes(g.title.slice(0, 12)))) {
-        empowerLines.push(`• ${envAndGoal}`);
+    empowerFromGoals.forEach((line) => {
+      if (!baseEmpowerLines.some((existing) => existing.includes(line.slice(0, 14)))) {
+        baseEmpowerLines.push(line);
       }
     });
 
-    const finalExisting =
-      existingLines.length > 0
-        ? existingLines.join('\n')
-        : formData.strengthsExisting ||
-          '• ילד/ה נעים/ה, חברותי/ת וסקרן/ית\n• יכולת ריכוז טובה\n• מפנים/ה כללים וגבולות\n• יצר/ה קשר טוב עם הצוות';
-
-    const finalEmpower =
-      empowerLines.length > 0
-        ? empowerLines.join('\n')
-        : formData.strengthsToEmpower ||
-          '• חיזוק מיומנויות בהתאם למטרות שהוגדרו בתכנית';
-
     const updated = {
       ...formData,
-      strengthsExisting: finalExisting,
-      strengthsToEmpower: finalEmpower,
+      name: engineered?.name || formData.name,
+      educationalFramework: engineered?.educationalFramework || formData.educationalFramework,
+      strengthsExisting: engineered?.strengthsExisting || formData.strengthsExisting,
+      strengthsToEmpower:
+        baseEmpowerLines.length > 0
+          ? baseEmpowerLines.join('\n')
+          : engineered?.strengthsToEmpower || formData.strengthsToEmpower,
       status: 'מוכן להדפסה',
       lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
     };
@@ -522,50 +513,54 @@ ${goalsSummary}
     setIsReverseEngineering(true);
     setReverseEngineerBanner('');
 
-    // Try Gemini API first if key is provided
-    if (geminiApiKey) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-        const bankReference = sortedGoals
-          .slice(0, 20)
-          .map((b) => `- סביבה: "${b.environment}" | מטרה: "${b.title}"`)
-          .join('\n');
+    // 1. Try Live Gemini AI if API key is provided
+    if (geminiApiKey && geminiApiKey.trim()) {
+      const bankReference = sortedGoals
+        .slice(0, 20)
+        .map((b) => `- סביבה: "${b.environment}" | מטרה: "${b.title}"`)
+        .join('\n');
 
-        const prompt = `אתה מומחה פדגוגי לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית).
-המורה הזינה טקסט גולמי ("Raw Data") המתאר את התלמיד/ה במילים חופשיות.
-עליך לבצע "הנדסה לאחור" (Reverse Engineering) של המידע הגולמי ולהפוך אותו לדוח רשמי ומקצועי מלא הכולל:
-1. "strengthsExisting": מוקדי כוח וכוחות קיימים (רשימת נקודות • מופרדות בשורות חדשות).
-2. "strengthsToEmpower": כוחות להעצמה וחיזוק (רשימת נקודות • מופרדות בשורות חדשות).
-3. "goals": מערך של 2 עד 4 מטרות מלאות ופורמליות הנגזרות מהקשיים והצרכים שבטקסט הגולמי. ניתן ומומלץ להשתמש במטרות מתאימות מתוך מאגר המטרות הקיים או לנסח מטרה מותאמת. לכל מטרה מלא את כל 6 העמודות:
-   - "environment": סביבה / תחום (למשל: מרחב הגן, סדנא, שירותים, קריאה - רמת פענוח ושטף, הבנת הנקרא, כתיבה, הבעה בעל-פה ושיח וכו')
-   - "activityParticipation": תיאור מקצועי של פעילות והשתתפות בסביבה (גורמים מאפשרים ומגבילים על סמך הטקסט הגולמי)
-   - "title": מטרה עליונה (מה אנחנו רוצים שיקרה?)
-   - "objectives": יעדים וציוני דרך אופרטיביים (נקודות • מופרדות בשורות חדשות)
-   - "opportunities": הזדמנויות, אמצעים ותיווך של הצוות (נקודות • מופרדות בשורות חדשות)
+      const prompt = `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
+המורה הזינה טקסט גולמי ("Raw Data") המתאר תלמיד/ה במילים חופשיות.
+עליך לבצע "הנדסה לאחור" (Reverse Engineering) מעמיקה: לנתח את המידע הגולמי ולנסח אותו מחדש בשפה פדגוגית מקצועית, רהוטה, קוהרנטית ומדויקת לחלוטין לתלמיד/ה המתואר/ת (כולל התאמת לשון זכר/נקבה, גיל ומסגרת חינוכית). אל תעתיק משפטים גולמיים כמו שהם אלא נסח אותם כדוח חינוכי רשמי!
+
+הדוח הרשמי חייב לכלול:
+1. "name": שם התלמיד/ה אם הוזכר בטקסט (או השאר ריק אם לא הוזכר).
+2. "educationalFramework": מסגרת חינוכית/כיתה/גן אם הוזכרו בטקסט (או השאר ריק).
+3. "strengthsExisting": מוקדי כוח וכוחות קיימים של התלמיד/ה המנוסחים באופן פדגוגי מקצועי ומכבד (נקודות • מופרדות בשורות חדשות).
+4. "strengthsToEmpower": כוחות להעצמה וחיזוק הנגזרים באופן מדויק מהקשיים שתוארו בטקסט (נקודות • מופרדות בשורות חדשות).
+5. "goals": מערך של 2 עד 4 מטרות מלאות, קוהרנטיות ומדויקות לקשיים הספציפיים של התלמיד/ה בטקסט. לכל מטרה מלא את כל 6 העמודות:
+   - "environment": סביבה / תחום ספציפי
+   - "activityParticipation": תיאור קוהרנטי ומקצועי של התפקוד הנוכחי של התלמיד/ה בסביבה זו (גורמים מאפשרים ומגבילים על סמך הטקסט של המורה)
+   - "title": מטרה עליונה מנוסחת היטב (מה אנחנו רוצים שיקרה?)
+   - "objectives": 3 יעדים אופרטיביים מדורגים ומותאמים אישית לתלמיד/ה (נקודות • מופרדות בשורות חדשות)
+   - "opportunities": הזדמנויות, אמצעים ודרכי תיווך מעשיות של הצוות עבור התלמיד/ה (נקודות • מופרדות בשורות חדשות)
    - "partners": שותפים לתהליך
-   - "duration": משך הזמן (למשל: עד סוף השנה / כשלושה חודשים)
-   - "evaluationCriteria": אמות מידה להערכה
-4. "recommendations": המלצות מערכתיות להמשך לצוות החינוכי ולהורים.
+   - "duration": משך הזמן
+   - "evaluationCriteria": אמות מידה ברורות להערכה
+6. "recommendations": המלצות מערכתיות מנוסחות היטב לצוות החינוכי ולהורים.
 
-שם התלמיד/ה הנוכחי: "${formData.name || ''}"
+שם התלמיד/ה הנוכחי בטופס: "${formData.name || ''}"
 הטקסט הגולמי של המורה:
 """
 ${rawText}
 """
 
-מטרות קיימות במאגר להשראה והתאמה:
+מטרות קיימות במאגר להשראה (התאם אותן ספציפית לתלמיד/ה או נסח מטרות חדשות מדויקות):
 ${bankReference}
 
-החזר אך ורק JSON תקין במבנה הבא:
+החזר JSON תקין בלבד:
 {
-  "strengthsExisting": "• חוזק 1\\n• חוזק 2",
-  "strengthsToEmpower": "• מוקד להעצמה 1\\n• מוקד להעצמה 2",
+  "name": "",
+  "educationalFramework": "",
+  "strengthsExisting": "• חוזק מנוסח מקצועית 1\\n• חוזק מנוסח מקצועית 2",
+  "strengthsToEmpower": "• מוקד להעצמה מנוסח מקצועית 1\\n• מוקד להעצמה 2",
   "goals": [
     {
       "environment": "...",
       "activityParticipation": "...",
       "title": "...",
-      "objectives": "• יעד 1\\n• יעד 2",
+      "objectives": "• יעד 1\\n• יעד 2\\n• יעד 3",
       "opportunities": "• אמצעי תיווך 1\\n• אמצעי תיווך 2",
       "partners": "...",
       "duration": "...",
@@ -575,67 +570,60 @@ ${bankReference}
   "recommendations": "..."
 }`;
 
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      const parsed = await callGeminiJson(prompt);
+      if (parsed && Array.isArray(parsed.goals) && parsed.goals.length > 0) {
+        const formattedGoals = parsed.goals.map((g, i) => ({
+          id: 'g_airev_' + Date.now() + '_' + i,
+          environment: g.environment || 'מרחב הגן / הכיתה',
+          activityParticipation: g.activityParticipation || '',
+          title: g.title || '',
+          objectives: g.objectives || '',
+          opportunities: g.opportunities || '',
+          partners: g.partners || 'צוות חינוכי, הורים',
+          duration: g.duration || 'עד סוף השנה',
+          evaluationCriteria: g.evaluationCriteria || ''
+        }));
+
+        const updated = {
+          ...formData,
+          name:
+            parsed.name && (!formData.name || formData.name === 'תלמיד/ה חדש/ה')
+              ? parsed.name
+              : formData.name,
+          educationalFramework:
+            parsed.educationalFramework && !formData.educationalFramework
+              ? parsed.educationalFramework
+              : formData.educationalFramework,
+          strengthsExisting: parsed.strengthsExisting || formData.strengthsExisting,
+          strengthsToEmpower: parsed.strengthsToEmpower || formData.strengthsToEmpower,
+          goals: formattedGoals,
+          recommendations: parsed.recommendations || formData.recommendations,
+          status: 'מוכן להדפסה',
+          lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setFormData(updated);
+        onSaveStudentPlan(updated);
+        formattedGoals.forEach((g) => {
+          if (g.title) onUseOrAddGoalToBank(g);
         });
-
-        if (res.ok) {
-          const data = await res.json();
-          const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const jsonMatch = textOut.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (parsed && Array.isArray(parsed.goals) && parsed.goals.length > 0) {
-              const formattedGoals = parsed.goals.map((g, i) => ({
-                id: 'g_airev_' + Date.now() + '_' + i,
-                environment: g.environment || 'מרחב הגן',
-                activityParticipation: g.activityParticipation || '',
-                title: g.title || '',
-                objectives: g.objectives || '',
-                opportunities: g.opportunities || '',
-                partners: g.partners || 'צוות חינוכי, הורים',
-                duration: g.duration || 'עד סוף השנה',
-                evaluationCriteria: g.evaluationCriteria || ''
-              }));
-
-              const updated = {
-                ...formData,
-                strengthsExisting: parsed.strengthsExisting || formData.strengthsExisting,
-                strengthsToEmpower: parsed.strengthsToEmpower || formData.strengthsToEmpower,
-                goals: formattedGoals,
-                recommendations: parsed.recommendations || formData.recommendations,
-                status: 'מוכן להדפסה',
-                lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-              };
-
-              setFormData(updated);
-              onSaveStudentPlan(updated);
-              formattedGoals.forEach((g) => {
-                if (g.title) onUseOrAddGoalToBank(g);
-              });
-              setIsReverseEngineering(false);
-              setReverseEngineerBanner(
-                `✨ הדוח הרשמי הופק בהצלחה ב-AI מתוך הטקסט הגולמי! מולאו אוטומטית טבלת מוקדי הכוח, ${formattedGoals.length} מטרות מלאות על כל 6 העמודות ופרק ההמלצות.`
-              );
-              setSaveBanner(true);
-              setTimeout(() => setSaveBanner(false), 3500);
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Gemini reverse engineering fallback to local pedagogical engine', err);
+        setIsReverseEngineering(false);
+        setReverseEngineerBanner(
+          `✨ הדוח הרשמי הופק בהצלחה ב-Gemini AI מתוך הטקסט הגולמי! נוסחו באופן קוהרנטי טבלת מוקדי הכוח, ${formattedGoals.length} מטרות מותאמות אישית ופרק ההמלצות.`
+        );
+        setSaveBanner(true);
+        setTimeout(() => setSaveBanner(false), 3500);
+        return;
       }
     }
 
-    // Smart Local Pedagogical Reverse-Engineering Engine
+    // 2. Coherent Built-in Hebrew Pedagogical NLP & Synthesis Engine
     const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
     if (engineered) {
       const updated = {
         ...formData,
         name: engineered.name || formData.name,
+        educationalFramework: engineered.educationalFramework || formData.educationalFramework,
         strengthsExisting: engineered.strengthsExisting,
         strengthsToEmpower: engineered.strengthsToEmpower,
         goals: engineered.goals,
@@ -650,7 +638,7 @@ ${bankReference}
         if (g.title) onUseOrAddGoalToBank(g);
       });
       setReverseEngineerBanner(
-        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! מולאו אוטומטית טבלת מוקדי הכוח, ${engineered.goals.length} מטרות רשמיות מלאות (6 עמודות) ופרק ההמלצות.`
+        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! נוסחו באופן פדגוגי קוהרנטי טבלת מוקדי הכוח, ${engineered.goals.length} מטרות רשמיות מותאמות לתלמיד/ה (6 עמודות) ופרק ההמלצות.`
       );
       setSaveBanner(true);
       setTimeout(() => setSaveBanner(false), 3500);
