@@ -1,33 +1,37 @@
 :root {
-  /* הצבעוניות נגזרה ישירות מהלוגו האמנותי של TALA:
-     כחול קובלט עמוק, ירוק בוטני/זית, זהב שמש חם, טרקוטה/ארגמן, סגול ויטראז' ושמנת קלף רכה */
-  --bg-page: #faf6ee;
+  /* הצבעוניות נגזרה ישירות מלוגו עץ ה-ZR בצבעי מים רכים (Watercolor Pastel Botanical):
+     מרווה/מנטה (גזע העץ), תכלת-טורקיז סלייט (האות Z), קורל-אפרסק חם (הלב והאות R),
+     צהוב חמאה רך (עלים וכוכבים), לבנדר פסטלי ורקע נייר שמנת טבעי */
+  --bg-page: #f6f5f0;
   --bg-card: #ffffff;
-  --bg-warm-subtle: #f5efe2;
-  --primary: #154c99;
-  --primary-hover: #0e3773;
-  --primary-light: #ebf3fc;
-  --accent-emerald: #216e55;
-  --accent-emerald-light: #eaf6f1;
-  --accent-gold: #f4b942;
-  --accent-gold-dark: #b8790e;
-  --accent-gold-light: #fef7e6;
-  --accent-terracotta: #d14928;
-  --accent-terracotta-light: #fdf0ed;
-  --accent-purple: #664b8e;
-  --accent-purple-light: #f4f0fa;
-  --border: #d8cfc0;
-  --border-soft: #e8e0d2;
-  --text-main: #13233a;
-  --text-muted: #4b5b70;
-  --danger: #c93b2b;
+  --bg-warm-subtle: #eff4f1;
+  --primary: #4a859e;
+  --primary-hover: #386b82;
+  --primary-light: #ecf5f8;
+  --primary-deep: #2b5366;
+  --accent-emerald: #56997b;
+  --accent-emerald-soft: #7ec2a3;
+  --accent-emerald-light: #edf7f2;
+  --accent-gold: #efc568;
+  --accent-gold-dark: #966b14;
+  --accent-gold-light: #fef9ec;
+  --accent-terracotta: #df7b63;
+  --accent-terracotta-soft: #eb8f78;
+  --accent-terracotta-light: #fdf1ee;
+  --accent-purple: #9e78a8;
+  --accent-purple-light: #f6f0f8;
+  --border: #d5e0dc;
+  --border-soft: #e5ece9;
+  --text-main: #243b47;
+  --text-muted: #5a717d;
+  --danger: #d15241;
   --stained-glass-gradient: linear-gradient(
     90deg,
-    #d14928 0%,
-    #f4b942 24%,
-    #216e55 50%,
-    #154c99 76%,
-    #664b8e 100%
+    #eb8f78 0%,
+    #f3ce7a 25%,
+    #8dc3a7 50%,
+    #6fa3b8 75%,
+    #c2a0c9 100%
   );
 }
 
@@ -40,8 +44,10 @@ body {
   padding: 0;
   font-family: 'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif;
   background-color: var(--bg-page);
-  background-image: radial-gradient(circle at 12% 15%, rgba(244, 185, 66, 0.08) 0%, transparent 35%),
-    radial-gradient(circle at 88% 80%, rgba(21, 76, 153, 0.07) 0%, transparent 40%);
+  background-image:
+    radial-gradient(circle at 12% 15%, rgba(141, 195, 167, 0.16) 0%, transparent 38%),
+    radial-gradient(circle at 88% 20%, rgba(235, 143, 120, 0.12) 0%, transparent 38%),
+    radial-gradient(circle at 80% 85%, rgba(111, 163, 184, 0.14) 0%, transparent 42%);
   color: var(--text-main);
   direction: rtl;
   text-align: right;
@@ -52,7 +58,7 @@ input, textarea, select, button {
 }
 
 .stained-glass-top-strip {
-  height: 5px;
+  height: 6px;
   width: 100%;
   background: var(--stained-glass-gradient);
 }
@@ -63,19 +69,19 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 20%, #1d5aa8 0%, #0d2b56 55%, #091c38 100%);
+  background: radial-gradient(circle at 50% 20%, #f7f6f1 0%, #e7f1ed 52%, #dce9ee 100%);
   padding: 24px;
 }
 
 .auth-card {
   position: relative;
   overflow: hidden;
-  background: #fffdf9;
+  background: #ffffff;
   width: 100%;
   max-width: 480px;
-  border-radius: 20px;
+  border-radius: 22px;
   padding: 36px 32px 30px 32px;
-  box-shadow: 0 24px 60px rgba(5, 15, 34, 0.48), 0 0 0 2px rgba(244, 185, 66, 0.35);
+  box-shadow: 0 20px 50px rgba(43, 83, 102, 0.14), 0 0 0 2px rgba(141, 195, 167, 0.45);
   text-align: center;
 }
 
@@ -89,13 +95,13 @@ input, textarea, select, button {
 }
 
 .auth-logo-frame {
-  width: 126px;
-  height: 126px;
+  width: 132px;
+  height: 132px;
   border-radius: 50%;
   padding: 4px;
-  background: linear-gradient(135deg, #f4b942 0%, #d14928 50%, #154c99 100%);
+  background: linear-gradient(135deg, #8dc3a7 0%, #6fa3b8 50%, #eb8f78 100%);
   margin: 0 auto 14px auto;
-  box-shadow: 0 10px 26px rgba(21, 76, 153, 0.28);
+  box-shadow: 0 10px 26px rgba(74, 133, 158, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,13 +113,13 @@ input, textarea, select, button {
   border-radius: 50%;
   object-fit: cover;
   display: block;
-  border: 2px solid #fffdf9;
+  border: 2.5px solid #f7f6f1;
 }
 
 .auth-title {
   margin: 0 0 6px 0;
   font-size: 27px;
-  color: #0d2b56;
+  color: var(--primary-deep);
   font-weight: 700;
 }
 
@@ -129,8 +135,8 @@ input, textarea, select, button {
   justify-content: center;
   gap: 8px;
   background: var(--accent-emerald-light);
-  border: 1px solid #a7dcc8;
-  color: #16523e;
+  border: 1px solid #b5decb;
+  color: #32634d;
   padding: 9px 12px;
   border-radius: 10px;
   font-size: 12px;
@@ -143,8 +149,8 @@ input, textarea, select, button {
   align-items: center;
   gap: 8px;
   background: var(--accent-terracotta-light);
-  border: 1px solid #f5b7a9;
-  color: #a62c14;
+  border: 1px solid #f3c0b4;
+  color: #a8432b;
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 13px;
@@ -169,7 +175,7 @@ input, textarea, select, button {
 .form-field label {
   font-size: 13px;
   font-weight: 600;
-  color: #13233a;
+  color: var(--text-main);
 }
 
 .form-field input,
@@ -189,7 +195,7 @@ input, textarea, select, button {
 .form-field textarea:focus,
 .form-field select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(21, 76, 153, 0.14);
+  box-shadow: 0 0 0 3px rgba(74, 133, 158, 0.16);
 }
 
 .input-with-icon {
@@ -212,7 +218,7 @@ input, textarea, select, button {
 .btn-auth-submit {
   margin-top: 6px;
   padding: 12px;
-  background: linear-gradient(135deg, #154c99 0%, #216e55 100%);
+  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -223,13 +229,13 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 6px 18px rgba(21, 76, 153, 0.28);
+  box-shadow: 0 6px 18px rgba(74, 133, 158, 0.26);
   transition: transform 0.12s, box-shadow 0.12s;
 }
 
 .btn-auth-submit:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 22px rgba(21, 76, 153, 0.35);
+  box-shadow: 0 8px 22px rgba(74, 133, 158, 0.34);
 }
 
 .auth-quick-access {
@@ -262,7 +268,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #0d2b56;
+  color: var(--primary-deep);
   transition: all 0.15s;
 }
 
@@ -279,7 +285,7 @@ input, textarea, select, button {
 }
 
 .tala-header {
-  background: linear-gradient(135deg, #0b2347 0%, #154c99 58%, #1a635c 100%);
+  background: linear-gradient(135deg, #36687d 0%, #4a859e 48%, #5b9e81 100%);
   color: #ffffff;
   padding: 12px 24px;
   display: flex;
@@ -287,8 +293,8 @@ input, textarea, select, button {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 14px;
-  border-bottom: 3px solid var(--accent-gold);
-  box-shadow: 0 4px 18px rgba(11, 35, 71, 0.18);
+  border-bottom: 3px solid #eb8f78;
+  box-shadow: 0 4px 18px rgba(43, 83, 102, 0.14);
 }
 
 .tala-brand {
@@ -298,15 +304,15 @@ input, textarea, select, button {
 }
 
 .brand-logo-circle {
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  padding: 2px;
-  background: linear-gradient(135deg, #f4b942, #d14928, #216e55);
+  padding: 2.5px;
+  background: linear-gradient(135deg, #f3ce7a, #eb8f78, #8dc3a7);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 12px rgba(36, 59, 71, 0.22);
   flex-shrink: 0;
 }
 
@@ -315,20 +321,20 @@ input, textarea, select, button {
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  border: 1.5px solid #ffffff;
+  border: 1.5px solid #f7f6f1;
 }
 
 .tala-brand h1 {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
-  color: #fffdf9;
+  color: #ffffff;
   letter-spacing: 0.2px;
 }
 
 .brand-subtitle {
   font-size: 12.5px;
-  color: #f8d47c;
+  color: #fef3d6;
 }
 
 .tala-header-controls {
@@ -342,12 +348,12 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 253, 249, 0.12);
+  background: rgba(255, 255, 255, 0.16);
   padding: 6px 11px;
   border-radius: 8px;
   font-size: 12px;
-  border: 1px solid rgba(244, 185, 66, 0.35);
-  color: #fef7e6;
+  border: 1px solid rgba(243, 206, 122, 0.5);
+  color: #fef9ec;
 }
 
 .api-key-pill input {
@@ -360,7 +366,7 @@ input, textarea, select, button {
 }
 
 .api-key-pill input::placeholder {
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .btn-header-bank,
@@ -373,27 +379,27 @@ input, textarea, select, button {
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid rgba(244, 185, 66, 0.45);
-  background: rgba(244, 185, 66, 0.16);
-  color: #fffdf9;
+  border: 1px solid rgba(243, 206, 122, 0.55);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
   transition: background 0.15s;
 }
 
 .btn-header-bank:hover {
-  background: rgba(244, 185, 66, 0.28);
+  background: rgba(255, 255, 255, 0.26);
 }
 
 .btn-header-admin {
-  background: linear-gradient(135deg, #d14928 0%, #b83718 100%);
-  border-color: #f4b942;
+  background: linear-gradient(135deg, #df7b63 0%, #c9644c 100%);
+  border-color: #f3ce7a;
 }
 
 .current-user-chip {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   padding: 5px 13px;
   border-radius: 22px;
 }
@@ -411,13 +417,13 @@ input, textarea, select, button {
 
 .user-chip-text small {
   font-size: 10.5px;
-  color: #f8d47c;
+  color: #fef3d6;
 }
 
 .btn-logout {
-  background: rgba(209, 73, 40, 0.28);
-  color: #ffd5cc;
-  border: 1px solid rgba(244, 185, 66, 0.4);
+  background: rgba(223, 123, 99, 0.32);
+  color: #fff5f2;
+  border: 1px solid rgba(243, 206, 122, 0.45);
   border-radius: 8px;
   padding: 7px 9px;
   cursor: pointer;
@@ -434,13 +440,13 @@ input, textarea, select, button {
 }
 
 .tala-students-sidebar {
-  background: #fffdf9;
+  background: #fbfaf7;
   border-left: 1.5px solid var(--border);
   padding: 18px 16px;
   display: flex;
   flex-direction: column;
   gap: 13px;
-  box-shadow: -4px 0 16px rgba(19, 35, 58, 0.03);
+  box-shadow: -4px 0 16px rgba(43, 83, 102, 0.04);
 }
 
 .sidebar-top-row {
@@ -453,7 +459,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #0d2b56;
+  color: var(--primary-deep);
 }
 
 .sidebar-title-group h3 {
@@ -464,7 +470,7 @@ input, textarea, select, button {
 .student-count-pill {
   background: var(--accent-gold-light);
   color: var(--accent-gold-dark);
-  border: 1px solid #f4b942;
+  border: 1px solid var(--accent-gold);
   font-size: 12px;
   font-weight: 700;
   padding: 2px 8px;
@@ -472,7 +478,7 @@ input, textarea, select, button {
 }
 
 .btn-new-student {
-  background: linear-gradient(135deg, #d14928 0%, #e06336 100%);
+  background: linear-gradient(135deg, #df7b63 0%, #eb8f78 100%);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -483,7 +489,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 4px;
-  box-shadow: 0 2px 8px rgba(209, 73, 40, 0.25);
+  box-shadow: 0 2px 8px rgba(223, 123, 99, 0.28);
 }
 
 .sidebar-search-box {
@@ -518,21 +524,21 @@ input, textarea, select, button {
   padding: 12px 13px;
   border-radius: 11px;
   border: 1px solid var(--border-soft);
-  background: #faf6ee;
+  background: #f6f5f0;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .sidebar-student-card:hover {
-  border-color: var(--accent-gold);
-  background: var(--accent-gold-light);
+  border-color: var(--accent-emerald-soft);
+  background: var(--accent-emerald-light);
 }
 
 .sidebar-student-card.selected {
-  background: linear-gradient(135deg, #ebf3fc 0%, #fef7e6 100%);
+  background: linear-gradient(135deg, #ecf5f8 0%, #edf7f2 100%);
   border: 2px solid var(--primary);
   border-right: 5px solid var(--accent-terracotta);
-  box-shadow: 0 4px 12px rgba(21, 76, 153, 0.1);
+  box-shadow: 0 4px 12px rgba(74, 133, 158, 0.12);
 }
 
 .st-card-info {
@@ -543,7 +549,7 @@ input, textarea, select, button {
 
 .st-card-info strong {
   font-size: 14.5px;
-  color: #0d2b56;
+  color: var(--primary-deep);
 }
 
 .st-card-info small {
@@ -561,7 +567,7 @@ input, textarea, select, button {
 .st-goals-badge {
   background: var(--accent-emerald-light);
   color: var(--accent-emerald);
-  border: 1px solid #b5e0cf;
+  border: 1px solid #b5decb;
   font-size: 11px;
   font-weight: 700;
   padding: 1px 8px;
@@ -604,10 +610,10 @@ input, textarea, select, button {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(255, 253, 249, 0.96);
+  background: rgba(251, 250, 247, 0.96);
   backdrop-filter: blur(8px);
   border: 1.5px solid var(--border);
-  border-top: 4px solid var(--accent-gold);
+  border-top: 4px solid #8dc3a7;
   border-radius: 12px;
   padding: 11px 16px;
   display: flex;
@@ -615,7 +621,7 @@ input, textarea, select, button {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  box-shadow: 0 6px 20px rgba(19, 35, 58, 0.08);
+  box-shadow: 0 6px 20px rgba(43, 83, 102, 0.07);
 }
 
 .action-bar-right,
@@ -627,7 +633,7 @@ input, textarea, select, button {
 }
 
 .btn-save-progress {
-  background: linear-gradient(135deg, #216e55 0%, #195742 100%);
+  background: linear-gradient(135deg, #56997b 0%, #438065 100%);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -638,13 +644,13 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(33, 110, 85, 0.25);
+  box-shadow: 0 2px 8px rgba(86, 153, 123, 0.28);
 }
 
 .save-toast-badge {
   background: var(--accent-emerald-light);
   color: var(--accent-emerald);
-  border: 1px solid #86efac;
+  border: 1px solid #9bd4b9;
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 12.5px;
@@ -670,12 +676,12 @@ input, textarea, select, button {
   user-select: none;
   border: 1.5px solid var(--accent-gold);
   background: var(--accent-gold-light);
-  color: #7c4d05;
+  color: #7c560b;
 }
 
 .privacy-checkbox-label.unchecked {
   border-color: var(--border);
-  background: #faf6ee;
+  background: #f6f5f0;
   color: var(--text-muted);
 }
 
@@ -687,8 +693,8 @@ input, textarea, select, button {
 }
 
 .btn-preview-doc {
-  background: #fffdf9;
-  color: #0d2b56;
+  background: #ffffff;
+  color: var(--primary-deep);
   border: 1.5px solid var(--border);
   border-radius: 8px;
   padding: 8px 13px;
@@ -701,7 +707,7 @@ input, textarea, select, button {
 }
 
 .btn-print-doc {
-  background: linear-gradient(135deg, #154c99 0%, #0d2b56 100%);
+  background: linear-gradient(135deg, #4a859e 0%, #36687d 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -712,17 +718,17 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 3px 10px rgba(21, 76, 153, 0.28);
+  box-shadow: 0 3px 10px rgba(74, 133, 158, 0.26);
 }
 
 /* Document Title Card */
 .document-title-card {
-  background: linear-gradient(135deg, #0d2b56 0%, #154c99 52%, #216e55 100%);
+  background: linear-gradient(135deg, #36687d 0%, #4a859e 50%, #5b9e81 100%);
   color: #ffffff;
   border-radius: 14px;
   padding: 18px 24px;
-  border-bottom: 4px solid var(--accent-gold);
-  box-shadow: 0 6px 18px rgba(13, 43, 86, 0.16);
+  border-bottom: 4px solid #eb8f78;
+  box-shadow: 0 6px 18px rgba(54, 104, 125, 0.15);
 }
 
 .doc-title-top-row {
@@ -740,12 +746,12 @@ input, textarea, select, button {
 }
 
 .doc-banner-logo {
-  width: 58px;
-  height: 58px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2.5px solid var(--accent-gold);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 2.5px solid #f3ce7a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
 }
 
 .inline-meta-field {
@@ -753,12 +759,12 @@ input, textarea, select, button {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  color: #fef7e6;
+  color: #fef9ec;
 }
 
 .inline-meta-field input {
-  background: rgba(255, 253, 249, 0.15);
-  border: 1px solid rgba(244, 185, 66, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(243, 206, 122, 0.55);
   color: #ffffff;
   padding: 6px 10px;
   border-radius: 6px;
@@ -771,17 +777,17 @@ input, textarea, select, button {
   text-align: center;
   font-size: 21px;
   font-weight: 700;
-  color: #fffdf9;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 /* Form Section Cards */
 .form-section-card {
-  background: #fffdf9;
+  background: #ffffff;
   border: 1.5px solid var(--border);
   border-radius: 14px;
   padding: 20px 22px;
-  box-shadow: 0 2px 10px rgba(19, 35, 58, 0.04);
+  box-shadow: 0 2px 12px rgba(43, 83, 102, 0.04);
 }
 
 .section-header-line {
@@ -798,7 +804,7 @@ input, textarea, select, button {
 .section-header-line h3 {
   margin: 0;
   font-size: 17px;
-  color: #0d2b56;
+  color: var(--primary-deep);
 }
 
 .section-sub-desc {
@@ -809,7 +815,7 @@ input, textarea, select, button {
 
 .privacy-active-pill {
   background: var(--accent-gold-light);
-  color: #855204;
+  color: #855a08;
   border: 1px solid var(--accent-gold);
   padding: 4px 12px;
   border-radius: 16px;
@@ -824,7 +830,7 @@ input, textarea, select, button {
   gap: 14px;
   background: var(--bg-warm-subtle);
   border: 1.5px solid var(--border);
-  border-right: 5px solid var(--accent-gold);
+  border-right: 5px solid #8dc3a7;
   border-radius: 10px;
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -833,7 +839,7 @@ input, textarea, select, button {
 .plan-type-label {
   font-size: 13.5px;
   font-weight: 700;
-  color: #0d2b56;
+  color: var(--primary-deep);
 }
 
 .plan-type-options {
@@ -850,7 +856,7 @@ input, textarea, select, button {
   border-radius: 8px;
   border: 1.5px solid var(--border);
   background: #ffffff;
-  color: #13233a;
+  color: var(--text-main);
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
@@ -863,17 +869,17 @@ input, textarea, select, button {
 }
 
 .plan-type-radio-card.selected {
-  background: linear-gradient(135deg, #154c99 0%, #216e55 100%);
+  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
   color: #ffffff;
-  border-color: #0d2b56;
-  box-shadow: 0 3px 10px rgba(21, 76, 153, 0.22);
+  border-color: #36687d;
+  box-shadow: 0 3px 10px rgba(74, 133, 158, 0.22);
 }
 
 .plan-type-radio-card input[type="radio"] {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: var(--accent-gold);
+  accent-color: var(--accent-terracotta);
 }
 
 .personal-details-grid {
@@ -895,7 +901,7 @@ input, textarea, select, button {
   display: block;
   font-size: 13.5px;
   font-weight: 700;
-  color: #0d2b56;
+  color: var(--primary-deep);
   margin-bottom: 8px;
 }
 
@@ -925,7 +931,7 @@ input, textarea, select, button {
 }
 
 .btn-submit-generate-summary {
-  background: linear-gradient(135deg, #d14928 0%, #e67e22 100%);
+  background: linear-gradient(135deg, #df7b63 0%, #eb8f78 100%);
   color: #ffffff;
   border: none;
   border-radius: 9px;
@@ -936,7 +942,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 7px;
-  box-shadow: 0 4px 12px rgba(209, 73, 40, 0.28);
+  box-shadow: 0 4px 12px rgba(223, 123, 99, 0.28);
 }
 
 .interactive-summary-table {
@@ -945,25 +951,25 @@ input, textarea, select, button {
 }
 
 .interactive-summary-table th:first-child {
-  background: linear-gradient(135deg, #216e55 0%, #2b8a6b 100%);
+  background: linear-gradient(135deg, #56997b 0%, #6eb394 100%);
   color: #ffffff;
-  border: 1.5px solid #164e3b;
+  border: 1.5px solid #458066;
   padding: 11px;
   font-size: 14.5px;
   text-align: center;
 }
 
 .interactive-summary-table th:last-child {
-  background: linear-gradient(135deg, #154c99 0%, #1e62c4 100%);
+  background: linear-gradient(135deg, #4a859e 0%, #639db6 100%);
   color: #ffffff;
-  border: 1.5px solid #0d2b56;
+  border: 1.5px solid #386b82;
   padding: 11px;
   font-size: 14.5px;
   text-align: center;
 }
 
 .interactive-summary-table td {
-  border: 1.5px solid #334155;
+  border: 1.5px solid #9ab5bf;
   padding: 8px;
   width: 50%;
   background: #ffffff;
@@ -981,14 +987,14 @@ input, textarea, select, button {
 
 .interactive-summary-table textarea:focus {
   border-color: var(--primary);
-  background: #faf6ee;
+  background: #f6f5f0;
   border-radius: 6px;
 }
 
 /* Section 3: Ecological Goal Blocks */
 .btn-add-goal-block,
 .btn-add-goal-block-large {
-  background: linear-gradient(135deg, #154c99 0%, #216e55 100%);
+  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
   color: #ffffff;
   border: none;
   border-radius: 9px;
@@ -999,7 +1005,7 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 3px 10px rgba(21, 76, 153, 0.22);
+  box-shadow: 0 3px 10px rgba(74, 133, 158, 0.22);
 }
 
 .goals-blocks-list {
@@ -1009,16 +1015,16 @@ input, textarea, select, button {
 }
 
 .ecological-goal-card {
-  border: 2px solid #9ab3d1;
+  border: 2px solid #b8d3dc;
   border-top: 5px solid var(--primary);
   border-radius: 13px;
   background: #ffffff;
   overflow: hidden;
-  box-shadow: 0 4px 14px rgba(13, 43, 86, 0.06);
+  box-shadow: 0 4px 14px rgba(54, 104, 125, 0.06);
 }
 
 .goal-card-top-bar {
-  background: linear-gradient(90deg, #ebf3fc 0%, #faf6ee 100%);
+  background: linear-gradient(90deg, #ecf5f8 0%, #eff6f2 100%);
   border-bottom: 1px solid var(--border);
   padding: 11px 15px;
   display: flex;
@@ -1036,8 +1042,8 @@ input, textarea, select, button {
 }
 
 .goal-number-badge {
-  background: linear-gradient(135deg, #0d2b56 0%, #154c99 100%);
-  color: #f8d47c;
+  background: linear-gradient(135deg, #36687d 0%, #4a859e 100%);
+  color: #fef3d6;
   font-size: 12px;
   font-weight: 700;
   padding: 4px 11px;
@@ -1060,7 +1066,7 @@ input, textarea, select, button {
 .btn-remove-goal {
   background: var(--accent-terracotta-light);
   color: var(--accent-terracotta);
-  border: 1px solid #f5b7a9;
+  border: 1px solid #f2bfb3;
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 12px;
@@ -1073,14 +1079,14 @@ input, textarea, select, button {
 
 .activity-participation-box {
   padding: 12px 15px;
-  background: #faf6ee;
+  background: #f8faf8;
   border-bottom: 1.5px solid var(--border);
 }
 
 .activity-participation-box label {
   display: block;
   font-size: 12.5px;
-  color: #13233a;
+  color: var(--text-main);
   margin-bottom: 6px;
 }
 
@@ -1097,8 +1103,8 @@ input, textarea, select, button {
 /* HL Goal Picker & AI Facilitating Questions */
 .hl-goal-selector-section {
   padding: 15px;
-  background: linear-gradient(135deg, #ebf3fc 0%, #f4f0fa 100%);
-  border-bottom: 1.5px solid #b8d0eb;
+  background: linear-gradient(135deg, #ecf5f8 0%, #f6f0f8 100%);
+  border-bottom: 1.5px solid #c5dbe4;
 }
 
 .hl-goal-header-row {
@@ -1113,7 +1119,7 @@ input, textarea, select, button {
 .hl-goal-label {
   font-size: 14px;
   font-weight: 700;
-  color: #0d2b56;
+  color: var(--primary-deep);
 }
 
 .hl-goal-actions {
@@ -1138,8 +1144,8 @@ input, textarea, select, button {
 
 .btn-toggle-ai-questions {
   background: var(--accent-purple-light);
-  color: var(--accent-purple);
-  border: 1.5px solid #bda8db;
+  color: #795685;
+  border: 1.5px solid #cbb2d4;
   border-radius: 8px;
   padding: 6px 12px;
   font-size: 12.5px;
@@ -1188,11 +1194,11 @@ input, textarea, select, button {
 /* Dynamic Goal Bank Dropdown */
 .goal-bank-dropdown-panel {
   margin-top: 10px;
-  background: #fffdf9;
+  background: #ffffff;
   border: 2px solid var(--primary);
   border-radius: 10px;
   padding: 12px;
-  box-shadow: 0 10px 28px rgba(13, 43, 86, 0.16);
+  box-shadow: 0 10px 28px rgba(54, 104, 125, 0.16);
 }
 
 .goal-bank-dropdown-header {
@@ -1206,7 +1212,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #faf6ee;
+  background: #f6f5f0;
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 7px 10px;
@@ -1227,8 +1233,8 @@ input, textarea, select, button {
 }
 
 .env-pill {
-  background: #f5efe2;
-  color: #13233a;
+  background: #eff4f1;
+  color: var(--text-main);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 4px 10px;
@@ -1259,7 +1265,7 @@ input, textarea, select, button {
   padding: 9px 12px;
   border: 1px solid var(--border-soft);
   border-radius: 8px;
-  background: #faf6ee;
+  background: #f8faf8;
   transition: background 0.12s;
 }
 
@@ -1282,8 +1288,8 @@ input, textarea, select, button {
 }
 
 .popularity-rank-badge {
-  background: #0d2b56;
-  color: #f8d47c;
+  background: var(--primary-deep);
+  color: #fef3d6;
   font-size: 11px;
   font-weight: 700;
   padding: 2px 7px;
@@ -1293,7 +1299,7 @@ input, textarea, select, button {
 .env-tag-chip {
   background: var(--accent-emerald-light);
   color: var(--accent-emerald);
-  border: 1px solid #b5e0cf;
+  border: 1px solid #b5decb;
   font-size: 11px;
   font-weight: 600;
   padding: 2px 8px;
@@ -1338,7 +1344,7 @@ input, textarea, select, button {
 
 .btn-use-title-only {
   background: #ffffff;
-  color: #13233a;
+  color: var(--text-main);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 5px 9px;
@@ -1372,7 +1378,7 @@ input, textarea, select, button {
 .ai-facilitating-panel {
   margin-top: 12px;
   background: var(--accent-purple-light);
-  border: 1.5px solid #bda8db;
+  border: 1.5px solid #cbb2d4;
   border-radius: 10px;
   padding: 14px;
 }
@@ -1384,7 +1390,7 @@ input, textarea, select, button {
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
-  color: #462e69;
+  color: #63436e;
 }
 
 .ai-panel-title {
@@ -1396,8 +1402,8 @@ input, textarea, select, button {
 
 .btn-refresh-ai-q {
   background: #ffffff;
-  color: var(--accent-purple);
-  border: 1px solid #bda8db;
+  color: #795685;
+  border: 1px solid #cbb2d4;
   border-radius: 6px;
   padding: 4px 10px;
   font-size: 11.5px;
@@ -1411,7 +1417,7 @@ input, textarea, select, button {
 .btn-close-ai-q {
   background: transparent;
   border: none;
-  color: var(--accent-purple);
+  color: #795685;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1424,7 +1430,7 @@ input, textarea, select, button {
 
 .ai-question-box {
   background: #ffffff;
-  border: 1px solid #d5c6eb;
+  border: 1px solid #dccbe3;
   border-radius: 8px;
   padding: 10px;
   display: flex;
@@ -1435,7 +1441,7 @@ input, textarea, select, button {
 .ai-q-text {
   font-size: 12.5px;
   font-weight: 600;
-  color: #13233a;
+  color: var(--text-main);
   line-height: 1.4;
 }
 
@@ -1446,9 +1452,9 @@ input, textarea, select, button {
 }
 
 .ai-sug-chip {
-  background: #ede6f7;
-  color: #462e69;
-  border: 1px solid #c6b2e3;
+  background: #f1e8f5;
+  color: #5f3f6b;
+  border: 1px solid #d4bee0;
   border-radius: 12px;
   padding: 3px 8px;
   font-size: 11px;
@@ -1457,7 +1463,7 @@ input, textarea, select, button {
 }
 
 .ai-sug-chip:hover {
-  background: #dfd3f2;
+  background: #e6d8ed;
 }
 
 .ai-question-box input {
@@ -1474,7 +1480,7 @@ input, textarea, select, button {
 }
 
 .btn-apply-ai-answers {
-  background: linear-gradient(135deg, #664b8e 0%, #154c99 100%);
+  background: linear-gradient(135deg, #9e78a8 0%, #4a859e 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -1498,9 +1504,9 @@ input, textarea, select, button {
 }
 
 .ecological-6col-table th {
-  background: #dce9f9;
-  color: #0d2b56;
-  border: 1px solid #9ab3d1;
+  background: #e2f0f5;
+  color: var(--primary-deep);
+  border: 1px solid #b5cfd9;
   padding: 9px 8px;
   font-size: 13px;
   text-align: center;
@@ -1510,7 +1516,7 @@ input, textarea, select, button {
   display: block;
   font-size: 11px;
   font-weight: 400;
-  color: #2c4668;
+  color: #46697a;
   margin-top: 2px;
 }
 
@@ -1533,7 +1539,7 @@ input, textarea, select, button {
 
 .ecological-6col-table textarea:focus {
   border-color: var(--primary);
-  background: #faf6ee;
+  background: #f6f5f0;
 }
 
 .quick-objectives-bank {
@@ -1556,8 +1562,8 @@ input, textarea, select, button {
 }
 
 .chip-add-obj {
-  background: #faf6ee;
-  color: #13233a;
+  background: #f8faf8;
+  color: var(--text-main);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 3px 7px;
@@ -1567,13 +1573,13 @@ input, textarea, select, button {
 }
 
 .chip-add-obj:hover {
-  background: var(--accent-gold-light);
-  border-color: var(--accent-gold);
+  background: var(--accent-emerald-light);
+  border-color: var(--accent-emerald-soft);
 }
 
 /* Preview Sheet */
 .preview-paper-sheet {
-  border: 1.5px solid #1e293b;
+  border: 1.5px solid #4a859e;
   padding: 18px;
   border-radius: 8px;
   background: #ffffff;
@@ -1586,7 +1592,7 @@ input, textarea, select, button {
 
 .preview-doc-table th,
 .preview-doc-table td {
-  border: 1px solid #1e293b;
+  border: 1px solid #7295a6;
   padding: 7px 9px;
   font-size: 12.5px;
   vertical-align: top;
@@ -1603,7 +1609,7 @@ input, textarea, select, button {
   padding-top: 14px;
   border-top: 1px dashed var(--border);
   font-size: 13.5px;
-  color: #13233a;
+  color: var(--text-main);
 }
 
 .bottom-final-actions {
@@ -1617,7 +1623,7 @@ input, textarea, select, button {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(11, 35, 71, 0.6);
+  background: rgba(36, 59, 71, 0.48);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -1626,12 +1632,12 @@ input, textarea, select, button {
 }
 
 .modal-container {
-  background: #fffdf9;
+  background: #ffffff;
   width: 100%;
   border-radius: 16px;
   overflow: hidden;
-  border-top: 5px solid var(--accent-gold);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  border-top: 5px solid #8dc3a7;
+  box-shadow: 0 20px 50px rgba(36, 59, 71, 0.24);
 }
 
 .modal-header {
@@ -1646,7 +1652,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #0d2b56;
+  color: var(--primary-deep);
 }
 
 .modal-header-title h3 {
@@ -1671,11 +1677,11 @@ input, textarea, select, button {
 .modal-footer {
   padding: 12px 20px;
   border-top: 1px solid var(--border-soft);
-  background: #faf6ee;
+  background: #f6f5f0;
 }
 
 .add-allowed-user-box {
-  background: #faf6ee;
+  background: #f6f5f0;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;
@@ -1758,7 +1764,7 @@ input, textarea, select, button {
 
 .btn-secondary-sm {
   background: #ffffff;
-  color: #13233a;
+  color: var(--text-main);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 7px 12px;
@@ -1779,9 +1785,9 @@ input, textarea, select, button {
 
 /* === AI Reverse Engineering (Raw Data -> Formal Report) Styles === */
 .ai-raw-data-badge {
-  background: linear-gradient(135deg, #f3eef9 0%, #dce9f9 100%);
-  color: #0d2b56;
-  border: 1px solid #664b8e;
+  background: linear-gradient(135deg, #f6f0f8 0%, #ecf5f8 100%);
+  color: var(--primary-deep);
+  border: 1px solid var(--accent-purple);
   font-size: 12px;
   font-weight: 600;
   padding: 4px 12px;
@@ -1796,9 +1802,9 @@ input, textarea, select, button {
 }
 
 .btn-reverse-engineer-report {
-  background: linear-gradient(135deg, #0d2b56 0%, #664b8e 52%, #216e55 100%);
+  background: linear-gradient(135deg, #4a859e 0%, #56997b 100%);
   color: #ffffff;
-  border: 2px solid #f4b942;
+  border: 2px solid #f3ce7a;
   border-radius: 9px;
   padding: 10px 18px;
   font-size: 13.5px;
@@ -1807,13 +1813,13 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 4px 14px rgba(13, 43, 86, 0.28);
+  box-shadow: 0 4px 14px rgba(74, 133, 158, 0.24);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-reverse-engineer-report:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(13, 43, 86, 0.36);
+  box-shadow: 0 6px 18px rgba(74, 133, 158, 0.32);
 }
 
 .btn-reverse-engineer-report:disabled {
@@ -1823,9 +1829,9 @@ input, textarea, select, button {
 
 .reverse-engineer-success-banner {
   margin-top: 12px;
-  background: #e3f3ed;
-  border: 1.5px solid #216e55;
-  color: #134636;
+  background: var(--accent-emerald-light);
+  border: 1.5px solid var(--accent-emerald);
+  color: #2d5e48;
   border-radius: 9px;
   padding: 10px 14px;
   font-size: 13.5px;
@@ -1846,7 +1852,7 @@ input, textarea, select, button {
 }
 
 .btn-admin-add-bank-goal {
-  background: linear-gradient(135deg, #216e55 0%, #154c99 100%);
+  background: linear-gradient(135deg, #56997b 0%, #4a859e 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -1858,13 +1864,13 @@ input, textarea, select, button {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(33, 110, 85, 0.25);
+  box-shadow: 0 3px 10px rgba(86, 153, 123, 0.25);
 }
 
 .admin-bank-goal-editor {
-  background: #faf6ee;
-  border: 2px solid #0d2b56;
-  border-right: 5px solid #f4b942;
+  background: #f6f5f0;
+  border: 2px solid var(--primary);
+  border-right: 5px solid #eb8f78;
   border-radius: 11px;
   padding: 14px 16px;
   margin-bottom: 14px;
@@ -1882,12 +1888,12 @@ input, textarea, select, button {
 .admin-editor-header h4 {
   margin: 0;
   font-size: 15px;
-  color: #0d2b56;
+  color: var(--primary-deep);
 }
 
 .btn-cancel-bank-edit {
   background: #ffffff;
-  color: #4b5b70;
+  color: var(--text-muted);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 4px 10px;
@@ -1918,7 +1924,7 @@ input, textarea, select, button {
 .admin-field label {
   font-size: 12px;
   font-weight: 700;
-  color: #0d2b56;
+  color: var(--primary-deep);
 }
 
 .admin-field input,
@@ -1938,7 +1944,7 @@ input, textarea, select, button {
 }
 
 .btn-save-bank-goal {
-  background: linear-gradient(135deg, #216e55 0%, #154c99 100%);
+  background: linear-gradient(135deg, #56997b 0%, #4a859e 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -1955,7 +1961,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f8fafc;
+  background: #f8faf8;
   border: 1.5px solid var(--border);
   border-radius: 8px;
   padding: 7px 11px;
@@ -1978,9 +1984,9 @@ input, textarea, select, button {
 }
 
 .btn-admin-edit-goal {
-  background: #dce9f9;
-  color: #0d2b56;
-  border: 1px solid #154c99;
+  background: var(--primary-light);
+  color: var(--primary-deep);
+  border: 1px solid var(--primary);
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 12px;
@@ -1992,14 +1998,14 @@ input, textarea, select, button {
 }
 
 .btn-admin-edit-goal:hover {
-  background: #154c99;
+  background: var(--primary);
   color: #ffffff;
 }
 
 .btn-admin-delete-goal {
-  background: #fbe7e2;
-  color: #b83718;
-  border: 1px solid #d14928;
+  background: var(--accent-terracotta-light);
+  color: #b8563f;
+  border: 1px solid var(--accent-terracotta);
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 12px;
@@ -2011,14 +2017,14 @@ input, textarea, select, button {
 }
 
 .btn-admin-delete-goal:hover {
-  background: #d14928;
+  background: var(--accent-terracotta);
   color: #ffffff;
 }
 
 .btn-admin-manage-bank-inline {
-  background: #fef7e6;
-  color: #0d2b56;
-  border: 1.5px solid #f4b942;
+  background: var(--accent-gold-light);
+  color: var(--primary-deep);
+  border: 1.5px solid var(--accent-gold);
   border-radius: 8px;
   padding: 7px 12px;
   font-size: 12.5px;
@@ -2030,7 +2036,6 @@ input, textarea, select, button {
 }
 
 .btn-admin-manage-bank-inline:hover {
-  background: #f4b942;
-  color: #0d2b56;
+  background: var(--accent-gold);
+  color: var(--primary-deep);
 }
-

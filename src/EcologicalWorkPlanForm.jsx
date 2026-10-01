@@ -776,8 +776,8 @@ ${bankReference}
               font-family: 'Rubik', Arial, sans-serif;
               direction: rtl;
               text-align: right;
-              color: #13233a;
-              background: #fffdf9;
+              color: #243b47;
+              background: #f6f5f0;
               margin: 0;
               padding: 0;
               font-size: 12.5px;
@@ -788,14 +788,14 @@ ${bankReference}
             .stained-glass-strip {
               height: 6px;
               width: 100%;
-              background: linear-gradient(90deg, #d14928 0%, #f4b942 24%, #216e55 50%, #154c99 76%, #664b8e 100%);
+              background: linear-gradient(90deg, #eb8f78 0%, #f3ce7a 25%, #8dc3a7 50%, #6fa3b8 75%, #c2a0c9 100%);
               border-radius: 6px 6px 0 0;
             }
             .print-banner {
-              background: linear-gradient(135deg, #0d2b56 0%, #154c99 52%, #216e55 100%);
+              background: linear-gradient(135deg, #36687d 0%, #4a859e 50%, #5b9e81 100%);
               color: #ffffff;
               padding: 14px 20px;
-              border-bottom: 4px solid #f4b942;
+              border-bottom: 4px solid #eb8f78;
               border-radius: 0 0 10px 10px;
               display: flex;
               align-items: center;
@@ -808,31 +808,31 @@ ${bankReference}
               gap: 14px;
             }
             .print-logo {
-              width: 54px;
-              height: 54px;
+              width: 56px;
+              height: 56px;
               border-radius: 50%;
               object-fit: cover;
-              border: 2px solid #f4b942;
-              background: #fff;
+              border: 2px solid #f3ce7a;
+              background: #f7f6f1;
             }
             .doc-main-title {
               margin: 0;
               font-size: 19px;
               font-weight: 700;
-              color: #fffdf9;
+              color: #ffffff;
             }
             .doc-meta-side {
               font-size: 12.5px;
-              color: #fef7e6;
+              color: #fef9ec;
             }
             .student-details-bar {
               display: flex;
               flex-wrap: wrap;
               gap: 20px;
               padding: 10px 14px;
-              border: 1.5px solid #0d2b56;
-              border-right: 5px solid #d14928;
-              background: #faf6ee;
+              border: 1.5px solid #4a859e;
+              border-right: 5px solid #eb8f78;
+              background: #eff4f1;
               border-radius: 8px;
               margin-bottom: 14px;
               font-size: 13px;
@@ -845,38 +845,38 @@ ${bankReference}
               background: #ffffff;
             }
             .eco-table th, .eco-table td {
-              border: 1.5px solid #1e293b;
+              border: 1.5px solid #5a7d8c;
               padding: 8px 10px;
               vertical-align: top;
               text-align: right;
               white-space: pre-line;
             }
             .summary-table th.th-existing {
-              background: #216e55;
+              background: #56997b;
               color: #ffffff;
               font-size: 13.5px;
               font-weight: 700;
               text-align: center;
             }
             .summary-table th.th-empower {
-              background: #154c99;
+              background: #4a859e;
               color: #ffffff;
               font-size: 13.5px;
               font-weight: 700;
               text-align: center;
             }
             .env-header-row td {
-              background: #faf6ee;
-              border-top: 3px solid #154c99;
+              background: #eff4f1;
+              border-top: 3px solid #4a859e;
             }
             .sub-instruction {
               font-size: 11px;
-              color: #4b5b70;
+              color: #5a717d;
               font-weight: normal;
             }
             .columns-header-row th {
-              background: #dce9f9;
-              color: #0d2b56;
+              background: #e2f0f5;
+              color: #2b5366;
               font-weight: 700;
               font-size: 12.5px;
               text-align: center;
@@ -885,15 +885,15 @@ ${bankReference}
               font-weight: 400;
               font-size: 10.5px;
               display: block;
-              color: #2c4668;
+              color: #46697a;
             }
             .doc-footer-section {
               margin-top: 14px;
               page-break-inside: avoid;
             }
             .recommendations-box {
-              border: 1.5px solid #0d2b56;
-              background: #faf6ee;
+              border: 1.5px solid #4a859e;
+              background: #eff4f1;
               border-radius: 8px;
               padding: 10px 12px;
               min-height: 46px;
@@ -905,7 +905,7 @@ ${bankReference}
               justify-content: space-between;
               margin-top: 22px;
               font-weight: 600;
-              color: #0d2b56;
+              color: #2b5366;
             }
           </style>
         </head>
@@ -1253,17 +1253,17 @@ ${bankReference}
 
           <div className="preview-paper-sheet">
             <div className="stained-glass-top-strip" style={{ borderRadius: '6px 6px 0 0' }} />
-            <div style={{ background: 'linear-gradient(135deg, #0d2b56 0%, #154c99 52%, #216e55 100%)', color: '#fff', padding: '12px 18px', borderBottom: '3px solid #f4b942', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ background: 'linear-gradient(135deg, #36687d 0%, #4a859e 50%, #5b9e81 100%)', color: '#fff', padding: '12px 18px', borderBottom: '3px solid #eb8f78', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <span style={{ fontSize: '12.5px' }}><strong>תאריך:</strong> {formData.date}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <img src="./tala-logo.png" alt="TALA Logo" style={{ width: '44px', height: '44px', borderRadius: '50%', border: '2px solid #f4b942', objectFit: 'cover' }} />
-                <h4 style={{ margin: 0, fontSize: '17px', color: '#fffdf9' }}>
+                <img src="./tala-logo.png" alt="TALA Logo" style={{ width: '46px', height: '46px', borderRadius: '50%', border: '2px solid #f3ce7a', objectFit: 'cover' }} />
+                <h4 style={{ margin: 0, fontSize: '17px', color: '#ffffff' }}>
                   {getFullDocTitle()}
                 </h4>
               </div>
               <span style={{ fontSize: '12.5px' }}><strong>שנת לימודים:</strong> {formData.schoolYear}</span>
             </div>
-            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#faf6ee', border: '1.5px solid #0d2b56', borderRight: '4px solid #d14928', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
+            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#eff4f1', border: '1.5px solid #4a859e', borderRight: '4px solid #eb8f78', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
               <span><strong>שם הילד/ה:</strong> {getDisplayStudentName()}</span>
               <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
               <span><strong>ת.ל:</strong> {getDisplayMaskedField(formData.birthDate)}</span>
@@ -1276,8 +1276,8 @@ ${bankReference}
             <table className="preview-doc-table">
               <thead>
                 <tr>
-                  <th style={{ width: '50%', background: '#216e55', color: '#fff', textAlign: 'center' }}>מוקדי כוח: כוחות קיימים</th>
-                  <th style={{ width: '50%', background: '#154c99', color: '#fff', textAlign: 'center' }}>כוחות להעצמה וחיזוק</th>
+                  <th style={{ width: '50%', background: '#56997b', color: '#fff', textAlign: 'center' }}>מוקדי כוח: כוחות קיימים</th>
+                  <th style={{ width: '50%', background: '#4a859e', color: '#fff', textAlign: 'center' }}>כוחות להעצמה וחיזוק</th>
                 </tr>
               </thead>
               <tbody>
@@ -1291,12 +1291,12 @@ ${bankReference}
             {(formData.goals || []).map((g) => (
               <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
                 <tbody>
-                  <tr style={{ background: '#faf6ee' }}>
+                  <tr style={{ background: '#eff4f1' }}>
                     <td colSpan={6}>
                       <strong>סביבה: {g.environment}</strong> | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
                     </td>
                   </tr>
-                  <tr style={{ background: '#dce9f9', color: '#0d2b56', fontWeight: 'bold' }}>
+                  <tr style={{ background: '#e2f0f5', color: '#2b5366', fontWeight: 'bold' }}>
                     <td>מטרה (מה אנחנו רוצים שיקרה?)</td>
                     <td>יעדים, ציוני דרך (צעדים אופרטיביים)</td>
                     <td>הזדמנויות, אמצעים ואיך נגרום לזה לקרות?</td>
