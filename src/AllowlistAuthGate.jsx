@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, KeyRound, AlertTriangle, UserCheck, Plus, Trash2, Copy, Check, X } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, KeyRound, AlertTriangle, UserCheck, Plus, Trash2, Copy, Check, X, Sparkles } from 'lucide-react';
 import { verifyAllowedUser } from './allowedUsers';
 
 export function AllowlistAuthGate({ allowedUsers, onLoginSuccess }) {
@@ -85,7 +85,14 @@ export function AllowlistAuthGate({ allowedUsers, onLoginSuccess }) {
   );
 }
 
-export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAllowedUsers }) {
+export function AdminAllowlistModal({
+  isOpen,
+  onClose,
+  allowedUsers,
+  onUpdateAllowedUsers,
+  geminiApiKey,
+  onChangeGeminiApiKey
+}) {
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -187,6 +194,44 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
         </div>
 
         <div className="modal-body">
+          {/* Admin-Only Gemini AI Key Setting */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '10px',
+              background: 'linear-gradient(135deg, #eaf3fc 0%, #f3eefc 100%)',
+              border: '1.5px solid #bfa8e8',
+              borderRadius: '10px',
+              padding: '10px 14px',
+              marginBottom: '14px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2b4c73', fontWeight: 700, fontSize: '13.5px' }}>
+              <Sparkles size={16} style={{ color: '#8b6fc0' }} />
+              <span>מפתח Gemini AI (מוגדר ברמת מערכת למנהל בלבד):</span>
+            </div>
+            <input
+              type="password"
+              placeholder="הזן מפתח Gemini AI..."
+              value={geminiApiKey || ''}
+              onChange={(e) => onChangeGeminiApiKey && onChangeGeminiApiKey(e.target.value)}
+              dir="ltr"
+              style={{
+                flex: '1 1 240px',
+                maxWidth: '340px',
+                padding: '7px 11px',
+                borderRadius: '8px',
+                border: '1.5px solid #8b6fc0',
+                background: '#ffffff',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            />
+          </div>
+
           <p style={{ fontSize: '13px', color: '#475569', marginTop: 0 }}>
             רק משתמשים המופיעים ברשימה זו ומסומנים כ"פעילים" מורשים להתחבר לאתר ולצפות בתכניות העבודה. הסיסמאות מוסתרות מטעמי אבטחה.
           </p>

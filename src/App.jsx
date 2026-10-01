@@ -312,17 +312,6 @@ export default function App() {
         </div>
 
         <div className="tala-header-controls">
-          <div className="api-key-pill">
-            <Sparkles size={14} />
-            <span>מפתח Gemini AI:</span>
-            <input
-              type="password"
-              placeholder="אופציונלי להעשרת AI..."
-              value={geminiApiKey}
-              onChange={(e) => setGeminiApiKey(e.target.value)}
-            />
-          </div>
-
           <button
             type="button"
             className="btn-header-bank"
@@ -457,13 +446,17 @@ export default function App() {
         </main>
       </div>
 
-      {/* Admin Allowlist Management Modal */}
-      <AdminAllowlistModal
-        isOpen={showAdminModal}
-        onClose={() => setShowAdminModal(false)}
-        allowedUsers={allowedUsers}
-        onUpdateAllowedUsers={handleUpdateAllowedUsers}
-      />
+      {/* Admin Allowlist Management Modal (Only accessible to Admin) */}
+      {currentUser.role === 'admin' && (
+        <AdminAllowlistModal
+          isOpen={showAdminModal}
+          onClose={() => setShowAdminModal(false)}
+          allowedUsers={allowedUsers}
+          onUpdateAllowedUsers={handleUpdateAllowedUsers}
+          geminiApiKey={geminiApiKey}
+          onChangeGeminiApiKey={setGeminiApiKey}
+        />
+      )}
 
       {/* Dynamic Goal Bank Popularity & Admin Management Modal */}
       {showGoalBankOverview && (
