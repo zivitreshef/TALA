@@ -1829,16 +1829,6 @@ ${bankReference}
             <span>שמור התקדמות לעריכה עתידית</span>
           </button>
 
-          <button
-            type="button"
-            className="btn-submit-generate-summary"
-            onClick={handleReverseEngineerFullReport}
-            disabled={isReverseEngineering}
-          >
-            <Sparkles size={18} />
-            <span>עיבוד המידע</span>
-          </button>
-
           <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
             <Printer size={18} />
             <span>
