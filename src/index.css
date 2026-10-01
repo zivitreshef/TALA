@@ -1589,17 +1589,65 @@ input, textarea, select, button {
   border-top: 1px dashed var(--border);
 }
 
-.quick-objectives-bank small {
-  display: block;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
+.quick-objectives-toggle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 8px;
+  background: #eff4f1;
+  border: 1px solid #d4e0d8;
+  border-radius: 6px;
+  user-select: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.quick-objectives-toggle-header:hover {
+  background: #e3ece6;
+  border-color: var(--primary);
+}
+
+.quick-objectives-toggle-header small {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  margin: 0;
+}
+
+.btn-toggle-quick-obj {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.btn-toggle-quick-obj.expanded {
+  background: var(--accent-terracotta, #b85d3b);
+}
+
+.btn-toggle-quick-obj:hover {
+  transform: scale(1.08);
 }
 
 .quick-obj-chips {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  margin-top: 6px;
 }
 
 .chip-add-obj {

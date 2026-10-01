@@ -61,6 +61,7 @@ export default function EcologicalWorkPlanForm({
   const [openPickerGoalId, setOpenPickerGoalId] = useState(null);
   const [pickerEnvFilter, setPickerEnvFilter] = useState('הכל');
   const [pickerSearch, setPickerSearch] = useState('');
+  const [expandedQuickObjMap, setExpandedQuickObjMap] = useState({});
 
   // State for AI Facilitating Questions per goal card
   const [activeAiGoalId, setActiveAiGoalId] = useState(null);
@@ -78,6 +79,7 @@ export default function EcologicalWorkPlanForm({
     });
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
+    setExpandedQuickObjMap({});
   }, [student?.id]);
 
   // Automatically expand all textareas to their full scrollHeight so NO scrollbar ever appears
@@ -1897,26 +1899,49 @@ ${bankReference}
                           />
                           {matchedBankItem?.suggestedObjectives?.length > 0 && (
                             <div className="quick-objectives-bank">
-                              <small>
-                                הוסף יעד מהמאגר בלחיצה ({currentGender === 'girl' ? 'מותאם לבת' : 'מותאם לבן'}):
-                              </small>
-                              <div className="quick-obj-chips">
-                                {matchedBankItem.suggestedObjectives.map((obj, oIdx) => {
-                                  const inflectedObj = adaptTextToGender(obj, currentGender);
-                                  return (
-                                    <button
-                                      key={oIdx}
-                                      type="button"
-                                      className="chip-add-obj"
-                                      onClick={() =>
-                                        handleAddSuggestedObjective(goalRow.id, inflectedObj)
-                                      }
-                                    >
-                                      + {inflectedObj}
-                                    </button>
-                                  );
-                                })}
+                              <div
+                                className="quick-objectives-toggle-header"
+                                onClick={() =>
+                                  setExpandedQuickObjMap((prev) => ({
+                                    ...prev,
+                                    [goalRow.id]: !prev[goalRow.id]
+                                  }))
+                                }
+                              >
+                                <small>הוסף יעד מהמאגר בלחיצה:</small>
+                                <button
+                                  type="button"
+                                  className={`btn-toggle-quick-obj ${
+                                    expandedQuickObjMap[goalRow.id] ? 'open' : ''
+                                  }`}
+                                  title={
+                                    expandedQuickObjMap[goalRow.id]
+                                      ? 'הסתר רשימת יעדים'
+                                      : 'הצג יעדים מהמאגר להוספה בלחיצה'
+                                  }
+                                >
+                                  {expandedQuickObjMap[goalRow.id] ? '−' : '+'}
+                                </button>
                               </div>
+                              {expandedQuickObjMap[goalRow.id] && (
+                                <div className="quick-obj-chips">
+                                  {matchedBankItem.suggestedObjectives.map((obj, oIdx) => {
+                                    const inflectedObj = adaptTextToGender(obj, currentGender);
+                                    return (
+                                      <button
+                                        key={oIdx}
+                                        type="button"
+                                        className="chip-add-obj"
+                                        onClick={() =>
+                                          handleAddSuggestedObjective(goalRow.id, inflectedObj)
+                                        }
+                                      >
+                                        + {inflectedObj}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           )}
                         </td>
