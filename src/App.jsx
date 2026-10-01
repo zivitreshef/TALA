@@ -61,7 +61,7 @@ export default function App() {
     return null;
   });
 
-  // Students list & their ecological work plans
+  // All students across users (each student is strictly scoped by ownerEmail)
   const [students, setStudents] = useState(() => {
     try {
       localStorage.removeItem('tala_students_plans_v1');
@@ -69,20 +69,38 @@ export default function App() {
       const saved = localStorage.getItem(STUDENTS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.map((s) => ({
+            ...s,
+            ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
+          }));
+        }
       }
     } catch (e) {
       console.warn(e);
     }
-    return INITIAL_STUDENTS_DATA;
+    return INITIAL_STUDENTS_DATA.map((s) => ({
+      ...s,
+      ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
+    }));
   });
 
-  const [selectedStudentId, setSelectedStudentId] = useState(
-    () => students[0]?.id || null
-  );
+  // Helper: get only the students belonging to a specific user email
+  const getStudentsForUser = (allStudents, userObj) => {
+    if (!userObj || !userObj.email) return [];
+    const targetEmail = userObj.email.trim().toLowerCase();
+    return (allStudents || []).filter(
+      (s) => (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail
+    );
+  };
+
+  const [selectedStudentId, setSelectedStudentId] = useState(() => {
+    const initialUserStudents = getStudentsForUser(students, currentUser);
+    return initialUserStudents[0]?.id || null;
+  });
   const [studentSearch, setStudentSearch] = useState('');
 
-  // Dynamic Goal Bank
+  // Dynamic Goal Bank (shared across all users; only Admin can delete/edit)
   const [goalBank, setGoalBank] = useState(() => loadGoalBank());
   const [showGoalBankOverview, setShowGoalBankOverview] = useState(false);
   const [goalBankSearch, setGoalBankSearch] = useState('');
@@ -110,6 +128,18 @@ export default function App() {
     localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(students));
   }, [students]);
 
+  // Whenever the logged-in user changes, ensure selectedStudentId belongs to that user
+  useEffect(() => {
+    if (!currentUser) {
+      setSelectedStudentId(null);
+      return;
+    }
+    const myStudents = getStudentsForUser(students, currentUser);
+    if (!myStudents.some((s) => s.id === selectedStudentId)) {
+      setSelectedStudentId(myStudents[0]?.id || null);
+    }
+  }, [currentUser?.email]);
+
   const handleUpdateAllowedUsers = (updatedList) => {
     setAllowedUsers(updatedList);
     saveAllowedUsers(updatedList);
@@ -118,19 +148,25 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     localStorage.setItem(SESSION_USER_KEY, JSON.stringify(user));
+    const myStudents = getStudentsForUser(students, user);
+    setSelectedStudentId(myStudents[0]?.id || null);
+    setStudentSearch('');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setSelectedStudentId(null);
     localStorage.removeItem(SESSION_USER_KEY);
   };
 
-  // Create a new student and open blank interactive form
+  // Create a new student owned strictly by the currently logged-in user
   const handleAddNewStudent = () => {
+    if (!currentUser) return;
     const newId = 'st_' + Date.now();
     const todayStr = new Date().toLocaleDateString('he-IL');
     const newStudentPlan = {
       id: newId,
+      ownerEmail: currentUser.email.trim().toLowerCase(),
       date: todayStr,
       schoolYear: 'תשפ"ו (2025-2026)',
       planType: 'תל"א (תוכנית לימודים אישית)',
@@ -169,10 +205,11 @@ export default function App() {
   const handleDeleteStudent = (id, name, e) => {
     e.stopPropagation();
     if (!window.confirm(`האם למחוק את תכנית העבודה של "${name}"?`)) return;
-    const remaining = students.filter((s) => s.id !== id);
-    setStudents(remaining);
+    const remainingAll = students.filter((s) => s.id !== id);
+    setStudents(remainingAll);
     if (selectedStudentId === id) {
-      setSelectedStudentId(remaining[0]?.id || null);
+      const remainingMine = getStudentsForUser(remainingAll, currentUser);
+      setSelectedStudentId(remainingMine[0]?.id || null);
     }
   };
 
@@ -285,8 +322,9 @@ export default function App() {
     );
   }
 
-  const selectedStudent = students.find((s) => s.id === selectedStudentId);
-  const filteredStudents = students.filter(
+  const userStudents = getStudentsForUser(students, currentUser);
+  const selectedStudent = userStudents.find((s) => s.id === selectedStudentId);
+  const filteredStudents = userStudents.filter(
     (s) =>
       (s.name || '').includes(studentSearch) ||
       (s.educationalFramework || '').includes(studentSearch)
@@ -360,7 +398,7 @@ export default function App() {
             <div className="sidebar-title-group">
               <Users size={19} />
               <h3>רשימת תלמידים</h3>
-              <span className="student-count-pill">{students.length}</span>
+              <span className="student-count-pill">{userStudents.length}</span>
             </div>
             <button
               type="button"
@@ -494,15 +532,19 @@ export default function App() {
             <div className="modal-body">
               <div className="goal-bank-modal-top-bar">
                 <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
-                  כל מטרה חדשה שמורה מגדירה נשמרת אוטומטית במאגר זה. המטרות מוצגות למורים לפי מידת השכיחות שלהן (הנפוצות ביותר בראש הרשימה והפחות נפוצות בתחתית).
-                  {currentUser.role === 'admin' && (
-                    <strong style={{ color: '#0d2b56', display: 'block', marginTop: '4px' }}>
+                  כל מטרה חדשה שהמנהלת או כל מורה מוסיפה משותפת לכלל המשתמשים במאגר זה. המטרות מוצגות לפי מידת השכיחות שלהן.
+                  {currentUser.role === 'admin' ? (
+                    <strong style={{ color: '#4c1d95', display: 'block', marginTop: '4px' }}>
                       👑 הרשאת מנהל מערכת (Admin): באפשרותך להוסיף, לערוך או להסיר מטרות ויעדים במאגר.
                     </strong>
+                  ) : (
+                    <span style={{ color: '#64748b', display: 'block', marginTop: '4px' }}>
+                      באפשרותך להוסיף מטרות חדשות למאגר המשותף (מחיקה או עריכה שמורות למנהלת המערכת בלבד).
+                    </span>
                   )}
                 </p>
 
-                {currentUser.role === 'admin' && !editingBankGoal && (
+                {!editingBankGoal && (
                   <button
                     type="button"
                     className="btn-admin-add-bank-goal"
@@ -514,8 +556,8 @@ export default function App() {
                 )}
               </div>
 
-              {/* Admin Add / Edit Goal Form */}
-              {currentUser.role === 'admin' && editingBankGoal && (
+              {/* Add Goal (Any User) / Edit Goal (Admin Only) Form */}
+              {editingBankGoal && (editingBankGoal.mode === 'add' || currentUser.role === 'admin') && (
                 <form className="admin-bank-goal-editor" onSubmit={handleSaveAdminBankGoal}>
                   <div className="admin-editor-header">
                     <h4>
