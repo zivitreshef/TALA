@@ -38,18 +38,22 @@ export default function EcologicalWorkPlanForm({
   isAdmin,
   onOpenGoalBankManager,
   onSaveStudentPlan,
-  onUseOrAddGoalToBank
+  onUseOrAddGoalToBank,
+  onDraftStateChange
 }) {
   const containerRef = useRef(null);
 
-  const [formData, setFormData] = useState(() => {
-    const initialGender = student?.gender || 'boy';
+  const buildNormalizedStudentData = (st) => {
+    const initialGender = st?.gender || 'boy';
     return {
-      ...student,
+      ...st,
       gender: initialGender,
-      goals: (student?.goals || []).map((g) => adaptGoalToGender(g, initialGender))
+      goals: (st?.goals || []).map((g) => adaptGoalToGender(g, initialGender))
     };
-  });
+  };
+
+  const [formData, setFormData] = useState(() => buildNormalizedStudentData(student));
+  const savedSnapshotRef = useRef(JSON.stringify(buildNormalizedStudentData(student)));
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
   const [saveBanner, setSaveBanner] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -71,16 +75,23 @@ export default function EcologicalWorkPlanForm({
 
   // Sync when switching selected student from the sidebar list
   useEffect(() => {
-    const initialGender = student?.gender || 'boy';
-    setFormData({
-      ...student,
-      gender: initialGender,
-      goals: (student?.goals || []).map((g) => adaptGoalToGender(g, initialGender))
-    });
+    const normalized = buildNormalizedStudentData(student);
+    savedSnapshotRef.current = JSON.stringify(normalized);
+    setFormData(normalized);
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
     setExpandedQuickObjMap({});
   }, [student?.id]);
+
+  // Report whether current formData has unsaved changes compared to savedSnapshotRef
+  useEffect(() => {
+    if (!onDraftStateChange) return;
+    const isDirty = JSON.stringify(formData) !== savedSnapshotRef.current;
+    onDraftStateChange({
+      isDirty,
+      draftData: formData
+    });
+  }, [formData, onDraftStateChange]);
 
   // Automatically expand all textareas to their full scrollHeight so NO scrollbar ever appears
   useEffect(() => {
@@ -748,8 +759,12 @@ ${bankReference}
       ...formData,
       lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
     };
+    savedSnapshotRef.current = JSON.stringify(updated);
     setFormData(updated);
     onSaveStudentPlan(updated);
+    if (onDraftStateChange) {
+      onDraftStateChange({ isDirty: false, draftData: updated });
+    }
     // Also record usage for all defined goals
     (updated.goals || []).forEach((g) => {
       if (g.title && g.title.trim()) {
@@ -1164,7 +1179,7 @@ ${bankReference}
 
         {/* Radio Buttons for תל"א OR תח"י */}
         <div className="plan-type-radio-bar">
-          <span className="plan-type-label">סוג התוכנית (מתעדכן אוטומטית בכותרת המסמך):</span>
+          <span className="plan-type-label">סוג התוכנית:</span>
           <div className="plan-type-options">
             <label
               className={`plan-type-radio-card ${
