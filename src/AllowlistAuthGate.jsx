@@ -29,8 +29,9 @@ export function AllowlistAuthGate({ allowedUsers, onLoginSuccess }) {
   return (
     <div className="auth-page-wrapper" dir="rtl">
       <div className="auth-card">
-        <div className="auth-header-badge">
-          <ShieldCheck size={32} className="auth-shield-icon" />
+        <div className="auth-stained-glass-bar" />
+        <div className="auth-logo-frame">
+          <img src="./tala-logo.jpg" alt="TALA Logo" className="auth-logo-img" />
         </div>
         <h1 className="auth-title">מערכת TALA</h1>
         <p className="auth-subtitle">

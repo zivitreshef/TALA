@@ -184,11 +184,13 @@ export default function App() {
 
   return (
     <div className="tala-app-root" dir="rtl">
+      {/* Top Stained-Glass Accent Strip */}
+      <div className="stained-glass-top-strip" />
       {/* Top Header */}
       <header className="tala-header">
         <div className="tala-brand">
           <div className="brand-logo-circle">
-            <FileSpreadsheet size={24} />
+            <img src="./tala-logo.jpg" alt="TALA Logo" className="header-logo-img" />
           </div>
           <div>
             <h1>TALA – תכנית עבודה אקולוגית ותח"י</h1>

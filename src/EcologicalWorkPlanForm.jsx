@@ -836,6 +836,12 @@ ${goalsSummary}
               placeholder="למשל: 01/10/2026"
             />
           </div>
+          <div className="doc-banner-center-brand">
+            <img src="./tala-logo.jpg" alt="TALA Emblem" className="doc-banner-logo" />
+            <h2 className="main-ecological-heading">
+              תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית
+            </h2>
+          </div>
           <div className="inline-meta-field">
             <label>שנת לימודים:</label>
             <input
@@ -846,9 +852,6 @@ ${goalsSummary}
             />
           </div>
         </div>
-        <h2 className="main-ecological-heading">
-          תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית
-        </h2>
       </div>
 
       {/* Section 1: Student Personal Details */}
