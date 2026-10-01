@@ -326,7 +326,7 @@ export default function App() {
         ...baseData,
         archived: true,
         archivedAt: archivedDate,
-        status: 'הושלם – בארכיב'
+        status: 'הושלם – בארכיון'
       };
     });
 
@@ -536,10 +536,10 @@ export default function App() {
               }
               setShowArchiveModal(true);
             }}
-            title="צפה בתלמידים שהועברו לארכיב ובדוחות שלהם"
+            title="צפה בתלמידים שהועברו לארכיון ובדוחות שלהם"
           >
             <Archive size={16} />
-            <span>ארכיב ({archivedUserStudents.length})</span>
+            <span>ארכיון ({archivedUserStudents.length})</span>
           </button>
 
           {currentUser.role === 'admin' && (
@@ -665,7 +665,7 @@ export default function App() {
                               type="button"
                               className="btn-delete-st"
                               onClick={(e) => handleRequestArchiveStudent(st, e)}
-                              title="העבר תלמיד/ה לארכיב (סיום תוכנית)"
+                              title="העבר תלמיד/ה לארכיון (סיום תוכנית)"
                               style={{ color: '#6b5b95' }}
                             >
                               <Archive size={15} />
@@ -1106,7 +1106,7 @@ export default function App() {
                     fontWeight: 600
                   }}
                 >
-                  💡 במידה והתלמיד/ה סיים/ה את התוכנית, ניתן להעביר אותו/ה ל<strong>ארכיב</strong> לשמירת ההיסטוריה והדוחות במקום למחוק.
+                  💡 במידה והתלמיד/ה סיים/ה את התוכנית, ניתן להעביר אותו/ה ל<strong>ארכיון</strong> לשמירת ההיסטוריה והדוחות במקום למחוק.
                 </div>
               )}
             </div>
@@ -1150,7 +1150,7 @@ export default function App() {
                     }}
                   >
                     <Archive size={15} />
-                    <span>העבר לארכיב במקום מחיקה</span>
+                    <span>העבר לארכיון במקום מחיקה</span>
                   </button>
                 )}
 
@@ -1195,7 +1195,7 @@ export default function App() {
             <div className="modal-header">
               <div className="modal-header-title" style={{ color: '#4c1d95' }}>
                 <Archive size={22} style={{ color: '#8b6fc0' }} />
-                <h3>העברת תלמיד/ה לארכיב (סיום תוכנית)</h3>
+                <h3>העברת תלמיד/ה לארכיון (סיום תוכנית)</h3>
               </div>
               <button
                 type="button"
@@ -1213,7 +1213,7 @@ export default function App() {
                 {studentToArchive.educationalFramework
                   ? ` (${studentToArchive.educationalFramework})`
                   : ''}{' '}
-                לארכיב?
+                לארכיון?
               </p>
               <div
                 style={{
@@ -1226,7 +1226,7 @@ export default function App() {
                   fontWeight: 600
                 }}
               >
-                📁 התלמיד/ה יוסר/תוסר מרשימת התלמידים הפעילה, וכל הדוחות ותכנית העבודה יישמרו במלואם תחת כפתור <strong>"ארכיב"</strong> בסרגל העליון.
+                📁 התלמיד/ה יוסר/תוסר מרשימת התלמידים הפעילה, וכל הדוחות ותכנית העבודה יישמרו במלואם תחת כפתור <strong>"ארכיון"</strong> בסרגל העליון.
               </div>
             </div>
 
@@ -1264,14 +1264,14 @@ export default function App() {
                 }}
               >
                 <Archive size={15} />
-                <span>כן, העבר לארכיב</span>
+                <span>כן, העבר לארכיון</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Archive Viewer Modal (ארכיב תלמידים ודוחות) */}
+      {/* Archive Viewer Modal (ארכיון תלמידים ודוחות) */}
       {showArchiveModal && (
         <div
           className="modal-backdrop"
@@ -1287,7 +1287,7 @@ export default function App() {
               <div className="modal-header-title">
                 <Archive size={22} style={{ color: '#4a88c7' }} />
                 <h3>
-                  ארכיב תלמידים ותכניות עבודה ({archivedUserStudents.length} תלמידים בארכיב)
+                  ארכיון תלמידים ותכניות עבודה ({archivedUserStudents.length} תלמידים בארכיון)
                 </h3>
               </div>
               <button
@@ -1310,10 +1310,10 @@ export default function App() {
                 >
                   <Archive size={44} style={{ color: '#8b6fc0', marginBottom: '10px', opacity: 0.75 }} />
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '17px', color: '#2b4c73' }}>
-                    הארכיב ריק כעת
+                    הארכיון ריק כעת
                   </h4>
                   <p style={{ margin: 0, fontSize: '13.5px' }}>
-                    תלמידים שסיימו את התוכנית ויועברו לארכיב יופיעו כאן יחד עם כל הדוחות, המטרות והמידע האישי שלהם.
+                    תלמידים שסיימו את התוכנית ויועברו לארכיון יופיעו כאן יחד עם כל הדוחות, המטרות והמידע האישי שלהם.
                   </p>
                 </div>
               ) : (
@@ -1341,7 +1341,7 @@ export default function App() {
                       <Search size={14} />
                       <input
                         type="text"
-                        placeholder="חיפוש בארכיב..."
+                        placeholder="חיפוש בארכיון..."
                         value={archiveSearch}
                         onChange={(e) => setArchiveSearch(e.target.value)}
                       />
@@ -1373,7 +1373,7 @@ export default function App() {
                                 </span>
                                 {st.archivedAt && (
                                   <span className="st-saved-time">
-                                    ארכיב: {st.archivedAt}
+                                    ארכיון: {st.archivedAt}
                                   </span>
                                 )}
                               </div>
@@ -1425,14 +1425,14 @@ export default function App() {
                                 borderRadius: '12px'
                               }}
                             >
-                              {activeArchivedStudent.status || 'בארכיב'}
+                              {activeArchivedStudent.status || 'בארכיון'}
                             </span>
                           </div>
                           <small style={{ color: '#5c6f8c', fontSize: '12.5px' }}>
                             {activeArchivedStudent.planType || 'תל"א / תח"י'} • שנת לימודים:{' '}
                             {activeArchivedStudent.schoolYear || '—'}
                             {activeArchivedStudent.archivedAt
-                              ? ` • הועבר לארכיב: ${activeArchivedStudent.archivedAt}`
+                              ? ` • הועבר לארכיון: ${activeArchivedStudent.archivedAt}`
                               : ''}
                           </small>
                         </div>
@@ -1476,7 +1476,7 @@ export default function App() {
                               alignItems: 'center',
                               gap: '5px'
                             }}
-                            title="מחק תלמיד/ה לצמיתות מהארכיב"
+                            title="מחק תלמיד/ה לצמיתות מהארכיון"
                           >
                             <Trash2 size={14} />
                             <span>מחק לצמיתות</span>
@@ -1684,7 +1684,7 @@ export default function App() {
                 className="btn-primary-sm"
                 onClick={() => setShowArchiveModal(false)}
               >
-                סגור ארכיב
+                סגור ארכיון
               </button>
             </div>
           </div>
