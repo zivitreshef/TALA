@@ -1,0 +1,1620 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Save,
+  Printer,
+  Sparkles,
+  Plus,
+  Trash2,
+  Search,
+  TrendingUp,
+  HelpCircle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp,
+  BookOpen,
+  Wand2,
+  FileText,
+  Check,
+  ShieldAlert
+} from 'lucide-react';
+import {
+  ENVIRONMENTS_LIST,
+  getSortedGoalBank,
+  generateDefaultQuestionsForCustomGoal,
+  toHebrewAcronym,
+  maskSensitiveValue,
+  redactStudentNameInText
+} from './goalBankData';
+
+export default function EcologicalWorkPlanForm({
+  student,
+  goalBank,
+  geminiApiKey,
+  onSaveStudentPlan,
+  onUseOrAddGoalToBank
+}) {
+  const [formData, setFormData] = useState(() => ({ ...student }));
+  const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
+  const [saveBanner, setSaveBanner] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [showFullDocPreview, setShowFullDocPreview] = useState(false);
+
+  // State for Goal Picker / Autocomplete per goal card
+  const [openPickerGoalId, setOpenPickerGoalId] = useState(null);
+  const [pickerEnvFilter, setPickerEnvFilter] = useState('הכל');
+  const [pickerSearch, setPickerSearch] = useState('');
+
+  // State for AI Facilitating Questions per goal card
+  const [activeAiGoalId, setActiveAiGoalId] = useState(null);
+  const [aiQuestionsMap, setAiQuestionsMap] = useState({});
+  const [aiAnswersMap, setAiAnswersMap] = useState({});
+  const [loadingAiForGoalId, setLoadingAiForGoalId] = useState(null);
+
+  // Sync when switching selected student from the sidebar list
+  useEffect(() => {
+    setFormData({ ...student });
+    setOpenPickerGoalId(null);
+    setActiveAiGoalId(null);
+  }, [student?.id]);
+
+  // Sorted goal bank (most common first, lowest rated at the bottom)
+  const sortedGoals = getSortedGoalBank(goalBank);
+
+  // Update personal or top-level field
+  const handleFieldChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Update specific goal row
+  const handleGoalChange = (goalId, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) =>
+        g.id === goalId ? { ...g, [field]: value } : g
+      )
+    }));
+  };
+
+  // Add a new empty goal block and open the smart Goal Picker immediately
+  const handleAddGoalRow = () => {
+    const newId = 'g_row_' + Date.now();
+    const newGoalObj = {
+      id: newId,
+      environment: 'מרחב הגן',
+      activityParticipation: '',
+      title: '',
+      objectives: '',
+      opportunities: '',
+      partners: 'צוות הגן, סייעת אישית',
+      duration: 'עד סוף השנה',
+      evaluationCriteria: ''
+    };
+    setFormData((prev) => ({
+      ...prev,
+      goals: [...(prev.goals || []), newGoalObj]
+    }));
+    setOpenPickerGoalId(newId);
+    setPickerSearch('');
+    setPickerEnvFilter('הכל');
+  };
+
+  const handleDeleteGoalRow = (goalId) => {
+    if ((formData.goals || []).length <= 1) {
+      if (!window.confirm('זוהי המטרה היחידה בתכנית. האם למחוק אותה?')) return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).filter((g) => g.id !== goalId)
+    }));
+  };
+
+  // Select a goal from the Dynamic Goal Bank
+  const handleSelectGoalFromBank = (goalRowId, bankItem, fillTemplate = true) => {
+    const studentFirstName = (formData.name || 'הילד/ה').trim().split(/\s+/)[0];
+    const personalizedOpportunities = (bankItem.defaultOpportunities || '').replace(
+      /הילד/g,
+      studentFirstName
+    );
+
+    setFormData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) => {
+        if (g.id !== goalRowId) return g;
+        if (!fillTemplate) {
+          return {
+            ...g,
+            title: bankItem.title,
+            environment: bankItem.environment || g.environment
+          };
+        }
+        return {
+          ...g,
+          title: bankItem.title,
+          environment: bankItem.environment || g.environment,
+          activityParticipation: g.activityParticipation || bankItem.defaultActivity || '',
+          objectives:
+            g.objectives ||
+            (bankItem.suggestedObjectives || []).map((o) => `• ${o}`).join('\n'),
+          opportunities: g.opportunities || personalizedOpportunities || '',
+          partners: g.partners || bankItem.defaultPartners || 'צוות חינוכי, הורים',
+          duration: g.duration || bankItem.defaultDuration || 'עד סוף השנה',
+          evaluationCriteria: g.evaluationCriteria || bankItem.defaultEvaluation || ''
+        };
+      })
+    }));
+
+    // Increment usage count in global bank
+    onUseOrAddGoalToBank({
+      title: bankItem.title,
+      environment: bankItem.environment
+    });
+
+    // Load the 3 Facilitating Questions for this HL Goal
+    const questions =
+      bankItem.facilitatingQuestions && bankItem.facilitatingQuestions.length > 0
+        ? bankItem.facilitatingQuestions.slice(0, 3)
+        : generateDefaultQuestionsForCustomGoal(bankItem.title, bankItem.environment);
+
+    setAiQuestionsMap((prev) => ({
+      ...prev,
+      [goalRowId]: questions
+    }));
+    setActiveAiGoalId(goalRowId);
+    setOpenPickerGoalId(null);
+  };
+
+  // Define a brand new custom HL Goal and trigger AI Facilitating Questions
+  const handleConfirmCustomGoal = async (goalRow) => {
+    if (!goalRow.title || !goalRow.title.trim()) return;
+
+    // Save to global Goal Bank for future usage
+    onUseOrAddGoalToBank(goalRow);
+    setOpenPickerGoalId(null);
+
+    // Open AI Facilitating Questions panel and generate up to 3 tailored questions
+    setActiveAiGoalId(goalRow.id);
+    await handleGenerateAiQuestionsForGoal(goalRow);
+  };
+
+  // Generate up to 3 Facilitating Questions via Gemini AI (or smart fallback)
+  const handleGenerateAiQuestionsForGoal = async (goalRow) => {
+    const goalTitle = (goalRow.title || '').trim();
+    if (!goalTitle) return;
+
+    setLoadingAiForGoalId(goalRow.id);
+
+    // Check if bank already has tailored questions and no API key is set
+    const existingBankItem = sortedGoals.find((b) => b.title.trim() === goalTitle);
+    const fallbackQuestions =
+      existingBankItem?.facilitatingQuestions?.slice(0, 3) ||
+      generateDefaultQuestionsForCustomGoal(goalTitle, goalRow.environment);
+
+    if (!geminiApiKey) {
+      setAiQuestionsMap((prev) => ({
+        ...prev,
+        [goalRow.id]: fallbackQuestions
+      }));
+      setLoadingAiForGoalId(null);
+      return;
+    }
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+      const prompt = `אתה מדריך פדגוגי מומחה לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית" ותח"י.
+המורה הגדירה את המטרה העליונה (HL Goal) הבאה:
+מטרה: "${goalTitle}"
+סביבה / תחום: "${goalRow.environment || 'מרחב הגן / הכיתה'}"
+מידע חופשי על הילד: "${formData.teacherFreeText || ''}"
+
+נסח בדיוק 3 שאלות מנחות (Facilitating Questions) קצרות, מכוונות ומעשיות בעברית שיסייעו למורה לדייק את מילוי השדות של מטרה זו בטבלה:
+- שאלה 1: על התפקוד הנוכחי של הילד והגורמים המאפשרים/המגבילים בסביבה (עבור שדה "פעילות והשתתפות").
+- שאלה 2: על צעדים אופרטיביים הדרגתיים ואמצעי תיווך של הצוות (עבור שדות "יעדים וציוני דרך" ו-"הזדמנויות ואמצעים").
+- שאלה 3: על השותפים לתהליך ואמות המידה להערכה בסוף התקופה.
+
+עבור כל שאלה הצע גם 2-3 תשובות קצרות לדוגמה שהמורה יכולה לבחור בלחיצה.
+החזר תשובה בפורמט JSON בלבד במבנה הבא:
+[
+  { "q": "1. טקסט השאלה הראשונה?", "suggestions": ["תשובה מומלצת א", "תשובה מומלצת ב"] },
+  { "q": "2. טקסט השאלה השנייה?", "suggestions": ["תשובה מומלצת א", "תשובה מומלצת ב"] },
+  { "q": "3. טקסט השאלה השלישית?", "suggestions": ["תשובה מומלצת א", "תשובה מומלצת ב"] }
+]`;
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+
+      if (!res.ok) throw new Error('Gemini API request failed');
+      const data = await res.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAiQuestionsMap((prev) => ({
+            ...prev,
+            [goalRow.id]: parsed.slice(0, 3)
+          }));
+          setLoadingAiForGoalId(null);
+          return;
+        }
+      }
+      setAiQuestionsMap((prev) => ({
+        ...prev,
+        [goalRow.id]: fallbackQuestions
+      }));
+    } catch (e) {
+      setAiQuestionsMap((prev) => ({
+        ...prev,
+        [goalRow.id]: fallbackQuestions
+      }));
+    } finally {
+      setLoadingAiForGoalId(null);
+    }
+  };
+
+  // Apply teacher's answers to the 3 Facilitating Questions to auto-fill/enrich the 6 columns of the goal!
+  const handleApplyFacilitatingAnswers = async (goalRow) => {
+    const answers = aiAnswersMap[goalRow.id] || {};
+    const ans1 = (answers[0] || '').trim();
+    const ans2 = (answers[1] || '').trim();
+    const ans3 = (answers[2] || '').trim();
+    const firstName = (formData.name || 'הילד/ה').trim().split(/\s+/)[0];
+
+    setLoadingAiForGoalId(goalRow.id);
+
+    if (geminiApiKey && (ans1 || ans2 || ans3)) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+        const prompt = `אתה מומחה לכתיבת תכנית עבודה אקולוגית ותח"י בעברית.
+שם הילד/ה: ${firstName}
+סביבה: ${goalRow.environment}
+מטרה (מה אנחנו רוצים שיקרה?): ${goalRow.title}
+
+תשובות המורה ל-3 השאלות המנחות:
+1. תפקוד בסביבה וגורמים מאפשרים/מגבילים: ${ans1 || 'לא צוין'}
+2. צעדים אופרטיביים ואמצעי תיווך: ${ans2 || 'לא צוין'}
+3. שותפים, משך ואמות מידה להערכה: ${ans3 || 'לא צוין'}
+
+נסח באופן מקצועי, בהיר ומותאם לטבלה האקולוגית את השדות הבאים והחזר JSON בלבד:
+{
+  "activityParticipation": "תיאור פעילות והשתתפות בסביבה...",
+  "objectives": "• יעד 1\\n• יעד 2\\n• יעד 3",
+  "opportunities": "• הזדמנות ותיווך 1\\n• הזדמנות ותיווך 2",
+  "partners": "שותפים לתהליך...",
+  "duration": "משך הזמן...",
+  "evaluationCriteria": "אמות מידה להערכה..."
+}`;
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const enriched = JSON.parse(jsonMatch[0]);
+            setFormData((prev) => ({
+              ...prev,
+              goals: (prev.goals || []).map((g) =>
+                g.id === goalRow.id
+                  ? {
+                      ...g,
+                      activityParticipation: enriched.activityParticipation || g.activityParticipation,
+                      objectives: enriched.objectives || g.objectives,
+                      opportunities: enriched.opportunities || g.opportunities,
+                      partners: enriched.partners || g.partners,
+                      duration: enriched.duration || g.duration,
+                      evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria
+                    }
+                  : g
+              )
+            }));
+            setLoadingAiForGoalId(null);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Fallback to local synthesis for facilitating answers', err);
+      }
+    }
+
+    // Smart deterministic synthesis from the 3 answers
+    setFormData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) => {
+        if (g.id !== goalRow.id) return g;
+        return {
+          ...g,
+          activityParticipation:
+            ans1
+              ? `${ans1}${g.activityParticipation ? `\n${g.activityParticipation}` : ''}`
+              : g.activityParticipation || `בסביבת ${g.environment}, ${firstName} מתנסה בפעילות עם תיווך מותאם של הצוות.`,
+          objectives:
+            ans2
+              ? `${g.objectives ? g.objectives + '\n' : ''}• ${ans2}`
+              : g.objectives || `• יתקדם בהדרגה לעבר המטרה: ${g.title}.`,
+          opportunities:
+            ans2
+              ? `${g.opportunities ? g.opportunities + '\n' : ''}• הצוות יתווך ל${firstName} באמצעות: ${ans2}.`
+              : g.opportunities || `• המבוגר יזמין ויתווך ל${firstName} באופן יומיומי ומדורג.`,
+          partners: ans3 ? ans3 : g.partners || 'צוות הגן / הכיתה, סייעת אישית, הורים',
+          duration: g.duration || 'עד סוף השנה',
+          evaluationCriteria:
+            ans3 && ans3.length > 15
+              ? ans3
+              : g.evaluationCriteria || `יישום עצמאי ועקבי של המטרה (${g.title}) בסביבת ${g.environment}.`
+        };
+      })
+    }));
+    setLoadingAiForGoalId(null);
+  };
+
+  // Toggle an operative objective chip from the Matya/Ecological bank
+  const handleAddSuggestedObjective = (goalRowId, objText) => {
+    setFormData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) => {
+        if (g.id !== goalRowId) return g;
+        const current = (g.objectives || '').trim();
+        if (current.includes(objText)) return g;
+        const nextObjectives = current ? `${current}\n• ${objText}` : `• ${objText}`;
+        return { ...g, objectives: nextObjectives };
+      })
+    }));
+  };
+
+  // === SUBMIT BUTTON: Generate Top Summary Table from Teacher's Free Text + All Goals ===
+  const handleSubmitGenerateSummaryTable = async () => {
+    setIsGeneratingSummary(true);
+
+    const freeText = (formData.teacherFreeText || '').trim();
+    const goalsList = (formData.goals || []).filter((g) => g.title && g.title.trim());
+
+    if (geminiApiKey) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+        const goalsSummary = goalsList
+          .map(
+            (g, idx) =>
+              `${idx + 1}. סביבה: ${g.environment} | מטרה: ${g.title} | תפקוד: ${g.activityParticipation || ''} | יעדים: ${g.objectives || ''}`
+          )
+          .join('\n');
+
+        const prompt = `אתה מומחה פדגוגי לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית".
+בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל כלל המטרות שהוגדרו בתכנית, צור את טבלת הסיכום העליונה של המסמך המורכבת משתי עמודות:
+1. "מוקדי כוח: כוחות קיימים" (תכונות חיוביות, חוזקות, יכולות קיימות, מוטיבציה, קשר עם הצוות והסביבה).
+2. "כוחות להעצמה וחיזוק" (התחומים והמיומנויות שדורשים חיזוק והעצמה, נגזרים מהטקסט החופשי ומהמטרות שהוגדרו).
+
+טקסט חופשי של המורה:
+"${freeText}"
+
+המטרות שהוגדרו לתלמיד/ה:
+${goalsSummary}
+
+החזר פלט בפורמט JSON בלבד עם שני שדות טקסט (עם נקודות • מופרדות בשורות חדשות):
+{
+  "strengthsExisting": "• נקודת חוזק 1\\n• נקודת חוזק 2...",
+  "strengthsToEmpower": "• תחום להעצמה 1\\n• תחום להעצמה 2..."
+}`;
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            const updated = {
+              ...formData,
+              strengthsExisting: parsed.strengthsExisting || formData.strengthsExisting,
+              strengthsToEmpower: parsed.strengthsToEmpower || formData.strengthsToEmpower,
+              status: 'מוכן להדפסה',
+              lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+            };
+            setFormData(updated);
+            onSaveStudentPlan(updated);
+            setIsGeneratingSummary(false);
+            setSaveBanner(true);
+            setTimeout(() => setSaveBanner(false), 3000);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Fallback to smart local summary generation', e);
+      }
+    }
+
+    // Smart Heuristic Extraction from Free Text + All Defined Goals
+    const existingLines = [];
+    const empowerLines = [];
+
+    if (freeText) {
+      const sentences = freeText
+        .split(/[.,;\n]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      sentences.forEach((s) => {
+        if (
+          s.includes('זקוק') ||
+          s.includes('מתקשה') ||
+          s.includes('קושי') ||
+          s.includes('חיזוק') ||
+          s.includes('נוקשות') ||
+          s.includes('גמילה') ||
+          s.includes('ויסות')
+        ) {
+          const cleaned = s
+            .replace(/^זקוק לחיזוק ב/, '')
+            .replace(/^מתקשה ב/, '')
+            .trim();
+          if (cleaned) empowerLines.push(`• ${cleaned}`);
+        } else {
+          existingLines.push(`• ${s}`);
+        }
+      });
+    }
+
+    // Derive empowerment points directly from all defined goals & environments
+    goalsList.forEach((g) => {
+      const envAndGoal = `${g.environment ? g.environment + ' – ' : ''}${g.title}`;
+      if (!empowerLines.some((line) => line.includes(g.title.slice(0, 12)))) {
+        empowerLines.push(`• ${envAndGoal}`);
+      }
+    });
+
+    const finalExisting =
+      existingLines.length > 0
+        ? existingLines.join('\n')
+        : formData.strengthsExisting ||
+          '• ילד/ה נעים/ה, חברותי/ת וסקרן/ית\n• יכולת ריכוז טובה\n• מפנים/ה כללים וגבולות\n• יצר/ה קשר טוב עם הצוות';
+
+    const finalEmpower =
+      empowerLines.length > 0
+        ? empowerLines.join('\n')
+        : formData.strengthsToEmpower ||
+          '• חיזוק מיומנויות בהתאם למטרות שהוגדרו בתכנית';
+
+    const updated = {
+      ...formData,
+      strengthsExisting: finalExisting,
+      strengthsToEmpower: finalEmpower,
+      status: 'מוכן להדפסה',
+      lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setFormData(updated);
+    onSaveStudentPlan(updated);
+    setIsGeneratingSummary(false);
+    setSaveBanner(true);
+    setTimeout(() => setSaveBanner(false), 3000);
+  };
+
+  // Save Progress explicitly
+  const handleSaveProgress = () => {
+    const updated = {
+      ...formData,
+      lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+    };
+    setFormData(updated);
+    onSaveStudentPlan(updated);
+    // Also record usage for all defined goals
+    (updated.goals || []).forEach((g) => {
+      if (g.title && g.title.trim()) {
+        onUseOrAddGoalToBank(g);
+      }
+    });
+    setSaveBanner(true);
+    setTimeout(() => setSaveBanner(false), 2500);
+  };
+
+  // === Build Official Document HTML (with or without Privacy Redaction) ===
+  const getDisplayStudentName = () => {
+    if (hideStudentDetailsOnPrint) {
+      return toHebrewAcronym(formData.name);
+    }
+    return formData.name || '__________';
+  };
+
+  const getDisplayMaskedField = (val) => {
+    if (hideStudentDetailsOnPrint) {
+      return maskSensitiveValue(val);
+    }
+    return val || '__________';
+  };
+
+  const getRedactedText = (text) => {
+    return redactStudentNameInText(text || '', formData.name, hideStudentDetailsOnPrint);
+  };
+
+  // Print the official Ecological Work Plan document
+  const handlePrintDocument = () => {
+    // Save progress first
+    handleSaveProgress();
+
+    const displayName = getDisplayStudentName();
+    const displayId = getDisplayMaskedField(formData.idNumber);
+    const displayBirthDate = getDisplayMaskedField(formData.birthDate);
+    const displayFramework = hideStudentDetailsOnPrint
+      ? maskSensitiveValue(formData.educationalFramework)
+      : formData.educationalFramework || '__________';
+    const displayAddress = getDisplayMaskedField(formData.address);
+    const displayPhone = getDisplayMaskedField(formData.phone);
+
+    const goalsRowsHtml = (formData.goals || [])
+      .map((g) => {
+        const activityText = getRedactedText(g.activityParticipation);
+        const titleText = getRedactedText(g.title);
+        const objectivesText = getRedactedText(g.objectives);
+        const opportunitiesText = getRedactedText(g.opportunities);
+        const partnersText = getRedactedText(g.partners);
+        const durationText = getRedactedText(g.duration);
+        const evaluationText = getRedactedText(g.evaluationCriteria);
+
+        return `
+          <table class="eco-table goal-block-table">
+            <tbody>
+              <tr class="env-header-row">
+                <td colspan="6">
+                  <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
+                  <div style="margin-top: 4px;">
+                    <strong>פעילות והשתתפות:</strong>
+                    <span class="sub-instruction">תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות (התייחסות לגורמים המאפשרים והמגבילים בסביבה):</span>
+                  </div>
+                  <div style="margin-top: 6px; white-space: pre-line;">${activityText || ''}</div>
+                </td>
+              </tr>
+              <tr class="columns-header-row">
+                <th style="width: 18%;">מטרה<br/><span class="th-sub">מה אנחנו רוצים שיקרה?</span></th>
+                <th style="width: 22%;">יעדים, ציוני דרך<br/><span class="th-sub">פירוט צעדים אופרטיביים</span></th>
+                <th style="width: 24%;">הזדמנויות, אמצעים<br/><span class="th-sub">ואיך נגרום לזה לקרות?</span></th>
+                <th style="width: 13%;">שותפים<br/><span class="th-sub">מי ובאיזה אופן?</span></th>
+                <th style="width: 9%;">משך</th>
+                <th style="width: 14%;">אמות מידה להערכה</th>
+              </tr>
+              <tr class="columns-content-row">
+                <td style="font-weight: 600;">${titleText || ''}</td>
+                <td>${objectivesText || ''}</td>
+                <td>${opportunitiesText || ''}</td>
+                <td>${partnersText || ''}</td>
+                <td>${durationText || ''}</td>
+                <td>${evaluationText || ''}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      })
+      .join('');
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="he" dir="rtl">
+        <head>
+          <meta charset="utf-8" />
+          <title>תכנית_עבודה_אקולוגית_${displayName}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+            @page {
+              size: A4 landscape;
+              margin: 12mm;
+            }
+            body {
+              font-family: 'Rubik', Arial, sans-serif;
+              direction: rtl;
+              text-align: right;
+              color: #0f172a;
+              margin: 0;
+              padding: 0;
+              font-size: 12.5px;
+              line-height: 1.5;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .doc-top-meta {
+              display: flex;
+              justify-content: space-between;
+              font-size: 13px;
+              margin-bottom: 8px;
+            }
+            .doc-main-title {
+              text-align: center;
+              font-size: 20px;
+              font-weight: 700;
+              text-decoration: underline;
+              margin: 8px 0 14px 0;
+            }
+            .student-details-bar {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 22px;
+              padding: 10px 14px;
+              border: 1.5px solid #1e293b;
+              background: #f8fafc;
+              margin-bottom: 14px;
+              font-size: 13px;
+            }
+            .eco-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 16px;
+              page-break-inside: avoid;
+            }
+            .eco-table th, .eco-table td {
+              border: 1.5px solid #1e293b;
+              padding: 8px 10px;
+              vertical-align: top;
+              text-align: right;
+              white-space: pre-line;
+            }
+            .summary-table th {
+              background: #e2e8f0;
+              font-size: 14px;
+              font-weight: 700;
+              text-align: center;
+            }
+            .env-header-row td {
+              background: #f1f5f9;
+            }
+            .sub-instruction {
+              font-size: 11px;
+              color: #334155;
+              font-weight: normal;
+            }
+            .columns-header-row th {
+              background: #e0f2fe;
+              font-weight: 700;
+              font-size: 12.5px;
+              text-align: center;
+            }
+            .th-sub {
+              font-weight: 400;
+              font-size: 11px;
+              display: block;
+            }
+            .doc-footer-section {
+              margin-top: 16px;
+              page-break-inside: avoid;
+            }
+            .recommendations-box {
+              border: 1.5px solid #1e293b;
+              padding: 10px 12px;
+              min-height: 48px;
+              margin-bottom: 20px;
+              white-space: pre-line;
+            }
+            .signatures-row {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 24px;
+              font-weight: 600;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="doc-top-meta">
+            <div><strong>תאריך:</strong> ${formData.date || '__________'}</div>
+            <div><strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}</div>
+          </div>
+
+          <h1 class="doc-main-title">תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית</h1>
+
+          <div class="student-details-bar">
+            <div><strong>שם הילד/ה:</strong> ${displayName}</div>
+            <div><strong>ת.ז:</strong> ${displayId}</div>
+            <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
+            <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
+            ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
+            ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
+          </div>
+
+          <!-- Top Summary Table: Strengths -->
+          <table class="eco-table summary-table">
+            <thead>
+              <tr>
+                <th style="width: 50%;">מוקדי כוח: כוחות קיימים</th>
+                <th style="width: 50%;">כוחות להעצמה וחיזוק</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${getRedactedText(formData.strengthsExisting)}</td>
+                <td>${getRedactedText(formData.strengthsToEmpower)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Goal Blocks -->
+          ${goalsRowsHtml}
+
+          <!-- Footer: Recommendations & Signatures -->
+          <div class="doc-footer-section">
+            <div class="recommendations-box">
+              <strong>המלצות:</strong><br/>
+              ${getRedactedText(formData.recommendations)}
+            </div>
+            <div class="signatures-row">
+              <div>חתימת צוות חינוכי: _________________________</div>
+              <div>חתימת הורים: _________________________</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 350);
+  };
+
+  return (
+    <div className="workplan-form-container" dir="rtl">
+      {/* Sticky Top Action & Print Privacy Toolbar */}
+      <div className="sticky-action-bar">
+        <div className="action-bar-right">
+          <button type="button" className="btn-save-progress" onClick={handleSaveProgress}>
+            <Save size={17} />
+            <span>שמור התקדמות</span>
+          </button>
+
+          {saveBanner && (
+            <span className="save-toast-badge">
+              <Check size={14} />
+              <span>נשמר בהצלחה!</span>
+            </span>
+          )}
+
+          {formData.lastSavedAt && !saveBanner && (
+            <span className="last-saved-hint">שמירה אחרונה: {formData.lastSavedAt}</span>
+          )}
+        </div>
+
+        <div className="action-bar-left">
+          {/* Privacy Redaction Checkbox (Default Checked) */}
+          <label
+            className={`privacy-checkbox-label ${hideStudentDetailsOnPrint ? 'checked' : 'unchecked'}`}
+            title="כאשר מסומן, בהדפסה יוצגו ראשי תיבות במקום שם הילד ויושחרו ת.ז, ת.ל, כתובת וטלפון"
+          >
+            <input
+              type="checkbox"
+              checked={hideStudentDetailsOnPrint}
+              onChange={(e) => setHideStudentDetailsOnPrint(e.target.checked)}
+            />
+            {hideStudentDetailsOnPrint ? <EyeOff size={16} /> : <Eye size={16} />}
+            <span>
+              הסתר פרטים מזהים בהדפסה (ראשי תיבות: <strong>{toHebrewAcronym(formData.name)}</strong> והשחרת פרטים)
+            </span>
+          </label>
+
+          <button
+            type="button"
+            className="btn-preview-doc"
+            onClick={() => setShowFullDocPreview(!showFullDocPreview)}
+          >
+            <FileText size={16} />
+            <span>{showFullDocPreview ? 'הסתר תצוגת טבלה מלאה' : 'תצוגת מסמך מלאה'}</span>
+          </button>
+
+          <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
+            <Printer size={17} />
+            <span>הדפס תכנית עבודה</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Document Title Banner */}
+      <div className="document-title-card">
+        <div className="doc-title-top-row">
+          <div className="inline-meta-field">
+            <label>תאריך:</label>
+            <input
+              type="text"
+              value={formData.date || ''}
+              onChange={(e) => handleFieldChange('date', e.target.value)}
+              placeholder="למשל: 01/10/2026"
+            />
+          </div>
+          <div className="inline-meta-field">
+            <label>שנת לימודים:</label>
+            <input
+              type="text"
+              value={formData.schoolYear || ''}
+              onChange={(e) => handleFieldChange('schoolYear', e.target.value)}
+              placeholder='למשל: תשפ"ז'
+            />
+          </div>
+        </div>
+        <h2 className="main-ecological-heading">
+          תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית
+        </h2>
+      </div>
+
+      {/* Section 1: Student Personal Details */}
+      <section className="form-section-card">
+        <div className="section-header-line">
+          <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
+          {hideStudentDetailsOnPrint && (
+            <span className="privacy-active-pill">
+              🔒 מצב חיסיון בהדפסה פעיל: יודפס כ-"{toHebrewAcronym(formData.name)}" ופרטים אישיים יושחרו (████████)
+            </span>
+          )}
+        </div>
+
+        <div className="personal-details-grid">
+          <div className="form-field">
+            <label>שם הילד/ה:</label>
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+              placeholder="שם פרטי ושם משפחה"
+            />
+          </div>
+
+          <div className="form-field">
+            <label>ת.ז:</label>
+            <input
+              type="text"
+              value={formData.idNumber || ''}
+              onChange={(e) => handleFieldChange('idNumber', e.target.value)}
+              placeholder="מספר תעודת זהות"
+            />
+          </div>
+
+          <div className="form-field">
+            <label>ת.ל (תאריך לידה):</label>
+            <input
+              type="text"
+              value={formData.birthDate || ''}
+              onChange={(e) => handleFieldChange('birthDate', e.target.value)}
+              placeholder="DD/MM/YYYY"
+            />
+          </div>
+
+          <div className="form-field">
+            <label>מסגרת חינוכית:</label>
+            <input
+              type="text"
+              value={formData.educationalFramework || ''}
+              onChange={(e) => handleFieldChange('educationalFramework', e.target.value)}
+              placeholder="שם הגן / בית הספר והכיתה"
+            />
+          </div>
+
+          <div className="form-field">
+            <label>כתובת מגורים:</label>
+            <input
+              type="text"
+              value={formData.address || ''}
+              onChange={(e) => handleFieldChange('address', e.target.value)}
+              placeholder="רחוב, מספר, עיר"
+            />
+          </div>
+
+          <div className="form-field">
+            <label>טלפון הורים / איש קשר:</label>
+            <input
+              type="text"
+              value={formData.phone || ''}
+              onChange={(e) => handleFieldChange('phone', e.target.value)}
+              placeholder="050-0000000"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Section 2: Teacher Free Text + Submit Button + Top Summary Table */}
+      <section className="form-section-card highlight-summary-section">
+        <div className="section-header-line">
+          <h3>2. תיאור חופשי של המורה וטבלת מוקדי כוח מסכמת (בראש המסמך)</h3>
+        </div>
+
+        <div className="free-text-area-box">
+          <label className="bold-label">
+            ✍️ תיאור חופשי של הילד/ה במילים שלך (אופי, תחומי עניין, חוזקות, קשיים ותפקוד יומיומי):
+          </label>
+          <textarea
+            rows={3}
+            value={formData.teacherFreeText || ''}
+            onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
+            placeholder="כתבי כאן באופן חופשי במילים שלך על הילד/ה... למשל: ילד נעים, חברותי וסקרן, יכולת ריכוז טובה, וורבלי ומלא אנרגיות, זקוק לחיזוק באינטראקציות חברתיות ובוויסות רגשי..."
+          />
+
+          <div className="submit-summary-action-row">
+            <span className="submit-helper-text">
+              לחיצה על כפתור ה-Submit תשלב את הטקסט החופשי שלך יחד עם כל המטרות שהגדרת למטה ותייצר את טבלת הסיכום בראש המסמך:
+            </span>
+            <button
+              type="button"
+              className="btn-submit-generate-summary"
+              onClick={handleSubmitGenerateSummaryTable}
+              disabled={isGeneratingSummary}
+            >
+              <Sparkles size={17} />
+              <span>
+                {isGeneratingSummary
+                  ? 'מנתח מטרות וטקסט חופשי...'
+                  : 'Submit – צור/עדכן טבלת מוקדי כוח וסיכום בראש המסמך'}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Top Summary Table (Editable Two-Column Ecological Strengths Table) */}
+        <div className="top-summary-table-wrapper">
+          <table className="interactive-summary-table">
+            <thead>
+              <tr>
+                <th>💪 מוקדי כוח: כוחות קיימים</th>
+                <th>🌱 כוחות להעצמה וחיזוק</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <textarea
+                    rows={5}
+                    value={formData.strengthsExisting || ''}
+                    onChange={(e) => handleFieldChange('strengthsExisting', e.target.value)}
+                    placeholder="כוחות קיימים של הילד/ה (מתמלא אוטומטית בלחיצה על Submit וניתן לעריכה חופשית)..."
+                  />
+                </td>
+                <td>
+                  <textarea
+                    rows={5}
+                    value={formData.strengthsToEmpower || ''}
+                    onChange={(e) => handleFieldChange('strengthsToEmpower', e.target.value)}
+                    placeholder="כוחות להעצמה וחיזוק (מתמלא אוטומטית מתוך הטקסט החופשי וכל המטרות שהוגדרו)..."
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Optional Live Full Document Table Preview (Right at Top when toggled) */}
+      {showFullDocPreview && (
+        <section className="form-section-card live-print-preview-card">
+          <div className="section-header-line">
+            <h3>📄 תצוגה מקדימה של המסמך המלא להדפסה ({hideStudentDetailsOnPrint ? 'מצב חסוי – ראשי תיבות והשחרה' : 'מצב גלוי מלא'})</h3>
+            <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
+              <Printer size={16} />
+              <span>שלח להדפסה כעת</span>
+            </button>
+          </div>
+
+          <div className="preview-paper-sheet">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+              <span><strong>תאריך:</strong> {formData.date}</span>
+              <span><strong>שנת לימודים:</strong> {formData.schoolYear}</span>
+            </div>
+            <h4 style={{ textAlign: 'center', textDecoration: 'underline', margin: '6px 0 12px 0', fontSize: '17px' }}>
+              תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית
+            </h4>
+            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#f8fafc', border: '1px solid #1e293b', marginBottom: '12px', fontSize: '13px' }}>
+              <span><strong>שם הילד/ה:</strong> {getDisplayStudentName()}</span>
+              <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
+              <span><strong>ת.ל:</strong> {getDisplayMaskedField(formData.birthDate)}</span>
+              <span><strong>מסגרת חינוכית:</strong> {hideStudentDetailsOnPrint ? maskSensitiveValue(formData.educationalFramework) : formData.educationalFramework}</span>
+              {formData.address && <span><strong>כתובת:</strong> {getDisplayMaskedField(formData.address)}</span>}
+              {formData.phone && <span><strong>טלפון:</strong> {getDisplayMaskedField(formData.phone)}</span>}
+            </div>
+
+            <table className="preview-doc-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '50%' }}>מוקדי כוח: כוחות קיימים</th>
+                  <th style={{ width: '50%' }}>כוחות להעצמה וחיזוק</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{getRedactedText(formData.strengthsExisting)}</td>
+                  <td>{getRedactedText(formData.strengthsToEmpower)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            {(formData.goals || []).map((g) => (
+              <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
+                <tbody>
+                  <tr style={{ background: '#f1f5f9' }}>
+                    <td colSpan={6}>
+                      <strong>סביבה: {g.environment}</strong> | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
+                    </td>
+                  </tr>
+                  <tr style={{ background: '#e0f2fe', fontWeight: 'bold' }}>
+                    <td>מטרה (מה אנחנו רוצים שיקרה?)</td>
+                    <td>יעדים, ציוני דרך (צעדים אופרטיביים)</td>
+                    <td>הזדמנויות, אמצעים ואיך נגרום לזה לקרות?</td>
+                    <td>שותפים (מי ובאיזה אופן?)</td>
+                    <td>משך</td>
+                    <td>אמות מידה להערכה</td>
+                  </tr>
+                  <tr>
+                    <td><strong>{getRedactedText(g.title)}</strong></td>
+                    <td>{getRedactedText(g.objectives)}</td>
+                    <td>{getRedactedText(g.opportunities)}</td>
+                    <td>{getRedactedText(g.partners)}</td>
+                    <td>{getRedactedText(g.duration)}</td>
+                    <td>{getRedactedText(g.evaluationCriteria)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Section 3: Ecological Goals & Environments Interactive Builder */}
+      <section className="form-section-card">
+        <div className="section-header-line">
+          <div>
+            <h3>3. הגדרת מטרות ויעדים לפי סביבות פעילות ותחומי תפקוד</h3>
+            <p className="section-sub-desc">
+              בחרי מטרה מתוך מאגר המטרות הדינמי (המטרות הנפוצות ביותר מופיעות ראשונות) או הקלידי מטרה חדשה שתישמר אוטומטית לשימוש עתידי.
+            </p>
+          </div>
+          <button type="button" className="btn-add-goal-block" onClick={handleAddGoalRow}>
+            <Plus size={18} />
+            <span>הוסף מטרה / סביבה חדשה</span>
+          </button>
+        </div>
+
+        <div className="goals-blocks-list">
+          {(formData.goals || []).map((goalRow, index) => {
+            const isPickerOpen = openPickerGoalId === goalRow.id;
+            const isAiOpen = activeAiGoalId === goalRow.id;
+            const matchedBankItem = sortedGoals.find(
+              (b) => b.title.trim() === (goalRow.title || '').trim()
+            );
+            const currentQuestions =
+              aiQuestionsMap[goalRow.id] ||
+              matchedBankItem?.facilitatingQuestions?.slice(0, 3) ||
+              generateDefaultQuestionsForCustomGoal(goalRow.title, goalRow.environment);
+
+            // Filter goals in picker by search & environment, preserving popularity sort
+            const filteredBankGoals = sortedGoals.filter((item) => {
+              const matchesEnv =
+                pickerEnvFilter === 'הכל' || item.environment === pickerEnvFilter;
+              const q = (pickerSearch || '').trim();
+              const matchesQuery =
+                !q ||
+                item.title.includes(q) ||
+                (item.environment && item.environment.includes(q)) ||
+                (item.suggestedObjectives || []).some((o) => o.includes(q));
+              return matchesEnv && matchesQuery;
+            });
+
+            return (
+              <div key={goalRow.id} className="ecological-goal-card">
+                {/* Goal Block Top Bar: Environment + Delete */}
+                <div className="goal-card-top-bar">
+                  <div className="goal-index-And-env">
+                    <span className="goal-number-badge">מטרה #{index + 1}</span>
+                    <label style={{ fontWeight: 600, fontSize: '13px' }}>סביבה / תחום:</label>
+                    <select
+                      value={
+                        ENVIRONMENTS_LIST.includes(goalRow.environment)
+                          ? goalRow.environment
+                          : '__custom__'
+                      }
+                      onChange={(e) => {
+                        if (e.target.value === '__custom__') {
+                          handleGoalChange(goalRow.id, 'environment', '');
+                        } else {
+                          handleGoalChange(goalRow.id, 'environment', e.target.value);
+                        }
+                      }}
+                      className="env-select-input"
+                    >
+                      {ENVIRONMENTS_LIST.map((env) => (
+                        <option key={env} value={env}>
+                          {env}
+                        </option>
+                      ))}
+                      <option value="__custom__">אחר (הקלדה חופשית)...</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={goalRow.environment || ''}
+                      onChange={(e) => handleGoalChange(goalRow.id, 'environment', e.target.value)}
+                      placeholder="הקלד סביבה (למשל: שירותים, סדנא, מרחב הגן)..."
+                      className="env-text-input"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-remove-goal"
+                    onClick={() => handleDeleteGoalRow(goalRow.id)}
+                    title="מחק בלוק מטרה זה"
+                  >
+                    <Trash2 size={16} />
+                    <span>הסר מטרה</span>
+                  </button>
+                </div>
+
+                {/* Row 1 (Colspan 6 in Doc): Activity & Participation */}
+                <div className="activity-participation-box">
+                  <label>
+                    <strong>פעילות והשתתפות בסביבה ({goalRow.environment || 'כללי'}): </strong>
+                    <span>
+                      תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות (התייחסי לגורמים המאפשרים והמגבילים בסביבה):
+                    </span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={goalRow.activityParticipation || ''}
+                    onChange={(e) =>
+                      handleGoalChange(goalRow.id, 'activityParticipation', e.target.value)
+                    }
+                    placeholder="תארי כיצד הילד/ה מתפקד/ת בסביבה זו כיום, מה מאפשר ומה מגביל..."
+                  />
+                </div>
+
+                {/* HL Goal Selector / Autocomplete Bar */}
+                <div className="hl-goal-selector-section">
+                  <div className="hl-goal-header-row">
+                    <label className="hl-goal-label">
+                      🎯 מטרה עליונה (HL Goal) – מה אנחנו רוצים שיקרה?
+                    </label>
+                    <div className="hl-goal-actions">
+                      <button
+                        type="button"
+                        className="btn-open-bank"
+                        onClick={() => {
+                          setOpenPickerGoalId(isPickerOpen ? null : goalRow.id);
+                          setPickerSearch('');
+                        }}
+                      >
+                        <BookOpen size={15} />
+                        <span>
+                          {isPickerOpen
+                            ? 'סגור מאגר מטרות'
+                            : `בחר ממאגר המטרות הדינמי (${sortedGoals.length} מטרות לפי פופולריות)`}
+                        </span>
+                        {isPickerOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`btn-toggle-ai-questions ${isAiOpen ? 'active' : ''}`}
+                        onClick={() => {
+                          if (!isAiOpen) {
+                            setActiveAiGoalId(goalRow.id);
+                            if (!aiQuestionsMap[goalRow.id]) {
+                              handleGenerateAiQuestionsForGoal(goalRow);
+                            }
+                          } else {
+                            setActiveAiGoalId(null);
+                          }
+                        }}
+                      >
+                        <HelpCircle size={15} />
+                        <span>3 שאלות מנחות AI למילוי המטרה</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Autocomplete / Free-define Input for HL Goal */}
+                  <div className="hl-goal-input-wrapper">
+                    <input
+                      type="text"
+                      className="hl-goal-main-input"
+                      value={goalRow.title || ''}
+                      onFocus={() => {
+                        if (!goalRow.title) {
+                          setOpenPickerGoalId(goalRow.id);
+                        }
+                      }}
+                      onChange={(e) => {
+                        handleGoalChange(goalRow.id, 'title', e.target.value);
+                        setPickerSearch(e.target.value);
+                        if (!isPickerOpen) setOpenPickerGoalId(goalRow.id);
+                      }}
+                      placeholder="הקלידי מטרה חדשה או בחרי מתוך ההשלמה האוטומטית של המטרות הנפוצות..."
+                    />
+                    {goalRow.title && !matchedBankItem && (
+                      <button
+                        type="button"
+                        className="btn-save-new-goal-to-bank"
+                        onClick={() => handleConfirmCustomGoal(goalRow)}
+                        title="שמור מטרה חדשה זו במאגר המטרות לשימוש עתידי וקבל 3 שאלות מנחות"
+                      >
+                        <Plus size={15} />
+                        <span>שמור מטרה חדשה במאגר + הפעל שאלות מנחות</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Light UX Dropdown: Dynamic Usage-Sorted Goal Bank */}
+                  {isPickerOpen && (
+                    <div className="goal-bank-dropdown-panel">
+                      <div className="goal-bank-dropdown-header">
+                        <div className="bank-search-box">
+                          <Search size={15} />
+                          <input
+                            type="text"
+                            placeholder="סינון מהיר של מטרות או יעדים..."
+                            value={pickerSearch}
+                            onChange={(e) => setPickerSearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="bank-env-pills">
+                          <button
+                            type="button"
+                            className={`env-pill ${pickerEnvFilter === 'הכל' ? 'active' : ''}`}
+                            onClick={() => setPickerEnvFilter('הכל')}
+                          >
+                            כל המטרות ({sortedGoals.length})
+                          </button>
+                          {ENVIRONMENTS_LIST.slice(0, 8).map((env) => (
+                            <button
+                              key={env}
+                              type="button"
+                              className={`env-pill ${pickerEnvFilter === env ? 'active' : ''}`}
+                              onClick={() => setPickerEnvFilter(env)}
+                            >
+                              {env}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="goal-bank-items-scroll">
+                        {filteredBankGoals.map((bankItem, rankIdx) => (
+                          <div key={bankItem.id} className="goal-bank-option-row">
+                            <div
+                              className="goal-bank-option-main"
+                              onClick={() => handleSelectGoalFromBank(goalRow.id, bankItem, true)}
+                            >
+                              <div className="goal-option-title-line">
+                                <span className="popularity-rank-badge">
+                                  #{rankIdx + 1}
+                                </span>
+                                <strong>{bankItem.title}</strong>
+                                <span className="env-tag-chip">{bankItem.environment}</span>
+                                <span className="usage-count-badge">
+                                  <TrendingUp size={12} />
+                                  <span>נבחר {bankItem.usageCount || 1} פעמים</span>
+                                </span>
+                              </div>
+                              {bankItem.suggestedObjectives && bankItem.suggestedObjectives.length > 0 && (
+                                <div className="goal-option-sub-preview">
+                                  יעדים במאגר: {bankItem.suggestedObjectives.slice(0, 2).join(' | ')}
+                                </div>
+                              )}
+                            </div>
+                            <div className="goal-bank-option-buttons">
+                              <button
+                                type="button"
+                                className="btn-use-full-goal"
+                                onClick={() => handleSelectGoalFromBank(goalRow.id, bankItem, true)}
+                              >
+                                בחר ומלא תבנית מלאה
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-use-title-only"
+                                onClick={() => handleSelectGoalFromBank(goalRow.id, bankItem, false)}
+                              >
+                                רק כותרת מטרה
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+
+                        {pickerSearch.trim() &&
+                          !sortedGoals.some((b) => b.title.trim() === pickerSearch.trim()) && (
+                            <div className="create-custom-goal-from-search">
+                              <span>לא מצאת את המטרה המדויקת?</span>
+                              <button
+                                type="button"
+                                className="btn-create-from-query"
+                                onClick={() => {
+                                  handleGoalChange(goalRow.id, 'title', pickerSearch.trim());
+                                  handleConfirmCustomGoal({
+                                    ...goalRow,
+                                    title: pickerSearch.trim()
+                                  });
+                                }}
+                              >
+                                ➕ הגדר כמטרה חדשה במאגר: "{pickerSearch.trim()}"
+                              </button>
+                            </div>
+                          )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Facilitating Questions Panel (Up to 3 Guiding Questions) */}
+                  {isAiOpen && (
+                    <div className="ai-facilitating-panel">
+                      <div className="ai-panel-header">
+                        <div className="ai-panel-title">
+                          <Wand2 size={18} />
+                          <strong>
+                            עוזר AI פדגוגי: 3 שאלות מנחות לדיוק ומילוי המטרה "{goalRow.title || 'מטרה חדשה'}"
+                          </strong>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="btn-refresh-ai-q"
+                            onClick={() => handleGenerateAiQuestionsForGoal(goalRow)}
+                            disabled={loadingAiForGoalId === goalRow.id}
+                          >
+                            <Sparkles size={13} />
+                            <span>
+                              {loadingAiForGoalId === goalRow.id
+                                ? 'מייצר שאלות ב-AI...'
+                                : 'חולל שאלות מנחות חדשות ב-AI'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-close-ai-q"
+                            onClick={() => setActiveAiGoalId(null)}
+                          >
+                            סגור ✕
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="ai-questions-grid">
+                        {currentQuestions.slice(0, 3).map((qObj, qIdx) => {
+                          const currentVal = (aiAnswersMap[goalRow.id] || {})[qIdx] || '';
+                          return (
+                            <div key={qIdx} className="ai-question-box">
+                              <label className="ai-q-text">{qObj.q}</label>
+                              {qObj.suggestions && qObj.suggestions.length > 0 && (
+                                <div className="ai-suggestion-chips">
+                                  {qObj.suggestions.map((sug, sIdx) => (
+                                    <button
+                                      key={sIdx}
+                                      type="button"
+                                      className="ai-sug-chip"
+                                      onClick={() => {
+                                        const prevAns = aiAnswersMap[goalRow.id] || {};
+                                        const nextVal = prevAns[qIdx]
+                                          ? `${prevAns[qIdx]}, ${sug}`
+                                          : sug;
+                                        setAiAnswersMap({
+                                          ...aiAnswersMap,
+                                          [goalRow.id]: { ...prevAns, [qIdx]: nextVal }
+                                        });
+                                      }}
+                                    >
+                                      + {sug}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              <input
+                                type="text"
+                                placeholder="הקלידי תשובה קצרה או לחצי על ההצעות למעלה..."
+                                value={currentVal}
+                                onChange={(e) => {
+                                  const prevAns = aiAnswersMap[goalRow.id] || {};
+                                  setAiAnswersMap({
+                                    ...aiAnswersMap,
+                                    [goalRow.id]: { ...prevAns, [qIdx]: e.target.value }
+                                  });
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="ai-panel-footer">
+                        <button
+                          type="button"
+                          className="btn-apply-ai-answers"
+                          onClick={() => handleApplyFacilitatingAnswers(goalRow)}
+                          disabled={loadingAiForGoalId === goalRow.id}
+                        >
+                          <Sparkles size={15} />
+                          <span>
+                            {loadingAiForGoalId === goalRow.id
+                              ? 'מעבד ומנסח את עמודות הטבלה...'
+                              : '✨ שלב את התשובות ומלא אוטומטית את 6 עמודות המטרה בטבלה'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 6-Column Ecological Matrix for this Goal */}
+                <div className="ecological-6col-table-wrapper">
+                  <table className="ecological-6col-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '18%' }}>
+                          מטרה
+                          <span className="col-sub">מה אנחנו רוצים שיקרה?</span>
+                        </th>
+                        <th style={{ width: '23%' }}>
+                          יעדים, ציוני דרך
+                          <span className="col-sub">פירוט צעדים אופרטיביים</span>
+                        </th>
+                        <th style={{ width: '23%' }}>
+                          הזדמנויות, אמצעים
+                          <span className="col-sub">ואיך נגרום לזה לקרות?</span>
+                        </th>
+                        <th style={{ width: '13%' }}>
+                          שותפים
+                          <span className="col-sub">מי ובאיזה אופן?</span>
+                        </th>
+                        <th style={{ width: '9%' }}>משך</th>
+                        <th style={{ width: '14%' }}>אמות מידה להערכה</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <textarea
+                            rows={5}
+                            value={goalRow.title || ''}
+                            onChange={(e) =>
+                              handleGoalChange(goalRow.id, 'title', e.target.value)
+                            }
+                            placeholder="המטרה העליונה..."
+                            style={{ fontWeight: 600 }}
+                          />
+                        </td>
+                        <td>
+                          <textarea
+                            rows={5}
+                            value={goalRow.objectives || ''}
+                            onChange={(e) =>
+                              handleGoalChange(goalRow.id, 'objectives', e.target.value)
+                            }
+                            placeholder="• יעד אופרטיבי 1&#10;• יעד אופרטיבי 2..."
+                          />
+                          {matchedBankItem?.suggestedObjectives?.length > 0 && (
+                            <div className="quick-objectives-bank">
+                              <small>הוסף יעד מהמאגר בלחיצה:</small>
+                              <div className="quick-obj-chips">
+                                {matchedBankItem.suggestedObjectives.map((obj, oIdx) => (
+                                  <button
+                                    key={oIdx}
+                                    type="button"
+                                    className="chip-add-obj"
+                                    onClick={() => handleAddSuggestedObjective(goalRow.id, obj)}
+                                  >
+                                    + {obj}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <textarea
+                            rows={5}
+                            value={goalRow.opportunities || ''}
+                            onChange={(e) =>
+                              handleGoalChange(goalRow.id, 'opportunities', e.target.value)
+                            }
+                            placeholder="אמצעים, תיווך והזדמנויות בסדר היום..."
+                          />
+                        </td>
+                        <td>
+                          <textarea
+                            rows={5}
+                            value={goalRow.partners || ''}
+                            onChange={(e) =>
+                              handleGoalChange(goalRow.id, 'partners', e.target.value)
+                            }
+                            placeholder="צוות הגן, סייעת, מרפאה בעיסוק..."
+                          />
+                        </td>
+                        <td>
+                          <textarea
+                            rows={5}
+                            value={goalRow.duration || ''}
+                            onChange={(e) =>
+                              handleGoalChange(goalRow.id, 'duration', e.target.value)
+                            }
+                            placeholder="כשלושה חודשים / עד סוף השנה"
+                          />
+                        </td>
+                        <td>
+                          <textarea
+                            rows={5}
+                            value={goalRow.evaluationCriteria || ''}
+                            onChange={(e) =>
+                              handleGoalChange(goalRow.id, 'evaluationCriteria', e.target.value)
+                            }
+                            placeholder="כיצד נדע שהמטרה הושגה?"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: '14px', textAlign: 'center' }}>
+          <button type="button" className="btn-add-goal-block-large" onClick={handleAddGoalRow}>
+            <Plus size={18} />
+            <span>הוסף מטרה / סביבה נוספת לתכנית העבודה</span>
+          </button>
+        </div>
+      </section>
+
+      {/* Section 4: Recommendations & Bottom Actions */}
+      <section className="form-section-card">
+        <div className="section-header-line">
+          <h3>4. המלצות וחתימות</h3>
+        </div>
+        <div className="form-field">
+          <label>המלצות להמשך (לצוות החינוכי ולהורים):</label>
+          <textarea
+            rows={3}
+            value={formData.recommendations || ''}
+            onChange={(e) => handleFieldChange('recommendations', e.target.value)}
+            placeholder="המלצות יישומיות להמשך הליווי והעבודה המשותפת..."
+          />
+        </div>
+
+        <div className="bottom-signatures-preview">
+          <div>חתימת הצוות החינוכי: _________________________</div>
+          <div>חתימת הורים: _________________________</div>
+        </div>
+
+        <div className="bottom-final-actions">
+          <button type="button" className="btn-save-progress" onClick={handleSaveProgress}>
+            <Save size={18} />
+            <span>שמור התקדמות לעריכה עתידית</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-submit-generate-summary"
+            onClick={handleSubmitGenerateSummaryTable}
+          >
+            <Sparkles size={18} />
+            <span>Submit – עדכן טבלת סיכום עליונה ושמור הכל</span>
+          </button>
+
+          <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
+            <Printer size={18} />
+            <span>
+              הדפס מסמך ({hideStudentDetailsOnPrint ? 'במצב חסוי: ראשי תיבות והשחרה' : 'במצב גלוי מלא'})
+            </span>
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
