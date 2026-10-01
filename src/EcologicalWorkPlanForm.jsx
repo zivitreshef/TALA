@@ -23,6 +23,7 @@ import {
   ENVIRONMENTS_LIST,
   getSortedGoalBank,
   generateDefaultQuestionsForCustomGoal,
+  reverseEngineerRawTextLocally,
   toHebrewAcronym,
   maskSensitiveValue,
   redactStudentNameInText
@@ -32,6 +33,8 @@ export default function EcologicalWorkPlanForm({
   student,
   goalBank,
   geminiApiKey,
+  isAdmin,
+  onOpenGoalBankManager,
   onSaveStudentPlan,
   onUseOrAddGoalToBank
 }) {
@@ -39,6 +42,8 @@ export default function EcologicalWorkPlanForm({
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
   const [saveBanner, setSaveBanner] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [isReverseEngineering, setIsReverseEngineering] = useState(false);
+  const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
   const [showFullDocPreview, setShowFullDocPreview] = useState(false);
 
   // State for Goal Picker / Autocomplete per goal card
@@ -504,6 +509,154 @@ ${goalsSummary}
     setIsGeneratingSummary(false);
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 3000);
+  };
+
+  // === NEW FEATURE: AI Reverse Engineering from Raw Data Text to Full Formal Report ===
+  const handleReverseEngineerFullReport = async () => {
+    const rawText = (formData.teacherFreeText || '').trim();
+    if (!rawText) {
+      window.alert('נא להזין טקסט גולמי על התלמיד/ה בתיבת התיאור החופשי כדי שה-AI יוכל להפיק ממנו דוח רשמי מלא.');
+      return;
+    }
+
+    setIsReverseEngineering(true);
+    setReverseEngineerBanner('');
+
+    // Try Gemini API first if key is provided
+    if (geminiApiKey) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+        const bankReference = sortedGoals
+          .slice(0, 20)
+          .map((b) => `- סביבה: "${b.environment}" | מטרה: "${b.title}"`)
+          .join('\n');
+
+        const prompt = `אתה מומחה פדגוגי לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית).
+המורה הזינה טקסט גולמי ("Raw Data") המתאר את התלמיד/ה במילים חופשיות.
+עליך לבצע "הנדסה לאחור" (Reverse Engineering) של המידע הגולמי ולהפוך אותו לדוח רשמי ומקצועי מלא הכולל:
+1. "strengthsExisting": מוקדי כוח וכוחות קיימים (רשימת נקודות • מופרדות בשורות חדשות).
+2. "strengthsToEmpower": כוחות להעצמה וחיזוק (רשימת נקודות • מופרדות בשורות חדשות).
+3. "goals": מערך של 2 עד 4 מטרות מלאות ופורמליות הנגזרות מהקשיים והצרכים שבטקסט הגולמי. ניתן ומומלץ להשתמש במטרות מתאימות מתוך מאגר המטרות הקיים או לנסח מטרה מותאמת. לכל מטרה מלא את כל 6 העמודות:
+   - "environment": סביבה / תחום (למשל: מרחב הגן, סדנא, שירותים, קריאה - רמת פענוח ושטף, הבנת הנקרא, כתיבה, הבעה בעל-פה ושיח וכו')
+   - "activityParticipation": תיאור מקצועי של פעילות והשתתפות בסביבה (גורמים מאפשרים ומגבילים על סמך הטקסט הגולמי)
+   - "title": מטרה עליונה (מה אנחנו רוצים שיקרה?)
+   - "objectives": יעדים וציוני דרך אופרטיביים (נקודות • מופרדות בשורות חדשות)
+   - "opportunities": הזדמנויות, אמצעים ותיווך של הצוות (נקודות • מופרדות בשורות חדשות)
+   - "partners": שותפים לתהליך
+   - "duration": משך הזמן (למשל: עד סוף השנה / כשלושה חודשים)
+   - "evaluationCriteria": אמות מידה להערכה
+4. "recommendations": המלצות מערכתיות להמשך לצוות החינוכי ולהורים.
+
+שם התלמיד/ה הנוכחי: "${formData.name || ''}"
+הטקסט הגולמי של המורה:
+"""
+${rawText}
+"""
+
+מטרות קיימות במאגר להשראה והתאמה:
+${bankReference}
+
+החזר אך ורק JSON תקין במבנה הבא:
+{
+  "strengthsExisting": "• חוזק 1\\n• חוזק 2",
+  "strengthsToEmpower": "• מוקד להעצמה 1\\n• מוקד להעצמה 2",
+  "goals": [
+    {
+      "environment": "...",
+      "activityParticipation": "...",
+      "title": "...",
+      "objectives": "• יעד 1\\n• יעד 2",
+      "opportunities": "• אמצעי תיווך 1\\n• אמצעי תיווך 2",
+      "partners": "...",
+      "duration": "...",
+      "evaluationCriteria": "..."
+    }
+  ],
+  "recommendations": "..."
+}`;
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const jsonMatch = textOut.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed && Array.isArray(parsed.goals) && parsed.goals.length > 0) {
+              const formattedGoals = parsed.goals.map((g, i) => ({
+                id: 'g_airev_' + Date.now() + '_' + i,
+                environment: g.environment || 'מרחב הגן',
+                activityParticipation: g.activityParticipation || '',
+                title: g.title || '',
+                objectives: g.objectives || '',
+                opportunities: g.opportunities || '',
+                partners: g.partners || 'צוות חינוכי, הורים',
+                duration: g.duration || 'עד סוף השנה',
+                evaluationCriteria: g.evaluationCriteria || ''
+              }));
+
+              const updated = {
+                ...formData,
+                strengthsExisting: parsed.strengthsExisting || formData.strengthsExisting,
+                strengthsToEmpower: parsed.strengthsToEmpower || formData.strengthsToEmpower,
+                goals: formattedGoals,
+                recommendations: parsed.recommendations || formData.recommendations,
+                status: 'מוכן להדפסה',
+                lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+              };
+
+              setFormData(updated);
+              onSaveStudentPlan(updated);
+              formattedGoals.forEach((g) => {
+                if (g.title) onUseOrAddGoalToBank(g);
+              });
+              setIsReverseEngineering(false);
+              setReverseEngineerBanner(
+                `✨ הדוח הרשמי הופק בהצלחה ב-AI מתוך הטקסט הגולמי! מולאו אוטומטית טבלת מוקדי הכוח, ${formattedGoals.length} מטרות מלאות על כל 6 העמודות ופרק ההמלצות.`
+              );
+              setSaveBanner(true);
+              setTimeout(() => setSaveBanner(false), 3500);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Gemini reverse engineering fallback to local pedagogical engine', err);
+      }
+    }
+
+    // Smart Local Pedagogical Reverse-Engineering Engine
+    const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
+    if (engineered) {
+      const updated = {
+        ...formData,
+        name: engineered.name || formData.name,
+        strengthsExisting: engineered.strengthsExisting,
+        strengthsToEmpower: engineered.strengthsToEmpower,
+        goals: engineered.goals,
+        recommendations: engineered.recommendations,
+        status: 'מוכן להדפסה',
+        lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setFormData(updated);
+      onSaveStudentPlan(updated);
+      (engineered.goals || []).forEach((g) => {
+        if (g.title) onUseOrAddGoalToBank(g);
+      });
+      setReverseEngineerBanner(
+        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! מולאו אוטומטית טבלת מוקדי הכוח, ${engineered.goals.length} מטרות רשמיות מלאות (6 עמודות) ופרק ההמלצות.`
+      );
+      setSaveBanner(true);
+      setTimeout(() => setSaveBanner(false), 3500);
+    }
+
+    setIsReverseEngineering(false);
   };
 
   // Save Progress explicitly
@@ -1021,41 +1174,68 @@ ${goalsSummary}
         </div>
       </section>
 
-      {/* Section 2: Teacher Free Text + Submit Button + Top Summary Table */}
+      {/* Section 2: Teacher Free Text (Raw Data) + AI Reverse Engineering + Submit Button + Top Summary Table */}
       <section className="form-section-card highlight-summary-section">
         <div className="section-header-line">
           <h3>2. תיאור חופשי של המורה וטבלת מוקדי כוח מסכמת (בראש המסמך)</h3>
+          <span className="ai-raw-data-badge">
+            ✨ חדש: ניתן להזין כאן מידע גולמי (Raw Data) ולהפיק ממנו דוח רשמי מלא בלחיצה!
+          </span>
         </div>
 
         <div className="free-text-area-box">
           <label className="bold-label">
-            ✍️ תיאור חופשי של הילד/ה במילים שלך (אופי, תחומי עניין, חוזקות, קשיים ותפקוד יומיומי):
+            ✍️ תיאור חופשי / מידע גולמי (Raw Data) של המורה על הילד/ה (אופי, תחומי עניין, חוזקות, קשיים ותפקוד יומיומי):
           </label>
           <textarea
-            rows={3}
+            rows={4}
             value={formData.teacherFreeText || ''}
             onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
-            placeholder="כתבי כאן באופן חופשי במילים שלך על הילד/ה... למשל: ילד נעים, חברותי וסקרן, יכולת ריכוז טובה, וורבלי ומלא אנרגיות, זקוק לחיזוק באינטראקציות חברתיות ובוויסות רגשי..."
+            placeholder="הזיני כאן מידע גולמי וחופשי על התלמיד/ה... למשל: ילד נעים, חברותי וסקרן בעל יכולת ריכוז טובה, וורבלי ומלא אנרגיות. מתקשה במשחק משותף עם חברים ומשחק לידם באופן תבניתי, לא ניגש לשולחן הסדנא מיוזמתו ומתקשה בתכנון והתארגנות, וזקוק לתיווך בגמילה בשירותים ובוויסות רגשי..."
           />
 
           <div className="submit-summary-action-row">
             <span className="submit-helper-text">
-              לחיצה על כפתור ה-Submit תשלב את הטקסט החופשי שלך יחד עם כל המטרות שהגדרת למטה ותייצר את טבלת הסיכום בראש המסמך:
+              בחרי האם להפוך את הטקסט הגולמי לתוכנית עבודה רשמית מלאה (הנדסה לאחור ב-AI של כל הטופס והמטרות) או לעדכן את טבלת הסיכום העליונה:
             </span>
-            <button
-              type="button"
-              className="btn-submit-generate-summary"
-              onClick={handleSubmitGenerateSummaryTable}
-              disabled={isGeneratingSummary}
-            >
-              <Sparkles size={17} />
-              <span>
-                {isGeneratingSummary
-                  ? 'מנתח מטרות וטקסט חופשי...'
-                  : 'Submit – צור/עדכן טבלת מוקדי כוח וסיכום בראש המסמך'}
-              </span>
-            </button>
+            <div className="raw-data-ai-buttons-group">
+              <button
+                type="button"
+                className="btn-reverse-engineer-report"
+                onClick={handleReverseEngineerFullReport}
+                disabled={isReverseEngineering || isGeneratingSummary}
+                title="מנתח את הטקסט הגולמי וממלא אוטומטית את כל הדוח הרשמי: מוקדי כוח, מטרות ויעדים ב-6 עמודות והמלצות"
+              >
+                <Wand2 size={17} />
+                <span>
+                  {isReverseEngineering
+                    ? 'מבצע הנדסה לאחור ומייצר דוח רשמי מלא...'
+                    : '✨ הנדסה לאחור ב-AI – הפוך מידע גולמי לדוח רשמי מלא'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-submit-generate-summary"
+                onClick={handleSubmitGenerateSummaryTable}
+                disabled={isGeneratingSummary || isReverseEngineering}
+              >
+                <Sparkles size={17} />
+                <span>
+                  {isGeneratingSummary
+                    ? 'מנתח מטרות וטקסט חופשי...'
+                    : 'Submit – צור/עדכן טבלת מוקדי כוח וסיכום בראש המסמך'}
+                </span>
+              </button>
+            </div>
           </div>
+
+          {reverseEngineerBanner && (
+            <div className="reverse-engineer-success-banner">
+              <CheckCircle2 size={18} />
+              <span>{reverseEngineerBanner}</span>
+            </div>
+          )}
         </div>
 
         {/* Top Summary Table (Editable Two-Column Ecological Strengths Table) */}
@@ -1318,6 +1498,17 @@ ${goalsSummary}
                         <HelpCircle size={15} />
                         <span>3 שאלות מנחות AI למילוי המטרה</span>
                       </button>
+
+                      {isAdmin && onOpenGoalBankManager && (
+                        <button
+                          type="button"
+                          className="btn-admin-manage-bank-inline"
+                          onClick={onOpenGoalBankManager}
+                          title="הוסף, ערוך או הסר מטרות במאגר המטרות הדינמי (Admin)"
+                        >
+                          <span>👑 עריכת מאגר מטרות (Admin)</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 

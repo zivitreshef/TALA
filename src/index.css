@@ -1776,3 +1776,261 @@ input, textarea, select, button {
   color: var(--danger);
   cursor: pointer;
 }
+
+/* === AI Reverse Engineering (Raw Data -> Formal Report) Styles === */
+.ai-raw-data-badge {
+  background: linear-gradient(135deg, #f3eef9 0%, #dce9f9 100%);
+  color: #0d2b56;
+  border: 1px solid #664b8e;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.raw-data-ai-buttons-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.btn-reverse-engineer-report {
+  background: linear-gradient(135deg, #0d2b56 0%, #664b8e 52%, #216e55 100%);
+  color: #ffffff;
+  border: 2px solid #f4b942;
+  border-radius: 9px;
+  padding: 10px 18px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(13, 43, 86, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-reverse-engineer-report:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(13, 43, 86, 0.36);
+}
+
+.btn-reverse-engineer-report:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.reverse-engineer-success-banner {
+  margin-top: 12px;
+  background: #e3f3ed;
+  border: 1.5px solid #216e55;
+  color: #134636;
+  border-radius: 9px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* === Admin Dynamic Goal Bank CRUD Styles === */
+.goal-bank-modal-top-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-admin-add-bank-goal {
+  background: linear-gradient(135deg, #216e55 0%, #154c99 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(33, 110, 85, 0.25);
+}
+
+.admin-bank-goal-editor {
+  background: #faf6ee;
+  border: 2px solid #0d2b56;
+  border-right: 5px solid #f4b942;
+  border-radius: 11px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.admin-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.admin-editor-header h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #0d2b56;
+}
+
+.btn-cancel-bank-edit {
+  background: #ffffff;
+  color: #4b5b70;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-field.full-span {
+  grid-column: 1 / -1;
+}
+
+.admin-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0d2b56;
+}
+
+.admin-field input,
+.admin-field textarea {
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  background: #ffffff;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.admin-editor-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-save-bank-goal {
+  background: linear-gradient(135deg, #216e55 0%, #154c99 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bank-modal-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 11px;
+  margin-bottom: 10px;
+}
+
+.bank-modal-search-row input {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font-size: 13px;
+  outline: none;
+}
+
+.goal-bank-admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-admin-edit-goal {
+  background: #dce9f9;
+  color: #0d2b56;
+  border: 1px solid #154c99;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-admin-edit-goal:hover {
+  background: #154c99;
+  color: #ffffff;
+}
+
+.btn-admin-delete-goal {
+  background: #fbe7e2;
+  color: #b83718;
+  border: 1px solid #d14928;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-admin-delete-goal:hover {
+  background: #d14928;
+  color: #ffffff;
+}
+
+.btn-admin-manage-bank-inline {
+  background: #fef7e6;
+  color: #0d2b56;
+  border: 1.5px solid #f4b942;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-admin-manage-bank-inline:hover {
+  background: #f4b942;
+  color: #0d2b56;
+}
+

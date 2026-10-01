@@ -10,7 +10,10 @@ import {
   TrendingUp,
   UserCheck,
   Sparkles,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -22,9 +25,13 @@ import {
 } from './AllowlistAuthGate';
 import {
   INITIAL_STUDENTS_DATA,
+  ENVIRONMENTS_LIST,
   loadGoalBank,
   recordGoalUsageOrAdd,
-  getSortedGoalBank
+  getSortedGoalBank,
+  addGoalByAdmin,
+  updateGoalByAdmin,
+  deleteGoalByAdmin
 } from './goalBankData';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
@@ -76,6 +83,8 @@ export default function App() {
   // Dynamic Goal Bank
   const [goalBank, setGoalBank] = useState(() => loadGoalBank());
   const [showGoalBankOverview, setShowGoalBankOverview] = useState(false);
+  const [goalBankSearch, setGoalBankSearch] = useState('');
+  const [editingBankGoal, setEditingBankGoal] = useState(null); // null | { mode: 'add' | 'edit', ...fields }
 
   // Optional Gemini API Key
   const [geminiApiKey, setGeminiApiKey] = useState(() => {
@@ -163,6 +172,95 @@ export default function App() {
 
   const handleUseOrAddGoalToBank = (goalData) => {
     setGoalBank((prevBank) => recordGoalUsageOrAdd(goalData, prevBank));
+  };
+
+  // === Admin Goal Bank CRUD Handlers ===
+  const handleStartAddGoalToBank = () => {
+    setEditingBankGoal({
+      mode: 'add',
+      id: '',
+      title: '',
+      environment: 'מרחב הגן',
+      usageCount: 1,
+      defaultActivity: '',
+      suggestedObjectivesText: '',
+      defaultOpportunities: '',
+      defaultPartners: 'צוות חינוכי, הורים',
+      defaultDuration: 'עד סוף השנה',
+      defaultEvaluation: ''
+    });
+  };
+
+  const handleStartEditBankGoal = (goalItem) => {
+    setEditingBankGoal({
+      mode: 'edit',
+      id: goalItem.id,
+      title: goalItem.title || '',
+      environment: goalItem.environment || 'מרחב הגן',
+      usageCount: goalItem.usageCount ?? 1,
+      defaultActivity: goalItem.defaultActivity || '',
+      suggestedObjectivesText: (goalItem.suggestedObjectives || []).join('\n'),
+      defaultOpportunities: goalItem.defaultOpportunities || '',
+      defaultPartners: goalItem.defaultPartners || 'צוות חינוכי, הורים',
+      defaultDuration: goalItem.defaultDuration || 'עד סוף השנה',
+      defaultEvaluation: goalItem.defaultEvaluation || ''
+    });
+  };
+
+  const handleSaveAdminBankGoal = (e) => {
+    e.preventDefault();
+    if (!editingBankGoal || !editingBankGoal.title.trim()) {
+      window.alert('נא להזין כותרת למטרה.');
+      return;
+    }
+
+    if (editingBankGoal.mode === 'add') {
+      setGoalBank((prev) =>
+        addGoalByAdmin(
+          {
+            title: editingBankGoal.title,
+            environment: editingBankGoal.environment,
+            usageCount: editingBankGoal.usageCount,
+            defaultActivity: editingBankGoal.defaultActivity,
+            suggestedObjectives: editingBankGoal.suggestedObjectivesText,
+            defaultOpportunities: editingBankGoal.defaultOpportunities,
+            defaultPartners: editingBankGoal.defaultPartners,
+            defaultDuration: editingBankGoal.defaultDuration,
+            defaultEvaluation: editingBankGoal.defaultEvaluation
+          },
+          prev
+        )
+      );
+    } else {
+      setGoalBank((prev) =>
+        updateGoalByAdmin(
+          editingBankGoal.id,
+          {
+            title: editingBankGoal.title,
+            environment: editingBankGoal.environment,
+            usageCount: editingBankGoal.usageCount,
+            defaultActivity: editingBankGoal.defaultActivity,
+            suggestedObjectives: editingBankGoal.suggestedObjectivesText,
+            defaultOpportunities: editingBankGoal.defaultOpportunities,
+            defaultPartners: editingBankGoal.defaultPartners,
+            defaultDuration: editingBankGoal.defaultDuration,
+            defaultEvaluation: editingBankGoal.defaultEvaluation
+          },
+          prev
+        )
+      );
+    }
+    setEditingBankGoal(null);
+  };
+
+  const handleDeleteAdminBankGoal = (goalItem) => {
+    if (!window.confirm(`האם למחוק את המטרה "${goalItem.title}" ממאגר המטרות הדינמי?`)) {
+      return;
+    }
+    setGoalBank((prev) => deleteGoalByAdmin(goalItem.id, prev));
+    if (editingBankGoal?.id === goalItem.id) {
+      setEditingBankGoal(null);
+    }
   };
 
   // Gate the entire app if user is not authenticated in the Allowed Users List
@@ -324,6 +422,8 @@ export default function App() {
               student={selectedStudent}
               goalBank={goalBank}
               geminiApiKey={geminiApiKey}
+              isAdmin={currentUser.role === 'admin'}
+              onOpenGoalBankManager={() => setShowGoalBankOverview(true)}
               onSaveStudentPlan={handleSaveStudentPlan}
               onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
             />
@@ -353,57 +453,306 @@ export default function App() {
         onUpdateAllowedUsers={handleUpdateAllowedUsers}
       />
 
-      {/* Dynamic Goal Bank Popularity Modal */}
+      {/* Dynamic Goal Bank Popularity & Admin Management Modal */}
       {showGoalBankOverview && (
-        <div className="modal-backdrop" onClick={() => setShowGoalBankOverview(false)} dir="rtl">
+        <div
+          className="modal-backdrop"
+          onClick={() => {
+            setShowGoalBankOverview(false);
+            setEditingBankGoal(null);
+          }}
+          dir="rtl"
+        >
           <div
             className="modal-container"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '780px' }}
+            style={{ maxWidth: '880px', width: '94%' }}
           >
             <div className="modal-header">
               <div className="modal-header-title">
                 <TrendingUp size={22} />
-                <h3>מאגר המטרות הדינמי (מדורג אוטומטית לפי שכיחות שימוש)</h3>
+                <h3>
+                  מאגר המטרות הדינמי ({goalBank.length} מטרות – מדורג לפי שכיחות שימוש)
+                </h3>
               </div>
               <button
                 className="btn-icon-close"
-                onClick={() => setShowGoalBankOverview(false)}
+                onClick={() => {
+                  setShowGoalBankOverview(false);
+                  setEditingBankGoal(null);
+                }}
               >
                 ✕
               </button>
             </div>
+
             <div className="modal-body">
-              <p style={{ fontSize: '13px', color: '#475569', marginTop: 0 }}>
-                כל מטרה חדשה שמורה מגדירה נשמרת אוטומטית במאגר זה. המטרות מוצגות למורים לפי מידת השכיחות שלהן (הנפוצות ביותר בראש הרשימה והפחות נפוצות בתחתית).
-              </p>
+              <div className="goal-bank-modal-top-bar">
+                <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+                  כל מטרה חדשה שמורה מגדירה נשמרת אוטומטית במאגר זה. המטרות מוצגות למורים לפי מידת השכיחות שלהן (הנפוצות ביותר בראש הרשימה והפחות נפוצות בתחתית).
+                  {currentUser.role === 'admin' && (
+                    <strong style={{ color: '#0d2b56', display: 'block', marginTop: '4px' }}>
+                      👑 הרשאת מנהל מערכת (Admin): באפשרותך להוסיף, לערוך או להסיר מטרות ויעדים במאגר.
+                    </strong>
+                  )}
+                </p>
+
+                {currentUser.role === 'admin' && !editingBankGoal && (
+                  <button
+                    type="button"
+                    className="btn-admin-add-bank-goal"
+                    onClick={handleStartAddGoalToBank}
+                  >
+                    <Plus size={16} />
+                    <span>הוסף מטרה חדשה למאגר</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Admin Add / Edit Goal Form */}
+              {currentUser.role === 'admin' && editingBankGoal && (
+                <form className="admin-bank-goal-editor" onSubmit={handleSaveAdminBankGoal}>
+                  <div className="admin-editor-header">
+                    <h4>
+                      {editingBankGoal.mode === 'add'
+                        ? '➕ הוספת מטרה חדשה למאגר המטרות הדינמי'
+                        : '✏️ עריכת מטרה קיימת במאגר'}
+                    </h4>
+                    <button
+                      type="button"
+                      className="btn-cancel-bank-edit"
+                      onClick={() => setEditingBankGoal(null)}
+                    >
+                      <X size={15} />
+                      <span>ביטול</span>
+                    </button>
+                  </div>
+
+                  <div className="admin-editor-grid">
+                    <div className="admin-field full-span">
+                      <label>כותרת המטרה העליונה (מה אנחנו רוצים שיקרה?): *</label>
+                      <input
+                        type="text"
+                        required
+                        value={editingBankGoal.title}
+                        onChange={(e) =>
+                          setEditingBankGoal({ ...editingBankGoal, title: e.target.value })
+                        }
+                        placeholder="למשל: ירחיב וישכלל את מיומנויותיו במשחק הסוציודרמטי..."
+                      />
+                    </div>
+
+                    <div className="admin-field">
+                      <label>סביבה / תחום פעילות:</label>
+                      <input
+                        type="text"
+                        list="admin-environments-datalist"
+                        value={editingBankGoal.environment}
+                        onChange={(e) =>
+                          setEditingBankGoal({ ...editingBankGoal, environment: e.target.value })
+                        }
+                        placeholder="בחר או הקלד סביבה חדשה..."
+                      />
+                      <datalist id="admin-environments-datalist">
+                        {ENVIRONMENTS_LIST.map((env) => (
+                          <option key={env} value={env} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div className="admin-field">
+                      <label>מונה שכיחות / דירוג (Usage Count):</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editingBankGoal.usageCount}
+                        onChange={(e) =>
+                          setEditingBankGoal({
+                            ...editingBankGoal,
+                            usageCount: Number(e.target.value)
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="admin-field full-span">
+                      <label>תיאור פעילות והשתתפות מומלץ (ברירת מחדל):</label>
+                      <textarea
+                        rows={2}
+                        value={editingBankGoal.defaultActivity}
+                        onChange={(e) =>
+                          setEditingBankGoal({
+                            ...editingBankGoal,
+                            defaultActivity: e.target.value
+                          })
+                        }
+                        placeholder="תיאור תפקוד בסביבה וגורמים מאפשרים/מגבילים..."
+                      />
+                    </div>
+
+                    <div className="admin-field full-span">
+                      <label>יעדים אופרטיביים משויכים (כל יעד בשורה חדשה):</label>
+                      <textarea
+                        rows={3}
+                        value={editingBankGoal.suggestedObjectivesText}
+                        onChange={(e) =>
+                          setEditingBankGoal({
+                            ...editingBankGoal,
+                            suggestedObjectivesText: e.target.value
+                          })
+                        }
+                        placeholder="יעד אופרטיבי 1&#10;יעד אופרטיבי 2&#10;יעד אופרטיבי 3"
+                      />
+                    </div>
+
+                    <div className="admin-field full-span">
+                      <label>הזדמנויות, אמצעים ותיווך מומלץ:</label>
+                      <textarea
+                        rows={2}
+                        value={editingBankGoal.defaultOpportunities}
+                        onChange={(e) =>
+                          setEditingBankGoal({
+                            ...editingBankGoal,
+                            defaultOpportunities: e.target.value
+                          })
+                        }
+                        placeholder="• המבוגר יזמין...&#10;• שימוש בכרטיסיות סדר יום..."
+                      />
+                    </div>
+
+                    <div className="admin-field">
+                      <label>שותפים מומלצים:</label>
+                      <input
+                        type="text"
+                        value={editingBankGoal.defaultPartners}
+                        onChange={(e) =>
+                          setEditingBankGoal({
+                            ...editingBankGoal,
+                            defaultPartners: e.target.value
+                          })
+                        }
+                        placeholder="צוות הגן, סייעת אישית, מרפאה בעיסוק..."
+                      />
+                    </div>
+
+                    <div className="admin-field">
+                      <label>משך מומלץ:</label>
+                      <input
+                        type="text"
+                        value={editingBankGoal.defaultDuration}
+                        onChange={(e) =>
+                          setEditingBankGoal({
+                            ...editingBankGoal,
+                            defaultDuration: e.target.value
+                          })
+                        }
+                        placeholder="עד סוף השנה / כשלושה חודשים"
+                      />
+                    </div>
+
+                    <div className="admin-field full-span">
+                      <label>אמות מידה להערכה (ברירת מחדל):</label>
+                      <input
+                        type="text"
+                        value={editingBankGoal.defaultEvaluation}
+                        onChange={(e) =>
+                          setEditingBankGoal({
+                            ...editingBankGoal,
+                            defaultEvaluation: e.target.value
+                          })
+                        }
+                        placeholder="כיצד נדע שהמטרה הושגה?"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-editor-actions">
+                    <button type="submit" className="btn-save-bank-goal">
+                      <Check size={16} />
+                      <span>
+                        {editingBankGoal.mode === 'add'
+                          ? 'שמור והוסף מטרה למאגר'
+                          : 'שמור שינויים במטרה'}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Search Filter inside Goal Bank Modal */}
+              <div className="bank-modal-search-row">
+                <Search size={15} />
+                <input
+                  type="text"
+                  placeholder="חיפוש מטרה, סביבה או יעד במאגר..."
+                  value={goalBankSearch}
+                  onChange={(e) => setGoalBankSearch(e.target.value)}
+                />
+              </div>
+
               <div className="goal-bank-items-scroll" style={{ maxHeight: '420px' }}>
-                {sortedBank.map((g, i) => (
-                  <div key={g.id} className="goal-bank-option-row" style={{ cursor: 'default' }}>
-                    <div className="goal-bank-option-main">
-                      <div className="goal-option-title-line">
-                        <span className="popularity-rank-badge">#{i + 1}</span>
-                        <strong>{g.title}</strong>
-                        <span className="env-tag-chip">{g.environment}</span>
-                        <span className="usage-count-badge">
-                          נבחר {g.usageCount || 1} פעמים
-                        </span>
+                {sortedBank
+                  .filter((g) => {
+                    const q = goalBankSearch.trim();
+                    if (!q) return true;
+                    return (
+                      (g.title || '').includes(q) ||
+                      (g.environment || '').includes(q) ||
+                      (g.suggestedObjectives || []).some((o) => o.includes(q))
+                    );
+                  })
+                  .map((g, i) => (
+                    <div key={g.id} className="goal-bank-option-row" style={{ cursor: 'default' }}>
+                      <div className="goal-bank-option-main">
+                        <div className="goal-option-title-line">
+                          <span className="popularity-rank-badge">#{i + 1}</span>
+                          <strong>{g.title}</strong>
+                          <span className="env-tag-chip">{g.environment}</span>
+                          <span className="usage-count-badge">
+                            נבחר {g.usageCount || 1} פעמים
+                          </span>
+                        </div>
+                        {g.suggestedObjectives?.length > 0 && (
+                          <div className="goal-option-sub-preview">
+                            יעדים משויכים: {g.suggestedObjectives.join(' • ')}
+                          </div>
+                        )}
                       </div>
-                      {g.suggestedObjectives?.length > 0 && (
-                        <div className="goal-option-sub-preview">
-                          יעדים משויכים: {g.suggestedObjectives.join(' • ')}
+
+                      {currentUser.role === 'admin' && (
+                        <div className="goal-bank-admin-actions">
+                          <button
+                            type="button"
+                            className="btn-admin-edit-goal"
+                            onClick={() => handleStartEditBankGoal(g)}
+                            title="ערוך מטרה זו"
+                          >
+                            <Edit2 size={14} />
+                            <span>ערוך</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-admin-delete-goal"
+                            onClick={() => handleDeleteAdminBankGoal(g)}
+                            title="מחק מטרה זו מהמאגר"
+                          >
+                            <Trash2 size={14} />
+                            <span>הסר</span>
+                          </button>
                         </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
             <div className="modal-footer" style={{ textAlign: 'left' }}>
               <button
                 type="button"
                 className="btn-primary-sm"
-                onClick={() => setShowGoalBankOverview(false)}
+                onClick={() => {
+                  setShowGoalBankOverview(false);
+                  setEditingBankGoal(null);
+                }}
               >
                 סגור
               </button>

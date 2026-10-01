@@ -501,6 +501,370 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
   return bank;
 }
 
+// === ניהול מאגר מטרות דינמי על ידי מנהל מערכת (Admin: הוספה, עריכה, מחיקה) ===
+
+export function addGoalByAdmin(goalInput, currentBank) {
+  const bank = [...(currentBank || loadGoalBank())];
+  const cleanTitle = (goalInput.title || '').trim();
+  if (!cleanTitle) return bank;
+
+  const objectivesArray = Array.isArray(goalInput.suggestedObjectives)
+    ? goalInput.suggestedObjectives.map((s) => s.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean)
+    : String(goalInput.suggestedObjectives || '')
+        .split('\n')
+        .map((s) => s.replace(/^[•\-*]\s*/, '').trim())
+        .filter(Boolean);
+
+  const newEntry = {
+    id: 'gb_admin_' + Date.now(),
+    title: cleanTitle,
+    environment: (goalInput.environment || 'מרחב הגן').trim(),
+    usageCount: Number(goalInput.usageCount) >= 0 ? Number(goalInput.usageCount) : 1,
+    defaultActivity: (goalInput.defaultActivity || '').trim(),
+    suggestedObjectives:
+      objectivesArray.length > 0
+        ? objectivesArray
+        : ['יישום המטרה בהדרגה בסביבה הטבעית תוך תיווך מותאם.'],
+    defaultOpportunities: (goalInput.defaultOpportunities || '').trim(),
+    defaultPartners: (goalInput.defaultPartners || 'צוות חינוכי, הורים').trim(),
+    defaultDuration: (goalInput.defaultDuration || 'עד סוף השנה').trim(),
+    defaultEvaluation: (goalInput.defaultEvaluation || '').trim(),
+    facilitatingQuestions: generateDefaultQuestionsForCustomGoal(
+      cleanTitle,
+      goalInput.environment
+    )
+  };
+
+  bank.unshift(newEntry);
+  saveGoalBank(bank);
+  return bank;
+}
+
+export function updateGoalByAdmin(goalId, updatedFields, currentBank) {
+  const bank = [...(currentBank || loadGoalBank())];
+  const idx = bank.findIndex((g) => g.id === goalId);
+  if (idx === -1) return bank;
+
+  const existing = bank[idx];
+  const objectivesArray = Array.isArray(updatedFields.suggestedObjectives)
+    ? updatedFields.suggestedObjectives.map((s) => s.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean)
+    : String(updatedFields.suggestedObjectives ?? (existing.suggestedObjectives || []).join('\n'))
+        .split('\n')
+        .map((s) => s.replace(/^[•\-*]\s*/, '').trim())
+        .filter(Boolean);
+
+  const updatedTitle = (updatedFields.title ?? existing.title).trim();
+  const updatedEnv = (updatedFields.environment ?? existing.environment).trim();
+
+  bank[idx] = {
+    ...existing,
+    title: updatedTitle,
+    environment: updatedEnv,
+    usageCount:
+      updatedFields.usageCount !== undefined
+        ? Math.max(0, Number(updatedFields.usageCount) || 0)
+        : existing.usageCount,
+    defaultActivity: updatedFields.defaultActivity ?? existing.defaultActivity ?? '',
+    suggestedObjectives: objectivesArray,
+    defaultOpportunities: updatedFields.defaultOpportunities ?? existing.defaultOpportunities ?? '',
+    defaultPartners: updatedFields.defaultPartners ?? existing.defaultPartners ?? '',
+    defaultDuration: updatedFields.defaultDuration ?? existing.defaultDuration ?? 'עד סוף השנה',
+    defaultEvaluation: updatedFields.defaultEvaluation ?? existing.defaultEvaluation ?? ''
+  };
+
+  saveGoalBank(bank);
+  return bank;
+}
+
+export function deleteGoalByAdmin(goalId, currentBank) {
+  const bank = (currentBank || loadGoalBank()).filter((g) => g.id !== goalId);
+  saveGoalBank(bank);
+  return bank;
+}
+
+// === מנוע "הנדסה לאחור" (Reverse Engineering) מטקסט גולמי של המורה לדוח רשמי מלא ===
+export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank) {
+  const text = (rawText || '').trim();
+  const bank = getSortedGoalBank(goalBank);
+  if (!text) return null;
+
+  // 1. ניסיון לחלץ שם תלמיד/ה או מסגרת אם צוינו בטקסט הגולמי והשדה ריק/ברירת מחדל
+  let detectedName = currentFormData.name || '';
+  if (!detectedName || detectedName === 'תלמיד/ה חדש/ה') {
+    const nameMatch =
+      text.match(/(?:התלמיד\/ה|התלמיד|התלמידה|הילד\/ה|הילד|הילדה|שם הילד:?|שם:?)\s+([א-ת]{2,12}(?:\s+[א-ת]{2,12})?)/) ||
+      text.match(/^([א-ת]{2,10})\s+(?:הוא|היא|ילד|ילדה|תלמיד|תלמידה|בן|בת)\b/);
+    if (nameMatch && nameMatch[1]) {
+      const candidate = nameMatch[1].trim();
+      const stopWords = ['ילד', 'ילדה', 'תלמיד', 'תלמידה', 'נעים', 'נעימה', 'חמוד', 'חמודה', 'מתוק', 'מתוקה'];
+      if (!stopWords.includes(candidate.split(/\s+/)[0])) {
+        detectedName = candidate;
+      }
+    }
+  }
+
+  const firstName = (detectedName && detectedName !== 'תלמיד/ה חדש/ה' ? detectedName : 'הילד/ה')
+    .trim()
+    .split(/\s+/)[0];
+
+  // 2. פירוק הטקסט הגולמי למשפטים וסיווגם למוקדי כוח קיימים מול מוקדים להעצמה/קשיים
+  const clauses = text
+    .split(/[.,;\n]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 2);
+
+  const challengeKeywords = [
+    'מתקשה', 'קושי', 'קשיים', 'זקוק', 'זקוקה', 'צריך', 'צריכה', 'לא ניגש', 'לא ניגשת',
+    'נמנע', 'נמנעת', 'מתנגד', 'מתנגדת', 'חזרתי', 'תבניתי', 'נוקשות', 'ויסות', 'התפרצויות',
+    'בכי', 'תסכול', 'מוסח', 'מוסחת', 'קשב', 'ריכוז נמוך', 'מתעייף', 'מתעייפת', 'שגיאות',
+    'איטי', 'איטית', 'דל', 'דלה', 'קטוע', 'גמילה', 'צואה', 'פיפי', 'שירותים', 'לבד', 'ליד הילדים',
+    'חיזוק', 'העצמה', 'שיפור', 'לפתח', 'לשפר', 'להרחיב', 'מתסכל', 'חסר', 'חסרה'
+  ];
+
+  const positiveKeywords = [
+    'נעים', 'נעימה', 'חברותי', 'חברותית', 'סקרן', 'סקרנית', 'חכם', 'חכמה', 'נבון', 'נבונה',
+    'וורבלי', 'ורבלי', 'אנרגיות', 'הומור', 'טוב לב', 'קשוב', 'קשובה', 'מפנים', 'מפנימה',
+    'אהוב', 'אהובה', 'משתף פעולה', 'משתפת פעולה', 'מוטיבציה', 'אוהב', 'אוהבת', 'מצליח', 'מצליחה',
+    'טובה', 'טוב', 'יפה', 'יצירתי', 'יצירתית', 'עצמאי', 'עצמאית', 'בולט', 'בולטת', 'חיובי', 'שמח'
+  ];
+
+  const existingList = [];
+  const empowerList = [];
+
+  clauses.forEach((clause) => {
+    // אם משפט מכיל "אך" / "אבל" / "יחד עם זאת", נפצל אותו לחוזק ולקושי
+    const contrastSplit = clause.split(/\s+(?:אך|אבל|אולם|יחד עם זאת|מאידך)\s+/);
+    if (contrastSplit.length === 2) {
+      const partA = contrastSplit[0].trim();
+      const partB = contrastSplit[1].trim();
+      if (partA.length > 2) existingList.push(partA);
+      if (partB.length > 2) empowerList.push(partB);
+      return;
+    }
+
+    const hasChallenge = challengeKeywords.some((kw) => clause.includes(kw));
+    const hasPositive = positiveKeywords.some((kw) => clause.includes(kw));
+
+    if (hasChallenge && ! clause.startsWith('ללא קושי')) {
+      empowerList.push(clause);
+    } else if (hasPositive) {
+      existingList.push(clause);
+    } else if (existingList.length <= empowerList.length) {
+      existingList.push(clause);
+    } else {
+      empowerList.push(clause);
+    }
+  });
+
+  // ניסוח פורמלי ומקצועי למוקדי כוח קיימים
+  const formattedExisting =
+    existingList.length > 0
+      ? existingList
+          .map((item) => {
+            const clean = item.replace(/^[•\-*]\s*/, '').trim();
+            return `• ${clean}`;
+          })
+          .join('\n')
+      : '• ילד/ה בעל/ת סקרנות טבעית ורצון להצליח\n• מגיב/ה היטב לחיזוקים חיוביים ולקשר אישי חם עם הצוות החינוכי\n• בעל/ת פוטנציאל למידה והתפתחות בסביבה מתווכת ותומכת';
+
+  // 3. זיהוי מטרות מתאימות מתוך מאגר המטרות הדינמי + יצירת מטרות מותאמות אישית מהטקסט הגולמי
+  const domainMatchers = [
+    {
+      bankId: 'gb_eco_1',
+      keywords: ['משחק', 'סוציודרמטי', 'חברתי', 'חברים', 'ליד הילדים', 'תפקיד', 'פינות הגן', 'אינטראקציות חברתיות', 'נוקשות', 'תבניתי']
+    },
+    {
+      bankId: 'gb_eco_2',
+      keywords: ['סדנא', 'יצירה', 'שולחן פעילות', 'תכנון', 'התארגנות', 'תוצר', 'חומרים', 'גזירה', 'הדבקה', 'ציור']
+    },
+    {
+      bankId: 'gb_eco_3',
+      keywords: ['שירותים', 'גמילה', 'צואה', 'קקי', 'פיפי', 'להתפנות', 'מכנסיים', 'צרכים']
+    },
+    {
+      bankId: 'gb_matya_read_1',
+      keywords: ['קריאה', 'פענוח', 'שטף', 'אותיות', 'ניקוד', 'תנועות', 'קורא', 'קוראת', 'טקסטים']
+    },
+    {
+      bankId: 'gb_matya_read_2',
+      keywords: ['פונולוגית', 'פונולוגי', 'שמיעתית', 'צליל פותח', 'צליל סוגר', 'הברות', 'חריזה', 'מוכנות לקריאה']
+    },
+    {
+      bankId: 'gb_matya_comp_1',
+      keywords: ['הבנת הנקרא', 'משמעות סמויה', 'משמעות גלויה', 'רעיון מרכזי', 'עיקר וטפל', 'הסקת מסקנות', 'אוצר מילים']
+    },
+    {
+      bankId: 'gb_matya_comp_2',
+      keywords: ['שחזור סיפור', 'תוכן הסיפור', 'רצף סיפורי', 'פתיחה אמצע סוף', 'האזנה לסיפור']
+    },
+    {
+      bankId: 'gb_matya_strat_1',
+      keywords: ['אסטרטגיות קריאה', 'טרום קריאה', 'מקדמי ארגון', 'משפטי מפתח', 'פיצוח שאלות', 'סיכום']
+    },
+    {
+      bankId: 'gb_matya_write_1',
+      keywords: ['גרפומוטורי', 'גרפומוטוריקה', 'כתב יד', 'אחיזת עיפרון', 'שורה', 'רווחים', 'עיצוב אותיות', 'העתקה מהלוח', 'מתעייף בכתיבה']
+    },
+    {
+      bankId: 'gb_matya_spell_1',
+      keywords: ['כתיב', 'שגיאות כתיב', 'הומופוניות', 'אותיות סופיות', 'אימות קריאה']
+    },
+    {
+      bankId: 'gb_matya_expr_write_1',
+      keywords: ['הבעה בכתב', 'מבע רעיוני', 'ניסוח בכתב', 'מילות קישור', 'כתיבת פסקה', 'כתיבה חופשית']
+    },
+    {
+      bankId: 'gb_matya_oral_1',
+      keywords: ['הבעה בעל פה', 'הבעה בעל-פה', 'שיח', 'שיחה', 'דיבור', 'מפגש', 'מליאה', 'להשתתף בשיחה', 'בעל פה']
+    }
+  ];
+
+  const matchedGoals = [];
+  const usedBankIds = new Set();
+
+  domainMatchers.forEach((matcher) => {
+    const isMatched = matcher.keywords.some((kw) => text.includes(kw));
+    if (isMatched) {
+      const bankItem = bank.find((b) => b.id === matcher.bankId);
+      if (bankItem && !usedBankIds.has(bankItem.id)) {
+        usedBankIds.add(bankItem.id);
+        // אתר משפטים רלוונטיים מהטקסט הגולמי עבור תיאור הפעילות וההשתתפות
+        const relevantClauses = clauses.filter((c) =>
+          matcher.keywords.some((kw) => c.includes(kw))
+        );
+        const rawContextActivity =
+          relevantClauses.length > 0
+            ? relevantClauses.join('. ') + '.'
+            : bankItem.defaultActivity;
+
+        const personalizedOpps = (bankItem.defaultOpportunities || '')
+          .replace(/הילד\/ה/g, firstName)
+          .replace(/הילד/g, firstName);
+
+        matchedGoals.push({
+          id: 'g_rev_' + Date.now() + '_' + matchedGoals.length,
+          environment: bankItem.environment,
+          activityParticipation: rawContextActivity || bankItem.defaultActivity || '',
+          title: bankItem.title,
+          objectives: (bankItem.suggestedObjectives || []).map((o) => `• ${o}`).join('\n'),
+          opportunities: personalizedOpps,
+          partners: bankItem.defaultPartners || 'צוות חינוכי, הורים',
+          duration: bankItem.defaultDuration || 'עד סוף השנה',
+          evaluationCriteria: bankItem.defaultEvaluation || ''
+        });
+      }
+    }
+  });
+
+  // בדיקה נוספת מול כל מטרה מותאמת אישית במאגר (לפי התאמת מילים בכותרת או בסביבה)
+  bank.forEach((bankItem) => {
+    if (usedBankIds.has(bankItem.id)) return;
+    const significantWords = bankItem.title
+      .split(/\s+/)
+      .filter((w) => w.length >= 4 && !['התלמיד', 'הילד', 'יפתח', 'ישפר', 'באופן', 'בצורה'].includes(w));
+    const hits = significantWords.filter((w) => text.includes(w));
+    if (hits.length >= 2) {
+      usedBankIds.add(bankItem.id);
+      matchedGoals.push({
+        id: 'g_rev_custom_' + Date.now() + '_' + matchedGoals.length,
+        environment: bankItem.environment,
+        activityParticipation: bankItem.defaultActivity || `בסביבת ${bankItem.environment}, ${firstName} זקוק/ה לתיווך מותאם לחיזוק תפקוד זה.`,
+        title: bankItem.title,
+        objectives: (bankItem.suggestedObjectives || []).map((o) => `• ${o}`).join('\n'),
+        opportunities: (bankItem.defaultOpportunities || '').replace(/הילד/g, firstName),
+        partners: bankItem.defaultPartners || 'צוות חינוכי, הורים',
+        duration: bankItem.defaultDuration || 'עד סוף השנה',
+        evaluationCriteria: bankItem.defaultEvaluation || ''
+      });
+    }
+  });
+
+  // אם הטקסט מזכיר ויסות רגשי/חושי או קשב/ריכוז ולא נוצרה לכך מטרה ייעודית, נייצר מטרה פורמלית מותאמת
+  if (
+    (text.includes('ויסות') || text.includes('תסכול') || text.includes('רגשי') || text.includes('מעברים')) &&
+    matchedGoals.length < 4
+  ) {
+    const regClauses = clauses.filter(
+      (c) => c.includes('ויסות') || c.includes('תסכול') || c.includes('רגשי') || c.includes('מעברים')
+    );
+    matchedGoals.push({
+      id: 'g_rev_reg_' + Date.now(),
+      environment: 'מרחב הגן / הכיתה',
+      activityParticipation:
+        regClauses.length > 0
+          ? regClauses.join('. ') + '.'
+          : `${firstName} מתקשה לעיתים בוויסות רגשי וחושי במצבי תסכול או במעברים בין פעילויות וזקוק/ה לתיווך מרגיע ומכיל.`,
+      title: 'יפתח/תפתח מיומנויות ויסות רגשי וחושי והתמודדות מותאמת במצבי תסכול ומעברים',
+      objectives:
+        '• יזהה/תזהה מצבי הצפה או תסכול וייעזר/תיעזר במבוגר או באמצעי הרגעה מוסכם.\n• יעבור/תעבור בין פעילויות בסדר היום באופן רגוע ומווסת בעזרת הטרמה.\n• יביע/תביע רגשות וצרכים באופן מילולי מותאם.',
+      opportunities: `• הטרמה מראש לפני מעברים ושינויים בסדר היום באמצעות כרטיסיות חזותיות.\n• הקצאת "פינת רוגע" או פעילות סנסו-מוטורית מווסתת ל${firstName} בליווי איש צוות.\n• שיקוף רגשי ותיווך מילולי למציאת פתרונות במצבי תסכול.`,
+      partners: 'צוות חינוכי, סייעת אישית, מטפלת רגשית / מרפאה בעיסוק, הורים',
+      duration: 'עד סוף השנה',
+      evaluationCriteria: 'הפחתה בעוצמת ותדירות מצבי התסכול ומעבר מווסת ועצמאי בין פעילויות.'
+    });
+  }
+
+  // אם עדיין לא זוהו מטרות ספציפיות מתוך מילות מפתח, נייצר מטרות פורמליות מתוך משפטי הקושי/העצמה עצמם!
+  if (matchedGoals.length === 0) {
+    const sourceEmpower = empowerList.length > 0 ? empowerList.slice(0, 3) : [text];
+    sourceEmpower.forEach((empClause, idx) => {
+      const cleanClause = empClause
+        .replace(/^(?:מתקשה ב|זקוק לחיזוק ב|זקוקה לחיזוק ב|קושי ב)/, '')
+        .trim();
+      matchedGoals.push({
+        id: 'g_rev_gen_' + Date.now() + '_' + idx,
+        environment: 'מרחב הגן / הכיתה',
+        activityParticipation: `על פי תצפיות הצוות: ${empClause}. נדרש תיווך מדורג והתאמת הסביבה החינוכית.`,
+        title: `חיזוק ושיפור התפקוד בתחום: ${cleanClause}`,
+        objectives: `• יגלה/תגלה מעורבות ויוזמה בפעילויות הקשורות ל${cleanClause}.\n• יתנסה/תתנסה בהדרגה במשימות מותאמות תוך היעזרות בתיווך של מבוגר.\n• יפעל/תפעל באופן עצמאי ומווסת יותר בסביבה הטבעית.`,
+        opportunities: `• מתן הטרמה, מודלינג ופירוק המשימה לשלבים קצרים וברורים עבור ${firstName}.\n• מתן חיזוקים חיוביים ומשוב מעצים בזמן אמת.`,
+        partners: 'צוות חינוכי, סייעת אישית, הורים',
+        duration: 'עד סוף השנה',
+        evaluationCriteria: `שיפור עקבי וניכר ב${cleanClause} והשתתפות פעילה בסדר היום.`
+      });
+    });
+  }
+
+  // 4. בניית עמודת "כוחות להעצמה וחיזוק" מתוך משפטי הקושי + המטרות שחולצו
+  const formattedEmpowerItems = [];
+  empowerList.forEach((emp) => {
+    const cleaned = emp
+      .replace(/^(?:אך|אבל|ומנגד)\s+/, '')
+      .replace(/^(?:זקוק לחיזוק ב|זקוקה לחיזוק ב|מתקשה ב|מתקשה עם)\s*/, '')
+      .trim();
+    if (cleaned) {
+      formattedEmpowerItems.push(`• ${cleaned}`);
+    }
+  });
+  matchedGoals.forEach((g) => {
+    const shortGoal = `${g.environment}: ${g.title}`;
+    if (!formattedEmpowerItems.some((item) => item.includes(g.environment))) {
+      formattedEmpowerItems.push(`• ${shortGoal}`);
+    }
+  });
+
+  const formattedEmpower =
+    formattedEmpowerItems.length > 0
+      ? formattedEmpowerItems.join('\n')
+      : '• הרחבת העצמאות והתפקוד בסביבות הפעילות השונות\n• חיזוק מיומנויות חברתיות, לימודיות ורגשיות בהתאם למטרות התוכנית';
+
+  // 5. בניית המלצות פורמליות לראש/תחתית המסמך
+  const environmentsMentioned = [...new Set(matchedGoals.map((g) => g.environment))].join(', ');
+  const formalRecommendations =
+    `1. המשך עבודה מערכתית ועקבית של הצוות החינוכי והטיפולי בסביבות הפעילות (${environmentsMentioned}), תוך הדרגתיות והתבססות על מוקדי הכוח של ${firstName}.\n` +
+    `2. שילוב עזרים חזותיים (כרטיסיות סדר יום, הטרמה מראש לפני מעברים ומודלינג) לתמיכה בהתארגנות, ויסות וביטחון עצמי.\n` +
+    `3. שמירה על קשר רציף, שיתוף ותיאום ציפיות עם ההורים לחיזוק העקביות והעברת המיומנויות בין המסגרת החינוכית לבית.`;
+
+  return {
+    name: detectedName || currentFormData.name,
+    strengthsExisting: formattedExisting,
+    strengthsToEmpower: formattedEmpower,
+    goals: matchedGoals,
+    recommendations: formalRecommendations
+  };
+}
+
+
 export function generateDefaultQuestionsForCustomGoal(goalTitle, environment) {
   const envLabel = environment || 'הסביבה החינוכית';
   return [
