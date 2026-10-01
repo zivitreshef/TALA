@@ -36,7 +36,7 @@ import {
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
 
-const STUDENTS_STORAGE_KEY = 'tala_students_plans_v2';
+const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
 const SESSION_USER_KEY = 'tala_current_session_user_v1';
 
 export default function App() {
@@ -65,6 +65,7 @@ export default function App() {
   const [students, setStudents] = useState(() => {
     try {
       localStorage.removeItem('tala_students_plans_v1');
+      localStorage.removeItem('tala_students_plans_v2');
       const saved = localStorage.getItem(STUDENTS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);

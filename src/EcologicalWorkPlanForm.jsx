@@ -432,9 +432,14 @@ export default function EcologicalWorkPlanForm({
         .join('\n');
 
       const prompt = `אתה מומחה פדגוגי לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י).
-בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל כלל המטרות שהוגדרו בתכנית, נסח בשפה פדגוגית מקצועית, קוהרנטית ומדויקת את טבלת הסיכום העליונה של המסמך המורכבת משתי עמודות:
-1. "strengthsExisting": מוקדי כוח וכוחות קיימים של התלמיד/ה (ניסוח פדגוגי מקצועי ומכבד, נקודות • מופרדות בשורות חדשות).
-2. "strengthsToEmpower": כוחות להעצמה וחיזוק (התחומים והמיומנויות שדורשים חיזוק והעצמה, מנוסחים באופן מקצועי ונגזרים מהטקסט החופשי ומהמטרות שהוגדרו).
+בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל המטרות שהוגדרו, הפק תקציר מנהלים (Executive Summary) תמציתי, קוהרנטי ומזוקק עבור טבלת מוקדי הכוח בראש המסמך.
+הנחיות קריטיות:
+- לעולם אל תעתיק משפטים גולמיים כמו שהם (As-Is) מתוך הטקסט של המורה!
+- תקן אוטומטית כל שגיאת כתיב, הקלדה או ניסוח יומיומי על פי ההקשר, ונסח מחדש בעברית פדגוגית תקנית ורהוטה.
+- בכל עמודה כתוב תקציר מנהלים קצר של 3 עד 4 נקודות בלבד (כל נקודה בשורה אחת קצרה וממוקדת לפי נושא/תחום: "• [שם התחום]: [תמצית מקצועית קצרה]"). אל תעמיס מלל!
+
+1. "strengthsExisting": תקציר מנהלים של מוקדי כוח וכוחות קיימים לפי תחומים (3-4 נקודות קצרות).
+2. "strengthsToEmpower": תקציר מנהלים של כוחות להעצמה וחיזוק לפי תחומים (3-4 נקודות קצרות).
 
 טקסט חופשי של המורה:
 "${freeText}"
@@ -444,8 +449,8 @@ ${goalsSummary}
 
 החזר JSON בלבד:
 {
-  "strengthsExisting": "• נקודת חוזק 1\\n• נקודת חוזק 2...",
-  "strengthsToEmpower": "• תחום להעצמה 1\\n• תחום להעצמה 2..."
+  "strengthsExisting": "• תחום אישיותי-רגשי: תמצית קצרה\\n• תחום קוגניטיבי ושפתי: תמצית קצרה",
+  "strengthsToEmpower": "• משחקי שולחן וקופסא: תמצית קצרה\\n• מפגש ושיח: תמצית קצרה"
 }`;
 
       const parsed = await callGeminiJson(prompt);
@@ -466,31 +471,15 @@ ${goalsSummary}
       }
     }
 
-    // Use the coherent Hebrew Pedagogical NLP Synthesizer
+    // Use the coherent Hebrew Semantic & Executive Summary Interpreter
     const engineered = reverseEngineerRawTextLocally(freeText, formData, goalBank);
-    const empowerFromGoals = goalsList.map(
-      (g) => `• ${g.environment ? g.environment + ': ' : ''}${g.title.replace(/^(?:התלמיד\/ה|התלמיד|התלמידה|הילד\/ה|הילד|הילדה)\s+/, '')}`
-    );
-
-    const baseEmpowerLines = engineered?.strengthsToEmpower
-      ? engineered.strengthsToEmpower.split('\n').filter(Boolean)
-      : [];
-
-    empowerFromGoals.forEach((line) => {
-      if (!baseEmpowerLines.some((existing) => existing.includes(line.slice(0, 14)))) {
-        baseEmpowerLines.push(line);
-      }
-    });
 
     const updated = {
       ...formData,
       name: engineered?.name || formData.name,
       educationalFramework: engineered?.educationalFramework || formData.educationalFramework,
       strengthsExisting: engineered?.strengthsExisting || formData.strengthsExisting,
-      strengthsToEmpower:
-        baseEmpowerLines.length > 0
-          ? baseEmpowerLines.join('\n')
-          : engineered?.strengthsToEmpower || formData.strengthsToEmpower,
+      strengthsToEmpower: engineered?.strengthsToEmpower || formData.strengthsToEmpower,
       status: 'מוכן להדפסה',
       lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
     };
@@ -524,24 +513,26 @@ ${goalsSummary}
         .join('\n');
 
       const prompt = `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
-המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות.
-עליך לבצע עיבוד מידע והנדסה לאחור מעמיקה: לנתח את המידע הגולמי ולנסח אותו מחדש בשפה פדגוגית מקצועית, רהוטה, קוהרנטית ומדויקת לחלוטין לילד/ה המתואר/ת, תוך שימוש בסביבות ההשתתפות, המטרות והיעדים ממאגר המטרות שלהלן.
+המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות (העלול להכיל שגיאות כתיב, שגיאות הקלדה או ניסוח יומיומי).
+הנחיות קריטיות לעיבוד המידע:
+1. אל תעתיק משפטים גולמיים מהטקסט "As-Is"! עליך לפרש את המשמעות מתוך ההקשר, לתקן כל שגיאת כתיב או דקדוק, ולנסח מחדש בעברית פדגוגית מקצועית, רהוטה ותקנית.
+2. עבור "strengthsExisting" (מוקדי כוח: כוחות קיימים) ו-"strengthsToEmpower" (כוחות להעצמה וחיזוק) כתוב **תקציר מנהלים (Executive Summary) תמציתי ומזוקק לפי נושאים** – לכל היותר 3 עד 4 נקודות קצרות בכל עמודה (במבנה: "• [נושא/תחום]: [תמצית קצרה של 5-9 מילים]"). אל תעמיס מלל ואל תחזור על משפטים ארוכים!
 
-הדוח הרשמי חייב לכלול:
+הדוח הרשמי ב-JSON חייב לכלול:
 1. "name": שם הילד/ה אם הוזכר בטקסט (או השאר ריק אם לא הוזכר).
 2. "educationalFramework": מסגרת חינוכית/גן אם הוזכרו בטקסט (או השאר ריק).
-3. "strengthsExisting": מוקדי כוח וכוחות קיימים של הילד/ה המנוסחים באופן פדגוגי מקצועי ומכבד (נקודות • מופרדות בשורות חדשות).
-4. "strengthsToEmpower": כוחות להעצמה וחיזוק הנגזרים באופן מדויק מהקשיים שתוארו בטקסט (נקודות • מופרדות בשורות חדשות).
-5. "goals": מערך של 2 עד 4 מטרות מלאות, קוהרנטיות ומדויקות לקשיים הספציפיים של הילד/ה בטקסט מתוך מאגר המטרות והסביבות. לכל מטרה מלא את כל 6 העמודות:
+3. "strengthsExisting": תקציר מנהלים תמציתי (3-4 נקודות קצרות לפי נושאים) של מוקדי הכוח הקיימים.
+4. "strengthsToEmpower": תקציר מנהלים תמציתי (2-4 נקודות קצרות לפי נושאים) של הכוחות להעצמה וחיזוק.
+5. "goals": מערך של 2 עד 4 מטרות מותאמות לקשיים שתוארו בטקסט מתוך מאגר המטרות והסביבות שלהלן. לכל מטרה מלא את כל 6 העמודות בניסוח מקצועי וללא שגיאות כתיב:
    - "environment": סביבת השתתפות מתוך הרשימה (${ENVIRONMENTS_LIST.join(', ')})
-   - "activityParticipation": תיאור קוהרנטי ומקצועי של התפקוד הנוכחי של הילד/ה בסביבה זו על סמך הטקסט של המורה
+   - "activityParticipation": סינתזה פדגוגית מקצועית ותמציתית של תפקוד הילד/ה בסביבה זו (ללא העתקת הטקסט הגולמי כפי שהוא!)
    - "title": מטרה מתוך מאגר המטרות
    - "objectives": יעדים רלוונטיים מתוך מאגר היעדים של אותה סביבה (נקודות • מופרדות בשורות חדשות)
    - "opportunities": הזדמנויות, אמצעים ודרכי תיווך מעשיות של הצוות עבור הילד/ה (נקודות • מופרדות בשורות חדשות)
    - "partners": שותפים לתהליך
    - "duration": משך הזמן
    - "evaluationCriteria": אמות מידה ברורות להערכה
-6. "recommendations": המלצות מערכתיות מנוסחות היטב לצוות הגן ולהורים.
+6. "recommendations": 3 המלצות מערכתיות קצרות וממוקדות לצוות הגן ולהורים.
 
 שם הילד/ה הנוכחי בטופס: "${formData.name || ''}"
 הטקסט הגולמי של המורה:
@@ -556,8 +547,8 @@ ${bankReference}
 {
   "name": "",
   "educationalFramework": "",
-  "strengthsExisting": "• חוזק מנוסח מקצועית 1\\n• חוזק מנוסח מקצועית 2",
-  "strengthsToEmpower": "• מוקד להעצמה מנוסח מקצועית 1\\n• מוקד להעצמה 2",
+  "strengthsExisting": "• תחום אישיותי-רגשי: תמצית קצרה\\n• תחום קוגניטיבי: תמצית קצרה",
+  "strengthsToEmpower": "• משחקי שולחן וקופסא: תמצית קצרה\\n• מפגש ושיח: תמצית קצרה",
   "goals": [
     {
       "environment": "...",
