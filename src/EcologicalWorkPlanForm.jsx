@@ -1050,11 +1050,6 @@ ${bankReference}
       <section className="form-section-card">
         <div className="section-header-line">
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
-          {hideStudentDetailsOnPrint && (
-            <span className="privacy-active-pill">
-              🔒 מצב חיסיון בהדפסה פעיל: יודפס כ-"{toHebrewAcronym(formData.name)}" ופרטים אישיים יושחרו (████████)
-            </span>
-          )}
         </div>
 
         {/* Radio Buttons for תל"א OR תח"י */}

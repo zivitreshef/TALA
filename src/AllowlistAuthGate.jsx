@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Mail, KeyRound, AlertTriangle, Sparkles, UserCheck, Plus, Trash2, Copy, Check, X } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, KeyRound, AlertTriangle, UserCheck, Plus, Trash2, Copy, Check, X } from 'lucide-react';
 import { verifyAllowedUser } from './allowedUsers';
 
 export function AllowlistAuthGate({ allowedUsers, onLoginSuccess }) {
@@ -18,12 +18,6 @@ export function AllowlistAuthGate({ allowedUsers, onLoginSuccess }) {
     }
 
     onLoginSuccess(result.user);
-  };
-
-  const handleQuickDemoFill = (user) => {
-    setEmail(user.email);
-    setAccessCode(user.accessCode);
-    setErrorMsg('');
   };
 
   return (
@@ -74,7 +68,7 @@ export function AllowlistAuthGate({ allowedUsers, onLoginSuccess }) {
               <input
                 type="password"
                 required
-                placeholder="הזן קוד גישה..."
+                placeholder="הזן סיסמה אישית..."
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
               />
@@ -86,23 +80,6 @@ export function AllowlistAuthGate({ allowedUsers, onLoginSuccess }) {
             <span>כניסה למערכת</span>
           </button>
         </form>
-
-        <div className="auth-quick-access">
-          <span className="quick-access-label">כניסה מהירה לחשבונות מוגדרים (לבדיקה):</span>
-          <div className="quick-access-chips">
-            {allowedUsers.filter(u => u.active).map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                className="quick-chip"
-                onClick={() => handleQuickDemoFill(u)}
-              >
-                <strong>{u.name}</strong>
-                <small>({u.role === 'admin' ? 'מנהלת מערכת' : 'מורה מורשית'})</small>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -114,15 +91,18 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
     email: '',
     title: 'גננת / מורה להוראה מותאמת',
     role: 'teacher',
-    accessCode: '1234'
+    accessCode: ''
   });
+  const [editingPasswordUserId, setEditingPasswordUserId] = useState(null);
+  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [passwordSavedToastId, setPasswordSavedToastId] = useState(null);
   const [copiedConfig, setCopiedConfig] = useState(false);
 
   if (!isOpen) return null;
 
   const handleAddUser = (e) => {
     e.preventDefault();
-    if (!newUser.name.trim() || !newUser.email.trim()) return;
+    if (!newUser.name.trim() || !newUser.email.trim() || !newUser.accessCode.trim()) return;
 
     const exists = allowedUsers.some(
       (u) => u.email.trim().toLowerCase() === newUser.email.trim().toLowerCase()
@@ -138,7 +118,7 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
       email: newUser.email.trim().toLowerCase(),
       title: newUser.title.trim() || 'צוות חינוכי',
       role: newUser.role,
-      accessCode: newUser.accessCode.trim() || '1234',
+      accessCode: newUser.accessCode.trim(),
       active: true
     };
 
@@ -148,8 +128,28 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
       email: '',
       title: 'גננת / מורה להוראה מותאמת',
       role: 'teacher',
-      accessCode: '1234'
+      accessCode: ''
     });
+  };
+
+  const handleStartChangePassword = (user) => {
+    setEditingPasswordUserId(user.id);
+    setNewPasswordValue('');
+  };
+
+  const handleSaveNewPassword = (userId) => {
+    const trimmed = newPasswordValue.trim();
+    if (!trimmed) {
+      alert('נא להזין סיסמה חדשה.');
+      return;
+    }
+    onUpdateAllowedUsers(
+      allowedUsers.map((u) => (u.id === userId ? { ...u, accessCode: trimmed } : u))
+    );
+    setEditingPasswordUserId(null);
+    setNewPasswordValue('');
+    setPasswordSavedToastId(userId);
+    setTimeout(() => setPasswordSavedToastId(null), 2500);
   };
 
   const handleToggleActive = (id) => {
@@ -177,7 +177,7 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
 
   return (
     <div className="modal-backdrop" onClick={onClose} dir="rtl">
-      <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '720px' }}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '780px' }}>
         <div className="modal-header">
           <div className="modal-header-title">
             <ShieldCheck size={22} className="text-primary" />
@@ -188,7 +188,7 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
 
         <div className="modal-body">
           <p style={{ fontSize: '13px', color: '#475569', marginTop: 0 }}>
-            רק משתמשים המופיעים ברשימה זו ומסומנים כ"פעילים" מורשים להתחבר לאתר ולצפות בתכניות העבודה.
+            רק משתמשים המופיעים ברשימה זו ומסומנים כ"פעילים" מורשים להתחבר לאתר ולצפות בתכניות העבודה. הסיסמאות מוסתרות מטעמי אבטחה.
           </p>
 
           <form onSubmit={handleAddUser} className="add-allowed-user-box">
@@ -217,9 +217,9 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
                 onChange={(e) => setNewUser({ ...newUser, title: e.target.value })}
               />
               <input
-                type="text"
+                type="password"
                 required
-                placeholder="קוד גישה אישי"
+                placeholder="הגדר סיסמה אישית..."
                 value={newUser.accessCode}
                 onChange={(e) => setNewUser({ ...newUser, accessCode: e.target.value })}
               />
@@ -250,7 +250,7 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
                   <th>שם מלא</th>
                   <th>אימייל</th>
                   <th>תפקיד</th>
-                  <th>קוד גישה</th>
+                  <th>סיסמה / קוד גישה</th>
                   <th>סטטוס</th>
                   <th>פעולות</th>
                 </tr>
@@ -264,7 +264,67 @@ export function AdminAllowlistModal({ isOpen, onClose, allowedUsers, onUpdateAll
                     </td>
                     <td dir="ltr" style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: '12px' }}>{u.email}</td>
                     <td>{u.title}</td>
-                    <td><code>{u.accessCode}</code></td>
+                    <td>
+                      {editingPasswordUserId === u.id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <input
+                            type="password"
+                            placeholder="סיסמה חדשה..."
+                            value={newPasswordValue}
+                            onChange={(e) => setNewPasswordValue(e.target.value)}
+                            autoFocus
+                            style={{
+                              padding: '5px 8px',
+                              border: '1.5px solid #4a859e',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              width: '120px'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="btn-primary-sm"
+                            style={{ padding: '5px 8px', fontSize: '11.5px' }}
+                            onClick={() => handleSaveNewPassword(u.id)}
+                            title="שמור סיסמה חדשה"
+                          >
+                            <Check size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary-sm"
+                            style={{ padding: '5px 8px', fontSize: '11.5px' }}
+                            onClick={() => {
+                              setEditingPasswordUserId(null);
+                              setNewPasswordValue('');
+                            }}
+                            title="ביטול"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ letterSpacing: '2px', color: '#5a717d', fontWeight: 700 }}>
+                            ••••••••
+                          </span>
+                          <button
+                            type="button"
+                            className="btn-secondary-sm"
+                            style={{ padding: '3px 9px', fontSize: '11.5px' }}
+                            onClick={() => handleStartChangePassword(u)}
+                          >
+                            <KeyRound size={12} />
+                            <span>שנה סיסמה</span>
+                          </button>
+                          {passwordSavedToastId === u.id && (
+                            <span style={{ color: '#56997b', fontSize: '11.5px', fontWeight: 700 }}>
+                              ✓ עודכן
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td>
                       <button
                         type="button"
