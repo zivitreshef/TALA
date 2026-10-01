@@ -36,7 +36,7 @@ import {
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
 
-const STUDENTS_STORAGE_KEY = 'tala_students_plans_v1';
+const STUDENTS_STORAGE_KEY = 'tala_students_plans_v2';
 const SESSION_USER_KEY = 'tala_current_session_user_v1';
 
 export default function App() {
@@ -64,6 +64,7 @@ export default function App() {
   // Students list & their ecological work plans
   const [students, setStudents] = useState(() => {
     try {
+      localStorage.removeItem('tala_students_plans_v1');
       const saved = localStorage.getItem(STUDENTS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -138,7 +139,7 @@ export default function App() {
       goals: [
         {
           id: 'g_init_' + Date.now(),
-          environment: 'מרחב הגן',
+          environment: ENVIRONMENTS_LIST[0],
           activityParticipation: '',
           title: '',
           objectives: '',
@@ -180,12 +181,12 @@ export default function App() {
       mode: 'add',
       id: '',
       title: '',
-      environment: 'מרחב הגן',
+      environment: ENVIRONMENTS_LIST[0],
       usageCount: 1,
       defaultActivity: '',
       suggestedObjectivesText: '',
       defaultOpportunities: '',
-      defaultPartners: 'צוות חינוכי, הורים',
+      defaultPartners: 'צוות הגן, הורים',
       defaultDuration: 'עד סוף השנה',
       defaultEvaluation: ''
     });
@@ -196,7 +197,7 @@ export default function App() {
       mode: 'edit',
       id: goalItem.id,
       title: goalItem.title || '',
-      environment: goalItem.environment || 'מרחב הגן',
+      environment: goalItem.environment || ENVIRONMENTS_LIST[0],
       usageCount: goalItem.usageCount ?? 1,
       defaultActivity: goalItem.defaultActivity || '',
       suggestedObjectivesText: (goalItem.suggestedObjectives || []).join('\n'),
