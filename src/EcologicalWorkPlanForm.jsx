@@ -1210,22 +1210,28 @@ ${bankReference}
           </div>
 
           <div className="form-field">
-            <label>מין הילד/ה (מתאים אוטומטית את היעדים ללשון זכר/נקבה):</label>
-            <div className="gender-toggle-group">
-              <button
-                type="button"
-                className={`gender-toggle-btn ${currentGender === 'boy' ? 'active' : ''}`}
-                onClick={() => handleGenderChange('boy')}
-              >
-                👦 בן (לשון זכר)
-              </button>
-              <button
-                type="button"
-                className={`gender-toggle-btn ${currentGender === 'girl' ? 'active' : ''}`}
-                onClick={() => handleGenderChange('girl')}
-              >
-                👧 בת (לשון נקבה)
-              </button>
+            <label>מין הילד/ה:</label>
+            <div className="gender-radio-group" role="radiogroup" aria-label="מין הילד/ה">
+              <label className={`gender-radio-option ${currentGender === 'boy' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="studentGender"
+                  value="boy"
+                  checked={currentGender === 'boy'}
+                  onChange={() => handleGenderChange('boy')}
+                />
+                <span>בן</span>
+              </label>
+              <label className={`gender-radio-option ${currentGender === 'girl' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="studentGender"
+                  value="girl"
+                  checked={currentGender === 'girl'}
+                  onChange={() => handleGenderChange('girl')}
+                />
+                <span>בת</span>
+              </label>
             </div>
           </div>
 
