@@ -1565,7 +1565,7 @@ ${bankReference}
                 <div className="hl-goal-selector-section">
                   <div className="hl-goal-header-row">
                     <label className="hl-goal-label">
-                      🎯 מטרה עליונה – מה אנחנו רוצים שיקרה?
+                      מטרה עליונה – מה אנחנו רוצים שיקרה?
                     </label>
                     <div className="hl-goal-actions">
                       <button
@@ -1600,7 +1600,7 @@ ${bankReference}
                         }}
                       >
                         <HelpCircle size={15} />
-                        <span>3 שאלות מנחות AI למילוי המטרה</span>
+                        <span>הוספת שאלות לדיוק מטרה</span>
                       </button>
                     </div>
                   </div>
