@@ -290,7 +290,7 @@ export default function App() {
       <header className="tala-header">
         <div className="tala-brand">
           <div className="brand-logo-circle">
-            <img src="./tala-logo.jpg" alt="TALA Logo" className="header-logo-img" />
+            <img src="./tala-logo.png" alt="TALA Logo" className="header-logo-img" />
           </div>
           <div>
             <h1>TALA – תכנית עבודה אקולוגית ותח"י</h1>

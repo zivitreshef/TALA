@@ -707,7 +707,7 @@ ${bankReference}
     const displayAddress = getDisplayMaskedField(formData.address);
     const displayPhone = getDisplayMaskedField(formData.phone);
     const fullDocTitle = getFullDocTitle();
-    const logoUrl = new URL('./tala-logo.jpg', window.location.href).href;
+    const logoUrl = new URL('./tala-logo.png', window.location.href).href;
 
     const goalsRowsHtml = (formData.goals || [])
       .map((g) => {
@@ -1038,7 +1038,7 @@ ${bankReference}
             />
           </div>
           <div className="doc-banner-center-brand">
-            <img src="./tala-logo.jpg" alt="TALA Emblem" className="doc-banner-logo" />
+            <img src="./tala-logo.png" alt="TALA Emblem" className="doc-banner-logo" />
             <h2 className="main-ecological-heading">
               {getFullDocTitle()}
             </h2>
@@ -1256,7 +1256,7 @@ ${bankReference}
             <div style={{ background: 'linear-gradient(135deg, #0d2b56 0%, #154c99 52%, #216e55 100%)', color: '#fff', padding: '12px 18px', borderBottom: '3px solid #f4b942', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
               <span style={{ fontSize: '12.5px' }}><strong>תאריך:</strong> {formData.date}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <img src="./tala-logo.jpg" alt="TALA Logo" style={{ width: '44px', height: '44px', borderRadius: '50%', border: '2px solid #f4b942', objectFit: 'cover' }} />
+                <img src="./tala-logo.png" alt="TALA Logo" style={{ width: '44px', height: '44px', borderRadius: '50%', border: '2px solid #f4b942', objectFit: 'cover' }} />
                 <h4 style={{ margin: 0, fontSize: '17px', color: '#fffdf9' }}>
                   {getFullDocTitle()}
                 </h4>
