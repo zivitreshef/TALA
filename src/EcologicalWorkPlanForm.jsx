@@ -1305,7 +1305,7 @@ ${bankReference}
       {/* Section 2: Teacher Free Text + עיבוד המידע Button + Top Summary Table */}
       <section className="form-section-card highlight-summary-section">
         <div className="section-header-line">
-          <h3>2. תיאור חופשי של המורה וטבלת מוקדי כוח מסכמת (בראש המסמך)</h3>
+          <h3>2. תיאור חופשי של המורה וטבלת מוקדי כוח מסכמת</h3>
         </div>
 
         <div className="free-text-area-box">
@@ -1466,7 +1466,7 @@ ${bankReference}
           <div>
             <h3>3. הגדרת מטרות ויעדים לפי סביבות פעילות ותחומי תפקוד</h3>
             <p className="section-sub-desc">
-              בחרי מטרה מתוך מאגר המטרות הדינמי (המטרות והיעדים מותאמים אוטומטית למין הילד/ה: <strong>{currentGender === 'girl' ? 'בת – לשון נקבה' : 'בן – לשון זכר'}</strong>) או הקלידי מטרה חדשה.
+              בחרי מטרה מתוך מאגר המטרות הדינמי או הקלידי מטרה חדשה.
             </p>
           </div>
           <button type="button" className="btn-add-goal-block" onClick={handleAddGoalRow}>
