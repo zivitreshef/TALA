@@ -817,6 +817,65 @@ input, textarea, select, button {
   font-weight: 600;
 }
 
+.plan-type-radio-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: var(--bg-warm-subtle);
+  border: 1.5px solid var(--border);
+  border-right: 5px solid var(--accent-gold);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.plan-type-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0d2b56;
+}
+
+.plan-type-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.plan-type-radio-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: #ffffff;
+  color: #13233a;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.plan-type-radio-card:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.plan-type-radio-card.selected {
+  background: linear-gradient(135deg, #154c99 0%, #216e55 100%);
+  color: #ffffff;
+  border-color: #0d2b56;
+  box-shadow: 0 3px 10px rgba(21, 76, 153, 0.22);
+}
+
+.plan-type-radio-card input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-gold);
+}
+
 .personal-details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

@@ -35,7 +35,7 @@ export function AllowlistAuthGate({ allowedUsers, onLoginSuccess }) {
         </div>
         <h1 className="auth-title">מערכת TALA</h1>
         <p className="auth-subtitle">
-          תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית ותח"י
+          תוכנית עבודה שנתית – תל"א (תוכנית לימודים אישית) / תח"י (תוכנית חינוכית יחידנית)
         </p>
 
         <div className="auth-security-notice">

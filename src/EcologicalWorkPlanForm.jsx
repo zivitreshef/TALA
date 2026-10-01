@@ -525,6 +525,12 @@ ${goalsSummary}
   };
 
   // === Build Official Document HTML (with or without Privacy Redaction) ===
+  const getFullDocTitle = () => {
+    return formData.planType
+      ? `תוכנית עבודה שנתית – ${formData.planType}`
+      : 'תוכנית עבודה שנתית';
+  };
+
   const getDisplayStudentName = () => {
     if (hideStudentDetailsOnPrint) {
       return toHebrewAcronym(formData.name);
@@ -543,7 +549,7 @@ ${goalsSummary}
     return redactStudentNameInText(text || '', formData.name, hideStudentDetailsOnPrint);
   };
 
-  // Print the official Ecological Work Plan document
+  // Print the official Ecological Work Plan document with TALA Logo & Theme Colors
   const handlePrintDocument = () => {
     // Save progress first
     handleSaveProgress();
@@ -556,6 +562,8 @@ ${goalsSummary}
       : formData.educationalFramework || '__________';
     const displayAddress = getDisplayMaskedField(formData.address);
     const displayPhone = getDisplayMaskedField(formData.phone);
+    const fullDocTitle = getFullDocTitle();
+    const logoUrl = new URL('./tala-logo.jpg', window.location.href).href;
 
     const goalsRowsHtml = (formData.goals || [])
       .map((g) => {
@@ -589,7 +597,7 @@ ${goalsSummary}
                 <th style="width: 14%;">אמות מידה להערכה</th>
               </tr>
               <tr class="columns-content-row">
-                <td style="font-weight: 600;">${titleText || ''}</td>
+                <td style="font-weight: 600; color: #0d2b56;">${titleText || ''}</td>
                 <td>${objectivesText || ''}</td>
                 <td>${opportunitiesText || ''}</td>
                 <td>${partnersText || ''}</td>
@@ -613,18 +621,19 @@ ${goalsSummary}
       <html lang="he" dir="rtl">
         <head>
           <meta charset="utf-8" />
-          <title>תכנית_עבודה_אקולוגית_${displayName}</title>
+          <title>${fullDocTitle.replace(/\s+/g, '_')}_${displayName}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
             @page {
               size: A4 landscape;
-              margin: 12mm;
+              margin: 10mm;
             }
             body {
               font-family: 'Rubik', Arial, sans-serif;
               direction: rtl;
               text-align: right;
-              color: #0f172a;
+              color: #13233a;
+              background: #fffdf9;
               margin: 0;
               padding: 0;
               font-size: 12.5px;
@@ -632,34 +641,64 @@ ${goalsSummary}
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
-            .doc-top-meta {
+            .stained-glass-strip {
+              height: 6px;
+              width: 100%;
+              background: linear-gradient(90deg, #d14928 0%, #f4b942 24%, #216e55 50%, #154c99 76%, #664b8e 100%);
+              border-radius: 6px 6px 0 0;
+            }
+            .print-banner {
+              background: linear-gradient(135deg, #0d2b56 0%, #154c99 52%, #216e55 100%);
+              color: #ffffff;
+              padding: 14px 20px;
+              border-bottom: 4px solid #f4b942;
+              border-radius: 0 0 10px 10px;
               display: flex;
+              align-items: center;
               justify-content: space-between;
-              font-size: 13px;
-              margin-bottom: 8px;
+              margin-bottom: 12px;
+            }
+            .print-banner-center {
+              display: flex;
+              align-items: center;
+              gap: 14px;
+            }
+            .print-logo {
+              width: 54px;
+              height: 54px;
+              border-radius: 50%;
+              object-fit: cover;
+              border: 2px solid #f4b942;
+              background: #fff;
             }
             .doc-main-title {
-              text-align: center;
-              font-size: 20px;
+              margin: 0;
+              font-size: 19px;
               font-weight: 700;
-              text-decoration: underline;
-              margin: 8px 0 14px 0;
+              color: #fffdf9;
+            }
+            .doc-meta-side {
+              font-size: 12.5px;
+              color: #fef7e6;
             }
             .student-details-bar {
               display: flex;
               flex-wrap: wrap;
-              gap: 22px;
+              gap: 20px;
               padding: 10px 14px;
-              border: 1.5px solid #1e293b;
-              background: #f8fafc;
+              border: 1.5px solid #0d2b56;
+              border-right: 5px solid #d14928;
+              background: #faf6ee;
+              border-radius: 8px;
               margin-bottom: 14px;
               font-size: 13px;
             }
             .eco-table {
               width: 100%;
               border-collapse: collapse;
-              margin-bottom: 16px;
+              margin-bottom: 15px;
               page-break-inside: avoid;
+              background: #ffffff;
             }
             .eco-table th, .eco-table td {
               border: 1.5px solid #1e293b;
@@ -668,63 +707,81 @@ ${goalsSummary}
               text-align: right;
               white-space: pre-line;
             }
-            .summary-table th {
-              background: #e2e8f0;
-              font-size: 14px;
+            .summary-table th.th-existing {
+              background: #216e55;
+              color: #ffffff;
+              font-size: 13.5px;
+              font-weight: 700;
+              text-align: center;
+            }
+            .summary-table th.th-empower {
+              background: #154c99;
+              color: #ffffff;
+              font-size: 13.5px;
               font-weight: 700;
               text-align: center;
             }
             .env-header-row td {
-              background: #f1f5f9;
+              background: #faf6ee;
+              border-top: 3px solid #154c99;
             }
             .sub-instruction {
               font-size: 11px;
-              color: #334155;
+              color: #4b5b70;
               font-weight: normal;
             }
             .columns-header-row th {
-              background: #e0f2fe;
+              background: #dce9f9;
+              color: #0d2b56;
               font-weight: 700;
               font-size: 12.5px;
               text-align: center;
             }
             .th-sub {
               font-weight: 400;
-              font-size: 11px;
+              font-size: 10.5px;
               display: block;
+              color: #2c4668;
             }
             .doc-footer-section {
-              margin-top: 16px;
+              margin-top: 14px;
               page-break-inside: avoid;
             }
             .recommendations-box {
-              border: 1.5px solid #1e293b;
+              border: 1.5px solid #0d2b56;
+              background: #faf6ee;
+              border-radius: 8px;
               padding: 10px 12px;
-              min-height: 48px;
-              margin-bottom: 20px;
+              min-height: 46px;
+              margin-bottom: 18px;
               white-space: pre-line;
             }
             .signatures-row {
               display: flex;
               justify-content: space-between;
-              margin-top: 24px;
+              margin-top: 22px;
               font-weight: 600;
+              color: #0d2b56;
             }
           </style>
         </head>
         <body>
-          <div class="doc-top-meta">
-            <div><strong>תאריך:</strong> ${formData.date || '__________'}</div>
-            <div><strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}</div>
+          <div class="stained-glass-strip"></div>
+          <div class="print-banner">
+            <div class="doc-meta-side"><strong>תאריך:</strong> ${formData.date || '__________'}</div>
+            <div class="print-banner-center">
+              <img src="${logoUrl}" alt="TALA Logo" class="print-logo" />
+              <h1 class="doc-main-title">${fullDocTitle}</h1>
+            </div>
+            <div class="doc-meta-side"><strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}</div>
           </div>
-
-          <h1 class="doc-main-title">תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית</h1>
 
           <div class="student-details-bar">
             <div><strong>שם הילד/ה:</strong> ${displayName}</div>
             <div><strong>ת.ז:</strong> ${displayId}</div>
             <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
             <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
+            ${formData.planType ? `<div><strong>סוג תוכנית:</strong> ${formData.planType}</div>` : ''}
             ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
             ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
           </div>
@@ -733,8 +790,8 @@ ${goalsSummary}
           <table class="eco-table summary-table">
             <thead>
               <tr>
-                <th style="width: 50%;">מוקדי כוח: כוחות קיימים</th>
-                <th style="width: 50%;">כוחות להעצמה וחיזוק</th>
+                <th class="th-existing" style="width: 50%;">מוקדי כוח: כוחות קיימים</th>
+                <th class="th-empower" style="width: 50%;">כוחות להעצמה וחיזוק</th>
               </tr>
             </thead>
             <tbody>
@@ -766,7 +823,7 @@ ${goalsSummary}
     printWindow.focus();
     setTimeout(() => {
       printWindow.print();
-    }, 350);
+    }, 400);
   };
 
   return (
@@ -819,7 +876,7 @@ ${goalsSummary}
 
           <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
             <Printer size={17} />
-            <span>הדפס תכנית עבודה</span>
+            <span>הדפס תוכנית עבודה</span>
           </button>
         </div>
       </div>
@@ -839,7 +896,7 @@ ${goalsSummary}
           <div className="doc-banner-center-brand">
             <img src="./tala-logo.jpg" alt="TALA Emblem" className="doc-banner-logo" />
             <h2 className="main-ecological-heading">
-              תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית
+              {getFullDocTitle()}
             </h2>
           </div>
           <div className="inline-meta-field">
@@ -854,7 +911,7 @@ ${goalsSummary}
         </div>
       </div>
 
-      {/* Section 1: Student Personal Details */}
+      {/* Section 1: Student Personal Details & Plan Type Radio Selector */}
       <section className="form-section-card">
         <div className="section-header-line">
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
@@ -863,6 +920,42 @@ ${goalsSummary}
               🔒 מצב חיסיון בהדפסה פעיל: יודפס כ-"{toHebrewAcronym(formData.name)}" ופרטים אישיים יושחרו (████████)
             </span>
           )}
+        </div>
+
+        {/* Radio Buttons for תל"א OR תח"י */}
+        <div className="plan-type-radio-bar">
+          <span className="plan-type-label">סוג התוכנית (מתעדכן אוטומטית בכותרת המסמך):</span>
+          <div className="plan-type-options">
+            <label
+              className={`plan-type-radio-card ${
+                formData.planType === 'תל"א (תוכנית לימודים אישית)' ? 'selected' : ''
+              }`}
+            >
+              <input
+                type="radio"
+                name="planType"
+                value='תל"א (תוכנית לימודים אישית)'
+                checked={formData.planType === 'תל"א (תוכנית לימודים אישית)'}
+                onChange={(e) => handleFieldChange('planType', e.target.value)}
+              />
+              <span>תל"א (תוכנית לימודים אישית)</span>
+            </label>
+
+            <label
+              className={`plan-type-radio-card ${
+                formData.planType === 'תח"י (תוכנית חינוכית יחידנית)' ? 'selected' : ''
+              }`}
+            >
+              <input
+                type="radio"
+                name="planType"
+                value='תח"י (תוכנית חינוכית יחידנית)'
+                checked={formData.planType === 'תח"י (תוכנית חינוכית יחידנית)'}
+                onChange={(e) => handleFieldChange('planType', e.target.value)}
+              />
+              <span>תח"י (תוכנית חינוכית יחידנית)</span>
+            </label>
+          </div>
         </div>
 
         <div className="personal-details-grid">
@@ -1010,18 +1103,23 @@ ${goalsSummary}
           </div>
 
           <div className="preview-paper-sheet">
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-              <span><strong>תאריך:</strong> {formData.date}</span>
-              <span><strong>שנת לימודים:</strong> {formData.schoolYear}</span>
+            <div className="stained-glass-top-strip" style={{ borderRadius: '6px 6px 0 0' }} />
+            <div style={{ background: 'linear-gradient(135deg, #0d2b56 0%, #154c99 52%, #216e55 100%)', color: '#fff', padding: '12px 18px', borderBottom: '3px solid #f4b942', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12.5px' }}><strong>תאריך:</strong> {formData.date}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img src="./tala-logo.jpg" alt="TALA Logo" style={{ width: '44px', height: '44px', borderRadius: '50%', border: '2px solid #f4b942', objectFit: 'cover' }} />
+                <h4 style={{ margin: 0, fontSize: '17px', color: '#fffdf9' }}>
+                  {getFullDocTitle()}
+                </h4>
+              </div>
+              <span style={{ fontSize: '12.5px' }}><strong>שנת לימודים:</strong> {formData.schoolYear}</span>
             </div>
-            <h4 style={{ textAlign: 'center', textDecoration: 'underline', margin: '6px 0 12px 0', fontSize: '17px' }}>
-              תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית
-            </h4>
-            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#f8fafc', border: '1px solid #1e293b', marginBottom: '12px', fontSize: '13px' }}>
+            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#faf6ee', border: '1.5px solid #0d2b56', borderRight: '4px solid #d14928', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
               <span><strong>שם הילד/ה:</strong> {getDisplayStudentName()}</span>
               <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
               <span><strong>ת.ל:</strong> {getDisplayMaskedField(formData.birthDate)}</span>
               <span><strong>מסגרת חינוכית:</strong> {hideStudentDetailsOnPrint ? maskSensitiveValue(formData.educationalFramework) : formData.educationalFramework}</span>
+              {formData.planType && <span><strong>סוג תוכנית:</strong> {formData.planType}</span>}
               {formData.address && <span><strong>כתובת:</strong> {getDisplayMaskedField(formData.address)}</span>}
               {formData.phone && <span><strong>טלפון:</strong> {getDisplayMaskedField(formData.phone)}</span>}
             </div>
@@ -1029,8 +1127,8 @@ ${goalsSummary}
             <table className="preview-doc-table">
               <thead>
                 <tr>
-                  <th style={{ width: '50%' }}>מוקדי כוח: כוחות קיימים</th>
-                  <th style={{ width: '50%' }}>כוחות להעצמה וחיזוק</th>
+                  <th style={{ width: '50%', background: '#216e55', color: '#fff', textAlign: 'center' }}>מוקדי כוח: כוחות קיימים</th>
+                  <th style={{ width: '50%', background: '#154c99', color: '#fff', textAlign: 'center' }}>כוחות להעצמה וחיזוק</th>
                 </tr>
               </thead>
               <tbody>
@@ -1044,12 +1142,12 @@ ${goalsSummary}
             {(formData.goals || []).map((g) => (
               <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
                 <tbody>
-                  <tr style={{ background: '#f1f5f9' }}>
+                  <tr style={{ background: '#faf6ee' }}>
                     <td colSpan={6}>
                       <strong>סביבה: {g.environment}</strong> | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
                     </td>
                   </tr>
-                  <tr style={{ background: '#e0f2fe', fontWeight: 'bold' }}>
+                  <tr style={{ background: '#dce9f9', color: '#0d2b56', fontWeight: 'bold' }}>
                     <td>מטרה (מה אנחנו רוצים שיקרה?)</td>
                     <td>יעדים, ציוני דרך (צעדים אופרטיביים)</td>
                     <td>הזדמנויות, אמצעים ואיך נגרום לזה לקרות?</td>
