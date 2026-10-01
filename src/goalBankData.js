@@ -1275,6 +1275,9 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
   const matchedGoals = [];
   const executiveEmpowerBullets = [];
 
+  const challengeClausesList = rawClauses.filter((c) => challengeMarkerRx.test(c));
+  const unmatchedClauses = [];
+
   domainInterpreters.forEach((dom) => {
     if (dom.triggerRx.test(challengeContextText)) {
       executiveEmpowerBullets.push(dom.executiveEmpowerBullet);
@@ -1288,17 +1291,79 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     }
   });
 
-  // אם הטקסט היה כללי מאוד ולא הפעיל תבנית ספציפית, נבחר 2 מטרות מרכזיות מהמאגר ונייצר תקציר מנהלים נקי
+  // בדיקה האם יש משפט קושי בטקסט שלא קיבל מענה מאף תבנית קיימת במאגר
+  challengeClausesList.forEach((clause) => {
+    const coveredByDomain = domainInterpreters.some((dom) => dom.triggerRx.test(clause));
+    if (!coveredByDomain) {
+      unmatchedClauses.push(clause);
+    }
+  });
+
+  // פונקציית סינתזה ליצירת מטרה חדשה ומותאמת אישית לתלמיד/ה כאשר אף מטרה במאגר אינה מתאימה
+  const synthesizeCustomGoalFromClause = (clauseText, idx) => {
+    // חילוץ נושא הקושי המרכזי מתוך המשפט ללא העתקת מילת הקושי הגולמית
+    const cleanedTopic = clauseText
+      .replace(
+        /^.*?(?:מתקשה ב|מתקשה ל|קושי ב|קשיים ב|זקוק לתיווך ב|זקוקה לתיווך ב|זקוק לעזרה ב|זקוקה לעזרה ב|זקוק לחיזוק ב|זקוקה לחיזוק ב|צריך חיזוק ב|צריכה חיזוק ב|נמנע מ|נמנעת מ|לא מצליח ל|לא מצליחה ל)/,
+        ''
+      )
+      .replace(/[.,;!?]+$/g, '')
+      .trim();
+
+    const coreSubject =
+      cleanedTopic && cleanedTopic.length >= 3 && cleanedTopic.length <= 55
+        ? cleanedTopic
+        : 'התנהלות עצמאית ומווסתת בפעילויות הגן';
+
+    // זיהוי סביבה קרובה או סביבה מותאמת
+    let inferredEnv = 'משחק במרחב הגן';
+    if (/מפגש|מליאה|ריכוז|שיר|סיפור/.test(clauseText)) inferredEnv = 'מפגש בגן';
+    else if (/חצר|בחוץ|מתקנים/.test(clauseText)) inferredEnv = 'חצר';
+    else if (/אוכל|ארוחה|בוקר|צהריים/.test(clauseText)) inferredEnv = 'אוכל';
+    else if (/שירותים|ניקיון|היגיינה|לבוש/.test(clauseText)) inferredEnv = 'שירותים';
+    else if (/יצירה|סדנא|שולחן/.test(clauseText)) inferredEnv = 'סדנא / יצירה';
+    else if (/מעבר|שינוי|טקס|בוקר|פרידה/.test(clauseText)) inferredEnv = 'פעילות שאינה בשגרה';
+
+    const newGoalTitle = isFemale
+      ? `תגלה עצמאות, יוזמה והתנהלות מותאמת בתחום: ${coreSubject}.`
+      : `יגלה עצמאות, יוזמה והתנהלות מותאמת בתחום: ${coreSubject}.`;
+
+    return {
+      id: 'g_rev_custom_' + Date.now() + '_' + idx,
+      environment: inferredEnv,
+      activityParticipation: `בסביבת ${inferredEnv}, ${firstName} ${g.needs} לתיווך מותאם, הטרמה וליווי הדרגתי של הצוות לשם חיזוק התפקוד בתחום ${coreSubject}.`,
+      title: newGoalTitle,
+      objectives: [
+        `• ${isFemale ? 'תשתתף' : 'ישתתף'} באופן פעיל ומווסת בפעילות הקשורה ל${coreSubject} בתיווך מבוגר`,
+        `• ${isFemale ? 'תיישם' : 'יישם'} בהדרגה אסטרטגיות התמודדות ועצמאות בתחום ${coreSubject}`,
+        `• ${isFemale ? 'תפנה' : 'יפנה'} למבוגר בבקשת עזרה או תיווך מילולי בעת קושי`
+      ].join('\n'),
+      opportunities: `• הטרמה מראש ופירוק הפעילות לשלבים ברורים ומדורגים עבור ${firstName}.\n• תיווך אישי, עידוד ומתן חיזוקים חיוביים על התקדמות בתחום ${coreSubject}.`,
+      partners: 'צוות הגן, סייעת אישית, צוות פרא-רפואי והורים',
+      duration: 'עד סוף השנה',
+      evaluationCriteria: `תפקוד עצמאי, עקבי ומותאם של ${firstName} בתחום ${coreSubject} בתיווך מופחת.`
+    };
+  };
+
+  // אם יש משפטי קושי ייחודיים שאינם מכוסים על ידי המטרות הקיימות במאגר – ניצור עבורם מטרה חדשה ומותאמת אישית!
+  if (unmatchedClauses.length > 0 && matchedGoals.length < 4) {
+    unmatchedClauses.slice(0, 2).forEach((clause, idx) => {
+      if (matchedGoals.length < 4) {
+        const customGoal = synthesizeCustomGoalFromClause(clause, idx);
+        matchedGoals.push(customGoal);
+        executiveEmpowerBullets.push(
+          `• יעד אישי מותאם (${customGoal.environment}): חיזוק עצמאות והסתגלות ב${customGoal.title.replace(/^.*?בתחום:\s*/, '').replace(/\.$/, '')}`
+        );
+      }
+    });
+  }
+
+  // אם עדיין לא נוצרה אף מטרה (למשל טקסט קצר מאוד ללא מילות מפתח מהמאגר), ניצור מטרה חדשה המותאמת ישירות לטקסט של המורה
   if (matchedGoals.length === 0) {
-    const defaultDom1 = domainInterpreters[0]; // משחקי שולחן
-    const defaultDom2 = domainInterpreters[3]; // משחק במרחב הגן
+    const customGoal = synthesizeCustomGoalFromClause(challengeContextText, 0);
+    matchedGoals.push(customGoal);
     executiveEmpowerBullets.push(
-      defaultDom1.executiveEmpowerBullet,
-      defaultDom2.executiveEmpowerBullet
-    );
-    matchedGoals.push(
-      { id: 'g_rev_' + Date.now() + '_0', ...defaultDom1.buildGoal(challengeContextText) },
-      { id: 'g_rev_' + Date.now() + '_1', ...defaultDom2.buildGoal(challengeContextText) }
+      `• התאמה אישית (${customGoal.environment}): פיתוח עצמאות, השתתפות פעילה והסתגלות מותאמת במרחב הגן`
     );
   }
 
