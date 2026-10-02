@@ -682,6 +682,7 @@ export function AdminAllowlistModal({
     name: '',
     email: '',
     title: 'גננת / מורה להוראה מותאמת',
+    group: '',
     role: 'teacher',
     accessCode: ''
   });
@@ -702,6 +703,19 @@ export function AdminAllowlistModal({
   if (!isOpen) return null;
 
   const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
+  const existingGroups = Array.from(
+    new Set(
+      (allowedUsers || [])
+        .map((u) => (u.group || '').trim())
+        .filter(Boolean)
+    )
+  );
+
+  const handleUpdateUserGroup = (userId, nextGroup) => {
+    onUpdateAllowedUsers(
+      allowedUsers.map((u) => (u.id === userId ? { ...u, group: nextGroup } : u))
+    );
+  };
 
   const handleGenerateTempPasswordForNewUser = () => {
     const generated = generateRandomTempPassword();
@@ -738,6 +752,7 @@ export function AdminAllowlistModal({
       name: newUser.name.trim(),
       email: newUser.email.trim().toLowerCase(),
       title: newUser.title.trim() || 'צוות חינוכי',
+      group: (newUser.group || '').trim(),
       role: newUser.role,
       accessCode: tempPassword,
       active: true,
@@ -751,6 +766,7 @@ export function AdminAllowlistModal({
       name: '',
       email: '',
       title: 'גננת / מורה להוראה מותאמת',
+      group: newUser.group || '',
       role: 'teacher',
       accessCode: ''
     });
@@ -1277,6 +1293,12 @@ export function AdminAllowlistModal({
               </div>
             </div>
 
+            <datalist id="tala-admin-groups-datalist">
+              {existingGroups.map((grp) => (
+                <option key={grp} value={grp} />
+              ))}
+            </datalist>
+
             {enforcePasswordPolicy && newUser.accessCode && (
               <PasswordPolicyChecklist password={newUser.accessCode} />
             )}
@@ -1293,7 +1315,25 @@ export function AdminAllowlistModal({
                 borderTop: '1px dashed #cbd5e1'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>צוות / מתי"א:</span>
+                  <input
+                    type="text"
+                    list="tala-admin-groups-datalist"
+                    placeholder="למשל: מתי״א מרכז"
+                    value={newUser.group || ''}
+                    onChange={(e) => setNewUser({ ...newUser, group: e.target.value })}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '12px',
+                      width: '135px'
+                    }}
+                  />
+                </label>
+
                 <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>הרשאה:</span>
                   <select
@@ -1352,6 +1392,7 @@ export function AdminAllowlistModal({
                   <th>שם מלא</th>
                   <th>אימייל</th>
                   <th>תפקיד</th>
+                  <th>צוות / מתי"א</th>
                   <th>סיסמה / קוד גישה</th>
                   <th>סטטוס</th>
                   <th>פעולות</th>
@@ -1388,6 +1429,25 @@ export function AdminAllowlistModal({
                         {u.email}
                       </td>
                       <td>{u.title}</td>
+                      <td>
+                        <input
+                          type="text"
+                          list="tala-admin-groups-datalist"
+                          placeholder="ללא שיוך..."
+                          value={u.group || ''}
+                          onChange={(e) => handleUpdateUserGroup(u.id, e.target.value)}
+                          style={{
+                            padding: '4px 7px',
+                            borderRadius: '6px',
+                            border: '1px solid #d3dff0',
+                            background: '#f8faff',
+                            fontSize: '12px',
+                            width: '115px',
+                            color: '#2b4c73',
+                            fontWeight: 600
+                          }}
+                        />
+                      </td>
                       <td>
                         {editingPasswordUserId === u.id ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

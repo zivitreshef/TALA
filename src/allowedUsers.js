@@ -6,6 +6,7 @@ export const DEFAULT_ALLOWED_USERS = [
     name: 'זיוית רשף',
     role: 'admin', // 'admin' | 'teacher'
     title: 'מנהלת מערכת',
+    group: 'מתי"א מרכז',
     accessCode: 'TALA2026',
     active: true
   },
@@ -15,6 +16,7 @@ export const DEFAULT_ALLOWED_USERS = [
     name: 'מיכל כהן',
     role: 'teacher',
     title: 'גננת שילוב / מורת מתי"א',
+    group: 'מתי"א מרכז',
     accessCode: '1234',
     active: true
   },
@@ -24,6 +26,7 @@ export const DEFAULT_ALLOWED_USERS = [
     name: 'רונית לוי',
     role: 'teacher',
     title: 'מנהלת גן ורכזת תכניות עבודה',
+    group: 'מתי"א מרכז',
     accessCode: '1234',
     active: true
   }

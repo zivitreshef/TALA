@@ -21,6 +21,8 @@ import {
   Mail,
   Send,
   Download,
+  Users,
+  Calendar,
   X
 } from 'lucide-react';
 import {
@@ -33,7 +35,9 @@ import {
   adaptGoalToGender,
   toHebrewAcronym,
   maskSensitiveValue,
-  redactStudentNameInText
+  redactStudentNameInText,
+  getNextSchoolYear,
+  buildRolloverStudentForNextYear
 } from './goalBankData';
 import {
   GOOGLE_APPS_SCRIPT_TEMPLATE,
@@ -72,6 +76,8 @@ export default function EcologicalWorkPlanForm({
   goalBank,
   geminiApiKey,
   isAdmin,
+  currentUser,
+  allowedUsers = [],
   onOpenGoalBankManager,
   onSaveStudentPlan,
   onUseOrAddGoalToBank,
@@ -103,6 +109,7 @@ export default function EcologicalWorkPlanForm({
       ...st,
       schoolYear: currentYear,
       gender: initialGender,
+      sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
       goals: normalizedGoals,
       reportsByYear: existingReports
     };
@@ -112,10 +119,18 @@ export default function EcologicalWorkPlanForm({
   const savedSnapshotRef = useRef(JSON.stringify(buildNormalizedStudentData(student)));
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
   const [saveBanner, setSaveBanner] = useState(false);
+  const [autoSavedTime, setAutoSavedTime] = useState('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
   const [showFullDocPreview, setShowFullDocPreview] = useState(false);
+
+  // State for lightweight Team Sharing modal (Option C)
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showAllShareUsers, setShowAllShareUsers] = useState(false);
+
+  // State for Collapsible Mid-Year / End-of-Year Evaluation per goal card (Option A)
+  const [expandedEvalMap, setExpandedEvalMap] = useState({});
 
   // State for "Send to Email" (שלח למייל) modal
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -150,11 +165,12 @@ export default function EcologicalWorkPlanForm({
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
     setExpandedQuickObjMap({});
+    setExpandedEvalMap({});
+    setAutoSavedTime('');
   }, [student?.id]);
 
-  // Report whether current formData has unsaved changes compared to savedSnapshotRef
+  // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
   useEffect(() => {
-    if (!onDraftStateChange) return;
     const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
     const syncedDraft = {
       ...formData,
@@ -164,11 +180,42 @@ export default function EcologicalWorkPlanForm({
       }
     };
     const isDirty = JSON.stringify(syncedDraft) !== savedSnapshotRef.current;
-    onDraftStateChange({
-      isDirty,
-      draftData: syncedDraft
-    });
-  }, [formData, onDraftStateChange]);
+    if (onDraftStateChange) {
+      onDraftStateChange({
+        isDirty,
+        draftData: syncedDraft
+      });
+    }
+
+    if (!isDirty) return;
+
+    const autoSaveTimer = setTimeout(() => {
+      const nowTime = new Date().toLocaleTimeString('he-IL', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      const updatedWithTime = {
+        ...formData,
+        lastSavedAt: nowTime
+      };
+      const updated = {
+        ...updatedWithTime,
+        reportsByYear: {
+          ...(formData.reportsByYear || {}),
+          [activeYear]: extractYearReportFromFormData(updatedWithTime)
+        }
+      };
+      savedSnapshotRef.current = JSON.stringify(updated);
+      setFormData(updated);
+      onSaveStudentPlan(updated);
+      setAutoSavedTime(nowTime);
+      if (onDraftStateChange) {
+        onDraftStateChange({ isDirty: false, draftData: updated });
+      }
+    }, 2500);
+
+    return () => clearTimeout(autoSaveTimer);
+  }, [formData, onDraftStateChange, onSaveStudentPlan]);
 
   // Automatically expand all textareas to their full scrollHeight so NO scrollbar ever appears
   useEffect(() => {
@@ -191,11 +238,61 @@ export default function EcologicalWorkPlanForm({
       clearTimeout(timer);
       window.removeEventListener('resize', resizeAllTextareas);
     };
-  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview]);
+  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap]);
 
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
   const currentGender = formData.gender || 'boy';
+
+  // Rollover current student's plan into the next school year (Option D)
+  const handleRolloverToNextYear = (targetYearOverride = null) => {
+    const currentYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const nextYear = targetYearOverride || getNextSchoolYear(currentYear);
+    if (
+      !window.confirm(
+        `האם לפתוח תכנית המשך לשנת הלימודים ${nextYear} על בסיס התכנית של ${currentYear}? מוקדי הכוח והמטרות יועתקו ברצף פדגוגי לשנה החדשה.`
+      )
+    ) {
+      return;
+    }
+    const syncedCurrent = {
+      ...formData,
+      reportsByYear: {
+        ...(formData.reportsByYear || {}),
+        [currentYear]: extractYearReportFromFormData(formData)
+      }
+    };
+    const rolled = buildRolloverStudentForNextYear(syncedCurrent, currentYear, nextYear);
+    savedSnapshotRef.current = JSON.stringify(rolled);
+    setFormData(rolled);
+    onSaveStudentPlan(rolled);
+    setSaveBanner(true);
+    setTimeout(() => setSaveBanner(false), 2500);
+  };
+
+  // Toggle sharing this student with a colleague email (Option C)
+  const handleToggleShareColleague = (colleagueEmail) => {
+    const cleanEmail = String(colleagueEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return;
+    const currentShared = Array.isArray(formData.sharedWith) ? formData.sharedWith : [];
+    const exists = currentShared.some((em) => String(em || '').toLowerCase() === cleanEmail);
+    const nextShared = exists
+      ? currentShared.filter((em) => String(em || '').toLowerCase() !== cleanEmail)
+      : [...currentShared, cleanEmail];
+
+    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const updated = {
+      ...formData,
+      sharedWith: nextShared,
+      reportsByYear: {
+        ...(formData.reportsByYear || {}),
+        [activeYear]: extractYearReportFromFormData(formData)
+      }
+    };
+    savedSnapshotRef.current = JSON.stringify(updated);
+    setFormData(updated);
+    onSaveStudentPlan(updated);
+  };
 
   // Switch school year: snapshot current year's report and load (or create) the selected year's report
   const handleSchoolYearChange = (newYear) => {
@@ -983,6 +1080,36 @@ ${bankReference}
         const partnersText = getRedactedText(g.partners);
         const durationText = getRedactedText(g.duration);
         const evaluationText = getRedactedText(g.evaluationCriteria);
+        const hasPeriodicEval = Boolean(
+          (g.achievementStatus && g.achievementStatus.trim()) ||
+            (g.midYearEvaluation && g.midYearEvaluation.trim()) ||
+            (g.endYearEvaluation && g.endYearEvaluation.trim())
+        );
+        const periodicEvalHtml = hasPeriodicEval
+          ? `
+              <tr style="background: #f8faff; border-top: 1.5px dashed #7997be;">
+                <td colspan="6" style="padding: 8px 10px;">
+                  <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: baseline;">
+                    ${
+                      g.achievementStatus
+                        ? `<div><strong style="color: #4c1d95;">סטטוס השגת היעד:</strong> ${g.achievementStatus}</div>`
+                        : ''
+                    }
+                    ${
+                      g.midYearEvaluation
+                        ? `<div style="flex: 1 1 240px;"><strong>הערכת מחצית השנה:</strong> ${getRedactedText(g.midYearEvaluation)}</div>`
+                        : ''
+                    }
+                    ${
+                      g.endYearEvaluation
+                        ? `<div style="flex: 1 1 240px;"><strong>הערכת סוף השנה והמשך:</strong> ${getRedactedText(g.endYearEvaluation)}</div>`
+                        : ''
+                    }
+                  </div>
+                </td>
+              </tr>
+            `
+          : '';
 
         return `
           <table class="eco-table goal-block-table">
@@ -992,7 +1119,7 @@ ${bankReference}
                   <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
                   <div style="margin-top: 4px;">
                     <strong>פעילות והשתתפות:</strong>
-                    <span class="sub-instruction">תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות (התייחסות לגורמים המאפשרים והמגבילים בסביבה):</span>
+                    <span class="sub-instruction">תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות:</span>
                   </div>
                   <div style="margin-top: 6px; white-space: pre-line;">${activityText || ''}</div>
                 </td>
@@ -1013,6 +1140,7 @@ ${bankReference}
                 <td>${durationText || ''}</td>
                 <td>${evaluationText || ''}</td>
               </tr>
+              ${periodicEvalHtml}
             </tbody>
           </table>
         `;
@@ -1262,6 +1390,22 @@ ${bankReference}
         const partnersText = (getRedactedText(g.partners) || '').replace(/\n/g, '<br/>');
         const durationText = (getRedactedText(g.duration) || '').replace(/\n/g, '<br/>');
         const evaluationText = (getRedactedText(g.evaluationCriteria) || '').replace(/\n/g, '<br/>');
+        const hasPeriodicEval = Boolean(
+          (g.achievementStatus && g.achievementStatus.trim()) ||
+            (g.midYearEvaluation && g.midYearEvaluation.trim()) ||
+            (g.endYearEvaluation && g.endYearEvaluation.trim())
+        );
+        const wordPeriodicEvalRow = hasPeriodicEval
+          ? `
+            <tr style="background-color:#f8faff;">
+              <td colspan="6" style="border:1px solid #7997be; padding:6pt; text-align:right;">
+                ${g.achievementStatus ? `<div><strong>סטטוס השגת היעד:</strong> ${g.achievementStatus}</div>` : ''}
+                ${g.midYearEvaluation ? `<div style="margin-top:3pt;"><strong>הערכת מחצית השנה:</strong> ${(getRedactedText(g.midYearEvaluation) || '').replace(/\n/g, '<br/>')}</div>` : ''}
+                ${g.endYearEvaluation ? `<div style="margin-top:3pt;"><strong>הערכת סוף השנה והמשך:</strong> ${(getRedactedText(g.endYearEvaluation) || '').replace(/\n/g, '<br/>')}</div>` : ''}
+              </td>
+            </tr>
+          `
+          : '';
 
         return `
           <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family: Arial, sans-serif; font-size: 10.5pt;">
@@ -1287,6 +1431,7 @@ ${bankReference}
               <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${durationText}</td>
               <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${evaluationText}</td>
             </tr>
+            ${wordPeriodicEvalRow}
           </table>
         `;
       })
@@ -1564,8 +1709,10 @@ ${bankReference}
             </span>
           )}
 
-          {formData.lastSavedAt && !saveBanner && (
-            <span className="last-saved-hint">שמירה אחרונה: {formData.lastSavedAt}</span>
+          {(autoSavedTime || formData.lastSavedAt) && !saveBanner && (
+            <span className="last-saved-hint">
+              {autoSavedTime ? `נשמר אוטומטית: ${autoSavedTime}` : `שמירה אחרונה: ${formData.lastSavedAt}`}
+            </span>
           )}
         </div>
 
@@ -1634,7 +1781,7 @@ ${bankReference}
               {getFullDocTitle()}
             </h2>
           </div>
-          <div className="inline-meta-field">
+          <div className="inline-meta-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <label>שנת לימודים:</label>
             <select
               value={formData.schoolYear || 'תשפ"ו (2025-2026)'}
@@ -1659,14 +1806,62 @@ ${bankReference}
                 );
               })}
             </select>
+            {getNextSchoolYear(formData.schoolYear || 'תשפ"ו (2025-2026)') && (
+              <button
+                type="button"
+                onClick={handleRolloverToNextYear}
+                title="העתק מוקדי כוח ומטרות מתוכנית זו לשנת הלימודים הבאה"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: 'rgba(255, 255, 255, 0.18)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.45)',
+                  borderRadius: '6px',
+                  padding: '4px 9px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Calendar size={13} />
+                <span>שכפל לשנה הבאה</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Section 1: Student Personal Details & Plan Type Radio Selector */}
       <section className="form-section-card">
-        <div className="section-header-line">
+        <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
+          <button
+            type="button"
+            onClick={() => setShowShareModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#ede9fe' : '#f1f5f9',
+              color: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#5b21b6' : '#334155',
+              border: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <Users size={15} />
+            <span>
+              שיתוף צוות
+              {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
+                ? ` • ${formData.sharedWith.length}`
+                : ''}
+            </span>
+          </button>
         </div>
 
         {/* Radio Buttons for תל"א OR תח"י */}
@@ -1875,12 +2070,23 @@ ${bankReference}
       {/* Optional Live Full Document Table Preview (Right at Top when toggled) */}
       {showFullDocPreview && (
         <section className="form-section-card live-print-preview-card">
-          <div className="section-header-line">
+          <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <h3>📄 תצוגה מקדימה של המסמך המלא להדפסה</h3>
-            <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
-              <Printer size={16} />
-              <span>שלח להדפסה כעת</span>
-            </button>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-preview-doc"
+                onClick={downloadWordFile}
+                title="הורד כקובץ Word ניתן לעריכה"
+              >
+                <Download size={16} />
+                <span>הורד קובץ Word</span>
+              </button>
+              <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
+                <Printer size={16} />
+                <span>שלח להדפסה כעת</span>
+              </button>
+            </div>
           </div>
 
           <div className="preview-paper-sheet">
@@ -1945,6 +2151,27 @@ ${bankReference}
                     <td>{getRedactedText(g.duration)}</td>
                     <td>{getRedactedText(g.evaluationCriteria)}</td>
                   </tr>
+                  {(g.achievementStatus || g.midYearEvaluation || g.endYearEvaluation) && (
+                    <tr style={{ background: '#f5f3ff', fontSize: '12.5px' }}>
+                      <td colSpan={6}>
+                        {g.achievementStatus && (
+                          <span style={{ marginLeft: '14px' }}>
+                            <strong>סטטוס השגת המטרה:</strong> {g.achievementStatus}
+                          </span>
+                        )}
+                        {g.midYearEvaluation && (
+                          <span style={{ marginLeft: '14px' }}>
+                            <strong>הערכת מחצית:</strong> {getRedactedText(g.midYearEvaluation)}
+                          </span>
+                        )}
+                        {g.endYearEvaluation && (
+                          <span>
+                            <strong>הערכת סוף שנה:</strong> {getRedactedText(g.endYearEvaluation)}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             ))}
@@ -2509,6 +2736,133 @@ ${bankReference}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Light Collapsible Mid-Year & End-of-Year Evaluation Drawer */}
+                <div style={{ marginTop: '10px', borderTop: '1px dashed #cbd5e1', paddingTop: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedEvalMap((prev) => ({
+                          ...prev,
+                          [goalRow.id]: !prev[goalRow.id]
+                        }))
+                      }
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: expandedEvalMap[goalRow.id] ? '#ede9fe' : '#f8fafc',
+                        color: expandedEvalMap[goalRow.id] ? '#5b21b6' : '#475569',
+                        border: expandedEvalMap[goalRow.id] ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '5px 11px',
+                        fontSize: '12.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {expandedEvalMap[goalRow.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      <span>
+                        {expandedEvalMap[goalRow.id]
+                          ? 'הסתר הערכת מחצית / סוף שנה'
+                          : '+ הערכת מחצית / סוף שנה'}
+                      </span>
+                    </button>
+
+                    {(goalRow.achievementStatus || goalRow.midYearEvaluation || goalRow.endYearEvaluation) && !expandedEvalMap[goalRow.id] && (
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color: '#5b21b6',
+                          background: '#f5f3ff',
+                          border: '1px solid #ddd6fe',
+                          borderRadius: '999px',
+                          padding: '2px 10px',
+                          fontWeight: 600
+                        }}
+                      >
+                        {goalRow.achievementStatus || 'הוזנה הערכה תקופתית'}
+                      </span>
+                    )}
+                  </div>
+
+                  {expandedEvalMap[goalRow.id] && (
+                    <div
+                      style={{
+                        marginTop: '10px',
+                        padding: '12px 14px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                          סטטוס השגת המטרה:
+                        </span>
+                        {['הושגה במלואה', 'הושגה חלקית', 'בתהליך', 'טרם הושגה'].map((statusOpt) => {
+                          const isSelected = goalRow.achievementStatus === statusOpt;
+                          return (
+                            <button
+                              key={statusOpt}
+                              type="button"
+                              onClick={() =>
+                                handleGoalChange(
+                                  goalRow.id,
+                                  'achievementStatus',
+                                  isSelected ? '' : statusOpt
+                                )
+                              }
+                              style={{
+                                padding: '4px 11px',
+                                borderRadius: '999px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                border: isSelected ? '1px solid #7c3aed' : '1px solid #cbd5e1',
+                                background: isSelected ? '#7c3aed' : '#ffffff',
+                                color: isSelected ? '#ffffff' : '#334155'
+                              }}
+                            >
+                              {statusOpt}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                        <div className="form-field" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '12.5px', fontWeight: 600 }}>הערכת מחצית:</label>
+                          <textarea
+                            rows={2}
+                            value={goalRow.midYearEvaluation || ''}
+                            onChange={(e) =>
+                              handleGoalChange(goalRow.id, 'midYearEvaluation', e.target.value)
+                            }
+                            placeholder="תיאור התקדמות התלמיד/ה במחצית השנה..."
+                            style={{ background: '#ffffff' }}
+                          />
+                        </div>
+                        <div className="form-field" style={{ margin: 0 }}>
+                          <label style={{ fontSize: '12.5px', fontWeight: 600 }}>הערכת סוף שנה:</label>
+                          <textarea
+                            rows={2}
+                            value={goalRow.endYearEvaluation || ''}
+                            onChange={(e) =>
+                              handleGoalChange(goalRow.id, 'endYearEvaluation', e.target.value)
+                            }
+                            placeholder="סיכום השגת המטרה בסוף שנת הלימודים..."
+                            style={{ background: '#ffffff' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -2567,12 +2921,169 @@ ${bankReference}
             <span>הדפס מסמך</span>
           </button>
 
+          <button
+            type="button"
+            className="btn-preview-doc"
+            onClick={() => {
+              handleSaveProgress();
+              downloadWordFile();
+            }}
+            title="הורד ישירות כקובץ Word ניתן לעריכה"
+          >
+            <Download size={18} />
+            <span>הורד קובץ Word</span>
+          </button>
+
           <button type="button" className="btn-send-email-doc" onClick={handleOpenEmailModal}>
             <Mail size={18} />
             <span>שלח למייל</span>
           </button>
         </div>
       </section>
+
+      {/* Team Sharing Modal ("שיתוף צוות") */}
+      {showShareModal && (
+        <div className="modal-backdrop" onClick={() => setShowShareModal(false)}>
+          <div
+            className="modal-card email-report-modal"
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '500px' }}
+          >
+            <div className="modal-header email-modal-header">
+              <div className="modal-title-row">
+                <Users size={22} />
+                <div>
+                  <h3>שיתוף תוכנית עם צוות / מתי"א</h3>
+                  <p className="modal-subtitle">
+                    בחרי אנשי צוות שיוכלו לצפות ולעבוד על התוכנית של <strong>{formData.name || 'התלמיד/ה'}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-close-modal"
+                onClick={() => setShowShareModal(false)}
+                title="סגור"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body email-modal-body">
+              {(() => {
+                const myEmail = (currentUser?.email || '').trim().toLowerCase();
+                const myUserRecord = (allowedUsers || []).find(
+                  (u) => (u.email || '').trim().toLowerCase() === myEmail
+                );
+                const myGroup = (myUserRecord?.group || currentUser?.group || '').trim();
+                const otherUsers = (allowedUsers || []).filter(
+                  (u) => u.active !== false && (u.email || '').trim().toLowerCase() !== myEmail
+                );
+                const sameGroupUsers = myGroup
+                  ? otherUsers.filter((u) => (u.group || '').trim() === myGroup)
+                  : [];
+                const visibleUsers =
+                  myGroup && sameGroupUsers.length > 0 && !showAllShareUsers
+                    ? sameGroupUsers
+                    : otherUsers;
+                const currentShared = (formData.sharedWith || []).map((e) =>
+                  String(e || '').trim().toLowerCase()
+                );
+
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+                        {myGroup && sameGroupUsers.length > 0 && !showAllShareUsers
+                          ? `חברי צוות: ${myGroup}`
+                          : 'כל אנשי הצוות במערכת'}
+                      </span>
+                      {myGroup && sameGroupUsers.length > 0 && otherUsers.length > sameGroupUsers.length && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllShareUsers(!showAllShareUsers)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#2563eb',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          {showAllShareUsers ? `הצג רק את ${myGroup}` : 'הצג את כל הצוותים'}
+                        </button>
+                      )}
+                    </div>
+
+                    {visibleUsers.length === 0 ? (
+                      <p style={{ fontSize: '13.5px', color: '#64748b', textAlign: 'center', padding: '16px 0' }}>
+                        לא נמצאו אנשי צוות נוספים לשיתוף.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingLeft: '4px' }}>
+                        {visibleUsers.map((colleague) => {
+                          const colEmail = (colleague.email || '').trim().toLowerCase();
+                          const isShared = currentShared.includes(colEmail);
+                          return (
+                            <label
+                              key={colEmail}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '9px 12px',
+                                borderRadius: '8px',
+                                border: isShared ? '1.5px solid #8b5cf6' : '1px solid #e2e8f0',
+                                background: isShared ? '#f5f3ff' : '#ffffff',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isShared}
+                                  onChange={() => handleToggleShareColleague(colEmail)}
+                                />
+                                <div>
+                                  <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
+                                    {colleague.name || colleague.email}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                    {colleague.role || 'איש/אשת צוות'}
+                                    {colleague.group ? ` • ${colleague.group}` : ''}
+                                  </div>
+                                </div>
+                              </div>
+                              {isShared && (
+                                <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#6d28d9', background: '#ede9fe', padding: '2px 8px', borderRadius: '999px' }}>
+                                  משותף
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+                      <button
+                        type="button"
+                        className="btn-submit-email"
+                        onClick={() => setShowShareModal(false)}
+                      >
+                        <span>סיום</span>
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Send Report to Email Modal ("שלח למייל") */}
       {showEmailModal && (

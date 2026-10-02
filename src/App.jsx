@@ -41,7 +41,9 @@ import {
   getSortedGoalBank,
   addGoalByAdmin,
   updateGoalByAdmin,
-  deleteGoalByAdmin
+  deleteGoalByAdmin,
+  getNextSchoolYear,
+  buildRolloverStudentForNextYear
 } from './goalBankData';
 import {
   subscribeToTalaBackend,
@@ -168,26 +170,30 @@ export default function App() {
     }));
   });
 
-  // Helper: get only the ACTIVE (non-archived) students belonging to a specific user email
+  // Helper: get only the ACTIVE (non-archived) students belonging to or shared with a specific user email
   const getStudentsForUser = (allStudents, userObj) => {
     if (!userObj || !userObj.email) return [];
     const targetEmail = userObj.email.trim().toLowerCase();
-    return (allStudents || []).filter(
-      (s) =>
-        (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail &&
-        !s.archived
-    );
+    return (allStudents || []).filter((s) => {
+      const isOwner = (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail;
+      const isShared =
+        Array.isArray(s.sharedWith) &&
+        s.sharedWith.some((em) => String(em || '').trim().toLowerCase() === targetEmail);
+      return (isOwner || isShared) && !s.archived;
+    });
   };
 
-  // Helper: get only the ARCHIVED students belonging to a specific user email
+  // Helper: get only the ARCHIVED students belonging to or shared with a specific user email
   const getArchivedStudentsForUser = (allStudents, userObj) => {
     if (!userObj || !userObj.email) return [];
     const targetEmail = userObj.email.trim().toLowerCase();
-    return (allStudents || []).filter(
-      (s) =>
-        (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail &&
-        Boolean(s.archived)
-    );
+    return (allStudents || []).filter((s) => {
+      const isOwner = (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail;
+      const isShared =
+        Array.isArray(s.sharedWith) &&
+        s.sharedWith.some((em) => String(em || '').trim().toLowerCase() === targetEmail);
+      return (isOwner || isShared) && Boolean(s.archived);
+    });
   };
 
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
@@ -334,8 +340,15 @@ export default function App() {
     if (matchingUser) {
       if (!matchingUser.active) {
         performLogout();
-      } else if (Boolean(matchingUser.mustChangePassword) !== Boolean(currentUser.mustChangePassword)) {
-        const syncedUser = { ...currentUser, mustChangePassword: Boolean(matchingUser.mustChangePassword) };
+      } else if (
+        Boolean(matchingUser.mustChangePassword) !== Boolean(currentUser.mustChangePassword) ||
+        (matchingUser.group || '') !== (currentUser.group || '')
+      ) {
+        const syncedUser = {
+          ...currentUser,
+          group: matchingUser.group || '',
+          mustChangePassword: Boolean(matchingUser.mustChangePassword)
+        };
         setCurrentUser(syncedUser);
         localStorage.setItem(SESSION_USER_KEY, JSON.stringify(syncedUser));
       }
@@ -559,6 +572,27 @@ export default function App() {
     }
     const remainingArchived = getArchivedStudentsForUser(updatedAll, currentUser);
     setSelectedArchivedStudentId(remainingArchived[0]?.id || null);
+  };
+
+  const handleRolloverArchivedStudentToNewYear = (studentObj, sourceYear) => {
+    if (!studentObj) return;
+    const nextYr = getNextSchoolYear(sourceYear || studentObj.schoolYear);
+    if (
+      !window.confirm(
+        `האם לפתוח תכנית עבודה חדשה לשנת הלימודים ${nextYr} עבור "${studentObj.name}" על בסיס נתוני ${sourceYear || studentObj.schoolYear}?`
+      )
+    ) {
+      return;
+    }
+    const rolledDoc = buildRolloverStudentForNextYear(studentObj, sourceYear, nextYr);
+    const updatedAll = students.map((s) => (s.id === studentObj.id ? rolledDoc : s));
+    setStudents(updatedAll);
+    saveStudentToCloud(rolledDoc);
+    const fwKey =
+      (rolledDoc.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
+    setExpandedFrameworks((prev) => ({ ...prev, [fwKey]: true }));
+    setSelectedStudentId(rolledDoc.id);
+    setShowArchiveModal(false);
   };
 
   const handleSaveStudentPlan = (updatedStudent) => {
@@ -976,6 +1010,39 @@ export default function App() {
                               <span className="st-goals-badge">
                                 {(st.goals || []).filter((g) => g.title).length} מטרות
                               </span>
+                              {(st.ownerEmail || '').toLowerCase() !==
+                              currentUser.email.toLowerCase() ? (
+                                <span
+                                  style={{
+                                    fontSize: '10.5px',
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe',
+                                    borderRadius: '999px',
+                                    padding: '1px 6px',
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  שותף עמך
+                                </span>
+                              ) : (
+                                Array.isArray(st.sharedWith) &&
+                                st.sharedWith.length > 0 && (
+                                  <span
+                                    style={{
+                                      fontSize: '10.5px',
+                                      background: '#f3eefc',
+                                      color: '#5b21b6',
+                                      border: '1px solid #ddd6fe',
+                                      borderRadius: '999px',
+                                      padding: '1px 6px',
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    משותף ({st.sharedWith.length})
+                                  </span>
+                                )
+                              )}
                               {st.lastSavedAt && (
                                 <span className="st-saved-time">עודכן: {st.lastSavedAt}</span>
                               )}
@@ -986,7 +1053,7 @@ export default function App() {
                               type="button"
                               className="btn-delete-st"
                               onClick={(e) => handleRequestArchiveStudent(st, e)}
-                              title="העבר תלמיד/ה לארכיון (סיום תוכנית)"
+                              title="העבר תלמיד/ה לארכיון"
                               style={{ color: '#6b5b95' }}
                             >
                               <Archive size={15} />
@@ -1018,6 +1085,8 @@ export default function App() {
               goalBank={goalBank}
               geminiApiKey={geminiApiKey}
               isAdmin={currentUser.role === 'admin'}
+              currentUser={currentUser}
+              allowedUsers={allowedUsers}
               onOpenGoalBankManager={() => setShowGoalBankOverview(true)}
               onSaveStudentPlan={handleSaveStudentPlan}
               onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
@@ -1098,6 +1167,22 @@ export default function App() {
                             <span>{st.educationalFramework || 'ללא מסגרת חינוכית מוגדרת'}</span>
                           </div>
                           <div className="inside-st-meta">
+                            {(st.ownerEmail || '').toLowerCase() !==
+                              currentUser.email.toLowerCase() && (
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  background: '#eff6ff',
+                                  color: '#1d4ed8',
+                                  border: '1px solid #bfdbfe',
+                                  borderRadius: '999px',
+                                  padding: '1px 7px',
+                                  fontWeight: 700
+                                }}
+                              >
+                                שותף עמך
+                              </span>
+                            )}
                             <span className="st-goals-badge">
                               {(st.goals || []).filter((g) => g.title).length} מטרות
                             </span>
@@ -1895,6 +1980,33 @@ export default function App() {
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           <button
                             type="button"
+                            onClick={() =>
+                              handleRolloverArchivedStudentToNewYear(
+                                activeArchivedStudent,
+                                currentArchiveYear
+                              )
+                            }
+                            style={{
+                              background: '#ecfdf5',
+                              color: '#065f46',
+                              border: '1px solid #6ee7b7',
+                              borderRadius: '8px',
+                              padding: '7px 13px',
+                              fontSize: '12.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                            title="שכפל ופתח תכנית המשך לשנת הלימודים הבאה"
+                          >
+                            <Plus size={15} />
+                            <span>פתח שנה חדשה</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => handleRestoreFromArchive(activeArchivedStudent.id)}
                             style={{
                               background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
@@ -2089,7 +2201,7 @@ export default function App() {
                                 <th>מטרה ויעדים אופרטיביים</th>
                                 <th>הזדמנויות ואמצעים</th>
                                 <th>שותפים ומשך</th>
-                                <th>אמות מידה להערכה</th>
+                                <th>אמות מידה והערכה תקופתית</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -2119,7 +2231,28 @@ export default function App() {
                                     <div><strong>משך:</strong> {g.duration || '—'}</div>
                                   </td>
                                   <td style={{ whiteSpace: 'pre-wrap' }}>
-                                    {g.evaluationCriteria || '—'}
+                                    <div>{g.evaluationCriteria || '—'}</div>
+                                    {(g.achievementStatus || g.midYearEvaluation || g.endYearEvaluation) && (
+                                      <div
+                                        style={{
+                                          marginTop: '6px',
+                                          paddingTop: '6px',
+                                          borderTop: '1px dashed #cbd5e1',
+                                          fontSize: '11.5px',
+                                          color: '#1e3a8a'
+                                        }}
+                                      >
+                                        {g.achievementStatus && (
+                                          <div><strong>סטטוס:</strong> {g.achievementStatus}</div>
+                                        )}
+                                        {g.midYearEvaluation && (
+                                          <div><strong>מחצית:</strong> {g.midYearEvaluation}</div>
+                                        )}
+                                        {g.endYearEvaluation && (
+                                          <div><strong>סוף שנה:</strong> {g.endYearEvaluation}</div>
+                                        )}
+                                      </div>
+                                    )}
                                   </td>
                                 </tr>
                               ))}
