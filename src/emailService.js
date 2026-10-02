@@ -26,6 +26,9 @@ export const GOOGLE_APPS_SCRIPT_TEMPLATE = `function doPost(e) {
   }
 }`;
 
+export const DEFAULT_APPS_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbwp3HLCO9kErrN-vS2odXYcco1B5KMlbTw7qeJWrSSKg5nqZocfrsvyUOIO-LurJJtg/exec';
+
 export function loadEmailEngineConfig() {
   try {
     const raw = localStorage.getItem(EMAIL_ENGINE_STORAGE_KEY);
@@ -33,7 +36,7 @@ export function loadEmailEngineConfig() {
       const parsed = JSON.parse(raw);
       return {
         provider: parsed.provider || 'apps_script', // 'apps_script' | 'emailjs'
-        appsScriptUrl: parsed.appsScriptUrl || '',
+        appsScriptUrl: (parsed.appsScriptUrl || '').trim() || DEFAULT_APPS_SCRIPT_URL,
         emailjsServiceId: parsed.emailjsServiceId || '',
         emailjsTemplateId: parsed.emailjsTemplateId || '',
         emailjsPublicKey: parsed.emailjsPublicKey || '',
@@ -45,7 +48,7 @@ export function loadEmailEngineConfig() {
   }
   return {
     provider: 'apps_script',
-    appsScriptUrl: '',
+    appsScriptUrl: DEFAULT_APPS_SCRIPT_URL,
     emailjsServiceId: '',
     emailjsTemplateId: '',
     emailjsPublicKey: '',
@@ -56,7 +59,7 @@ export function loadEmailEngineConfig() {
 export function saveEmailEngineConfig(configObj) {
   const normalized = {
     provider: configObj?.provider || 'apps_script',
-    appsScriptUrl: (configObj?.appsScriptUrl || '').trim(),
+    appsScriptUrl: (configObj?.appsScriptUrl || '').trim() || DEFAULT_APPS_SCRIPT_URL,
     emailjsServiceId: (configObj?.emailjsServiceId || '').trim(),
     emailjsTemplateId: (configObj?.emailjsTemplateId || '').trim(),
     emailjsPublicKey: (configObj?.emailjsPublicKey || '').trim(),

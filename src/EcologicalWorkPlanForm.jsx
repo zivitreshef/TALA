@@ -2673,13 +2673,15 @@ ${bankReference}
                         : 'הגדרה חד-פעמית של מנוע שליחה ישירה ברקע (Cloud Email Relay)'}
                     </strong>
                   </div>
-                  <button
-                    type="button"
-                    className="btn-toggle-engine-setup"
-                    onClick={() => setShowEngineSetupInModal(!showEngineSetupInModal)}
-                  >
-                    {showEngineSetupInModal ? 'הסתר הגדרות מנוע' : 'הגדרות מנוע שליחה ⚙️'}
-                  </button>
+                  {(isAdmin || !isDirectEmailEngineConfigured(localEngineDraft)) && (
+                    <button
+                      type="button"
+                      className="btn-toggle-engine-setup"
+                      onClick={() => setShowEngineSetupInModal(!showEngineSetupInModal)}
+                    >
+                      {showEngineSetupInModal ? 'הסתר הגדרות מנוע' : 'הגדרות מנוע שליחה ⚙️'}
+                    </button>
+                  )}
                 </div>
 
                 {showEngineSetupInModal && (
