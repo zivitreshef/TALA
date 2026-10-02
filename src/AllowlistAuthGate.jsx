@@ -28,6 +28,7 @@ import {
   validatePasswordPolicy,
   MAX_FAILED_LOGIN_ATTEMPTS
 } from './allowedUsers';
+import { sendUserInvitationEmailInBackground } from './emailService';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -463,7 +464,8 @@ export function UserSelfPasswordModal({
   onClose,
   currentUser,
   enforcePasswordPolicy,
-  onChangeOwnPassword
+  onChangeOwnPassword,
+  isMandatoryFirstLogin = false
 }) {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -481,6 +483,11 @@ export function UserSelfPasswordModal({
       return;
     }
 
+    if (isMandatoryFirstLogin && trimmed === currentUser.accessCode) {
+      setErrorMsg('נא לבחור סיסמה חדשה השונה מהסיסמה הזמנית שקיבלת במייל.');
+      return;
+    }
+
     if (enforcePasswordPolicy) {
       const check = validatePasswordPolicy(trimmed);
       if (!check.valid) {
@@ -494,29 +501,62 @@ export function UserSelfPasswordModal({
     setTimeout(() => {
       setSavedSuccess(false);
       setNewPassword('');
-      onClose();
-    }, 1200);
+      if (onClose) onClose();
+    }, 1000);
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose} dir="rtl">
+    <div
+      className="modal-backdrop"
+      onClick={() => {
+        if (!isMandatoryFirstLogin && onClose) onClose();
+      }}
+      dir="rtl"
+    >
       <div
         className="modal-container"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: '460px' }}
+        style={{
+          maxWidth: '480px',
+          borderTop: isMandatoryFirstLogin ? '5px solid #6b46c1' : undefined
+        }}
       >
         <div className="modal-header">
           <div className="modal-header-title">
             <KeyRound size={20} className="text-primary" />
-            <h3>שינוי סיסמה אישית – {currentUser.name}</h3>
+            <h3>
+              {isMandatoryFirstLogin
+                ? `ברוכים הבאים, ${currentUser.name}! הגדרת סיסמה אישית`
+                : `שינוי סיסמה אישית – ${currentUser.name}`}
+            </h3>
           </div>
-          <button className="btn-icon-close" onClick={onClose}>
-            <X size={20} />
-          </button>
+          {!isMandatoryFirstLogin && (
+            <button className="btn-icon-close" onClick={onClose}>
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {isMandatoryFirstLogin && (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #eef3fb 0%, #f3eefc 100%)',
+                  border: '1.5px solid #8b6fc0',
+                  color: '#1e3a5f',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  fontSize: '13px',
+                  lineHeight: 1.55
+                }}
+              >
+                <strong>🔒 כניסה ראשונה באמצעות סיסמה זמנית:</strong>
+                <br />
+                לצורך שמירה על אבטחת המידע שלך ושל התלמידים, נא לבחור כעת <strong>סיסמה אישית קבועה</strong>. מיד לאחר השמירה תועבר/י להמשך עבודה במערכת.
+              </div>
+            )}
+
             {errorMsg && (
               <div
                 style={{
@@ -545,13 +585,13 @@ export function UserSelfPasswordModal({
                   fontWeight: 700
                 }}
               >
-                ✓ הסיסמה שלך עודכנה בהצלחה!
+                ✓ הסיסמה האישית נשמרה בהצלחה! מעביר אותך למערכת...
               </div>
             )}
 
             <div>
               <label style={{ display: 'block', fontWeight: 700, fontSize: '13px', marginBottom: '6px' }}>
-                סיסמה חדשה:
+                {isMandatoryFirstLogin ? 'בחר/י סיסמה אישית חדשה:' : 'סיסמה חדשה:'}
               </label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input
@@ -599,12 +639,14 @@ export function UserSelfPasswordModal({
           </div>
 
           <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <button type="button" className="btn-secondary-sm" onClick={onClose}>
-              ביטול
-            </button>
+            {!isMandatoryFirstLogin && (
+              <button type="button" className="btn-secondary-sm" onClick={onClose}>
+                ביטול
+              </button>
+            )}
             <button type="submit" className="btn-primary-sm">
               <Check size={15} />
-              <span>שמור סיסמה</span>
+              <span>{isMandatoryFirstLogin ? 'שמור סיסמה אישית והמשך למערכת' : 'שמור סיסמה'}</span>
             </button>
           </div>
         </form>
@@ -612,6 +654,15 @@ export function UserSelfPasswordModal({
     </div>
   );
 }
+
+const generateRandomTempPassword = () => {
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lower = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const specials = '!@#$*';
+  const pick = (str) => str[Math.floor(Math.random() * str.length)];
+  return `Tala${pick(upper)}${pick(lower)}${pick(digits)}${pick(digits)}${pick(specials)}`;
+};
 
 export function AdminAllowlistModal({
   isOpen,
@@ -624,7 +675,8 @@ export function AdminAllowlistModal({
   onChangeEnforcePasswordPolicy,
   adminRequests = [],
   onDismissAdminRequest,
-  cloudSyncState
+  cloudSyncState,
+  emailEngineConfig
 }) {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -634,6 +686,10 @@ export function AdminAllowlistModal({
     accessCode: ''
   });
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
+  const [sendInviteEmailOnCreate, setSendInviteEmailOnCreate] = useState(true);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [sendingInviteForUserId, setSendingInviteForUserId] = useState(null);
+  const [inviteStatusBanner, setInviteStatusBanner] = useState('');
   const [addUserError, setAddUserError] = useState('');
 
   const [editingPasswordUserId, setEditingPasswordUserId] = useState(null);
@@ -647,9 +703,17 @@ export function AdminAllowlistModal({
 
   const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
 
-  const handleAddUser = (e) => {
+  const handleGenerateTempPasswordForNewUser = () => {
+    const generated = generateRandomTempPassword();
+    setNewUser((prev) => ({ ...prev, accessCode: generated }));
+    setShowNewUserPassword(true);
+    setAddUserError('');
+  };
+
+  const handleAddUser = async (e) => {
     e.preventDefault();
     setAddUserError('');
+    setInviteStatusBanner('');
     if (!newUser.name.trim() || !newUser.email.trim() || !newUser.accessCode.trim()) return;
 
     const exists = allowedUsers.some(
@@ -668,16 +732,18 @@ export function AdminAllowlistModal({
       }
     }
 
+    const tempPassword = newUser.accessCode.trim();
     const created = {
       id: 'u_' + Date.now(),
       name: newUser.name.trim(),
       email: newUser.email.trim().toLowerCase(),
       title: newUser.title.trim() || 'צוות חינוכי',
       role: newUser.role,
-      accessCode: newUser.accessCode.trim(),
+      accessCode: tempPassword,
       active: true,
       failedLoginAttempts: 0,
-      lockedOut: false
+      lockedOut: false,
+      mustChangePassword: true // Require password change on first login!
     };
 
     onUpdateAllowedUsers([...allowedUsers, created]);
@@ -689,6 +755,74 @@ export function AdminAllowlistModal({
       accessCode: ''
     });
     setShowNewUserPassword(false);
+
+    if (sendInviteEmailOnCreate) {
+      setIsSendingInvite(true);
+      try {
+        await sendUserInvitationEmailInBackground({
+          config: emailEngineConfig,
+          userName: created.name,
+          userEmail: created.email,
+          userTitle: created.title,
+          tempPassword: created.accessCode,
+          siteUrl: 'https://zivitreshef.github.io/TALA/'
+        });
+        setInviteStatusBanner(
+          `✅ המשתמש/ת "${created.name}" נוסף/ה בהצלחה ונשלחה אליו/ה הזמנה מעוצבת במייל (${created.email}) עם סיסמה זמנית ודרישה להחלפת סיסמה בכניסה הראשונה!`
+        );
+      } catch (err) {
+        console.error('Failed to send onboarding invite email:', err);
+        setAddUserError(
+          `המשתמש נוסף למערכת, אך שליחת מייל ההזמנה נכשלה: ${err?.message || 'שגיאת תקשורת'}`
+        );
+      } finally {
+        setIsSendingInvite(false);
+      }
+    } else {
+      setInviteStatusBanner(
+        `✅ המשתמש/ת "${created.name}" נוסף/ה בהצלחה (בכניסה הראשונה יידרש להחליף את הסיסמה הזמנית).`
+      );
+    }
+  };
+
+  const handleResendInvitationEmail = async (userObj) => {
+    setAddUserError('');
+    setInviteStatusBanner('');
+    setSendingInviteForUserId(userObj.id);
+    try {
+      // Mark user as mustChangePassword: true if sending onboarding invitation with their current temp password
+      onUpdateAllowedUsers(
+        allowedUsers.map((u) =>
+          u.id === userObj.id
+            ? {
+                ...u,
+                mustChangePassword: true,
+                active: true,
+                lockedOut: false,
+                failedLoginAttempts: 0
+              }
+            : u
+        )
+      );
+
+      await sendUserInvitationEmailInBackground({
+        config: emailEngineConfig,
+        userName: userObj.name,
+        userEmail: userObj.email,
+        userTitle: userObj.title,
+        tempPassword: userObj.accessCode,
+        siteUrl: 'https://zivitreshef.github.io/TALA/'
+      });
+
+      setInviteStatusBanner(
+        `📨 מייל הזמנה והדרכה נשלח בהצלחה אל ${userObj.name} (${userObj.email}) עם הסיסמה הזמנית!`
+      );
+    } catch (err) {
+      console.error('Error resending invite:', err);
+      setAddUserError(`שגיאה בשליחת מייל הזמנה אל ${userObj.email}: ${err?.message || ''}`);
+    } finally {
+      setSendingInviteForUserId(null);
+    }
   };
 
   const handleStartChangePassword = (user) => {
@@ -722,7 +856,8 @@ export function AdminAllowlistModal({
               accessCode: trimmed,
               failedLoginAttempts: 0,
               lockedOut: false,
-              active: true
+              active: true,
+              mustChangePassword: true
             }
           : u
       )
@@ -1027,7 +1162,30 @@ export function AdminAllowlistModal({
           </p>
 
           <form onSubmit={handleAddUser} className="add-allowed-user-box">
-            <h4>➕ הוספת משתמש/ת מורשה חדש/ה:</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+              <h4 style={{ margin: 0 }}>➕ הוספת משתמש/ת מורשה חדש/ה (תהליך קליטה והזמנה במייל):</h4>
+              <button
+                type="button"
+                onClick={handleGenerateTempPasswordForNewUser}
+                style={{
+                  background: '#f3eefc',
+                  color: '#4c1d95',
+                  border: '1px solid #c4b5fd',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '11.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <Sparkles size={13} />
+                <span>חולל סיסמה זמנית אוטומטית</span>
+              </button>
+            </div>
+
             {addUserError && (
               <div
                 style={{
@@ -1044,6 +1202,24 @@ export function AdminAllowlistModal({
                 ⚠️ {addUserError}
               </div>
             )}
+
+            {inviteStatusBanner && (
+              <div
+                style={{
+                  background: '#ecfdf5',
+                  border: '1px solid #6ee7b7',
+                  color: '#065f46',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  marginBottom: '8px'
+                }}
+              >
+                {inviteStatusBanner}
+              </div>
+            )}
+
             <div className="form-grid-4">
               <input
                 type="text"
@@ -1071,7 +1247,7 @@ export function AdminAllowlistModal({
                 <input
                   type={showNewUserPassword ? 'text' : 'password'}
                   required
-                  placeholder="הגדר סיסמה אישית..."
+                  placeholder="סיסמה זמנית ראשונית..."
                   value={newUser.accessCode}
                   onChange={(e) => {
                     setNewUser({ ...newUser, accessCode: e.target.value });
@@ -1105,21 +1281,66 @@ export function AdminAllowlistModal({
               <PasswordPolicyChecklist password={newUser.accessCode} />
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-              <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>הרשאה:</span>
-                <select
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                  style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '10px',
+                marginTop: '12px',
+                paddingTop: '10px',
+                borderTop: '1px dashed #cbd5e1'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>הרשאה:</span>
+                  <select
+                    value={newUser.role}
+                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                    style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                  >
+                    <option value="teacher">מורה / גננת</option>
+                    <option value="admin">מנהל/ת מערכת (Admin)</option>
+                  </select>
+                </label>
+
+                <label
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: '#1e3a8a',
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    padding: '5px 10px',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
                 >
-                  <option value="teacher">מורה / גננת</option>
-                  <option value="admin">מנהל/ת מערכת (Admin)</option>
-                </select>
-              </label>
-              <button type="submit" className="btn-primary-sm">
-                <Plus size={15} />
-                <span>הוסף לרשימת המורשים</span>
+                  <input
+                    type="checkbox"
+                    checked={sendInviteEmailOnCreate}
+                    onChange={(e) => setSendInviteEmailOnCreate(e.target.checked)}
+                    style={{ accentColor: '#2563eb', cursor: 'pointer' }}
+                  />
+                  <Mail size={14} />
+                  <span>שלח מייל הזמנה (Onboarding) עם הסבר על המערכת וסיסמה זמנית</span>
+                </label>
+              </div>
+
+              <button type="submit" className="btn-primary-sm" disabled={isSendingInvite}>
+                {sendInviteEmailOnCreate ? <Send size={15} /> : <Plus size={15} />}
+                <span>
+                  {isSendingInvite
+                    ? 'מוסיף ושולח מייל הזמנה...'
+                    : sendInviteEmailOnCreate
+                    ? 'הוסף משתמש ושלח מייל הזמנה'
+                    : 'הוסף לרשימת המורשים'}
+                </span>
               </button>
             </div>
           </form>
@@ -1144,6 +1365,24 @@ export function AdminAllowlistModal({
                       <td>
                         <strong>{u.name}</strong>
                         {u.role === 'admin' && <span className="badge-admin">Admin</span>}
+                        {u.mustChangePassword && (
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              marginRight: '6px',
+                              fontSize: '10.5px',
+                              fontWeight: 700,
+                              background: '#fef3c7',
+                              color: '#92400e',
+                              border: '1px solid #fde68a',
+                              padding: '1px 6px',
+                              borderRadius: '999px'
+                            }}
+                            title="המשתמש נדרש להחליף את הסיסמה הזמנית בכניסתו הראשונה"
+                          >
+                            סיסמה זמנית (ממתין לכניסה)
+                          </span>
+                        )}
                       </td>
                       <td dir="ltr" style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: '12px' }}>
                         {u.email}
@@ -1267,7 +1506,27 @@ export function AdminAllowlistModal({
                         </button>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleResendInvitationEmail(u)}
+                            disabled={sendingInviteForUserId === u.id}
+                            className="btn-secondary-sm"
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '11.5px',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              borderColor: '#bfdbfe'
+                            }}
+                            title="שלח מייל הזמנה והדרכה (Onboarding) עם סיסמה זמנית למשתמש זה"
+                          >
+                            <Mail size={13} />
+                            <span>
+                              {sendingInviteForUserId === u.id ? 'שולח...' : 'שלח מייל הזמנה'}
+                            </span>
+                          </button>
+
                           {(!isMainAdmin || u.lockedOut) && (
                             <button
                               type="button"

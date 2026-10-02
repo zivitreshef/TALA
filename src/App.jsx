@@ -312,14 +312,20 @@ export default function App() {
     };
   }, []);
 
-  // Ensure logged-in user is still active when allowedUsers changes in real time
+  // Ensure logged-in user is still active and sync mustChangePassword when allowedUsers changes in real time
   useEffect(() => {
     if (!currentUser) return;
     const matchingUser = allowedUsers.find(
       (u) => u.email.toLowerCase() === currentUser.email?.toLowerCase()
     );
-    if (matchingUser && !matchingUser.active) {
-      performLogout();
+    if (matchingUser) {
+      if (!matchingUser.active) {
+        performLogout();
+      } else if (Boolean(matchingUser.mustChangePassword) !== Boolean(currentUser.mustChangePassword)) {
+        const syncedUser = { ...currentUser, mustChangePassword: Boolean(matchingUser.mustChangePassword) };
+        setCurrentUser(syncedUser);
+        localStorage.setItem(SESSION_USER_KEY, JSON.stringify(syncedUser));
+      }
     }
   }, [allowedUsers]);
 
@@ -345,11 +351,15 @@ export default function App() {
     if (!currentUser) return;
     const updatedList = allowedUsers.map((u) =>
       u.email.toLowerCase() === currentUser.email.toLowerCase()
-        ? { ...u, accessCode: newAccessCode }
+        ? { ...u, accessCode: newAccessCode, mustChangePassword: false }
         : u
     );
     handleUpdateAllowedUsers(updatedList);
-    const updatedCurrent = { ...currentUser, accessCode: newAccessCode };
+    const updatedCurrent = {
+      ...currentUser,
+      accessCode: newAccessCode,
+      mustChangePassword: false
+    };
     setCurrentUser(updatedCurrent);
     localStorage.setItem(SESSION_USER_KEY, JSON.stringify(updatedCurrent));
   };
@@ -1006,13 +1016,18 @@ export default function App() {
         </main>
       </div>
 
-      {/* Self-Service Password Change Modal (Any Logged-in User) */}
+      {/* Self-Service & Mandatory First-Login Password Change Modal */}
       <UserSelfPasswordModal
-        isOpen={showSelfPasswordModal}
-        onClose={() => setShowSelfPasswordModal(false)}
+        isOpen={showSelfPasswordModal || Boolean(currentUser?.mustChangePassword)}
+        onClose={() => {
+          if (!currentUser?.mustChangePassword) {
+            setShowSelfPasswordModal(false);
+          }
+        }}
         currentUser={currentUser}
         enforcePasswordPolicy={enforcePasswordPolicy}
         onChangeOwnPassword={handleChangeOwnPassword}
+        isMandatoryFirstLogin={Boolean(currentUser?.mustChangePassword)}
       />
 
       {/* Admin Allowlist Management Modal (Only accessible to Admin) */}
