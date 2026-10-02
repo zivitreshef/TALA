@@ -1582,7 +1582,7 @@ ${bankReference}
             />
             {hideStudentDetailsOnPrint ? <EyeOff size={16} /> : <Eye size={16} />}
             <span>
-              הסתר פרטים מזהים בהדפסה (ראשי תיבות: <strong>{toHebrewAcronym(formData.name)}</strong> והשחרת פרטים)
+              הסתר פרטים מזהים בהדפסה
             </span>
           </label>
 
@@ -1654,7 +1654,7 @@ ${bankReference}
                 const hasData = hasContentInYearReport(rep);
                 return (
                   <option key={yr} value={yr} style={{ color: '#24344d', background: '#ffffff' }}>
-                    {yr}{hasData ? ' • (קיים דו"ח)' : ''}
+                    {yr}{hasData ? ' • קיים דו"ח' : ''}
                   </option>
                 );
               })}
@@ -1685,7 +1685,7 @@ ${bankReference}
                 checked={formData.planType === 'תל"א (תוכנית לימודים אישית)'}
                 onChange={(e) => handleFieldChange('planType', e.target.value)}
               />
-              <span>תל"א (תוכנית לימודים אישית)</span>
+              <span>תל"א – תוכנית לימודים אישית</span>
             </label>
 
             <label
@@ -1700,7 +1700,7 @@ ${bankReference}
                 checked={formData.planType === 'תח"י (תוכנית חינוכית יחידנית)'}
                 onChange={(e) => handleFieldChange('planType', e.target.value)}
               />
-              <span>תח"י (תוכנית חינוכית יחידנית)</span>
+              <span>תח"י – תוכנית חינוכית יחידנית</span>
             </label>
           </div>
         </div>
@@ -1753,7 +1753,7 @@ ${bankReference}
           </div>
 
           <div className="form-field">
-            <label>ת.ל (תאריך לידה):</label>
+            <label>תאריך לידה:</label>
             <input
               type="text"
               value={formData.birthDate || ''}
@@ -1802,7 +1802,7 @@ ${bankReference}
 
         <div className="free-text-area-box">
           <label className="bold-label">
-            ✍️ תיאור חופשי של הילד/ה במילים שלך (אופי, תחומי עניין, חוזקות, קשיים ותפקוד יומיומי):
+            ✍️ תיאור חופשי של הילד/ה במילים שלך:
           </label>
           <textarea
             rows={4}
@@ -1854,7 +1854,7 @@ ${bankReference}
                     value={formData.strengthsExisting || ''}
                     onInput={handleTextareaAutoResize}
                     onChange={(e) => handleFieldChange('strengthsExisting', e.target.value)}
-                    placeholder="כוחות קיימים של הילד/ה (מתמלא אוטומטית בלחיצה על עיבוד המידע וניתן לעריכה חופשית)..."
+                    placeholder="כוחות קיימים של הילד/ה..."
                   />
                 </td>
                 <td data-label="🌱 כוחות להעצמה וחיזוק">
@@ -1863,7 +1863,7 @@ ${bankReference}
                     value={formData.strengthsToEmpower || ''}
                     onInput={handleTextareaAutoResize}
                     onChange={(e) => handleFieldChange('strengthsToEmpower', e.target.value)}
-                    placeholder="כוחות להעצמה וחיזוק (מתמלא אוטומטית מתוך הטקסט החופשי וכל המטרות שהוגדרו)..."
+                    placeholder="כוחות להעצמה וחיזוק..."
                   />
                 </td>
               </tr>
@@ -1876,7 +1876,7 @@ ${bankReference}
       {showFullDocPreview && (
         <section className="form-section-card live-print-preview-card">
           <div className="section-header-line">
-            <h3>📄 תצוגה מקדימה של המסמך המלא להדפסה ({hideStudentDetailsOnPrint ? 'מצב חסוי – ראשי תיבות והשחרה' : 'מצב גלוי מלא'})</h3>
+            <h3>📄 תצוגה מקדימה של המסמך המלא להדפסה</h3>
             <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
               <Printer size={16} />
               <span>שלח להדפסה כעת</span>
@@ -1930,10 +1930,10 @@ ${bankReference}
                     </td>
                   </tr>
                   <tr style={{ background: '#eaf3fc', color: '#2b4c73', fontWeight: 'bold' }}>
-                    <td>מטרה (מה אנחנו רוצים שיקרה?)</td>
-                    <td>יעדים, ציוני דרך (צעדים אופרטיביים)</td>
-                    <td>הזדמנויות, אמצעים ואיך נגרום לזה לקרות?</td>
-                    <td>שותפים (מי ובאיזה אופן?)</td>
+                    <td>מטרה</td>
+                    <td>יעדים, ציוני דרך</td>
+                    <td>הזדמנויות, אמצעים</td>
+                    <td>שותפים</td>
                     <td>משך</td>
                     <td>אמות מידה להערכה</td>
                   </tr>
@@ -2027,13 +2027,13 @@ ${bankReference}
                           {env}
                         </option>
                       ))}
-                      <option value="__custom__">אחר (הקלדה חופשית)...</option>
+                      <option value="__custom__">אחר...</option>
                     </select>
                     <input
                       type="text"
                       value={goalRow.environment || ''}
                       onChange={(e) => handleGoalChange(goalRow.id, 'environment', e.target.value)}
-                      placeholder="הקלד סביבה (למשל: שירותים, סדנא, מרחב הגן)..."
+                      placeholder="הקלד סביבה..."
                       className="env-text-input"
                     />
                   </div>
@@ -2052,9 +2052,9 @@ ${bankReference}
                 {/* Row 1 (Colspan 6 in Doc): Activity & Participation */}
                 <div className="activity-participation-box">
                   <label>
-                    <strong>פעילות והשתתפות בסביבה ({goalRow.environment || 'כללי'}): </strong>
+                    <strong>פעילות והשתתפות בסביבה: </strong>
                     <span>
-                      תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות (התייחסי לגורמים המאפשרים והמגבילים בסביבה):
+                      תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות:
                     </span>
                   </label>
                   <textarea
@@ -2087,7 +2087,7 @@ ${bankReference}
                         <span>
                           {isPickerOpen
                             ? 'סגור מאגר מטרות'
-                            : `בחר ממאגר המטרות הדינמי (${sortedGoals.length} מטרות לפי פופולריות)`}
+                            : 'בחר ממאגר המטרות הדינמי'}
                         </span>
                         {isPickerOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
                       </button>
@@ -2167,7 +2167,7 @@ ${bankReference}
                             className={`env-pill ${pickerEnvFilter === 'הכל' ? 'active' : ''}`}
                             onClick={() => setPickerEnvFilter('הכל')}
                           >
-                            כל המטרות ({sortedGoals.length})
+                            כל המטרות
                           </button>
                           {ENVIRONMENTS_LIST.slice(0, 8).map((env) => (
                             <button
@@ -2202,7 +2202,7 @@ ${bankReference}
                                   <span className="env-tag-chip">{bankItem.environment}</span>
                                   <span className="usage-count-badge">
                                     <TrendingUp size={12} />
-                                    <span>נבחר {bankItem.usageCount || 1} פעמים</span>
+                                    <span>נבחר {bankItem.usageCount ?? 0} פעמים</span>
                                   </span>
                                 </div>
                                 {bankItem.suggestedObjectives && bankItem.suggestedObjectives.length > 0 && (
@@ -2528,7 +2528,7 @@ ${bankReference}
           <h3>4. המלצות</h3>
         </div>
         <div className="form-field">
-          <label>המלצות להמשך (לצוות החינוכי ולהורים):</label>
+          <label>המלצות להמשך:</label>
           <textarea
             rows={3}
             value={formData.recommendations || ''}
@@ -2564,9 +2564,7 @@ ${bankReference}
 
           <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
             <Printer size={18} />
-            <span>
-              הדפס מסמך ({hideStudentDetailsOnPrint ? 'במצב חסוי: ראשי תיבות והשחרה' : 'במצב גלוי מלא'})
-            </span>
+            <span>הדפס מסמך</span>
           </button>
 
           <button type="button" className="btn-send-email-doc" onClick={handleOpenEmailModal}>
@@ -2590,7 +2588,7 @@ ${bankReference}
                 <div>
                   <h3>שליחת תוכנית עבודה במייל</h3>
                   <p className="modal-subtitle">
-                    {getFullDocTitle()} • <strong>{getDisplayStudentName()}</strong> ({formData.schoolYear})
+                    {getFullDocTitle()} • <strong>{getDisplayStudentName()}</strong>
                   </p>
                 </div>
               </div>
@@ -2673,7 +2671,7 @@ ${bankReference}
                 />
                 {hideStudentDetailsOnPrint ? <EyeOff size={16} /> : <Eye size={16} />}
                 <span>
-                  הפעל הגנת פרטיות בקובץ המצורף (ראשי תיבות: <strong>{toHebrewAcronym(formData.name)}</strong> והשחרת ת.ז/טלפון/כתובת)
+                  הפעל הגנת פרטיות בקובץ המצורף
                 </span>
               </label>
 
@@ -2689,11 +2687,11 @@ ${bankReference}
                     handleSaveProgress();
                     if (emailFormat === 'docx') {
                       downloadWordFile();
-                      setEmailStatusMsg(`קובץ ה-Word הורד למחשב שלך (${getSafeReportFilename('doc')}).`);
+                      setEmailStatusMsg('קובץ ה-Word הורד למחשב שלך.');
                     } else {
                       setEmailStatusMsg('מפיק ומוריד קובץ PDF ישירות למחשב...');
                       await downloadPdfFileDirectly();
-                      setEmailStatusMsg(`קובץ ה-PDF הורד למחשב שלך (${getSafeReportFilename('pdf')}).`);
+                      setEmailStatusMsg('קובץ ה-PDF הורד למחשב שלך.');
                     }
                   }}
                 >
@@ -2715,7 +2713,7 @@ ${bankReference}
                     <span>
                       {isSendingEmail
                         ? `מפיק קובץ ${emailFormat.toUpperCase()} ושולח ברקע...`
-                        : `שלח דוח במייל כעת (${emailFormat.toUpperCase()})`}
+                        : 'שלח דוח במייל כעת'}
                     </span>
                   </button>
                 </div>

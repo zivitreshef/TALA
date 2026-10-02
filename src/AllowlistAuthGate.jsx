@@ -185,7 +185,7 @@ export function AllowlistAuthGate({
                 <Sparkles size={18} />
               </div>
               <div className="auth-feature-text">
-                <strong>בינה מלאכותית (AI) ושאלות מנחות</strong>
+                <strong>בינה מלאכותית ושאלות מנחות</strong>
                 <span>הפקת תקציר מנהלים מקצועי וניסוח מטרות מותאם מגדרית מתוך תיאור תפקוד חופשי.</span>
               </div>
             </div>
@@ -225,7 +225,7 @@ export function AllowlistAuthGate({
               {isAccountLockedError && (
                 <button
                   type="button"
-                  onClick={() => handleOpenContactAdmin('שחרור חסימת חשבון (לאחר 5 ניסיונות)')}
+                  onClick={() => handleOpenContactAdmin('שחרור חסימת חשבון')}
                   style={{
                     alignSelf: 'flex-end',
                     background: '#991b1b',
@@ -304,7 +304,7 @@ export function AllowlistAuthGate({
               onClick={() => handleOpenContactAdmin('שחרור חסימה / איפוס סיסמה')}
             >
               <MessageSquare size={14} />
-              <span>פנייה למנהל/ת המערכת (Contact Admin)</span>
+              <span>פנייה למנהל/ת המערכת</span>
             </button>
           </div>
         </div>
@@ -325,7 +325,7 @@ export function AllowlistAuthGate({
             <div className="modal-header">
               <div className="modal-header-title">
                 <MessageSquare size={20} className="text-primary" />
-                <h3>פנייה למנהל/ת המערכת (Contact Admin)</h3>
+                <h3>פנייה למנהל/ת המערכת</h3>
               </div>
               <button
                 type="button"
@@ -339,7 +339,7 @@ export function AllowlistAuthGate({
             <form onSubmit={handleSendContactRequest}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: 1.5 }}>
-                  באפשרותך לשלוח הודעה ישירה שתופיע אצל מנהל/ת המערכת באתר (לצורך שחרור חסימה, איפוס סיסמה או בקשת הרשאה), או לשלוח אימייל ישיר.
+                  באפשרותך לשלוח הודעה ישירה שתופיע אצל מנהל/ת המערכת באתר או לשלוח אימייל ישיר.
                 </p>
 
                 {contactSentSuccess && (
@@ -388,8 +388,8 @@ export function AllowlistAuthGate({
                     value={contactTopic}
                     onChange={(e) => setContactTopic(e.target.value)}
                   >
-                    <option value="שחרור חסימת חשבון (לאחר 5 ניסיונות)">
-                      שחרור חסימת חשבון (לאחר 5 ניסיונות שגויים)
+                    <option value="שחרור חסימת חשבון">
+                      שחרור חסימת חשבון
                     </option>
                     <option value="שחרור חסימה / איפוס סיסמה">
                       שכחתי סיסמה / בקשה לאיפוס סיסמה
@@ -404,7 +404,7 @@ export function AllowlistAuthGate({
                 </div>
 
                 <div className="form-field">
-                  <label>הודעה / פרטים נוספים (אופציונלי):</label>
+                  <label>הודעה / פרטים נוספים:</label>
                   <textarea
                     rows={2}
                     placeholder="פרטים נוספים למנהל/ת המערכת..."
@@ -930,7 +930,7 @@ export function AdminAllowlistModal({
         <div className="modal-header">
           <div className="modal-header-title">
             <ShieldCheck size={22} className="text-primary" />
-            <h3>ניהול רשימת משתמשים מורשים והגדרות אבטחה (Admin Settings)</h3>
+            <h3>ניהול רשימת משתמשים מורשים והגדרות אבטחה</h3>
           </div>
           <button className="btn-icon-close" onClick={onClose}><X size={20} /></button>
         </div>
@@ -1025,7 +1025,7 @@ export function AdminAllowlistModal({
                   }}
                 >
                   <div>
-                    <strong>📩 פנייה מדף הכניסה ({req.topic}):</strong>{' '}
+                    <strong>📩 פנייה מדף הכניסה — {req.topic}:</strong>{' '}
                     <span>
                       מאת <strong>{req.name}</strong> ({req.email})
                       {req.createdAt ? ` [${req.createdAt}]` : ''}
@@ -1068,8 +1068,8 @@ export function AdminAllowlistModal({
           >
             <span>
               {cloudSyncState?.connected
-                ? '☁️ מחובר לענן Firebase Firestore — משתמשים, סיסמאות, תלמידים, דוחות ומאגר המטרות נשמרים אוטומטית בענן ואינם מושפעים מעדכוני קוד / PR.'
-                : '⚠️ מצב שמירה מקומי (ממתין להגדרת מפתחות Firebase Firestore).'}
+                ? '☁️ מחובר לענן Firebase Firestore — משתמשים, סיסמאות, תלמידים, דוחות ומאגר המטרות נשמרים אוטומטית בענן ואינם מושפעים מעדכוני קוד.'
+                : '⚠️ מצב שמירה מקומי.'}
             </span>
           </div>
 
@@ -1097,7 +1097,7 @@ export function AdminAllowlistModal({
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2b4c73', fontWeight: 700, fontSize: '13.5px' }}>
                 <Sparkles size={16} style={{ color: '#8b6fc0' }} />
-                <span>מפתח Gemini AI (מוגדר ברמת מערכת למנהל בלבד):</span>
+                <span>מפתח Gemini AI:</span>
               </div>
               <input
                 type="password"
@@ -1148,11 +1148,11 @@ export function AdminAllowlistModal({
                   style={{ width: '16px', height: '16px', accentColor: '#4c1d95', cursor: 'pointer' }}
                 />
                 <span>
-                  אכיפת מדיניות סיסמאות חזקה לפי תקן אבטחה (לפחות 8 תווים, אות גדולה A-Z, אות קטנה a-z, ספרה 0-9 ותו מיוחד)
+                  אכיפת מדיניות סיסמאות חזקה לפי תקן אבטחה
                 </span>
               </label>
               <span style={{ fontSize: '11.5px', color: '#475569', paddingRight: '24px' }}>
-                ללא פקיעת תוקף או שמירת היסטוריית סיסמאות (No Password Retention). כמו כן, חשבון משתמש נחסם אוטומטית לאחר {MAX_FAILED_LOGIN_ATTEMPTS} ניסיונות כניסה שגויים ברציפות.
+                ללא פקיעת תוקף או שמירת היסטוריית סיסמאות. כמו כן, חשבון משתמש נחסם אוטומטית לאחר {MAX_FAILED_LOGIN_ATTEMPTS} ניסיונות כניסה שגויים ברציפות.
               </span>
             </div>
           </div>
@@ -1163,7 +1163,7 @@ export function AdminAllowlistModal({
 
           <form onSubmit={handleAddUser} className="add-allowed-user-box">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-              <h4 style={{ margin: 0 }}>➕ הוספת משתמש/ת מורשה חדש/ה (תהליך קליטה והזמנה במייל):</h4>
+              <h4 style={{ margin: 0 }}>➕ הוספת משתמש/ת מורשה חדש/ה:</h4>
               <button
                 type="button"
                 onClick={handleGenerateTempPasswordForNewUser}
@@ -1224,7 +1224,7 @@ export function AdminAllowlistModal({
               <input
                 type="text"
                 required
-                placeholder="שם מלא (למשל: דנה לוי)"
+                placeholder="שם מלא..."
                 value={newUser.name}
                 onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
               />
@@ -1239,7 +1239,7 @@ export function AdminAllowlistModal({
               />
               <input
                 type="text"
-                placeholder="תפקיד (למשל: גננת שילוב)"
+                placeholder="תפקיד..."
                 value={newUser.title}
                 onChange={(e) => setNewUser({ ...newUser, title: e.target.value })}
               />
@@ -1302,7 +1302,7 @@ export function AdminAllowlistModal({
                     style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                   >
                     <option value="teacher">מורה / גננת</option>
-                    <option value="admin">מנהל/ת מערכת (Admin)</option>
+                    <option value="admin">מנהל/ת מערכת</option>
                   </select>
                 </label>
 
@@ -1328,7 +1328,7 @@ export function AdminAllowlistModal({
                     style={{ accentColor: '#2563eb', cursor: 'pointer' }}
                   />
                   <Mail size={14} />
-                  <span>שלח מייל הזמנה (Onboarding) עם הסבר על המערכת וסיסמה זמנית</span>
+                  <span>שלח מייל הזמנה עם הסבר על המערכת וסיסמה זמנית</span>
                 </label>
               </div>
 
@@ -1380,7 +1380,7 @@ export function AdminAllowlistModal({
                             }}
                             title="המשתמש נדרש להחליף את הסיסמה הזמנית בכניסתו הראשונה"
                           >
-                            סיסמה זמנית (ממתין לכניסה)
+                            סיסמה זמנית
                           </span>
                         )}
                       </td>
@@ -1499,7 +1499,7 @@ export function AdminAllowlistModal({
                           }
                         >
                           {u.lockedOut
-                            ? '🔒 נחסם (5 ניסיונות)'
+                            ? '🔒 נחסם'
                             : u.active
                             ? '✓ פעיל'
                             : '✕ מושבת'}

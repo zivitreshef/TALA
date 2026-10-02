@@ -80,7 +80,7 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_table_1',
     title: 'ישחק במשחק משותף עם חבר בצורה מותאמת.',
     environment: 'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה',
-    usageCount: 18,
+    usageCount: 0,
     defaultActivity:
       'ניגש לשולחנות המשחק ומגלה עניין במשחקי בנייה וקופסא, אך זקוק לתיווך בשמירה על תור, חוקי המשחק ואינטראקציה הדדית עם חבר.',
     suggestedObjectives: TABLE_GAMES_OBJECTIVES,
@@ -108,7 +108,7 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_table_2',
     title: 'יתנסה במשחקים שונים בגן תוך התמדה ומשחק משותף עם חבר',
     environment: 'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה',
-    usageCount: 16,
+    usageCount: 0,
     defaultActivity:
       'נוטה לבחור משחק קבוע ומוכר ומתקשה להתמיד או לגוון במשחקי שולחן, הרכבה ובנייה חדשים יחד עם חבר.',
     suggestedObjectives: TABLE_GAMES_OBJECTIVES,
@@ -123,7 +123,7 @@ export const INITIAL_GOAL_BANK = [
         suggestions: ['בוחר משחק קבוע ועוזב לאחר זמן קצר', 'זקוק להכוונה בבחירת משחק וארגונו על השולחן']
       },
       {
-        q: '2. אילו מיומנויות משחקיות (מיון והכללה, בנייה לפי דגם, מנייה בקוביה) נרצה לחזק?',
+        q: '2. אילו מיומנויות משחקיות נרצה לחזק?',
         suggestions: ['ישחק במשחקים הדורשים מיון והכללה', 'יצליח לבנות לפי דגם באופן עצמאי', 'יבחר משחק בעצמו ויארגן אותו על פי הנדרש']
       },
       {
@@ -136,7 +136,7 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_table_3',
     title: 'תשחק במשחקי קופסא חברתיים בעלי חוקים ותורות בתיווך מופחת.',
     environment: 'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה',
-    usageCount: 15,
+    usageCount: 0,
     defaultActivity:
       'מגלה עניין במשחקי קופסא חברתיים ומשחקי מסלול, אך זקוקה לתיווך רציף של מבוגר לזכירת חוקי המשחק, שמירה על תורות וצעידה בהתאם לכמות בקוביה.',
     suggestedObjectives: TABLE_GAMES_OBJECTIVES,
@@ -166,7 +166,7 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_circle_1',
     title: 'יביע סקרנות ועניין במפגש ויהיה שותף באופן פעיל.',
     environment: 'מפגש בגן',
-    usageCount: 17,
+    usageCount: 0,
     defaultActivity:
       'יושב במפגש הגן אך לעיתים פסיבי או מוסח, וממעט להשתתף באופן פעיל בשירים, תנועות, מענה לשאלות והתייחסות לסיפור.',
     suggestedObjectives: [...CIRCLE_TIME_OBJECTIVES_1, ...CIRCLE_TIME_OBJECTIVES_2],
@@ -185,7 +185,7 @@ export const INITIAL_GOAL_BANK = [
         suggestions: ['תשמע סיפור חוזר ותפיק מידע מהסיפור', 'תפתח יכולת הכללה, קטגוריזציה והסבר דמיון ושוני', 'יענה לשאלה שנשאל במפגש ויחזור על תנועות']
       },
       {
-        q: '3. אילו אמצעים (קבוצה קטנה, איורים, שאלות מנחות) יסייעו להשתתפות פעילה?',
+        q: '3. אילו אמצעים יסייעו להשתתפות פעילה?',
         suggestions: ['בקבוצה קטנה ליווי שיחה לתכנים של הסיפור', 'שימוש באיורים והטרמה לפני המפגש']
       }
     ]
@@ -194,7 +194,7 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_circle_2',
     title: 'ישתתף בשיח וישמור על נושא השיחה.',
     environment: 'מפגש בגן',
-    usageCount: 15,
+    usageCount: 0,
     defaultActivity:
       'משתתף בשיח במפגש או בקבוצה אך נוטה לקפוץ מנושא לנושא או מתקשה בארגון המסר המילולי ובשחזור חוויות ברצף.',
     suggestedObjectives: [...CIRCLE_TIME_OBJECTIVES_2, ...CIRCLE_TIME_OBJECTIVES_1],
@@ -224,7 +224,7 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_space_1',
     title: 'יתנסה בפינות השונות בגן תוך התמדה ומשחק משותף עם חבר',
     environment: 'משחק במרחב הגן',
-    usageCount: 16,
+    usageCount: 0,
     defaultActivity:
       'נע בין מוקדי המשחק במרחב הגן או בוחר פינה קבועה, וזקוק לתיווך כדי לבחור סביבה באופן עצמאי, להתמיד במשחק משמעותי ולשחק במשחק משותף עם חבר.',
     suggestedObjectives: GARDEN_SPACE_OBJECTIVES,
@@ -254,7 +254,7 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_workshop_1',
     title: 'יתנסה בסדנאות השונות בגן באופן עצמאי',
     environment: 'סדנא / יצירה',
-    usageCount: 15,
+    usageCount: 0,
     defaultActivity:
       'נזקק להזמנה ולתיווך של מבוגר כדי לגשת לשולחנות הסדנא ולהתנסות בחומרי היצירה השונים בגן באופן עצמאי.',
     suggestedObjectives: WORKSHOP_OBJECTIVES,
@@ -269,7 +269,7 @@ export const INITIAL_GOAL_BANK = [
         suggestions: ['לא ניגש מיוזמתו וזקוק להזמנה של מבוגר', 'מתקשה בהתארגנות עם ציוד מול שולחן הסדנא']
       },
       {
-        q: '2. אילו יעדים (ביצועיים, חברתיים, שפתיים או התנהגותיים) נרצה לשלב בסדנא?',
+        q: '2. אילו יעדים נרצה לשלב בסדנא?',
         suggestions: ['יתארגן עם ציוד לקראת פעילות יצירה', 'יגזור, ידביק, יצבע ויוציא לפועל את הרעיון לתוצר', 'ישיים את הכלים הספציפיים ואת הפעלים המתאימים']
       },
       {
@@ -282,12 +282,12 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_workshop_2',
     title: 'יזום רעיון ויוציא אותו לפועל באמצעות חומרים בסדנא.',
     environment: 'סדנא / יצירה',
-    usageCount: 14,
+    usageCount: 0,
     defaultActivity:
       'מתנסה בחומרים בשולחן הסדנא אך מתקשה ליזום רעיון משלו, לתכנן את שלבי הביצוע ולהוציא את הרעיון לפועל עד להפקת תוצר.',
     suggestedObjectives: WORKSHOP_OBJECTIVES,
     defaultOpportunities:
-      '• שיח מקדים לתכנון הרעיון ובחירת החומרים והכלים המתאימים בסדנא.\n• עידוד הוצאה לפועל של הרעיון באופן עצמאי או בשיתוף עם חבר.\n• חיזוק השפה סביב כלי היצירה (מספריים, דבק, טושים) והפעלים (מצייר, גוזר, מדביק).',
+      '• שיח מקדים לתכנון הרעיון ובחירת החומרים והכלים המתאימים בסדנא.\n• עידוד הוצאה לפועל של הרעיון באופן עצמאי או בשיתוף עם חבר.\n• חיזוק השפה סביב כלי היצירה והפעלים המתאימים.',
     defaultPartners: 'צוות הגן, סייעת אישית, מרפאה בעיסוק',
     defaultDuration: 'עד סוף השנה',
     defaultEvaluation: 'יזום רעיון יצירתי ויוציא אותו לפועל באמצעות חומרים בסדנא עד להפקת תוצר.',
@@ -297,7 +297,7 @@ export const INITIAL_GOAL_BANK = [
         suggestions: ['מתקשה להעלות רעיון עצמאי ליצירה', 'מתחיל ליצור אך עוזב לפני השלמת התוצר', 'זקוק לתיווך בחיבור בין חומרים לכלים']
       },
       {
-        q: '2. האם נרצה לשלב גם יעדים חברתיים בסדנא (עבודה משותפת עם חבר)?',
+        q: '2. האם נרצה לשלב גם יעדים חברתיים בסדנא?',
         suggestions: ['יוציא לפועל את הרעיון בשיתוף עם חבר', 'יזום עבודה עם חבר וישמיע את דבריו בפני החבר']
       },
       {
@@ -310,23 +310,23 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_workshop_3',
     title: 'תרכוש ותשכלל מיומנויות בתחום הוויזו מוטורי (ציור, העתקה, גזירה וכיו"ב)',
     environment: 'סדנא / יצירה',
-    usageCount: 14,
+    usageCount: 0,
     defaultActivity:
-      'מגלה קושי במיומנויות וויזו-מוטוריות ומוטוריקה עדינה בסדנא (כגון ציור, העתקה, גזירה, הדבקה ושימוש מווסת בכלי היצירה).',
+      'מגלה קושי במיומנויות וויזו-מוטוריות ומוטוריקה עדינה בסדנא.',
     suggestedObjectives: WORKSHOP_OBJECTIVES,
     defaultOpportunities:
-      '• תרגול מובנה וחווייתי של ציור, העתקה, גזירה, הדבקה וצביעה בשולחן הסדנא.\n• התאמת כלי היצירה (מספריים מותאמים, דבק, טושים) והדרכת מרפאה בעיסוק.\n• שיום הכלים הספציפיים והפעלים המתאימים בזמן הפעילות.',
+      '• תרגול מובנה וחווייתי של ציור, העתקה, גזירה, הדבקה וצביעה בשולחן הסדנא.\n• התאמת כלי היצירה והדרכת מרפאה בעיסוק.\n• שיום הכלים הספציפיים והפעלים המתאימים בזמן הפעילות.',
     defaultPartners: 'צוות הגן, מרפאה בעיסוק, סייעת אישית',
     defaultDuration: 'עד סוף השנה',
-    defaultEvaluation: 'תרכוש ותשכלל מיומנויות וויזו-מוטוריות (ציור, העתקה, גזירה והדבקה) ותיישם אותן בפעילות היצירה.',
+    defaultEvaluation: 'תרכוש ותשכלל מיומנויות וויזו-מוטוריות ותיישם אותן בפעילות היצירה.',
     facilitatingQuestions: [
       {
-        q: '1. באילו מיומנויות וויזו-מוטוריות (ציור, העתקה, גזירה, הדבקה) ניכר הקושי המרכזי?',
+        q: '1. באילו מיומנויות וויזו-מוטוריות ניכר הקושי המרכזי?',
         suggestions: ['קושי בגזירה מדויקת ובאחיזת מספריים/טושים', 'קושי בציור ובהעתקת צורות/דגמים']
       },
       {
         q: '2. אילו יעדים ביצועיים ושפתיים נשלב בתהליך?',
-        suggestions: ['יגזור, ידביק, יצבע ויוציא לפועל את הרעיון לתוצר', 'ישיים את הכלים הספציפיים (מספריים, דבק, טושים) ואת הפעלים המתאימים']
+        suggestions: ['יגזור, ידביק, יצבע ויוציא לפועל את הרעיון לתוצר', 'ישיים את הכלים הספציפיים ואת הפעלים המתאימים']
       },
       {
         q: '3. האם מתקיימת הדרכה של מרפאה בעיסוק להתאמת הכלים והתיווך?',
@@ -338,12 +338,12 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_workshop_4',
     title: 'יעבוד בשולחנות היצירה בצורה מתוכננת.',
     environment: 'סדנא / יצירה',
-    usageCount: 13,
+    usageCount: 0,
     defaultActivity:
       'ניגש לשולחנות היצירה אך פועל באימפולסיביות או בפיזור, ומתקשה בהתארגנות מוקדמת עם ציוד ובעבודה מתוכננת לפי שלבים.',
     suggestedObjectives: WORKSHOP_OBJECTIVES,
     defaultOpportunities:
-      '• תיווך שלבי ההתארגנות מול שולחן הסדנא וארגון הציוד לקראת פעילות יצירה.\n• פירוק משימת היצירה לשלבים ברורים (תכנון, גזירה, הדבקה, צביעה) והמתנה לתור.\n• עידוד עבודה משותפת ומתוכננת עם חבר סביב השולחן.',
+      '• תיווך שלבי ההתארגנות מול שולחן הסדנא וארגון הציוד לקראת פעילות יצירה.\n• פירוק משימת היצירה לשלבים ברורים והמתנה לתור.\n• עידוד עבודה משותפת ומתוכננת עם חבר סביב השולחן.',
     defaultPartners: 'צוות הגן, סייעת אישית, מרפאה בעיסוק',
     defaultDuration: 'עד סוף השנה',
     defaultEvaluation: 'יתארגן מול שולחן הסדנא ויעבוד בשולחנות היצירה בצורה מתוכננת ועקבית.',
@@ -368,12 +368,12 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_yard_1',
     title: 'יתנסה בהדרגה במשחקים מוטוריים בחצר (במדרג קושי עולה)',
     environment: 'חצר',
-    usageCount: 15,
+    usageCount: 0,
     defaultActivity:
       'בזמן הפעילות בחצר נמנע ממשחקים מוטוריים מאתגרים או מתקנים חדשים, וזקוק לעידוד ותיווך להתנסות הדרגתית במדרג קושי עולה.',
     suggestedObjectives: YARD_OBJECTIVES,
     defaultOpportunities:
-      '• חשיפה הדרגתית ומותאמת למשחקים מוטוריים ומתקנים בחצר במדרג קושי עולה.\n• הזמנה למשחק חברתי מוטורי בקבוצה קטנה (כגון ים יבשה, ארנבת שחורה, אבדה לי המטפחת, דג מלוח) בתיווך מבוגר.\n• מתן חיזוקים על התנסות והתמדה בפעילות בחצר.',
+      '• חשיפה הדרגתית ומותאמת למשחקים מוטוריים ומתקנים בחצר במדרג קושי עולה.\n• הזמנה למשחק חברתי מוטורי בקבוצה קטנה בתיווך מבוגר.\n• מתן חיזוקים על התנסות והתמדה בפעילות בחצר.',
     defaultPartners: 'צוות הגן, סייעת אישית, מרפאה בעיסוק',
     defaultDuration: 'עד סוף השנה',
     defaultEvaluation: 'יתנסה בביטחון ובהדרגה במשחקים מוטוריים בחצר במדרג קושי עולה.',
@@ -396,12 +396,12 @@ export const INITIAL_GOAL_BANK = [
     id: 'gb_yard_2',
     title: 'ירחיב מעגל חברתי - יזמין או יצטרף לחברים נוספים',
     environment: 'חצר',
-    usageCount: 16,
+    usageCount: 0,
     defaultActivity:
       'במרחב החצר משחק לרוב לבדו או עם חבר קבוע אחד, ומתקשה ליזום הזמנה או להצטרף לחברים נוספים במשחק חברתי.',
     suggestedObjectives: YARD_OBJECTIVES,
     defaultOpportunities:
-      '• ארגון משחק חברתי בקבוצה קטנה בחצר (כגון ים יבשה, ארנבת שחורה, אבדה לי המטפחת, דג מלוח) בתיווך איש צוות.\n• תיווך ומודלינג של משפטי הזמנה והצטרפות למשחק של חברים נוספים בחצר.\n• עידוד וחיזוק יוזמות חברתיות והרחבת מעגל החברים.',
+      '• ארגון משחק חברתי בקבוצה קטנה בחצר בתיווך איש צוות.\n• תיווך ומודלינג של משפטי הזמנה והצטרפות למשחק של חברים נוספים בחצר.\n• עידוד וחיזוק יוזמות חברתיות והרחבת מעגל החברים.',
     defaultPartners: 'צוות הגן, סייעת אישית, מטפלת רגשית',
     defaultDuration: 'עד סוף השנה',
     defaultEvaluation: 'ירחיב את המעגל החברתי בחצר, יזמין או יצטרף לחברים נוספים וישתתף במשחקים קבוצתיים.',
@@ -423,6 +423,7 @@ export const INITIAL_GOAL_BANK = [
 ];
 
 const GOAL_BANK_STORAGE_KEY = 'tala_ecological_goal_bank_v2';
+export const GOAL_WEIGHTS_RESET_FLAG_KEY = 'tala_goal_weights_zeroed_v1';
 
 export function loadGoalBank() {
   try {
@@ -431,12 +432,19 @@ export function loadGoalBank() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        if (!localStorage.getItem(GOAL_WEIGHTS_RESET_FLAG_KEY)) {
+          const zeroed = parsed.map((g) => ({ ...g, usageCount: 0 }));
+          localStorage.setItem(GOAL_BANK_STORAGE_KEY, JSON.stringify(zeroed));
+          localStorage.setItem(GOAL_WEIGHTS_RESET_FLAG_KEY, 'true');
+          return zeroed;
+        }
         return parsed;
       }
     }
   } catch (e) {
     console.warn('Failed to load goal bank from localStorage', e);
   }
+  localStorage.setItem(GOAL_WEIGHTS_RESET_FLAG_KEY, 'true');
   return INITIAL_GOAL_BANK;
 }
 
@@ -475,7 +483,7 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
 
     bank[existingIndex] = {
       ...existing,
-      usageCount: (existing.usageCount || 1) + 1,
+      usageCount: (Number(existing.usageCount) || 0) + 1,
       environment: goalData.environment || existing.environment,
       defaultActivity: existing.defaultActivity || goalData.activityParticipation || '',
       suggestedObjectives: newObjList,
@@ -528,7 +536,7 @@ export function addGoalByAdmin(goalInput, currentBank) {
     id: 'gb_admin_' + Date.now(),
     title: cleanTitle,
     environment: (goalInput.environment || ENVIRONMENTS_LIST[0]).trim(),
-    usageCount: Number(goalInput.usageCount) >= 0 ? Number(goalInput.usageCount) : 1,
+    usageCount: Number(goalInput.usageCount) >= 0 ? Number(goalInput.usageCount) : 0,
     defaultActivity: (goalInput.defaultActivity || '').trim(),
     suggestedObjectives:
       objectivesArray.length > 0

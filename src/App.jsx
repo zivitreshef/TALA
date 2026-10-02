@@ -266,8 +266,22 @@ export default function App() {
         saveAllowedUsers(cloudUsers);
       },
       onGoalBankChange: (cloudGoals) => {
-        setGoalBank(cloudGoals);
-        saveGoalBank(cloudGoals);
+        const hasOldTestingWeights =
+          localStorage.getItem('tala_cloud_goal_weights_zeroed_v1') !== 'true' &&
+          Array.isArray(cloudGoals) &&
+          cloudGoals.some((g) => Number(g.usageCount) > 0);
+
+        if (hasOldTestingWeights) {
+          const zeroedGoals = cloudGoals.map((g) => ({ ...g, usageCount: 0 }));
+          localStorage.setItem('tala_cloud_goal_weights_zeroed_v1', 'true');
+          setGoalBank(zeroedGoals);
+          saveGoalBank(zeroedGoals);
+          saveGoalBankToCloud(zeroedGoals);
+        } else {
+          localStorage.setItem('tala_cloud_goal_weights_zeroed_v1', 'true');
+          setGoalBank(cloudGoals);
+          saveGoalBank(cloudGoals);
+        }
       },
       onStudentsChange: (cloudStudents) => {
         const normalized = cloudStudents.map((s) => ({
@@ -569,7 +583,7 @@ export default function App() {
       id: '',
       title: '',
       environment: ENVIRONMENTS_LIST[0],
-      usageCount: 1,
+      usageCount: 0,
       defaultActivity: '',
       suggestedObjectivesText: '',
       defaultOpportunities: '',
@@ -585,13 +599,23 @@ export default function App() {
       id: goalItem.id,
       title: goalItem.title || '',
       environment: goalItem.environment || ENVIRONMENTS_LIST[0],
-      usageCount: goalItem.usageCount ?? 1,
+      usageCount: goalItem.usageCount ?? 0,
       defaultActivity: goalItem.defaultActivity || '',
       suggestedObjectivesText: (goalItem.suggestedObjectives || []).join('\n'),
       defaultOpportunities: goalItem.defaultOpportunities || '',
       defaultPartners: goalItem.defaultPartners || 'צוות חינוכי, הורים',
       defaultDuration: goalItem.defaultDuration || 'עד סוף השנה',
       defaultEvaluation: goalItem.defaultEvaluation || ''
+    });
+  };
+
+  const handleResetAllGoalWeights = () => {
+    if (!window.confirm('האם לאפס את מונה השכיחות של כל המטרות במאגר ל-0?')) return;
+    setGoalBank((prev) => {
+      const zeroed = prev.map((g) => ({ ...g, usageCount: 0 }));
+      saveGoalBank(zeroed);
+      saveGoalBankToCloud(zeroed);
+      return zeroed;
     });
   };
 
@@ -1141,9 +1165,7 @@ export default function App() {
             <div className="modal-header">
               <div className="modal-header-title">
                 <TrendingUp size={22} />
-                <h3>
-                  מאגר המטרות הדינמי ({goalBank.length} מטרות – מדורג לפי שכיחות שימוש)
-                </h3>
+                <h3>מאגר המטרות הדינמי</h3>
               </div>
               <button
                 className="btn-icon-close"
@@ -1162,24 +1184,37 @@ export default function App() {
                   כל מטרה חדשה שהמנהלת או כל מורה מוסיפה משותפת לכלל המשתמשים במאגר זה. המטרות מוצגות לפי מידת השכיחות שלהן.
                   {currentUser.role === 'admin' ? (
                     <strong style={{ color: '#4c1d95', display: 'block', marginTop: '4px' }}>
-                      👑 הרשאת מנהל מערכת (Admin): באפשרותך להוסיף, לערוך או להסיר מטרות ויעדים במאגר.
+                      👑 הרשאת מנהל מערכת: באפשרותך להוסיף, לערוך או להסיר מטרות ויעדים במאגר.
                     </strong>
                   ) : (
                     <span style={{ color: '#64748b', display: 'block', marginTop: '4px' }}>
-                      באפשרותך להוסיף מטרות חדשות למאגר המשותף (מחיקה או עריכה שמורות למנהלת המערכת בלבד).
+                      באפשרותך להוסיף מטרות חדשות למאגר המשותף.
                     </span>
                   )}
                 </p>
 
                 {!editingBankGoal && (
-                  <button
-                    type="button"
-                    className="btn-admin-add-bank-goal"
-                    onClick={handleStartAddGoalToBank}
-                  >
-                    <Plus size={16} />
-                    <span>הוסף מטרה חדשה למאגר</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {currentUser.role === 'admin' && (
+                      <button
+                        type="button"
+                        className="btn-secondary-sm"
+                        onClick={handleResetAllGoalWeights}
+                        title="אפס את מונה השכיחות של כל המטרות ל-0"
+                      >
+                        <RotateCcw size={14} />
+                        <span>אפס שכיחויות</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn-admin-add-bank-goal"
+                      onClick={handleStartAddGoalToBank}
+                    >
+                      <Plus size={16} />
+                      <span>הוסף מטרה חדשה למאגר</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -1204,7 +1239,7 @@ export default function App() {
 
                   <div className="admin-editor-grid">
                     <div className="admin-field full-span">
-                      <label>כותרת המטרה העליונה (מה אנחנו רוצים שיקרה?): *</label>
+                      <label>כותרת המטרה העליונה: *</label>
                       <input
                         type="text"
                         required
@@ -1235,7 +1270,7 @@ export default function App() {
                     </div>
 
                     <div className="admin-field">
-                      <label>מונה שכיחות / דירוג (Usage Count):</label>
+                      <label>מונה שכיחות:</label>
                       <input
                         type="number"
                         min={0}
@@ -1250,7 +1285,7 @@ export default function App() {
                     </div>
 
                     <div className="admin-field full-span">
-                      <label>תיאור פעילות והשתתפות מומלץ (ברירת מחדל):</label>
+                      <label>תיאור פעילות והשתתפות מומלץ:</label>
                       <textarea
                         rows={2}
                         value={editingBankGoal.defaultActivity}
@@ -1265,7 +1300,7 @@ export default function App() {
                     </div>
 
                     <div className="admin-field full-span">
-                      <label>יעדים אופרטיביים משויכים (כל יעד בשורה חדשה):</label>
+                      <label>יעדים אופרטיביים משויכים:</label>
                       <textarea
                         rows={3}
                         value={editingBankGoal.suggestedObjectivesText}
@@ -1325,7 +1360,7 @@ export default function App() {
                     </div>
 
                     <div className="admin-field full-span">
-                      <label>אמות מידה להערכה (ברירת מחדל):</label>
+                      <label>אמות מידה להערכה:</label>
                       <input
                         type="text"
                         value={editingBankGoal.defaultEvaluation}
@@ -1383,7 +1418,7 @@ export default function App() {
                           <strong>{g.title}</strong>
                           <span className="env-tag-chip">{g.environment}</span>
                           <span className="usage-count-badge">
-                            נבחר {g.usageCount || 1} פעמים
+                            נבחר {g.usageCount ?? 0} פעמים
                           </span>
                         </div>
                         {g.suggestedObjectives?.length > 0 && (
@@ -1450,7 +1485,7 @@ export default function App() {
             <div className="modal-header">
               <div className="modal-header-title" style={{ color: '#b83f3f' }}>
                 <AlertTriangle size={22} style={{ color: '#d9534f' }} />
-                <h3>האם את/ה בטוח/ה? (אישור מחיקת תלמיד/ה)</h3>
+                <h3>אישור מחיקת תלמיד/ה</h3>
               </div>
               <button
                 type="button"
@@ -1464,11 +1499,7 @@ export default function App() {
             <div className="modal-body" style={{ padding: '20px' }}>
               <p style={{ margin: '0 0 12px 0', fontSize: '14.5px', lineHeight: 1.5, color: '#24344d' }}>
                 האם את/ה בטוח/ה שברצונך למחוק את תכנית העבודה של{' '}
-                <strong>"{studentToDelete.name || 'ללא שם'}"</strong>
-                {studentToDelete.educationalFramework
-                  ? ` (${studentToDelete.educationalFramework})`
-                  : ''}
-                ?
+                <strong>"{studentToDelete.name || 'ללא שם'}"</strong>?
               </p>
               <div
                 style={{
@@ -1586,7 +1617,7 @@ export default function App() {
             <div className="modal-header">
               <div className="modal-header-title" style={{ color: '#4c1d95' }}>
                 <Archive size={22} style={{ color: '#8b6fc0' }} />
-                <h3>העברת תלמיד/ה לארכיון (סיום תוכנית)</h3>
+                <h3>העברת תלמיד/ה לארכיון</h3>
               </div>
               <button
                 type="button"
@@ -1600,10 +1631,7 @@ export default function App() {
             <div className="modal-body" style={{ padding: '20px' }}>
               <p style={{ margin: '0 0 12px 0', fontSize: '14.5px', lineHeight: 1.5, color: '#24344d' }}>
                 האם להעביר את{' '}
-                <strong>"{studentToArchive.name || 'ללא שם'}"</strong>
-                {studentToArchive.educationalFramework
-                  ? ` (${studentToArchive.educationalFramework})`
-                  : ''}{' '}
+                <strong>"{studentToArchive.name || 'ללא שם'}"</strong>{' '}
                 לארכיון?
               </p>
               <div
@@ -1677,9 +1705,7 @@ export default function App() {
             <div className="modal-header">
               <div className="modal-header-title">
                 <Archive size={22} style={{ color: '#4a88c7' }} />
-                <h3>
-                  ארכיון תלמידים ותכניות עבודה ({archivedUserStudents.length} תלמידים בארכיון)
-                </h3>
+                <h3>ארכיון תלמידים ותכניות עבודה</h3>
               </div>
               <button
                 type="button"
@@ -2192,7 +2218,7 @@ export default function App() {
                 onClick={() => setShowLogoutUnsavedModal(false)}
                 style={{ padding: '8px 14px', fontSize: '13px' }}
               >
-                ביטול (המשך עבודה)
+                ביטול
               </button>
 
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
