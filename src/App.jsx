@@ -1039,7 +1039,7 @@ export default function App() {
                   <div className="inside-card-icon open-icon">
                     <BookOpen size={26} />
                   </div>
-                  <h3>פתיחת תוכנית של תלמיד/ה קיים/ת ({myStudents.length})</h3>
+                  <h3>פתיחת תוכנית של תלמיד/ה קיים/ת ({userStudents.length})</h3>
                   <p>
                     בחרי תלמיד/ה מתוך הרשימה להמשך עריכה, עדכון מטרות, הדפסה או שליחה למייל:
                   </p>
@@ -1056,7 +1056,7 @@ export default function App() {
 
                   {filteredStudents.length === 0 ? (
                     <div className="inside-landing-empty-list">
-                      {myStudents.length === 0
+                      {userStudents.length === 0
                         ? 'עדיין לא הוגדרו תלמידים במערכת. לחצי על הכפתור מימין ליצירת התלמיד/ה הראשון/ה.'
                         : 'לא נמצאו תלמידים התואמים לחיפוש.'}
                     </div>
