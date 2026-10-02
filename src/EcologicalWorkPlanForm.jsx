@@ -3536,24 +3536,33 @@ ${goalsContext}
             <span>הורד קובץ Word</span>
           </button>
 
-          <button
-            type="button"
-            className="btn-print-doc"
-            onClick={() => {
-              setShowEvalReportSection((prev) => {
-                const next = !prev;
-                if (next) {
-                  setTimeout(() => {
-                    evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 80);
-                }
-                return next;
-              });
-            }}
-          >
-            <FileText size={18} />
-            <span>הערכת מחצית / סוף שנה</span>
-          </button>
+          {((formData.evalReportSummary || '').trim() ||
+            (formData.evalReportFreeText || '').trim() ||
+            (formData.goals || []).some(
+              (g) =>
+                (g.achievementStatus || '').trim() ||
+                (g.midYearEvaluation || '').trim() ||
+                (g.endYearEvaluation || '').trim()
+            )) && (
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
+                setShowEvalReportSection((prev) => {
+                  const next = !prev;
+                  if (next) {
+                    setTimeout(() => {
+                      evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                  }
+                  return next;
+                });
+              }}
+            >
+              <FileText size={18} />
+              <span>הערכת מחצית / סוף שנה</span>
+            </button>
+          )}
 
           <button type="button" className="btn-send-email-doc" onClick={() => handleOpenEmailModal('tala')}>
             <Mail size={18} />
@@ -3563,7 +3572,15 @@ ${goalsContext}
       </section>
 
       {/* Separate Report Section: דוח הערכת מחצית / סוף שנה */}
-      {showEvalReportSection && (
+      {showEvalReportSection &&
+        ((formData.evalReportSummary || '').trim() ||
+          (formData.evalReportFreeText || '').trim() ||
+          (formData.goals || []).some(
+            (g) =>
+              (g.achievementStatus || '').trim() ||
+              (g.midYearEvaluation || '').trim() ||
+              (g.endYearEvaluation || '').trim()
+          )) && (
         <section
           ref={evalReportSectionRef}
           className="form-section-card highlight-summary-section"
