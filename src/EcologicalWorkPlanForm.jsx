@@ -51,6 +51,7 @@ const extractYearReportFromFormData = (data) => ({
   date: data?.date || new Date().toLocaleDateString('he-IL'),
   planType: data?.planType || 'תל"א (תוכנית לימודים אישית)',
   teacherFreeText: data?.teacherFreeText || '',
+  freeTextAnalyzed: Boolean(data?.freeTextAnalyzed),
   strengthsExisting: data?.strengthsExisting || '',
   strengthsToEmpower: data?.strengthsToEmpower || '',
   recommendations: data?.recommendations || '',
@@ -59,6 +60,15 @@ const extractYearReportFromFormData = (data) => ({
   lastSavedAt: data?.lastSavedAt || '',
   goals: (data?.goals || []).map((g) => adaptGoalToGender(g, data?.gender || 'boy'))
 });
+
+const isRawFreeTextAlreadyAnalyzed = (data) =>
+  Boolean(
+    data?.freeTextAnalyzed ||
+      ((data?.teacherFreeText || '').trim() &&
+        ((data?.strengthsExisting || '').trim() ||
+          (data?.strengthsToEmpower || '').trim() ||
+          (data?.goals || []).some((g) => (g?.title || '').trim())))
+  );
 
 const hasContentInYearReport = (rep) => {
   if (!rep) return false;
@@ -103,6 +113,7 @@ export default function EcologicalWorkPlanForm({
       date: st?.date || new Date().toLocaleDateString('he-IL'),
       planType: st?.planType || 'תל"א (תוכנית לימודים אישית)',
       teacherFreeText: st?.teacherFreeText || '',
+      freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
       strengthsExisting: st?.strengthsExisting || '',
       strengthsToEmpower: st?.strengthsToEmpower || '',
       recommendations: st?.recommendations || '',
@@ -116,6 +127,7 @@ export default function EcologicalWorkPlanForm({
       ...st,
       schoolYear: currentYear,
       gender: initialGender,
+      freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
       evalReportFreeText: st?.evalReportFreeText || '',
       evalReportSummary: st?.evalReportSummary || '',
       sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
@@ -133,6 +145,9 @@ export default function EcologicalWorkPlanForm({
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
   const [showFullDocPreview, setShowFullDocPreview] = useState(false);
+  const [isFreeTextCollapsed, setIsFreeTextCollapsed] = useState(() =>
+    isRawFreeTextAlreadyAnalyzed(student)
+  );
 
   // State for Separate Mid-Year / End-of-Year Evaluation Report & AI Processing
   const [showEvalReportSection, setShowEvalReportSection] = useState(false);
@@ -179,6 +194,7 @@ export default function EcologicalWorkPlanForm({
     const normalized = buildNormalizedStudentData(student);
     savedSnapshotRef.current = JSON.stringify(normalized);
     setFormData(normalized);
+    setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(normalized));
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
     setExpandedQuickObjMap({});
@@ -256,7 +272,7 @@ export default function EcologicalWorkPlanForm({
       clearTimeout(timer);
       window.removeEventListener('resize', resizeAllTextareas);
     };
-  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection]);
+  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection, isFreeTextCollapsed]);
 
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
@@ -327,12 +343,13 @@ export default function EcologicalWorkPlanForm({
       const genderToUse = prev.gender || 'boy';
 
       if (existingTargetReport) {
-        return {
+        const nextData = {
           ...prev,
           schoolYear: newYear,
           date: existingTargetReport.date || new Date().toLocaleDateString('he-IL'),
           planType: existingTargetReport.planType || prev.planType || 'תל"א (תוכנית לימודים אישית)',
           teacherFreeText: existingTargetReport.teacherFreeText || '',
+          freeTextAnalyzed: Boolean(existingTargetReport.freeTextAnalyzed),
           strengthsExisting: existingTargetReport.strengthsExisting || '',
           strengthsToEmpower: existingTargetReport.strengthsToEmpower || '',
           recommendations: existingTargetReport.recommendations || '',
@@ -344,6 +361,8 @@ export default function EcologicalWorkPlanForm({
           ),
           reportsByYear: updatedReportsByYear
         };
+        setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
+        return nextData;
       }
 
       const freshGoal = {
@@ -362,6 +381,7 @@ export default function EcologicalWorkPlanForm({
         date: new Date().toLocaleDateString('he-IL'),
         planType: prev.planType || 'תל"א (תוכנית לימודים אישית)',
         teacherFreeText: '',
+        freeTextAnalyzed: false,
         strengthsExisting: '',
         strengthsToEmpower: '',
         recommendations: '',
@@ -371,6 +391,7 @@ export default function EcologicalWorkPlanForm({
         goals: [freshGoal]
       };
 
+      setIsFreeTextCollapsed(false);
       return {
         ...prev,
         schoolYear: newYear,
@@ -816,6 +837,7 @@ ${goalsSummary}
       if (parsed && (parsed.strengthsExisting || parsed.strengthsToEmpower)) {
         const updated = {
           ...formData,
+          freeTextAnalyzed: true,
           strengthsExisting: parsed.strengthsExisting || formData.strengthsExisting,
           strengthsToEmpower: parsed.strengthsToEmpower || formData.strengthsToEmpower,
           status: 'מוכן להדפסה',
@@ -824,6 +846,7 @@ ${goalsSummary}
         setFormData(updated);
         onSaveStudentPlan(updated);
         setIsGeneratingSummary(false);
+        setIsFreeTextCollapsed(true);
         setSaveBanner(true);
         setTimeout(() => setSaveBanner(false), 3000);
         return;
@@ -835,6 +858,7 @@ ${goalsSummary}
 
     const updated = {
       ...formData,
+      freeTextAnalyzed: true,
       name: engineered?.name || formData.name,
       gender: engineered?.gender || formData.gender || 'boy',
       educationalFramework: engineered?.educationalFramework || formData.educationalFramework,
@@ -847,6 +871,7 @@ ${goalsSummary}
     setFormData(updated);
     onSaveStudentPlan(updated);
     setIsGeneratingSummary(false);
+    setIsFreeTextCollapsed(true);
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 3000);
   };
@@ -956,6 +981,7 @@ ${bankReference}
 
         const updated = {
           ...formData,
+          freeTextAnalyzed: true,
           name:
             parsed.name && (!formData.name || formData.name === 'תלמיד/ה חדש/ה')
               ? parsed.name
@@ -978,6 +1004,7 @@ ${bankReference}
           if (g.title) onUseOrAddGoalToBank(g);
         });
         setIsReverseEngineering(false);
+        setIsFreeTextCollapsed(true);
         setReverseEngineerBanner(
           `✨ הדוח הרשמי הופק בהצלחה ב-Gemini AI מתוך הטקסט הגולמי! נוסחו באופן קוהרנטי טבלת מוקדי הכוח, ${formattedGoals.length} מטרות מותאמות אישית ופרק ההמלצות.`
         );
@@ -992,6 +1019,7 @@ ${bankReference}
     if (engineered) {
       const updated = {
         ...formData,
+        freeTextAnalyzed: true,
         name: engineered.name || formData.name,
         gender: engineered.gender || formData.gender || 'boy',
         educationalFramework: engineered.educationalFramework || formData.educationalFramework,
@@ -1008,6 +1036,7 @@ ${bankReference}
       (engineered.goals || []).forEach((g) => {
         if (g.title) onUseOrAddGoalToBank(g);
       });
+      setIsFreeTextCollapsed(true);
       setReverseEngineerBanner(
         `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! נוסחו באופן פדגוגי קוהרנטי טבלת מוקדי הכוח, ${engineered.goals.length} מטרות רשמיות מותאמות לתלמיד/ה (6 עמודות) ופרק ההמלצות.`
       );
@@ -2571,36 +2600,90 @@ ${goalsContext}
         </div>
 
         <div className="free-text-area-box">
-          <label className="bold-label">
-            ✍️ תיאור חופשי של הילד/ה במילים שלך:
-          </label>
-          <textarea
-            rows={4}
-            value={formData.teacherFreeText || ''}
-            onInput={handleTextareaAutoResize}
-            onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
-            placeholder="הזיני כאן מידע גולמי וחופשי על התלמיד/ה... למשל: ילד נעים, חברותי וסקרן בעל יכולת ריכוז טובה, וורבלי ומלא אנרגיות. מתקשה במשחק משותף עם חברים ומשחק לידם באופן תבניתי, לא ניגש לשולחן הסדנא מיוזמתו ומתקשה בתכנון והתארגנות, וזקוק לתיווך בגמילה בשירותים ובוויסות רגשי..."
-          />
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              marginBottom: isFreeTextCollapsed ? 0 : '8px'
+            }}
+          >
+            <label className="bold-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>✍️ תיאור חופשי של הילד/ה במילים שלך:</span>
+              {isRawFreeTextAlreadyAnalyzed(formData) && (
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#5b21b6',
+                    background: '#f3eefc',
+                    border: '1px solid #d8b4fe',
+                    borderRadius: '999px',
+                    padding: '2px 10px'
+                  }}
+                >
+                  ✓ עובד ב-AI
+                </span>
+              )}
+            </label>
 
-          <div className="submit-summary-action-row">
-            <span className="submit-helper-text">
-              לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את טבלת מוקדי הכוח, המטרות והיעדים ושאר סעיפי הטופס:
-            </span>
-            <button
-              type="button"
-              className="btn-submit-generate-summary"
-              onClick={handleReverseEngineerFullReport}
-              disabled={isReverseEngineering}
-            >
-              <Sparkles size={17} />
-              <span>
-                {isReverseEngineering ? 'מעבד מידע ומייצר מטרות ודוח...' : 'עיבוד המידע'}
-              </span>
-            </button>
+            {((formData.teacherFreeText || '').trim() || isRawFreeTextAlreadyAnalyzed(formData)) && (
+              <button
+                type="button"
+                onClick={() => setIsFreeTextCollapsed((prev) => !prev)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: '#ffffff',
+                  color: '#4c1d95',
+                  border: '1px solid #c4b5fd',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {isFreeTextCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+                <span>{isFreeTextCollapsed ? 'הצג / ערוך תיאור חופשי' : 'הסתר תיאור חופשי'}</span>
+              </button>
+            )}
           </div>
 
+          {!isFreeTextCollapsed && (
+            <>
+              <textarea
+                rows={4}
+                value={formData.teacherFreeText || ''}
+                onInput={handleTextareaAutoResize}
+                onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
+                placeholder="הזיני כאן מידע גולמי וחופשי על התלמיד/ה... למשל: ילד נעים, חברותי וסקרן בעל יכולת ריכוז טובה, וורבלי ומלא אנרגיות. מתקשה במשחק משותף עם חברים ומשחק לידם באופן תבניתי, לא ניגש לשולחן הסדנא מיוזמתו ומתקשה בתכנון והתארגנות, וזקוק לתיווך בגמילה בשירותים ובוויסות רגשי..."
+              />
+
+              <div className="submit-summary-action-row">
+                <span className="submit-helper-text">
+                  לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את טבלת מוקדי הכוח, המטרות והיעדים ושאר סעיפי הטופס:
+                </span>
+                <button
+                  type="button"
+                  className="btn-submit-generate-summary"
+                  onClick={handleReverseEngineerFullReport}
+                  disabled={isReverseEngineering}
+                >
+                  <Sparkles size={17} />
+                  <span>
+                    {isReverseEngineering ? 'מעבד מידע ומייצר מטרות ודוח...' : 'עיבוד המידע'}
+                  </span>
+                </button>
+              </div>
+            </>
+          )}
+
           {reverseEngineerBanner && (
-            <div className="reverse-engineer-success-banner">
+            <div className="reverse-engineer-success-banner" style={{ marginTop: isFreeTextCollapsed ? '10px' : undefined }}>
               <CheckCircle2 size={18} />
               <span>{reverseEngineerBanner}</span>
             </div>
