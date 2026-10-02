@@ -2537,11 +2537,30 @@ ${bankReference}
           />
         </div>
 
-        <div className="bottom-final-actions" style={{ marginTop: '16px' }}>
-          <button type="button" className="btn-save-progress" onClick={handleSaveProgress}>
-            <Save size={18} />
-            <span>שמור התקדמות לעריכה עתידית</span>
+        <div className="bottom-final-actions" style={{ marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn-save-progress"
+            onClick={handleSaveProgress}
+            style={
+              saveBanner
+                ? {
+                    background: 'linear-gradient(135deg, #16a34a 0%, #059669 100%)',
+                    borderColor: '#86efac'
+                  }
+                : undefined
+            }
+          >
+            {saveBanner ? <Check size={18} /> : <Save size={18} />}
+            <span>{saveBanner ? 'נשמר בהצלחה!' : 'שמור התקדמות לעריכה עתידית'}</span>
           </button>
+
+          {saveBanner && (
+            <span className="save-toast-badge">
+              <Check size={14} />
+              <span>השינויים נשמרו בהצלחה!</span>
+            </span>
+          )}
 
           <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
             <Printer size={18} />
@@ -2552,7 +2571,7 @@ ${bankReference}
 
           <button type="button" className="btn-send-email-doc" onClick={handleOpenEmailModal}>
             <Mail size={18} />
-            <span>שלח למייל (DOCX / PDF)</span>
+            <span>שלח למייל</span>
           </button>
         </div>
       </section>
@@ -2586,10 +2605,10 @@ ${bankReference}
             </div>
 
             <form className="modal-body email-modal-body" onSubmit={handleSendReportByEmail}>
-              {/* 1. Recipient Email ("Mail To") */}
+              {/* 1. Recipient Email */}
               <div className="email-modal-field">
                 <label className="email-modal-label">
-                  שלח אל (Mail To – כתובת אימייל של הנמען): <span style={{ color: '#dc2626' }}>*</span>
+                  שלח אל: <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <input
                   type="email"
@@ -2605,7 +2624,7 @@ ${bankReference}
 
               {/* 2. Choose Report Format: DOCX or PDF */}
               <div className="email-modal-field">
-                <label className="email-modal-label">בחר פורמט קובץ מצורף (ישלח אוטומטית ברקע):</label>
+                <label className="email-modal-label">בחר פורמט קובץ מצורף:</label>
                 <div className="email-format-options">
                   <label
                     className={`email-format-card ${emailFormat === 'docx' ? 'selected' : ''}`}
@@ -2620,8 +2639,8 @@ ${bankReference}
                     />
                     <div className="email-format-icon docx-badge">DOCX</div>
                     <div className="email-format-info">
-                      <strong>קובץ Word (DOCX / DOC)</strong>
-                      <span>מסמך ניתן לעריכה ב-Microsoft Word (מצורף אוטומטית למייל ברקע)</span>
+                      <strong>קובץ Word</strong>
+                      <span>מסמך ניתן לעריכה ב-Microsoft Word</span>
                     </div>
                   </label>
 
@@ -2639,7 +2658,7 @@ ${bankReference}
                     <div className="email-format-icon pdf-badge">PDF</div>
                     <div className="email-format-info">
                       <strong>קובץ PDF רשמי</strong>
-                      <span>מופק אוטומטית ברקע ומצורף ישירות למייל (ללא צורך בחלון הדפסה)</span>
+                      <span>מסמך מעוצב לקריאה והדפסה</span>
                     </div>
                   </label>
                 </div>
@@ -2657,175 +2676,6 @@ ${bankReference}
                   הפעל הגנת פרטיות בקובץ המצורף (ראשי תיבות: <strong>{toHebrewAcronym(formData.name)}</strong> והשחרת ת.ז/טלפון/כתובת)
                 </span>
               </label>
-
-              {/* Direct Background Email Engine Status & One-Time Setup */}
-              <div className="email-engine-status-box">
-                <div className="email-engine-status-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span
-                      className={`engine-status-dot ${
-                        isDirectEmailEngineConfigured(localEngineDraft) ? 'ready' : 'pending'
-                      }`}
-                    />
-                    <strong style={{ fontSize: '12.5px', color: '#1e3a5f' }}>
-                      {isDirectEmailEngineConfigured(localEngineDraft)
-                        ? 'מנוע שליחה ישירה ברקע פעיל ומוכן (ללא פתיחת תוכנת מייל במחשב)'
-                        : 'הגדרה חד-פעמית של מנוע שליחה ישירה ברקע (Cloud Email Relay)'}
-                    </strong>
-                  </div>
-                  {(isAdmin || !isDirectEmailEngineConfigured(localEngineDraft)) && (
-                    <button
-                      type="button"
-                      className="btn-toggle-engine-setup"
-                      onClick={() => setShowEngineSetupInModal(!showEngineSetupInModal)}
-                    >
-                      {showEngineSetupInModal ? 'הסתר הגדרות מנוע' : 'הגדרות מנוע שליחה ⚙️'}
-                    </button>
-                  )}
-                </div>
-
-                {showEngineSetupInModal && (
-                  <div className="email-engine-setup-panel">
-                    <div className="email-client-pills" style={{ marginBottom: '10px' }}>
-                      <button
-                        type="button"
-                        className={`email-client-pill ${
-                          localEngineDraft.provider !== 'emailjs' ? 'active' : ''
-                        }`}
-                        onClick={() =>
-                          setLocalEngineDraft({ ...localEngineDraft, provider: 'apps_script' })
-                        }
-                      >
-                        ⭐ מומלץ: Google Apps Script (חינמי, תומך בקבצי DOCX ו-PDF מלאים)
-                      </button>
-                      <button
-                        type="button"
-                        className={`email-client-pill ${
-                          localEngineDraft.provider === 'emailjs' ? 'active' : ''
-                        }`}
-                        onClick={() =>
-                          setLocalEngineDraft({ ...localEngineDraft, provider: 'emailjs' })
-                        }
-                      >
-                        EmailJS API
-                      </button>
-                    </div>
-
-                    {localEngineDraft.provider !== 'emailjs' ? (
-                      <div className="engine-setup-steps">
-                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#334155', lineHeight: 1.5 }}>
-                          כדי שהאתר ישלח מיילים עם קבצי Word ו-PDF מצורפים ישירות ברקע (בחינם וללא הגבלת גודל של ספקים חיצוניים), בצע/י הגדרה חד-פעמית של 60 שניות (נשמרת בענן לכל המשתמשים):
-                        </p>
-                        <ol style={{ margin: '0 0 10px 0', paddingRight: '18px', fontSize: '11.5px', color: '#1e293b', lineHeight: 1.55 }}>
-                          <li>
-                            פתח/י את{' '}
-                            <a
-                              href="https://script.google.com/home/start"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: '#2563eb', fontWeight: 700 }}
-                            >
-                              script.google.com
-                            </a>{' '}
-                            ולחץ/י על <strong>New Project (פרויקט חדש)</strong>.
-                          </li>
-                          <li>
-                            לחץ/י על הכפתור להעתקת קוד השליחה והדבק/י אותו במקום הקוד הקיים:
-                            <button
-                              type="button"
-                              onClick={handleCopyAppsScriptCode}
-                              className="btn-copy-script-inline"
-                            >
-                              {copiedAppsScript ? '✓ הקוד הועתק!' : '📋 העתק קוד Google Apps Script'}
-                            </button>
-                          </li>
-                          <li>
-                            לחץ/י למעלה על <strong>Deploy &rarr; New deployment</strong>, בחר/י סוג <strong>Web app</strong>, הגדר/י <em>Who has access</em> ל-<strong>Anyone</strong> ולחץ/י <strong>Deploy</strong>.
-                          </li>
-                          <li>העתק/י את כתובת ה-<strong>Web app URL</strong> והדבק/י כאן למטה:</li>
-                        </ol>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input
-                            type="url"
-                            dir="ltr"
-                            value={localEngineDraft.appsScriptUrl || ''}
-                            onChange={(e) =>
-                              setLocalEngineDraft({
-                                ...localEngineDraft,
-                                appsScriptUrl: e.target.value
-                              })
-                            }
-                            placeholder="https://script.google.com/macros/s/.../exec"
-                            className="email-recipient-input"
-                            style={{ flex: 1, fontSize: '12.5px', padding: '8px 10px' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={handleSaveEngineConfigInModal}
-                            className="btn-save-engine-inline"
-                          >
-                            שמור מנוע בענן
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="engine-setup-steps" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <input
-                          type="text"
-                          dir="ltr"
-                          value={localEngineDraft.emailjsServiceId || ''}
-                          onChange={(e) =>
-                            setLocalEngineDraft({
-                              ...localEngineDraft,
-                              emailjsServiceId: e.target.value
-                            })
-                          }
-                          placeholder="EmailJS Service ID (e.g. service_xxx)"
-                          className="email-recipient-input"
-                          style={{ fontSize: '12.5px', padding: '7px 10px' }}
-                        />
-                        <input
-                          type="text"
-                          dir="ltr"
-                          value={localEngineDraft.emailjsTemplateId || ''}
-                          onChange={(e) =>
-                            setLocalEngineDraft({
-                              ...localEngineDraft,
-                              emailjsTemplateId: e.target.value
-                            })
-                          }
-                          placeholder="EmailJS Template ID (e.g. template_xxx)"
-                          className="email-recipient-input"
-                          style={{ fontSize: '12.5px', padding: '7px 10px' }}
-                        />
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <input
-                            type="text"
-                            dir="ltr"
-                            value={localEngineDraft.emailjsPublicKey || ''}
-                            onChange={(e) =>
-                              setLocalEngineDraft({
-                                ...localEngineDraft,
-                                emailjsPublicKey: e.target.value
-                              })
-                            }
-                            placeholder="EmailJS Public Key"
-                            className="email-recipient-input"
-                            style={{ flex: 1, fontSize: '12.5px', padding: '7px 10px' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={handleSaveEngineConfigInModal}
-                            className="btn-save-engine-inline"
-                          >
-                            שמור מנוע בענן
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
 
               {emailError && <div className="email-modal-error">{emailError}</div>}
               {emailStatusMsg && <div className="email-modal-success">{emailStatusMsg}</div>}
