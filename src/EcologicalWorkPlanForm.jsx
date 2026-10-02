@@ -2075,7 +2075,7 @@ ${bankReference}
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                className="btn-preview-doc"
+                className="btn-print-doc"
                 onClick={downloadWordFile}
                 title="הורד כקובץ Word ניתן לעריכה"
               >
@@ -2923,7 +2923,7 @@ ${bankReference}
 
           <button
             type="button"
-            className="btn-preview-doc"
+            className="btn-print-doc"
             onClick={() => {
               handleSaveProgress();
               downloadWordFile();
