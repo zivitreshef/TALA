@@ -20,7 +20,8 @@ import {
   Save,
   Archive,
   RotateCcw,
-  Printer
+  Printer,
+  KeyRound
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -28,7 +29,8 @@ import {
 } from './allowedUsers';
 import {
   AllowlistAuthGate,
-  AdminAllowlistModal
+  AdminAllowlistModal,
+  UserSelfPasswordModal
 } from './AllowlistAuthGate';
 import {
   INITIAL_STUDENTS_DATA,
@@ -54,15 +56,33 @@ import './index.css';
 
 const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
 const SESSION_USER_KEY = 'tala_current_session_user_v1';
+const PASSWORD_POLICY_STORAGE_KEY = 'tala_enforce_password_policy_v1';
 
 export default function App() {
   // Allowed users list
   const [allowedUsers, setAllowedUsers] = useState(() => loadAllowedUsers());
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showSelfPasswordModal, setShowSelfPasswordModal] = useState(false);
   const [cloudSyncState, setCloudSyncState] = useState({
     connected: false,
     status: 'local_only'
   });
+
+  // Password Policy Enforcement flag (Admin setting)
+  const [enforcePasswordPolicy, setEnforcePasswordPolicy] = useState(() => {
+    try {
+      return localStorage.getItem(PASSWORD_POLICY_STORAGE_KEY) === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handleChangeEnforcePasswordPolicy = (enabled) => {
+    const nextVal = Boolean(enabled);
+    setEnforcePasswordPolicy(nextVal);
+    localStorage.setItem(PASSWORD_POLICY_STORAGE_KEY, String(nextVal));
+    saveSettingsToCloud({ enforcePasswordPolicy: nextVal });
+  };
 
   // Current logged-in user (must be in Allowed Users List)
   const [currentUser, setCurrentUser] = useState(() => {
@@ -220,6 +240,13 @@ export default function App() {
           setGeminiApiKey(settings.geminiApiKey);
           localStorage.setItem('tala_gemini_api_key', settings.geminiApiKey);
         }
+        if (typeof settings?.enforcePasswordPolicy === 'boolean') {
+          setEnforcePasswordPolicy(settings.enforcePasswordPolicy);
+          localStorage.setItem(
+            PASSWORD_POLICY_STORAGE_KEY,
+            String(settings.enforcePasswordPolicy)
+          );
+        }
       },
       onSyncStatusChange: (statusObj) => {
         setCloudSyncState(statusObj);
@@ -230,6 +257,17 @@ export default function App() {
       if (unsubscribe) unsubscribe();
     };
   }, []);
+
+  // Ensure logged-in user is still active when allowedUsers changes in real time
+  useEffect(() => {
+    if (!currentUser) return;
+    const matchingUser = allowedUsers.find(
+      (u) => u.email.toLowerCase() === currentUser.email?.toLowerCase()
+    );
+    if (matchingUser && !matchingUser.active) {
+      performLogout();
+    }
+  }, [allowedUsers]);
 
   // Whenever the logged-in user or students list changes, ensure selectedStudentId belongs to that user
   useEffect(() => {
@@ -247,6 +285,19 @@ export default function App() {
     setAllowedUsers(updatedList);
     saveAllowedUsers(updatedList);
     saveAllowedUsersToCloud(updatedList);
+  };
+
+  const handleChangeOwnPassword = (newAccessCode) => {
+    if (!currentUser) return;
+    const updatedList = allowedUsers.map((u) =>
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+        ? { ...u, accessCode: newAccessCode }
+        : u
+    );
+    handleUpdateAllowedUsers(updatedList);
+    const updatedCurrent = { ...currentUser, accessCode: newAccessCode };
+    setCurrentUser(updatedCurrent);
+    localStorage.setItem(SESSION_USER_KEY, JSON.stringify(updatedCurrent));
   };
 
   const handleLoginSuccess = (user) => {
@@ -659,12 +710,18 @@ export default function App() {
             </button>
           )}
 
-          <div className="current-user-chip">
+          <div
+            className="current-user-chip"
+            onClick={() => setShowSelfPasswordModal(true)}
+            title="לחץ לשינוי הסיסמה האישית שלך"
+            style={{ cursor: 'pointer' }}
+          >
             <UserCheck size={16} />
             <div className="user-chip-text">
               <strong>{currentUser.name}</strong>
               <small>{currentUser.title}</small>
             </div>
+            <KeyRound size={14} style={{ opacity: 0.75, marginRight: '4px' }} />
           </div>
 
           <button
@@ -825,6 +882,15 @@ export default function App() {
         </main>
       </div>
 
+      {/* Self-Service Password Change Modal (Any Logged-in User) */}
+      <UserSelfPasswordModal
+        isOpen={showSelfPasswordModal}
+        onClose={() => setShowSelfPasswordModal(false)}
+        currentUser={currentUser}
+        enforcePasswordPolicy={enforcePasswordPolicy}
+        onChangeOwnPassword={handleChangeOwnPassword}
+      />
+
       {/* Admin Allowlist Management Modal (Only accessible to Admin) */}
       {currentUser.role === 'admin' && (
         <AdminAllowlistModal
@@ -834,6 +900,8 @@ export default function App() {
           onUpdateAllowedUsers={handleUpdateAllowedUsers}
           geminiApiKey={geminiApiKey}
           onChangeGeminiApiKey={handleChangeGeminiApiKey}
+          enforcePasswordPolicy={enforcePasswordPolicy}
+          onChangeEnforcePasswordPolicy={handleChangeEnforcePasswordPolicy}
           cloudSyncState={cloudSyncState}
         />
       )}

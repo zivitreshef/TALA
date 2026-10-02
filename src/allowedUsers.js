@@ -92,3 +92,55 @@ export function verifyAllowedUser(email, accessCode, usersList) {
     user: found
   };
 }
+
+/**
+ * Industry-standard password policy validation (no password history/retention).
+ * Rules:
+ * 1. Minimum 8 characters
+ * 2. At least 1 uppercase letter (A-Z)
+ * 3. At least 1 lowercase letter (a-z)
+ * 4. At least 1 digit (0-9)
+ * 5. At least 1 special character (!@#$%^&*...)
+ */
+export function validatePasswordPolicy(password) {
+  const pwd = String(password || '');
+  const checks = [
+    {
+      id: 'length',
+      label: 'לפחות 8 תווים',
+      passed: pwd.length >= 8
+    },
+    {
+      id: 'upper',
+      label: 'אות גדולה באנגלית (A-Z)',
+      passed: /[A-Z]/.test(pwd)
+    },
+    {
+      id: 'lower',
+      label: 'אות קטנה באנגלית (a-z)',
+      passed: /[a-z]/.test(pwd)
+    },
+    {
+      id: 'digit',
+      label: 'ספרה אחת לפחות (0-9)',
+      passed: /[0-9]/.test(pwd)
+    },
+    {
+      id: 'special',
+      label: 'תו מיוחד (!@#$%^&*...)',
+      passed: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(pwd)
+    }
+  ];
+
+  const missing = checks.filter((c) => !c.passed).map((c) => c.label);
+  return {
+    valid: missing.length === 0,
+    checks,
+    missing,
+    errorMessage:
+      missing.length > 0
+        ? `הסיסמה אינה עומדת במדיניות האבטחה. חסר: ${missing.join(', ')}.`
+        : ''
+  };
+}
+

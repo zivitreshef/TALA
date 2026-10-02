@@ -209,7 +209,7 @@ export function subscribeToTalaBackend({
     async (snap) => {
       if (snap.exists()) {
         const data = snap.data();
-        if (data?.geminiApiKey) {
+        if (data) {
           onSettingsChange?.(data);
         }
       } else {
