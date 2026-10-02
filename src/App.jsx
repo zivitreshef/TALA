@@ -34,12 +34,21 @@ import {
   INITIAL_STUDENTS_DATA,
   ENVIRONMENTS_LIST,
   loadGoalBank,
+  saveGoalBank,
   recordGoalUsageOrAdd,
   getSortedGoalBank,
   addGoalByAdmin,
   updateGoalByAdmin,
   deleteGoalByAdmin
 } from './goalBankData';
+import {
+  subscribeToTalaBackend,
+  saveAllowedUsersToCloud,
+  saveGoalBankToCloud,
+  saveSettingsToCloud,
+  saveStudentToCloud,
+  deleteStudentFromCloud
+} from './firebaseBackend';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
 
@@ -50,6 +59,10 @@ export default function App() {
   // Allowed users list
   const [allowedUsers, setAllowedUsers] = useState(() => loadAllowedUsers());
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [cloudSyncState, setCloudSyncState] = useState({
+    connected: false,
+    status: 'local_only'
+  });
 
   // Current logged-in user (must be in Allowed Users List)
   const [currentUser, setCurrentUser] = useState(() => {
@@ -161,6 +174,14 @@ export default function App() {
     return String.fromCharCode(...defaultKeyCodes);
   });
 
+  const handleChangeGeminiApiKey = (newKey) => {
+    setGeminiApiKey(newKey);
+    if (newKey) {
+      localStorage.setItem('tala_gemini_api_key', newKey);
+      saveSettingsToCloud({ geminiApiKey: newKey });
+    }
+  };
+
   useEffect(() => {
     if (geminiApiKey) {
       localStorage.setItem('tala_gemini_api_key', geminiApiKey);
@@ -171,7 +192,46 @@ export default function App() {
     localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(students));
   }, [students]);
 
-  // Whenever the logged-in user changes, ensure selectedStudentId belongs to that user
+  // Real-time Cloud Firestore Backend Subscription
+  useEffect(() => {
+    const unsubscribe = subscribeToTalaBackend({
+      getInitialAllowedUsers: () => loadAllowedUsers(),
+      getInitialGoalBank: () => loadGoalBank(),
+      getInitialStudents: () => students,
+      getInitialGeminiKey: () => geminiApiKey,
+      onAllowedUsersChange: (cloudUsers) => {
+        setAllowedUsers(cloudUsers);
+        saveAllowedUsers(cloudUsers);
+      },
+      onGoalBankChange: (cloudGoals) => {
+        setGoalBank(cloudGoals);
+        saveGoalBank(cloudGoals);
+      },
+      onStudentsChange: (cloudStudents) => {
+        const normalized = cloudStudents.map((s) => ({
+          ...s,
+          ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
+        }));
+        setStudents(normalized);
+        localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(normalized));
+      },
+      onSettingsChange: (settings) => {
+        if (settings?.geminiApiKey) {
+          setGeminiApiKey(settings.geminiApiKey);
+          localStorage.setItem('tala_gemini_api_key', settings.geminiApiKey);
+        }
+      },
+      onSyncStatusChange: (statusObj) => {
+        setCloudSyncState(statusObj);
+      }
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  // Whenever the logged-in user or students list changes, ensure selectedStudentId belongs to that user
   useEffect(() => {
     if (!currentUser) {
       setSelectedStudentId(null);
@@ -181,11 +241,12 @@ export default function App() {
     if (!myStudents.some((s) => s.id === selectedStudentId)) {
       setSelectedStudentId(myStudents[0]?.id || null);
     }
-  }, [currentUser?.email]);
+  }, [currentUser?.email, students.length]);
 
   const handleUpdateAllowedUsers = (updatedList) => {
     setAllowedUsers(updatedList);
     saveAllowedUsers(updatedList);
+    saveAllowedUsersToCloud(updatedList);
   };
 
   const handleLoginSuccess = (user) => {
@@ -229,6 +290,7 @@ export default function App() {
         STUDENTS_STORAGE_KEY,
         JSON.stringify(updatedStudents)
       );
+      saveStudentToCloud(updated);
       (updated.goals || []).forEach((g) => {
         if (g.title && g.title.trim()) {
           handleUseOrAddGoalToBank(g);
@@ -278,6 +340,7 @@ export default function App() {
     };
 
     setStudents((prev) => [newStudentPlan, ...prev]);
+    saveStudentToCloud(newStudentPlan);
     setSelectedStudentId(newId);
     setExpandedFrameworks((prev) => ({
       ...prev,
@@ -295,6 +358,7 @@ export default function App() {
     const id = studentToDelete.id;
     const remainingAll = students.filter((s) => s.id !== id);
     setStudents(remainingAll);
+    deleteStudentFromCloud(id);
     if (selectedStudentId === id) {
       const remainingMine = getStudentsForUser(remainingAll, currentUser);
       setSelectedStudentId(remainingMine[0]?.id || null);
@@ -317,21 +381,26 @@ export default function App() {
     const id = target.id;
     const archivedDate = new Date().toLocaleDateString('he-IL');
 
+    let archivedStudentDoc = null;
     const updatedAll = students.map((s) => {
       if (s.id !== id) return s;
       const baseData =
         unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === id
           ? unsavedDraftState.draftData
           : s;
-      return {
+      archivedStudentDoc = {
         ...baseData,
         archived: true,
         archivedAt: archivedDate,
         status: 'הושלם – בארכיון'
       };
+      return archivedStudentDoc;
     });
 
     setStudents(updatedAll);
+    if (archivedStudentDoc) {
+      saveStudentToCloud(archivedStudentDoc);
+    }
     if (selectedStudentId === id) {
       const remainingActive = getStudentsForUser(updatedAll, currentUser);
       setSelectedStudentId(remainingActive[0]?.id || null);
@@ -343,12 +412,16 @@ export default function App() {
   };
 
   const handleRestoreFromArchive = (studentId) => {
-    const updatedAll = students.map((s) =>
-      s.id === studentId
-        ? { ...s, archived: false, status: 'פעיל' }
-        : s
-    );
+    let restoredDoc = null;
+    const updatedAll = students.map((s) => {
+      if (s.id !== studentId) return s;
+      restoredDoc = { ...s, archived: false, status: 'פעיל' };
+      return restoredDoc;
+    });
     setStudents(updatedAll);
+    if (restoredDoc) {
+      saveStudentToCloud(restoredDoc);
+    }
     const restoredStudent = updatedAll.find((s) => s.id === studentId);
     if (restoredStudent) {
       const fwKey =
@@ -365,10 +438,15 @@ export default function App() {
     setStudents((prev) =>
       prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
     );
+    saveStudentToCloud(updatedStudent);
   };
 
   const handleUseOrAddGoalToBank = (goalData) => {
-    setGoalBank((prevBank) => recordGoalUsageOrAdd(goalData, prevBank));
+    setGoalBank((prevBank) => {
+      const nextBank = recordGoalUsageOrAdd(goalData, prevBank);
+      saveGoalBankToCloud(nextBank);
+      return nextBank;
+    });
   };
 
   // === Admin Goal Bank CRUD Handlers ===
@@ -412,8 +490,8 @@ export default function App() {
     }
 
     if (editingBankGoal.mode === 'add') {
-      setGoalBank((prev) =>
-        addGoalByAdmin(
+      setGoalBank((prev) => {
+        const nextBank = addGoalByAdmin(
           {
             title: editingBankGoal.title,
             environment: editingBankGoal.environment,
@@ -426,11 +504,13 @@ export default function App() {
             defaultEvaluation: editingBankGoal.defaultEvaluation
           },
           prev
-        )
-      );
+        );
+        saveGoalBankToCloud(nextBank);
+        return nextBank;
+      });
     } else {
-      setGoalBank((prev) =>
-        updateGoalByAdmin(
+      setGoalBank((prev) => {
+        const nextBank = updateGoalByAdmin(
           editingBankGoal.id,
           {
             title: editingBankGoal.title,
@@ -444,8 +524,10 @@ export default function App() {
             defaultEvaluation: editingBankGoal.defaultEvaluation
           },
           prev
-        )
-      );
+        );
+        saveGoalBankToCloud(nextBank);
+        return nextBank;
+      });
     }
     setEditingBankGoal(null);
   };
@@ -454,7 +536,11 @@ export default function App() {
     if (!window.confirm(`האם למחוק את המטרה "${goalItem.title}" ממאגר המטרות הדינמי?`)) {
       return;
     }
-    setGoalBank((prev) => deleteGoalByAdmin(goalItem.id, prev));
+    setGoalBank((prev) => {
+      const nextBank = deleteGoalByAdmin(goalItem.id, prev);
+      saveGoalBankToCloud(nextBank);
+      return nextBank;
+    });
     if (editingBankGoal?.id === goalItem.id) {
       setEditingBankGoal(null);
     }
@@ -747,7 +833,8 @@ export default function App() {
           allowedUsers={allowedUsers}
           onUpdateAllowedUsers={handleUpdateAllowedUsers}
           geminiApiKey={geminiApiKey}
-          onChangeGeminiApiKey={setGeminiApiKey}
+          onChangeGeminiApiKey={handleChangeGeminiApiKey}
+          cloudSyncState={cloudSyncState}
         />
       )}
 

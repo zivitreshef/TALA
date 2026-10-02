@@ -91,7 +91,8 @@ export function AdminAllowlistModal({
   allowedUsers,
   onUpdateAllowedUsers,
   geminiApiKey,
-  onChangeGeminiApiKey
+  onChangeGeminiApiKey,
+  cloudSyncState
 }) {
   const [newUser, setNewUser] = useState({
     name: '',
@@ -194,6 +195,31 @@ export function AdminAllowlistModal({
         </div>
 
         <div className="modal-body">
+          {/* Cloud Backend Sync Status Banner */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '8px',
+              background: cloudSyncState?.connected ? '#ecfdf5' : '#fffbeb',
+              border: `1.5px solid ${cloudSyncState?.connected ? '#6ee7b7' : '#fcd34d'}`,
+              borderRadius: '10px',
+              padding: '9px 14px',
+              marginBottom: '10px',
+              fontSize: '12.5px',
+              color: cloudSyncState?.connected ? '#065f46' : '#92400e',
+              fontWeight: 600
+            }}
+          >
+            <span>
+              {cloudSyncState?.connected
+                ? '☁️ מחובר לענן Firebase Firestore — משתמשים, סיסמאות, תלמידים, דוחות ומאגר המטרות נשמרים אוטומטית בענן ואינם מושפעים מעדכוני קוד / PR.'
+                : '⚠️ מצב שמירה מקומי (ממתין להגדרת מפתחות Firebase Firestore).'}
+            </span>
+          </div>
+
           {/* Admin-Only Gemini AI Key Setting */}
           <div
             style={{
