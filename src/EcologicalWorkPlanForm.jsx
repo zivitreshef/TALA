@@ -54,6 +54,8 @@ const extractYearReportFromFormData = (data) => ({
   strengthsExisting: data?.strengthsExisting || '',
   strengthsToEmpower: data?.strengthsToEmpower || '',
   recommendations: data?.recommendations || '',
+  evalReportFreeText: data?.evalReportFreeText || '',
+  evalReportSummary: data?.evalReportSummary || '',
   lastSavedAt: data?.lastSavedAt || '',
   goals: (data?.goals || []).map((g) => adaptGoalToGender(g, data?.gender || 'boy'))
 });
@@ -65,6 +67,8 @@ const hasContentInYearReport = (rep) => {
       (rep.strengthsExisting && rep.strengthsExisting.trim()) ||
       (rep.strengthsToEmpower && rep.strengthsToEmpower.trim()) ||
       (rep.recommendations && rep.recommendations.trim()) ||
+      (rep.evalReportFreeText && rep.evalReportFreeText.trim()) ||
+      (rep.evalReportSummary && rep.evalReportSummary.trim()) ||
       (rep.goals || []).some(
         (g) => (g.title && g.title.trim()) || (g.objectives && g.objectives.trim())
       )
@@ -86,6 +90,7 @@ export default function EcologicalWorkPlanForm({
   onUpdateEmailEngineConfig
 }) {
   const containerRef = useRef(null);
+  const evalReportSectionRef = useRef(null);
 
   const buildNormalizedStudentData = (st) => {
     const initialGender = st?.gender || 'boy';
@@ -101,6 +106,8 @@ export default function EcologicalWorkPlanForm({
       strengthsExisting: st?.strengthsExisting || '',
       strengthsToEmpower: st?.strengthsToEmpower || '',
       recommendations: st?.recommendations || '',
+      evalReportFreeText: st?.evalReportFreeText || '',
+      evalReportSummary: st?.evalReportSummary || '',
       lastSavedAt: st?.lastSavedAt || '',
       goals: normalizedGoals
     };
@@ -109,6 +116,8 @@ export default function EcologicalWorkPlanForm({
       ...st,
       schoolYear: currentYear,
       gender: initialGender,
+      evalReportFreeText: st?.evalReportFreeText || '',
+      evalReportSummary: st?.evalReportSummary || '',
       sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
       goals: normalizedGoals,
       reportsByYear: existingReports
@@ -124,6 +133,14 @@ export default function EcologicalWorkPlanForm({
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
   const [showFullDocPreview, setShowFullDocPreview] = useState(false);
+
+  // State for Separate Mid-Year / End-of-Year Evaluation Report & AI Processing
+  const [showEvalReportSection, setShowEvalReportSection] = useState(false);
+  const [loadingEvalAiKey, setLoadingEvalAiKey] = useState(null);
+  const [evalAiSuccessKey, setEvalAiSuccessKey] = useState(null);
+  const [isProcessingFullEvalAi, setIsProcessingFullEvalAi] = useState(false);
+  const [evalReportAiBanner, setEvalReportAiBanner] = useState('');
+  const [emailReportMode, setEmailReportMode] = useState('tala'); // 'tala' | 'eval'
 
   // State for lightweight Team Sharing modal (Option C)
   const [showShareModal, setShowShareModal] = useState(false);
@@ -167,6 +184,7 @@ export default function EcologicalWorkPlanForm({
     setExpandedQuickObjMap({});
     setExpandedEvalMap({});
     setAutoSavedTime('');
+    setEvalReportAiBanner('');
   }, [student?.id]);
 
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
@@ -238,7 +256,7 @@ export default function EcologicalWorkPlanForm({
       clearTimeout(timer);
       window.removeEventListener('resize', resizeAllTextareas);
     };
-  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap]);
+  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection]);
 
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
@@ -318,6 +336,8 @@ export default function EcologicalWorkPlanForm({
           strengthsExisting: existingTargetReport.strengthsExisting || '',
           strengthsToEmpower: existingTargetReport.strengthsToEmpower || '',
           recommendations: existingTargetReport.recommendations || '',
+          evalReportFreeText: existingTargetReport.evalReportFreeText || '',
+          evalReportSummary: existingTargetReport.evalReportSummary || '',
           lastSavedAt: existingTargetReport.lastSavedAt || '',
           goals: (existingTargetReport.goals || []).map((g) =>
             adaptGoalToGender(g, genderToUse)
@@ -345,6 +365,8 @@ export default function EcologicalWorkPlanForm({
         strengthsExisting: '',
         strengthsToEmpower: '',
         recommendations: '',
+        evalReportFreeText: '',
+        evalReportSummary: '',
         lastSavedAt: '',
         goals: [freshGoal]
       };
@@ -1030,11 +1052,250 @@ ${bankReference}
     setTimeout(() => setSaveBanner(false), 2500);
   };
 
+  // === Local Pedagogical Evaluation Refiner & AI Processing for הערכת מחצית / סוף שנה ===
+  const refineGoalEvaluationLocally = (rawEvalText, goalRow, gender, fieldName) => {
+    const cleaned = (rawEvalText || '')
+      .replace(/\s+/g, ' ')
+      .replace(/\.{2,}/g, '.')
+      .trim();
+    const isGirl = gender === 'girl';
+    const envName = goalRow.environment || 'סביבת הפעילות';
+    const goalTitle = adaptTextToGender(goalRow.title || 'המטרה שהוגדרה', gender).replace(/\.$/, '');
+    const isEndYear = fieldName === 'endYearEvaluation';
+    const periodLabel = isEndYear ? 'בסיום שנת הלימודים' : 'במחצית שנת הלימודים';
+
+    let detectedStatus = goalRow.achievementStatus || 'בתהליך';
+    if (/(הצליח|הצליחה|השיג|השיגה|במלוא|מצוין|מעולה|שולט|שולטת|באופן עצמאי מלא|ללא תיווך)/.test(cleaned)) {
+      detectedStatus = 'הושגה במלואה';
+    } else if (/(טרם|לא מצליח|לא מצליחה|מתקשה מאוד|זקוק לעזרה מלאה|זקוקה לעזרה מלאה|עדיין לא)/.test(cleaned)) {
+      detectedStatus = 'טרם הושגה';
+    } else if (/(חלקית|לפעמים|בחלק|עם תיווך|בעזרת|מתקדם|מתקדמת|שיפור)/.test(cleaned)) {
+      detectedStatus = 'הושגה חלקית';
+    }
+
+    const adaptedNotes = adaptTextToGender(cleaned, gender).replace(/\.$/, '');
+    const continuationSentence =
+      detectedStatus === 'הושגה במלואה'
+        ? isGirl
+          ? `המטרה "${goalTitle}" הושגה במלואה, ומומלץ להמשיך ולבסס את העצמאות שהושגה בסביבות נוספות.`
+          : `המטרה "${goalTitle}" הושגה במלואה, ומומלץ להמשיך ולבסס את העצמאות שהושגה בסביבות נוספות.`
+        : detectedStatus === 'הושגה חלקית'
+        ? isGirl
+          ? `ניכרת התקדמות משמעותית ביחס למטרה "${goalTitle}", ומומלץ להמשיך בתיווך מותאם ובהדרגתיות לביסוס עצמאות מלאה.`
+          : `ניכרת התקדמות משמעותית ביחס למטרה "${goalTitle}", ומומלץ להמשיך בתיווך מותאם ובהדרגתיות לביסוס עצמאות מלאה.`
+        : isGirl
+        ? `העבודה על המטרה "${goalTitle}" נמצאת בתהליך מתמשך ודורשת המשך הטרמה, תיווך עקבי וחיזוק חיובי.`
+        : `העבודה על המטרה "${goalTitle}" נמצאת בתהליך מתמשך ודורשת המשך הטרמה, תיווך עקבי וחיזוק חיובי.`;
+
+    const formattedEvaluation = `${periodLabel} בסביבת "${envName}", ${adaptedNotes}. ${continuationSentence}`;
+    return {
+      formattedEvaluation,
+      achievementStatus: detectedStatus
+    };
+  };
+
+  const handleProcessSingleGoalEvalAi = async (goalRow, fieldName) => {
+    const rawText = (goalRow[fieldName] || '').trim();
+    if (!rawText) {
+      window.alert('נא להזין טקסט בתיבת ההערכה לפני הפעלת עיבוד מידע ב-AI.');
+      return;
+    }
+
+    const aiKey = `${goalRow.id}_${fieldName}`;
+    setLoadingEvalAiKey(aiKey);
+    const genderToUse = formData.gender || 'boy';
+    const isEndYear = fieldName === 'endYearEvaluation';
+    const periodTitle = isEndYear ? 'הערכת סוף שנה' : 'הערכת מחצית השנה';
+
+    if (geminiApiKey && geminiApiKey.trim()) {
+      const prompt = `אתה מומחה פדגוגי לכתיבת דוח "${periodTitle}" (הערכה תקופתית לתל"א / תח"י) במשרד החינוך.
+המורה הזינה הערות גולמיות על התקדמות הילד/ה ביחס למטרה ספציפית.
+מין הילד/ה: ${genderToUse === 'girl' ? 'בת (נקבה – נסח בלשון נקבה בלבד)' : 'בן (זכר – נסח בלשון זכר בלבד)'}
+סביבת הפעילות: "${goalRow.environment || ''}"
+המטרה העליונה: "${goalRow.title || ''}"
+היעדים שהוגדרו: "${goalRow.objectives || ''}"
+
+הטקסט הגולמי שכתבה המורה עבור ${periodTitle}:
+"""
+${rawText}
+"""
+
+הנחיות:
+1. תקן כל שגיאת כתיב או הקלדה ונסח מחדש פסקת הערכה פדגוגית מקצועית, תמציתית, מכבדת ורהוטה (2-3 משפטים) המשקפת את תפקוד הילד/ה והתקדמותו/ה ביחס למטרה וליעדים.
+2. קבע את סטטוס השגת המטרה המתאים ביותר מתוך 4 האפשרויות בלבד: "הושגה במלואה", "הושגה חלקית", "בתהליך", "טרם הושגה".
+
+החזר JSON תקין בלבד:
+{
+  "formattedEvaluation": "...",
+  "achievementStatus": "הושגה חלקית"
+}`;
+
+      const parsed = await callGeminiJson(prompt);
+      if (parsed && parsed.formattedEvaluation) {
+        const validStatuses = ['הושגה במלואה', 'הושגה חלקית', 'בתהליך', 'טרם הושגה'];
+        const nextStatus = validStatuses.includes(parsed.achievementStatus)
+          ? parsed.achievementStatus
+          : goalRow.achievementStatus || 'בתהליך';
+
+        setFormData((prev) => ({
+          ...prev,
+          goals: (prev.goals || []).map((g) =>
+            g.id === goalRow.id
+              ? {
+                  ...g,
+                  [fieldName]: adaptTextToGender(parsed.formattedEvaluation, genderToUse),
+                  achievementStatus: nextStatus
+                }
+              : g
+          )
+        }));
+        setLoadingEvalAiKey(null);
+        setEvalAiSuccessKey(aiKey);
+        setTimeout(() => setEvalAiSuccessKey(null), 2500);
+        return;
+      }
+    }
+
+    const localResult = refineGoalEvaluationLocally(rawText, goalRow, genderToUse, fieldName);
+    setFormData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) =>
+        g.id === goalRow.id
+          ? {
+              ...g,
+              [fieldName]: localResult.formattedEvaluation,
+              achievementStatus: localResult.achievementStatus
+            }
+          : g
+      )
+    }));
+    setLoadingEvalAiKey(null);
+    setEvalAiSuccessKey(aiKey);
+    setTimeout(() => setEvalAiSuccessKey(null), 2500);
+  };
+
+  const handleProcessFullEvalReportAi = async () => {
+    const rawText = (formData.evalReportFreeText || '').trim();
+    if (!rawText) {
+      window.alert('נא להזין תיאור חופשי של התקדמות התלמיד/ה בתיבת הטקסט של דוח ההערכה לפני הפעלת עיבוד מידע ב-AI.');
+      return;
+    }
+
+    setIsProcessingFullEvalAi(true);
+    setEvalReportAiBanner('');
+    const genderToUse = formData.gender || 'boy';
+    const goalsList = formData.goals || [];
+
+    if (geminiApiKey && geminiApiKey.trim()) {
+      const goalsContext = goalsList
+        .map(
+          (g, idx) =>
+            `מטרה #${idx + 1} (id: "${g.id}"): סביבה="${g.environment}" | מטרה="${g.title}" | יעדים="${g.objectives}"`
+        )
+        .join('\n');
+
+      const prompt = `אתה מומחה פדגוגי בכיר לכתיבת "דוח הערכת מחצית / סוף שנה" (דוח הערכה תקופתי נפרד מתל"א) במשרד החינוך.
+מין הילד/ה: ${genderToUse === 'girl' ? 'בת (נקבה – נסח בלשון נקבה בלבד)' : 'בן (זכר – נסח בלשון זכר בלבד)'}
+המורה כתבה תיאור חופשי על התקדמות הילד/ה לאורך התקופה:
+"""
+${rawText}
+"""
+
+רשימת המטרות בתוכנית של התלמיד/ה:
+${goalsContext}
+
+הנחיות:
+1. נסח "evalReportSummary": סיכום פדגוגי מקצועי, קוהרנטי ומכבד של התקדמות הילד/ה בתקופה זו (3-4 משפטים תמציתיים, ללא העתקת משפטים גולמיים וללא שגיאות כתיב).
+2. עבור כל אחת מהמטרות ברשימה, הפק:
+   - "id": ה-id של המטרה
+   - "achievementStatus": אחד מתוך: "הושגה במלואה" | "הושגה חלקית" | "בתהליך" | "טרם הושגה"
+   - "midYearEvaluation": ניסוח פדגוגי ממוקד להערכת מחצית ביחס למטרה זו (2 משפטים)
+   - "endYearEvaluation": ניסוח פדגוגי ממוקד להערכת סוף שנה והמשך ביחס למטרה זו (אם רלוונטי מהטקסט או סיכום המשך קצר)
+
+החזר JSON תקין בלבד:
+{
+  "evalReportSummary": "...",
+  "goalsEvaluations": [
+    {
+      "id": "...",
+      "achievementStatus": "הושגה חלקית",
+      "midYearEvaluation": "...",
+      "endYearEvaluation": "..."
+    }
+  ]
+}`;
+
+      const parsed = await callGeminiJson(prompt);
+      if (parsed && parsed.evalReportSummary) {
+        const evalById = {};
+        (parsed.goalsEvaluations || []).forEach((item) => {
+          if (item && item.id) evalById[item.id] = item;
+        });
+
+        const updatedGoals = goalsList.map((g) => {
+          const matched = evalById[g.id];
+          if (!matched) return g;
+          return {
+            ...g,
+            achievementStatus: matched.achievementStatus || g.achievementStatus || 'בתהליך',
+            midYearEvaluation: matched.midYearEvaluation
+              ? adaptTextToGender(matched.midYearEvaluation, genderToUse)
+              : g.midYearEvaluation,
+            endYearEvaluation: matched.endYearEvaluation
+              ? adaptTextToGender(matched.endYearEvaluation, genderToUse)
+              : g.endYearEvaluation
+          };
+        });
+
+        const updated = {
+          ...formData,
+          evalReportSummary: adaptTextToGender(parsed.evalReportSummary, genderToUse),
+          goals: updatedGoals
+        };
+        setFormData(updated);
+        onSaveStudentPlan(updated);
+        setIsProcessingFullEvalAi(false);
+        setEvalReportAiBanner('✨ דוח הערכת מחצית / סוף שנה עובד ונוסח בהצלחה ב-AI עבור כל מטרות התלמיד/ה!');
+        return;
+      }
+    }
+
+    // Built-in Hebrew Pedagogical Evaluation Synthesis Fallback
+    const isGirl = genderToUse === 'girl';
+    const cleanGeneral = adaptTextToGender(rawText.replace(/\s+/g, ' ').trim(), genderToUse).replace(/\.$/, '');
+    const synthesizedSummary = isGirl
+      ? `במהלך תקופת ההערכה ניכרת מעורבות והתקדמות בתפקודה של התלמידה בסביבות הפעילות בגן: ${cleanGeneral}. הצוות החינוכי ממשיך בליווי מותאם, הטרמה וחיזוק העצמאות והיוזמה האישית והחברתית.`
+      : `במהלך תקופת ההערכה ניכרת מעורבות והתקדמות בתפקודו של התלמיד בסביבות הפעילות בגן: ${cleanGeneral}. הצוות החינוכי ממשיך בליווי מותאם, הטרמה וחיזוק העצמאות והיוזמה האישית והחברתית.`;
+
+    const updatedGoals = goalsList.map((g) => {
+      const localEval = refineGoalEvaluationLocally(rawText, g, genderToUse, 'midYearEvaluation');
+      return {
+        ...g,
+        achievementStatus: g.achievementStatus || localEval.achievementStatus,
+        midYearEvaluation: g.midYearEvaluation || localEval.formattedEvaluation
+      };
+    });
+
+    const updated = {
+      ...formData,
+      evalReportSummary: synthesizedSummary,
+      goals: updatedGoals
+    };
+    setFormData(updated);
+    onSaveStudentPlan(updated);
+    setIsProcessingFullEvalAi(false);
+    setEvalReportAiBanner('✨ דוח הערכת מחצית / סוף שנה עובד ונוסח בהצלחה עבור מטרות התלמיד/ה!');
+  };
+
   // === Build Official Document HTML (with or without Privacy Redaction) ===
   const getFullDocTitle = () => {
     return formData.planType
       ? `תוכנית עבודה שנתית – ${formData.planType}`
       : 'תוכנית עבודה שנתית';
+  };
+
+  const getEvalReportTitle = () => {
+    return 'דוח הערכת מחצית / סוף שנה';
   };
 
   const getDisplayStudentName = () => {
@@ -1055,7 +1316,7 @@ ${bankReference}
     return redactStudentNameInText(text || '', formData.name, hideStudentDetailsOnPrint);
   };
 
-  // Print the official Ecological Work Plan document with TALA Logo & Theme Colors
+  // Print the official Ecological Work Plan document (תל"א / תח"י ONLY — separate from Evaluation Report)
   const handlePrintDocument = () => {
     // Save progress first
     handleSaveProgress();
@@ -1080,36 +1341,6 @@ ${bankReference}
         const partnersText = getRedactedText(g.partners);
         const durationText = getRedactedText(g.duration);
         const evaluationText = getRedactedText(g.evaluationCriteria);
-        const hasPeriodicEval = Boolean(
-          (g.achievementStatus && g.achievementStatus.trim()) ||
-            (g.midYearEvaluation && g.midYearEvaluation.trim()) ||
-            (g.endYearEvaluation && g.endYearEvaluation.trim())
-        );
-        const periodicEvalHtml = hasPeriodicEval
-          ? `
-              <tr style="background: #f8faff; border-top: 1.5px dashed #7997be;">
-                <td colspan="6" style="padding: 8px 10px;">
-                  <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: baseline;">
-                    ${
-                      g.achievementStatus
-                        ? `<div><strong style="color: #4c1d95;">סטטוס השגת היעד:</strong> ${g.achievementStatus}</div>`
-                        : ''
-                    }
-                    ${
-                      g.midYearEvaluation
-                        ? `<div style="flex: 1 1 240px;"><strong>הערכת מחצית השנה:</strong> ${getRedactedText(g.midYearEvaluation)}</div>`
-                        : ''
-                    }
-                    ${
-                      g.endYearEvaluation
-                        ? `<div style="flex: 1 1 240px;"><strong>הערכת סוף השנה והמשך:</strong> ${getRedactedText(g.endYearEvaluation)}</div>`
-                        : ''
-                    }
-                  </div>
-                </td>
-              </tr>
-            `
-          : '';
 
         return `
           <table class="eco-table goal-block-table">
@@ -1140,7 +1371,6 @@ ${bankReference}
                 <td>${durationText || ''}</td>
                 <td>${evaluationText || ''}</td>
               </tr>
-              ${periodicEvalHtml}
             </tbody>
           </table>
         `;
@@ -1363,11 +1593,12 @@ ${bankReference}
     }, 400);
   };
 
-  // === Build & Download Official Word (.doc / .docx compatible) Document ===
-  const getSafeReportFilename = (ext = 'doc') => {
+  // === Build & Download Official Word (.doc / .docx compatible) Document for תל"א ===
+  const getSafeReportFilename = (ext = 'doc', mode = 'tala') => {
     const displayName = getDisplayStudentName().replace(/[^a-zA-Z0-9א-ת_-]/g, '_');
     const yearStr = (formData.schoolYear || '2026').replace(/[^a-zA-Z0-9א-ת_-]/g, '_');
-    return `תוכנית_עבודה_${displayName}_${yearStr}.${ext}`;
+    const prefix = mode === 'eval' ? 'דוח_הערכת_מחצית_וסוף_שנה' : 'תוכנית_עבודה';
+    return `${prefix}_${displayName}_${yearStr}.${ext}`;
   };
 
   const buildWordDocumentHtml = () => {
@@ -1390,22 +1621,6 @@ ${bankReference}
         const partnersText = (getRedactedText(g.partners) || '').replace(/\n/g, '<br/>');
         const durationText = (getRedactedText(g.duration) || '').replace(/\n/g, '<br/>');
         const evaluationText = (getRedactedText(g.evaluationCriteria) || '').replace(/\n/g, '<br/>');
-        const hasPeriodicEval = Boolean(
-          (g.achievementStatus && g.achievementStatus.trim()) ||
-            (g.midYearEvaluation && g.midYearEvaluation.trim()) ||
-            (g.endYearEvaluation && g.endYearEvaluation.trim())
-        );
-        const wordPeriodicEvalRow = hasPeriodicEval
-          ? `
-            <tr style="background-color:#f8faff;">
-              <td colspan="6" style="border:1px solid #7997be; padding:6pt; text-align:right;">
-                ${g.achievementStatus ? `<div><strong>סטטוס השגת היעד:</strong> ${g.achievementStatus}</div>` : ''}
-                ${g.midYearEvaluation ? `<div style="margin-top:3pt;"><strong>הערכת מחצית השנה:</strong> ${(getRedactedText(g.midYearEvaluation) || '').replace(/\n/g, '<br/>')}</div>` : ''}
-                ${g.endYearEvaluation ? `<div style="margin-top:3pt;"><strong>הערכת סוף השנה והמשך:</strong> ${(getRedactedText(g.endYearEvaluation) || '').replace(/\n/g, '<br/>')}</div>` : ''}
-              </td>
-            </tr>
-          `
-          : '';
 
         return `
           <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family: Arial, sans-serif; font-size: 10.5pt;">
@@ -1431,7 +1646,6 @@ ${bankReference}
               <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${durationText}</td>
               <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${evaluationText}</td>
             </tr>
-            ${wordPeriodicEvalRow}
           </table>
         `;
       })
@@ -1516,17 +1730,376 @@ ${bankReference}
     `;
   };
 
-  const createWordBlob = () => {
-    const wordHtml = buildWordDocumentHtml();
+  // === Build & Print Separate Evaluation Report (דוח הערכת מחצית / סוף שנה) ===
+  const buildEvalWordDocumentHtml = () => {
+    const displayName = getDisplayStudentName();
+    const displayId = getDisplayMaskedField(formData.idNumber);
+    const displayBirthDate = getDisplayMaskedField(formData.birthDate);
+    const displayFramework = hideStudentDetailsOnPrint
+      ? maskSensitiveValue(formData.educationalFramework)
+      : formData.educationalFramework || '__________';
+    const displayAddress = getDisplayMaskedField(formData.address);
+    const displayPhone = getDisplayMaskedField(formData.phone);
+    const evalDocTitle = getEvalReportTitle();
+    const evalSummaryHtml = (getRedactedText(formData.evalReportSummary) || '').replace(/\n/g, '<br/>');
+    const recommendationsHtml = (getRedactedText(formData.recommendations) || '').replace(/\n/g, '<br/>');
+
+    const evalGoalsRowsHtml = (formData.goals || [])
+      .map((g, idx) => {
+        const titleText = (getRedactedText(g.title) || '').replace(/\n/g, '<br/>');
+        const objectivesText = (getRedactedText(g.objectives) || '').replace(/\n/g, '<br/>');
+        const midEvalText = (getRedactedText(g.midYearEvaluation) || '').replace(/\n/g, '<br/>');
+        const endEvalText = (getRedactedText(g.endYearEvaluation) || '').replace(/\n/g, '<br/>');
+        const statusText = g.achievementStatus || 'בתהליך';
+
+        return `
+          <tr>
+            <td style="border:1px solid #7997be; padding:6pt; font-weight:bold; background-color:#f8faff; vertical-align:top; text-align:right;">
+              ${idx + 1}. ${g.environment || '__________'}
+            </td>
+            <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">
+              <div style="font-weight:bold; color:#0d2b56;">${titleText}</div>
+              ${objectivesText ? `<div style="margin-top:4pt; font-size:9.5pt; color:#334155;">${objectivesText}</div>` : ''}
+            </td>
+            <td style="border:1px solid #7997be; padding:6pt; font-weight:bold; color:#4c1d95; vertical-align:top; text-align:center;">
+              ${statusText}
+            </td>
+            <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">
+              ${midEvalText || '—'}
+            </td>
+            <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">
+              ${endEvalText || '—'}
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    return `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:w="urn:schemas-microsoft-com:office:word"
+            xmlns="http://www.w3.org/TR/REC-html40"
+            lang="he" dir="rtl">
+      <head>
+        <meta charset="utf-8" />
+        <title>${evalDocTitle} - ${displayName}</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
+        <style>
+          @page WordSection1 {
+            size: 841.9pt 595.3pt;
+            mso-page-orientation: landscape;
+            margin: 36.0pt 36.0pt 36.0pt 36.0pt;
+          }
+          div.WordSection1 { page: WordSection1; direction: rtl; text-align: right; font-family: Arial, sans-serif; }
+        </style>
+      </head>
+      <body lang="he" dir="rtl" style="direction:rtl; text-align:right; font-family:Arial, sans-serif; color:#243b47;">
+        <div class="WordSection1" dir="rtl">
+          <div style="background-color:#4e4376; color:#ffffff; padding:12pt 16pt; margin-bottom:10pt; text-align:center;">
+            <h1 style="margin:0; font-size:16pt;">${evalDocTitle}</h1>
+            <div style="font-size:10.5pt; margin-top:4pt;">
+              <strong>תאריך:</strong> ${formData.date || '__________'} &nbsp;|&nbsp;
+              <strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}
+            </div>
+          </div>
+
+          <div style="background-color:#eef3fb; border:1px solid #5b9bd5; padding:8pt 12pt; margin-bottom:12pt; font-size:11pt;">
+            <strong>שם הילד/ה:</strong> ${displayName} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>ת.ז:</strong> ${displayId} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>ת.ל:</strong> ${displayBirthDate} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>מסגרת חינוכית:</strong> ${displayFramework}
+            ${formData.address ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
+            ${formData.phone ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
+          </div>
+
+          ${
+            evalSummaryHtml
+              ? `
+          <div style="background-color:#f5f3ff; border:1px solid #8b6fc0; padding:8pt 12pt; margin-bottom:12pt; font-size:10.5pt;">
+            <strong>סיכום תפקוד והתקדמות תקופתית:</strong><br/>
+            ${evalSummaryHtml}
+          </div>`
+              : ''
+          }
+
+          <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family: Arial, sans-serif; font-size: 10.5pt;">
+            <tr style="background-color:#5b9bd5; color:#ffffff; font-weight:bold; text-align:center;">
+              <th style="width:15%; border:1px solid #7997be; padding:6pt;">סביבה / תחום</th>
+              <th style="width:25%; border:1px solid #7997be; padding:6pt;">מטרה ויעדים</th>
+              <th style="width:12%; border:1px solid #7997be; padding:6pt;">סטטוס השגת המטרה</th>
+              <th style="width:24%; border:1px solid #7997be; padding:6pt;">הערכת מחצית</th>
+              <th style="width:24%; border:1px solid #7997be; padding:6pt;">הערכת סוף שנה</th>
+            </tr>
+            ${evalGoalsRowsHtml}
+          </table>
+
+          ${
+            recommendationsHtml
+              ? `
+          <div style="background-color:#eef3fb; border:1px solid #5b9bd5; padding:8pt 12pt; margin-top:12pt; margin-bottom:18pt; font-size:10.5pt;">
+            <strong>המלצות להמשך:</strong><br/>
+            ${recommendationsHtml}
+          </div>`
+              : ''
+          }
+
+          <table dir="rtl" border="0" style="width:100%; margin-top:18pt; font-weight:bold; color:#2b4c73; font-size:11pt;">
+            <tr>
+              <td style="width:50%; text-align:right;">חתימת צוות חינוכי: _________________________</td>
+              <td style="width:50%; text-align:left;">חתימת הורים: _________________________</td>
+            </tr>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  const handlePrintEvalReport = () => {
+    handleSaveProgress();
+
+    const displayName = getDisplayStudentName();
+    const displayId = getDisplayMaskedField(formData.idNumber);
+    const displayBirthDate = getDisplayMaskedField(formData.birthDate);
+    const displayFramework = hideStudentDetailsOnPrint
+      ? maskSensitiveValue(formData.educationalFramework)
+      : formData.educationalFramework || '__________';
+    const displayAddress = getDisplayMaskedField(formData.address);
+    const displayPhone = getDisplayMaskedField(formData.phone);
+    const evalDocTitle = getEvalReportTitle();
+    const logoUrl = new URL('./tala-logo.png', window.location.href).href;
+
+    const evalRowsHtml = (formData.goals || [])
+      .map((g, idx) => {
+        const titleText = getRedactedText(g.title);
+        const objectivesText = getRedactedText(g.objectives);
+        const midEvalText = getRedactedText(g.midYearEvaluation);
+        const endEvalText = getRedactedText(g.endYearEvaluation);
+        const statusText = g.achievementStatus || 'בתהליך';
+
+        return `
+          <tr>
+            <td style="font-weight: 700; background: #f8faff; color: #1e3a5f;">${idx + 1}. ${g.environment || '__________'}</td>
+            <td>
+              <div style="font-weight: 700; color: #0d2b56;">${titleText || ''}</div>
+              ${objectivesText ? `<div style="margin-top: 4px; font-size: 11.5px; color: #334155;">${objectivesText}</div>` : ''}
+            </td>
+            <td style="font-weight: 700; color: #5b21b6; text-align: center;">${statusText}</td>
+            <td>${midEvalText || '—'}</td>
+            <td>${endEvalText || '—'}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="he" dir="rtl">
+        <head>
+          <meta charset="utf-8" />
+          <title>${evalDocTitle.replace(/\s+/g, '_')}_${displayName}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+            @page {
+              size: A4 landscape;
+              margin: 10mm;
+            }
+            body {
+              font-family: 'Rubik', Arial, sans-serif;
+              direction: rtl;
+              text-align: right;
+              color: #243b47;
+              background: #f6f5f0;
+              margin: 0;
+              padding: 0;
+              font-size: 12.5px;
+              line-height: 1.5;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .stained-glass-strip {
+              height: 6px;
+              width: 100%;
+              background: linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%);
+              border-radius: 6px 6px 0 0;
+            }
+            .print-banner {
+              background: linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 50%, #8e7cc3 100%);
+              color: #ffffff;
+              padding: 14px 20px;
+              border-bottom: 4px solid #c5aef2;
+              border-radius: 0 0 10px 10px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 12px;
+            }
+            .print-banner-center {
+              display: flex;
+              align-items: center;
+              gap: 14px;
+            }
+            .print-logo {
+              width: 56px;
+              height: 56px;
+              border-radius: 50%;
+              object-fit: cover;
+              border: 2px solid #d6c6f7;
+              background: #f4f7fc;
+            }
+            .doc-main-title {
+              margin: 0;
+              font-size: 19px;
+              font-weight: 700;
+              color: #ffffff;
+            }
+            .doc-meta-side {
+              font-size: 12.5px;
+              color: #f5f0ff;
+            }
+            .student-details-bar {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 20px;
+              padding: 10px 14px;
+              border: 1.5px solid #5b9bd5;
+              border-right: 5px solid #8b6fc0;
+              background: #eef3fb;
+              border-radius: 8px;
+              margin-bottom: 14px;
+              font-size: 13px;
+            }
+            .summary-box {
+              border: 1.5px solid #8b6fc0;
+              background: #f5f3ff;
+              border-radius: 8px;
+              padding: 10px 14px;
+              margin-bottom: 14px;
+              white-space: pre-line;
+            }
+            .eco-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 15px;
+              background: #ffffff;
+            }
+            .eco-table th, .eco-table td {
+              border: 1.5px solid #7997be;
+              padding: 8px 10px;
+              vertical-align: top;
+              text-align: right;
+              white-space: pre-line;
+            }
+            .eco-table thead th {
+              background: linear-gradient(135deg, #3b6ea5 0%, #6b46c1 100%);
+              color: #ffffff;
+              font-weight: 700;
+              font-size: 13px;
+              text-align: center;
+            }
+            .recommendations-box {
+              border: 1.5px solid #5b9bd5;
+              background: #eef3fb;
+              border-radius: 8px;
+              padding: 10px 12px;
+              min-height: 42px;
+              margin-bottom: 18px;
+              white-space: pre-line;
+            }
+            .signatures-row {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 22px;
+              font-weight: 600;
+              color: #2b4c73;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="stained-glass-strip"></div>
+          <div class="print-banner">
+            <div class="doc-meta-side"><strong>תאריך:</strong> ${formData.date || '__________'}</div>
+            <div class="print-banner-center">
+              <img src="${logoUrl}" alt="TALA Logo" class="print-logo" />
+              <h1 class="doc-main-title">${evalDocTitle}</h1>
+            </div>
+            <div class="doc-meta-side"><strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}</div>
+          </div>
+
+          <div class="student-details-bar">
+            <div><strong>שם הילד/ה:</strong> ${displayName}</div>
+            <div><strong>ת.ז:</strong> ${displayId}</div>
+            <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
+            <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
+            ${formData.planType ? `<div><strong>סוג תוכנית:</strong> ${formData.planType}</div>` : ''}
+            ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
+            ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
+          </div>
+
+          ${
+            formData.evalReportSummary
+              ? `<div class="summary-box"><strong>סיכום תפקוד והתקדמות תקופתית:</strong><br/>${getRedactedText(formData.evalReportSummary)}</div>`
+              : ''
+          }
+
+          <table class="eco-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">סביבה / תחום</th>
+                <th style="width: 25%;">מטרה ויעדים</th>
+                <th style="width: 12%;">סטטוס השגת המטרה</th>
+                <th style="width: 24%;">הערכת מחצית</th>
+                <th style="width: 24%;">הערכת סוף שנה</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${evalRowsHtml}
+            </tbody>
+          </table>
+
+          <div class="recommendations-box">
+            <strong>המלצות להמשך:</strong><br/>
+            ${getRedactedText(formData.recommendations)}
+          </div>
+          <div class="signatures-row">
+            <div>חתימת צוות חינוכי: _________________________</div>
+            <div>חתימת הורים: _________________________</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 400);
+  };
+
+  const createWordBlob = (mode = 'tala') => {
+    const wordHtml = mode === 'eval' ? buildEvalWordDocumentHtml() : buildWordDocumentHtml();
     const blob = new Blob(['\ufeff', wordHtml], {
       type: 'application/msword;charset=utf-8'
     });
-    const filename = getSafeReportFilename('doc');
+    const filename = getSafeReportFilename('doc', mode);
     return { blob, filename, mimeType: 'application/msword', htmlContent: wordHtml };
   };
 
-  const downloadWordFile = () => {
-    const { blob, filename } = createWordBlob();
+  const downloadWordFile = (mode = 'tala') => {
+    const { blob, filename } = createWordBlob(mode);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -1538,15 +2111,15 @@ ${bankReference}
     return { blob, filename };
   };
 
-  const createPdfBlob = async () => {
-    const filename = getSafeReportFilename('pdf');
-    const reportHtml = buildWordDocumentHtml();
+  const createPdfBlob = async (mode = 'tala') => {
+    const filename = getSafeReportFilename('pdf', mode);
+    const reportHtml = mode === 'eval' ? buildEvalWordDocumentHtml() : buildWordDocumentHtml();
     const blob = await generatePdfBlobFromHtml(reportHtml, filename);
     return { blob, filename, mimeType: 'application/pdf', htmlContent: reportHtml };
   };
 
-  const downloadPdfFileDirectly = async () => {
-    const { blob, filename } = await createPdfBlob();
+  const downloadPdfFileDirectly = async (mode = 'tala') => {
+    const { blob, filename } = await createPdfBlob(mode);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -1558,9 +2131,10 @@ ${bankReference}
     return { blob, filename };
   };
 
-  const handleOpenEmailModal = () => {
+  const handleOpenEmailModal = (mode = 'tala') => {
     // Ensure report is saved before opening the Send to Email modal
     handleSaveProgress();
+    setEmailReportMode(mode === 'eval' ? 'eval' : 'tala');
     setEmailError('');
     setEmailStatusMsg('');
     const currentCfg = emailEngineConfig || loadEmailEngineConfig();
@@ -1620,21 +2194,22 @@ ${bankReference}
     setIsSendingEmail(true);
     try {
       const displayName = getDisplayStudentName();
-      const fullDocTitle = getFullDocTitle();
+      const activeMode = emailReportMode === 'eval' ? 'eval' : 'tala';
+      const fullDocTitle = activeMode === 'eval' ? getEvalReportTitle() : getFullDocTitle();
       const formatLabel = emailFormat === 'docx' ? 'Word (DOCX/DOC)' : 'PDF';
       const subject = `${fullDocTitle} – ${displayName} (${formData.schoolYear || ''})`;
 
       let attachmentInfo;
       if (emailFormat === 'docx') {
-        attachmentInfo = createWordBlob();
+        attachmentInfo = createWordBlob(activeMode);
       } else {
-        attachmentInfo = await createPdfBlob();
+        attachmentInfo = await createPdfBlob(activeMode);
       }
 
       const textBody = [
         'שלום רב,',
         '',
-        `מצורפת ${fullDocTitle} עבור ${displayName} לשנת הלימודים ${formData.schoolYear || ''} בפורמט ${formatLabel}.`,
+        `מצורף ${fullDocTitle} עבור ${displayName} לשנת הלימודים ${formData.schoolYear || ''} בפורמט ${formatLabel}.`,
         hideStudentDetailsOnPrint
           ? '(המסמך הופק במצב הגנת פרטיות – ראשי תיבות והשחרת פרטים מזהים).'
           : '',
@@ -1648,7 +2223,7 @@ ${bankReference}
       const emailHtmlWrapper = `
         <div dir="rtl" style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6; text-align: right;">
           <p>שלום רב,</p>
-          <p>מצורפת <strong>${fullDocTitle}</strong> עבור <strong>${displayName}</strong> לשנת הלימודים <strong>${formData.schoolYear || ''}</strong> בקובץ מצורף (<strong>${attachmentInfo.filename}</strong>).</p>
+          <p>מצורף <strong>${fullDocTitle}</strong> עבור <strong>${displayName}</strong> לשנת הלימודים <strong>${formData.schoolYear || ''}</strong> בקובץ מצורף (<strong>${attachmentInfo.filename}</strong>).</p>
           ${
             hideStudentDetailsOnPrint
               ? '<p style="color: #4c1d95; font-size: 12px;">🔒 המסמך הופק במצב הגנת פרטיות (ראשי תיבות והשחרת פרטים מזהים).</p>'
@@ -2076,7 +2651,7 @@ ${bankReference}
               <button
                 type="button"
                 className="btn-print-doc"
-                onClick={downloadWordFile}
+                onClick={() => downloadWordFile('tala')}
                 title="הורד כקובץ Word ניתן לעריכה"
               >
                 <Download size={16} />
@@ -2151,27 +2726,6 @@ ${bankReference}
                     <td>{getRedactedText(g.duration)}</td>
                     <td>{getRedactedText(g.evaluationCriteria)}</td>
                   </tr>
-                  {(g.achievementStatus || g.midYearEvaluation || g.endYearEvaluation) && (
-                    <tr style={{ background: '#f5f3ff', fontSize: '12.5px' }}>
-                      <td colSpan={6}>
-                        {g.achievementStatus && (
-                          <span style={{ marginLeft: '14px' }}>
-                            <strong>סטטוס השגת המטרה:</strong> {g.achievementStatus}
-                          </span>
-                        )}
-                        {g.midYearEvaluation && (
-                          <span style={{ marginLeft: '14px' }}>
-                            <strong>הערכת מחצית:</strong> {getRedactedText(g.midYearEvaluation)}
-                          </span>
-                        )}
-                        {g.endYearEvaluation && (
-                          <span>
-                            <strong>הערכת סוף שנה:</strong> {getRedactedText(g.endYearEvaluation)}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             ))}
@@ -2840,24 +3394,72 @@ ${bankReference}
                           <textarea
                             rows={2}
                             value={goalRow.midYearEvaluation || ''}
+                            onInput={handleTextareaAutoResize}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'midYearEvaluation', e.target.value)
                             }
                             placeholder="תיאור התקדמות התלמיד/ה במחצית השנה..."
                             style={{ background: '#ffffff' }}
                           />
+                          {(goalRow.midYearEvaluation || '').trim() && (
+                            <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                className="btn-submit-generate-summary"
+                                style={{ padding: '6px 12px', fontSize: '12.5px' }}
+                                onClick={() => handleProcessSingleGoalEvalAi(goalRow, 'midYearEvaluation')}
+                                disabled={loadingEvalAiKey === `${goalRow.id}_midYearEvaluation`}
+                              >
+                                <Sparkles size={14} />
+                                <span>
+                                  {loadingEvalAiKey === `${goalRow.id}_midYearEvaluation`
+                                    ? 'מעבד מידע ב-AI...'
+                                    : 'עיבוד מידע ב-AI'}
+                                </span>
+                              </button>
+                              {evalAiSuccessKey === `${goalRow.id}_midYearEvaluation` && (
+                                <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
+                                  ✓ עובד ב-AI
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="form-field" style={{ margin: 0 }}>
                           <label style={{ fontSize: '12.5px', fontWeight: 600 }}>הערכת סוף שנה:</label>
                           <textarea
                             rows={2}
                             value={goalRow.endYearEvaluation || ''}
+                            onInput={handleTextareaAutoResize}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'endYearEvaluation', e.target.value)
                             }
                             placeholder="סיכום השגת המטרה בסוף שנת הלימודים..."
                             style={{ background: '#ffffff' }}
                           />
+                          {(goalRow.endYearEvaluation || '').trim() && (
+                            <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                className="btn-submit-generate-summary"
+                                style={{ padding: '6px 12px', fontSize: '12.5px' }}
+                                onClick={() => handleProcessSingleGoalEvalAi(goalRow, 'endYearEvaluation')}
+                                disabled={loadingEvalAiKey === `${goalRow.id}_endYearEvaluation`}
+                              >
+                                <Sparkles size={14} />
+                                <span>
+                                  {loadingEvalAiKey === `${goalRow.id}_endYearEvaluation`
+                                    ? 'מעבד מידע ב-AI...'
+                                    : 'עיבוד מידע ב-AI'}
+                                </span>
+                              </button>
+                              {evalAiSuccessKey === `${goalRow.id}_endYearEvaluation` && (
+                                <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
+                                  ✓ עובד ב-AI
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2926,7 +3528,7 @@ ${bankReference}
             className="btn-print-doc"
             onClick={() => {
               handleSaveProgress();
-              downloadWordFile();
+              downloadWordFile('tala');
             }}
             title="הורד ישירות כקובץ Word ניתן לעריכה"
           >
@@ -2934,12 +3536,275 @@ ${bankReference}
             <span>הורד קובץ Word</span>
           </button>
 
-          <button type="button" className="btn-send-email-doc" onClick={handleOpenEmailModal}>
+          <button
+            type="button"
+            className="btn-print-doc"
+            onClick={() => {
+              setShowEvalReportSection((prev) => {
+                const next = !prev;
+                if (next) {
+                  setTimeout(() => {
+                    evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 80);
+                }
+                return next;
+              });
+            }}
+          >
+            <FileText size={18} />
+            <span>הערכת מחצית / סוף שנה</span>
+          </button>
+
+          <button type="button" className="btn-send-email-doc" onClick={() => handleOpenEmailModal('tala')}>
             <Mail size={18} />
             <span>שלח למייל</span>
           </button>
         </div>
       </section>
+
+      {/* Separate Report Section: דוח הערכת מחצית / סוף שנה */}
+      {showEvalReportSection && (
+        <section
+          ref={evalReportSectionRef}
+          className="form-section-card highlight-summary-section"
+          style={{ borderTop: '4px solid #7c65b8' }}
+        >
+          <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h3>דוח הערכת מחצית / סוף שנה</h3>
+              <p className="section-sub-desc">
+                דוח הערכה נפרד מתוכנית התל"א • סיכום התקדמות התלמיד/ה והשגת המטרות
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-preview-doc"
+              onClick={() => setShowEvalReportSection(false)}
+            >
+              <X size={15} />
+              <span>סגור דוח הערכה</span>
+            </button>
+          </div>
+
+          {/* Free-text input for Evaluation Report + AI Processing Button */}
+          <div className="free-text-area-box" style={{ marginBottom: '16px' }}>
+            <label className="bold-label">
+              ✍️ תיאור חופשי להערכת מחצית / סוף שנה:
+            </label>
+            <textarea
+              rows={3}
+              value={formData.evalReportFreeText || ''}
+              onInput={handleTextareaAutoResize}
+              onChange={(e) => handleFieldChange('evalReportFreeText', e.target.value)}
+              placeholder="הזיני במילים שלך איך הילד/ה התקדם/ה לאורך התקופה ביחס למטרות... למשל: התקדם מאוד במשחק משותף עם חברים וממתין לתורו, במפגש משתתף יותר כשיש תיווך, ובסדנא כבר ניגש בעצמו וגוזר יפה..."
+            />
+
+            {(formData.evalReportFreeText || '').trim() && (
+              <div className="submit-summary-action-row" style={{ marginTop: '10px' }}>
+                <span className="submit-helper-text">
+                  לחיצה על "עיבוד מידע ב-AI" תנסח באופן מקצועי את סיכום ההערכה ותמלא את הערכת המטרות למטה:
+                </span>
+                <button
+                  type="button"
+                  className="btn-submit-generate-summary"
+                  onClick={handleProcessFullEvalReportAi}
+                  disabled={isProcessingFullEvalAi}
+                >
+                  <Sparkles size={17} />
+                  <span>
+                    {isProcessingFullEvalAi ? 'מעבד מידע ב-AI...' : 'עיבוד מידע ב-AI'}
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {evalReportAiBanner && (
+              <div className="reverse-engineer-success-banner" style={{ marginTop: '10px' }}>
+                <CheckCircle2 size={18} />
+                <span>{evalReportAiBanner}</span>
+              </div>
+            )}
+          </div>
+
+          {/* General Period Summary Field */}
+          <div className="form-field" style={{ marginBottom: '18px' }}>
+            <label style={{ fontWeight: 700 }}>סיכום תפקוד והתקדמות תקופתית:</label>
+            <textarea
+              rows={3}
+              value={formData.evalReportSummary || ''}
+              onInput={handleTextareaAutoResize}
+              onChange={(e) => handleFieldChange('evalReportSummary', e.target.value)}
+              placeholder="סיכום כללי של התקדמות התלמיד/ה בתקופת ההערכה..."
+            />
+          </div>
+
+          {/* Goals Evaluation Cards inside the Separate Report */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {(formData.goals || []).map((goalRow, idx) => (
+              <div
+                key={goalRow.id}
+                style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '10px',
+                  padding: '14px 16px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                  <div>
+                    <span className="goal-number-badge" style={{ marginLeft: '8px' }}>
+                      מטרה #{idx + 1}
+                    </span>
+                    <strong style={{ color: '#1e3a5f', fontSize: '14px' }}>
+                      {goalRow.environment}
+                    </strong>
+                    {goalRow.title && (
+                      <span style={{ color: '#334155', fontSize: '13.5px', marginRight: '8px' }}>
+                        – {goalRow.title}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>סטטוס:</span>
+                    {['הושגה במלואה', 'הושגה חלקית', 'בתהליך', 'טרם הושגה'].map((statusOpt) => {
+                      const isSelected = goalRow.achievementStatus === statusOpt;
+                      return (
+                        <button
+                          key={statusOpt}
+                          type="button"
+                          onClick={() =>
+                            handleGoalChange(
+                              goalRow.id,
+                              'achievementStatus',
+                              isSelected ? '' : statusOpt
+                            )
+                          }
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '999px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            border: isSelected ? '1px solid #7c3aed' : '1px solid #cbd5e1',
+                            background: isSelected ? '#7c3aed' : '#f8fafc',
+                            color: isSelected ? '#ffffff' : '#334155'
+                          }}
+                        >
+                          {statusOpt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                  <div className="form-field" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 600 }}>הערכת מחצית:</label>
+                    <textarea
+                      rows={2}
+                      value={goalRow.midYearEvaluation || ''}
+                      onInput={handleTextareaAutoResize}
+                      onChange={(e) =>
+                        handleGoalChange(goalRow.id, 'midYearEvaluation', e.target.value)
+                      }
+                      placeholder="תיאור התקדמות התלמיד/ה במחצית השנה..."
+                    />
+                    {(goalRow.midYearEvaluation || '').trim() && (
+                      <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn-submit-generate-summary"
+                          style={{ padding: '6px 12px', fontSize: '12.5px' }}
+                          onClick={() => handleProcessSingleGoalEvalAi(goalRow, 'midYearEvaluation')}
+                          disabled={loadingEvalAiKey === `${goalRow.id}_midYearEvaluation`}
+                        >
+                          <Sparkles size={14} />
+                          <span>
+                            {loadingEvalAiKey === `${goalRow.id}_midYearEvaluation`
+                              ? 'מעבד מידע ב-AI...'
+                              : 'עיבוד מידע ב-AI'}
+                          </span>
+                        </button>
+                        {evalAiSuccessKey === `${goalRow.id}_midYearEvaluation` && (
+                          <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
+                            ✓ עובד ב-AI
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form-field" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 600 }}>הערכת סוף שנה:</label>
+                    <textarea
+                      rows={2}
+                      value={goalRow.endYearEvaluation || ''}
+                      onInput={handleTextareaAutoResize}
+                      onChange={(e) =>
+                        handleGoalChange(goalRow.id, 'endYearEvaluation', e.target.value)
+                      }
+                      placeholder="סיכום השגת המטרה בסוף שנת הלימודים..."
+                    />
+                    {(goalRow.endYearEvaluation || '').trim() && (
+                      <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn-submit-generate-summary"
+                          style={{ padding: '6px 12px', fontSize: '12.5px' }}
+                          onClick={() => handleProcessSingleGoalEvalAi(goalRow, 'endYearEvaluation')}
+                          disabled={loadingEvalAiKey === `${goalRow.id}_endYearEvaluation`}
+                        >
+                          <Sparkles size={14} />
+                          <span>
+                            {loadingEvalAiKey === `${goalRow.id}_endYearEvaluation`
+                              ? 'מעבד מידע ב-AI...'
+                              : 'עיבוד מידע ב-AI'}
+                          </span>
+                        </button>
+                        {evalAiSuccessKey === `${goalRow.id}_endYearEvaluation` && (
+                          <span style={{ fontSize: '12px', color: '#16a34a', fontWeight: 600 }}>
+                            ✓ עובד ב-AI
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Separate Report Actions Bar */}
+          <div className="bottom-final-actions" style={{ marginTop: '18px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" className="btn-print-doc" onClick={handlePrintEvalReport}>
+              <Printer size={18} />
+              <span>הדפס דוח הערכת מחצית / סוף שנה</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
+                handleSaveProgress();
+                downloadWordFile('eval');
+              }}
+            >
+              <Download size={18} />
+              <span>הורד קובץ Word – דוח הערכה</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-send-email-doc"
+              onClick={() => handleOpenEmailModal('eval')}
+            >
+              <Mail size={18} />
+              <span>שלח דוח הערכה למייל</span>
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Team Sharing Modal ("שיתוף צוות") */}
       {showShareModal && (
@@ -3097,9 +3962,13 @@ ${bankReference}
               <div className="modal-title-row">
                 <Mail size={22} />
                 <div>
-                  <h3>שליחת תוכנית עבודה במייל</h3>
+                  <h3>
+                    {emailReportMode === 'eval'
+                      ? 'שליחת דוח הערכת מחצית / סוף שנה במייל'
+                      : 'שליחת תוכנית עבודה במייל'}
+                  </h3>
                   <p className="modal-subtitle">
-                    {getFullDocTitle()} • <strong>{getDisplayStudentName()}</strong>
+                    {emailReportMode === 'eval' ? getEvalReportTitle() : getFullDocTitle()} • <strong>{getDisplayStudentName()}</strong>
                   </p>
                 </div>
               </div>
@@ -3196,12 +4065,13 @@ ${bankReference}
                   disabled={isSendingEmail}
                   onClick={async () => {
                     handleSaveProgress();
+                    const activeMode = emailReportMode === 'eval' ? 'eval' : 'tala';
                     if (emailFormat === 'docx') {
-                      downloadWordFile();
+                      downloadWordFile(activeMode);
                       setEmailStatusMsg('קובץ ה-Word הורד למחשב שלך.');
                     } else {
                       setEmailStatusMsg('מפיק ומוריד קובץ PDF ישירות למחשב...');
-                      await downloadPdfFileDirectly();
+                      await downloadPdfFileDirectly(activeMode);
                       setEmailStatusMsg('קובץ ה-PDF הורד למחשב שלך.');
                     }
                   }}
