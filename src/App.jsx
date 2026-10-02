@@ -128,6 +128,7 @@ export default function App() {
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [selectedArchivedStudentId, setSelectedArchivedStudentId] = useState(null);
+  const [selectedArchiveYear, setSelectedArchiveYear] = useState(null);
   // Unsaved data tracking for logout confirmation modal
   const [unsavedDraftState, setUnsavedDraftState] = useState({
     isDirty: false,
@@ -498,6 +499,25 @@ export default function App() {
     filteredArchivedStudents[0] ||
     null;
 
+  const availableArchiveYears = activeArchivedStudent
+    ? Array.from(
+        new Set([
+          ...(activeArchivedStudent.schoolYear ? [activeArchivedStudent.schoolYear] : []),
+          ...Object.keys(activeArchivedStudent.reportsByYear || {})
+        ])
+      )
+    : [];
+  const currentArchiveYear =
+    selectedArchiveYear && availableArchiveYears.includes(selectedArchiveYear)
+      ? selectedArchiveYear
+      : activeArchivedStudent?.schoolYear || availableArchiveYears[0] || '';
+  const activeArchiveReport =
+    (activeArchivedStudent?.reportsByYear &&
+      currentArchiveYear &&
+      activeArchivedStudent.reportsByYear[currentArchiveYear]) ||
+    activeArchivedStudent ||
+    {};
+
   return (
     <div className="tala-app-root" dir="rtl">
       {/* Top Stained-Glass Accent Strip */}
@@ -580,7 +600,6 @@ export default function App() {
             <div className="sidebar-title-group">
               <Users size={19} />
               <h3>רשימת תלמידים</h3>
-              <span className="student-count-pill">{userStudents.length}</span>
             </div>
             <button
               type="button"
@@ -1428,13 +1447,51 @@ export default function App() {
                               {activeArchivedStudent.status || 'בארכיון'}
                             </span>
                           </div>
-                          <small style={{ color: '#5c6f8c', fontSize: '12.5px' }}>
-                            {activeArchivedStudent.planType || 'תל"א / תח"י'} • שנת לימודים:{' '}
-                            {activeArchivedStudent.schoolYear || '—'}
-                            {activeArchivedStudent.archivedAt
-                              ? ` • הועבר לארכיון: ${activeArchivedStudent.archivedAt}`
-                              : ''}
-                          </small>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              flexWrap: 'wrap',
+                              marginTop: '4px'
+                            }}
+                          >
+                            <small style={{ color: '#5c6f8c', fontSize: '12.5px' }}>
+                              {activeArchiveReport.planType || activeArchivedStudent.planType || 'תל"א / תח"י'} • שנת לימודים:
+                            </small>
+                            {availableArchiveYears.length > 0 ? (
+                              <select
+                                value={currentArchiveYear}
+                                onChange={(e) => setSelectedArchiveYear(e.target.value)}
+                                style={{
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #b8a2e3',
+                                  background: '#faf8ff',
+                                  color: '#2b4c73',
+                                  fontSize: '12.5px',
+                                  fontWeight: 700,
+                                  fontFamily: 'inherit',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {availableArchiveYears.map((yr) => (
+                                  <option key={yr} value={yr}>
+                                    {yr}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <small style={{ color: '#5c6f8c', fontSize: '12.5px' }}>
+                                {activeArchivedStudent.schoolYear || '—'}
+                              </small>
+                            )}
+                            {activeArchivedStudent.archivedAt && (
+                              <small style={{ color: '#5c6f8c', fontSize: '12.5px' }}>
+                                • הועבר לארכיון: {activeArchivedStudent.archivedAt}
+                              </small>
+                            )}
+                          </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1524,10 +1581,10 @@ export default function App() {
                       </div>
 
                       {/* Background, Strengths & Recommendations */}
-                      {(activeArchivedStudent.teacherFreeText ||
-                        activeArchivedStudent.strengthsExisting ||
-                        activeArchivedStudent.strengthsToEmpower ||
-                        activeArchivedStudent.recommendations) && (
+                      {(activeArchiveReport.teacherFreeText ||
+                        activeArchiveReport.strengthsExisting ||
+                        activeArchiveReport.strengthsToEmpower ||
+                        activeArchiveReport.recommendations) && (
                         <div
                           style={{
                             display: 'grid',
@@ -1535,7 +1592,7 @@ export default function App() {
                             gap: '10px'
                           }}
                         >
-                          {activeArchivedStudent.teacherFreeText && (
+                          {activeArchiveReport.teacherFreeText && (
                             <div
                               style={{
                                 background: '#f8faff',
@@ -1549,12 +1606,12 @@ export default function App() {
                                 רקע ותיאור תפקוד חופשי:
                               </strong>
                               <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {activeArchivedStudent.teacherFreeText}
+                                {activeArchiveReport.teacherFreeText}
                               </div>
                             </div>
                           )}
 
-                          {activeArchivedStudent.strengthsExisting && (
+                          {activeArchiveReport.strengthsExisting && (
                             <div
                               style={{
                                 background: '#f8faff',
@@ -1568,12 +1625,12 @@ export default function App() {
                                 מוקדי כוח קיימים:
                               </strong>
                               <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {activeArchivedStudent.strengthsExisting}
+                                {activeArchiveReport.strengthsExisting}
                               </div>
                             </div>
                           )}
 
-                          {activeArchivedStudent.strengthsToEmpower && (
+                          {activeArchiveReport.strengthsToEmpower && (
                             <div
                               style={{
                                 background: '#f8faff',
@@ -1587,12 +1644,12 @@ export default function App() {
                                 מוקדי כוח להעצמה:
                               </strong>
                               <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {activeArchivedStudent.strengthsToEmpower}
+                                {activeArchiveReport.strengthsToEmpower}
                               </div>
                             </div>
                           )}
 
-                          {activeArchivedStudent.recommendations && (
+                          {activeArchiveReport.recommendations && (
                             <div
                               style={{
                                 background: '#f8faff',
@@ -1606,7 +1663,7 @@ export default function App() {
                                 המלצות והתאמות:
                               </strong>
                               <div style={{ whiteSpace: 'pre-wrap' }}>
-                                {activeArchivedStudent.recommendations}
+                                {activeArchiveReport.recommendations}
                               </div>
                             </div>
                           )}
@@ -1616,7 +1673,7 @@ export default function App() {
                       {/* Full Goals & Objectives Report Table */}
                       <div>
                         <h4 style={{ margin: '0 0 8px 0', fontSize: '14.5px', color: '#2b4c73' }}>
-                          דוח מטרות ויעדים בתכנית העבודה ({(activeArchivedStudent.goals || []).length})
+                          דוח מטרות ויעדים בתכנית העבודה – {currentArchiveYear || 'ללא שנה'} ({(activeArchiveReport.goals || []).length})
                         </h4>
                         <div style={{ overflowX: 'auto' }}>
                           <table
@@ -1638,7 +1695,7 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody>
-                              {(activeArchivedStudent.goals || []).map((g, idx) => (
+                              {(activeArchiveReport.goals || []).map((g, idx) => (
                                 <tr key={g.id || idx}>
                                   <td style={{ fontWeight: 700, color: '#2b4c73' }}>
                                     {g.environment || '—'}

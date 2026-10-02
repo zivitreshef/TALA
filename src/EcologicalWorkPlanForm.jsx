@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
+  SCHOOL_YEARS_LIST,
   getSortedGoalBank,
   generateDefaultQuestionsForCustomGoal,
   reverseEngineerRawTextLocally,
@@ -30,6 +31,30 @@ import {
   maskSensitiveValue,
   redactStudentNameInText
 } from './goalBankData';
+
+const extractYearReportFromFormData = (data) => ({
+  date: data?.date || new Date().toLocaleDateString('he-IL'),
+  planType: data?.planType || 'תל"א (תוכנית לימודים אישית)',
+  teacherFreeText: data?.teacherFreeText || '',
+  strengthsExisting: data?.strengthsExisting || '',
+  strengthsToEmpower: data?.strengthsToEmpower || '',
+  recommendations: data?.recommendations || '',
+  lastSavedAt: data?.lastSavedAt || '',
+  goals: (data?.goals || []).map((g) => adaptGoalToGender(g, data?.gender || 'boy'))
+});
+
+const hasContentInYearReport = (rep) => {
+  if (!rep) return false;
+  return Boolean(
+    (rep.teacherFreeText && rep.teacherFreeText.trim()) ||
+      (rep.strengthsExisting && rep.strengthsExisting.trim()) ||
+      (rep.strengthsToEmpower && rep.strengthsToEmpower.trim()) ||
+      (rep.recommendations && rep.recommendations.trim()) ||
+      (rep.goals || []).some(
+        (g) => (g.title && g.title.trim()) || (g.objectives && g.objectives.trim())
+      )
+  );
+};
 
 export default function EcologicalWorkPlanForm({
   student,
@@ -45,10 +70,28 @@ export default function EcologicalWorkPlanForm({
 
   const buildNormalizedStudentData = (st) => {
     const initialGender = st?.gender || 'boy';
+    const currentYear = st?.schoolYear || 'תשפ"ו (2025-2026)';
+    const normalizedGoals = (st?.goals || []).map((g) =>
+      adaptGoalToGender(g, initialGender)
+    );
+    const existingReports = { ...(st?.reportsByYear || {}) };
+    existingReports[currentYear] = {
+      date: st?.date || new Date().toLocaleDateString('he-IL'),
+      planType: st?.planType || 'תל"א (תוכנית לימודים אישית)',
+      teacherFreeText: st?.teacherFreeText || '',
+      strengthsExisting: st?.strengthsExisting || '',
+      strengthsToEmpower: st?.strengthsToEmpower || '',
+      recommendations: st?.recommendations || '',
+      lastSavedAt: st?.lastSavedAt || '',
+      goals: normalizedGoals
+    };
+
     return {
       ...st,
+      schoolYear: currentYear,
       gender: initialGender,
-      goals: (st?.goals || []).map((g) => adaptGoalToGender(g, initialGender))
+      goals: normalizedGoals,
+      reportsByYear: existingReports
     };
   };
 
@@ -86,10 +129,18 @@ export default function EcologicalWorkPlanForm({
   // Report whether current formData has unsaved changes compared to savedSnapshotRef
   useEffect(() => {
     if (!onDraftStateChange) return;
-    const isDirty = JSON.stringify(formData) !== savedSnapshotRef.current;
+    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const syncedDraft = {
+      ...formData,
+      reportsByYear: {
+        ...(formData.reportsByYear || {}),
+        [activeYear]: extractYearReportFromFormData(formData)
+      }
+    };
+    const isDirty = JSON.stringify(syncedDraft) !== savedSnapshotRef.current;
     onDraftStateChange({
       isDirty,
-      draftData: formData
+      draftData: syncedDraft
     });
   }, [formData, onDraftStateChange]);
 
@@ -119,6 +170,75 @@ export default function EcologicalWorkPlanForm({
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
   const currentGender = formData.gender || 'boy';
+
+  // Switch school year: snapshot current year's report and load (or create) the selected year's report
+  const handleSchoolYearChange = (newYear) => {
+    setFormData((prev) => {
+      const currentYear = prev.schoolYear || 'תשפ"ו (2025-2026)';
+      if (newYear === currentYear) return prev;
+
+      const updatedReportsByYear = {
+        ...(prev.reportsByYear || {}),
+        [currentYear]: extractYearReportFromFormData(prev)
+      };
+
+      const existingTargetReport = updatedReportsByYear[newYear];
+      const genderToUse = prev.gender || 'boy';
+
+      if (existingTargetReport) {
+        return {
+          ...prev,
+          schoolYear: newYear,
+          date: existingTargetReport.date || new Date().toLocaleDateString('he-IL'),
+          planType: existingTargetReport.planType || prev.planType || 'תל"א (תוכנית לימודים אישית)',
+          teacherFreeText: existingTargetReport.teacherFreeText || '',
+          strengthsExisting: existingTargetReport.strengthsExisting || '',
+          strengthsToEmpower: existingTargetReport.strengthsToEmpower || '',
+          recommendations: existingTargetReport.recommendations || '',
+          lastSavedAt: existingTargetReport.lastSavedAt || '',
+          goals: (existingTargetReport.goals || []).map((g) =>
+            adaptGoalToGender(g, genderToUse)
+          ),
+          reportsByYear: updatedReportsByYear
+        };
+      }
+
+      const freshGoal = {
+        id: 'g_init_' + Date.now(),
+        environment: ENVIRONMENTS_LIST[0],
+        activityParticipation: '',
+        title: '',
+        objectives: '',
+        opportunities: '',
+        partners: 'צוות הגן, סייעת אישית',
+        duration: 'עד סוף השנה',
+        evaluationCriteria: ''
+      };
+
+      const freshReport = {
+        date: new Date().toLocaleDateString('he-IL'),
+        planType: prev.planType || 'תל"א (תוכנית לימודים אישית)',
+        teacherFreeText: '',
+        strengthsExisting: '',
+        strengthsToEmpower: '',
+        recommendations: '',
+        lastSavedAt: '',
+        goals: [freshGoal]
+      };
+
+      return {
+        ...prev,
+        schoolYear: newYear,
+        ...freshReport,
+        reportsByYear: {
+          ...updatedReportsByYear,
+          [newYear]: freshReport
+        }
+      };
+    });
+    setOpenPickerGoalId(null);
+    setActiveAiGoalId(null);
+  };
 
   // Update personal or top-level field
   const handleFieldChange = (field, value) => {
@@ -755,9 +875,21 @@ ${bankReference}
 
   // Save Progress explicitly
   const handleSaveProgress = () => {
-    const updated = {
+    const nowTime = new Date().toLocaleTimeString('he-IL', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const updatedWithTime = {
       ...formData,
-      lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+      lastSavedAt: nowTime
+    };
+    const updated = {
+      ...updatedWithTime,
+      reportsByYear: {
+        ...(formData.reportsByYear || {}),
+        [activeYear]: extractYearReportFromFormData(updatedWithTime)
+      }
     };
     savedSnapshotRef.current = JSON.stringify(updated);
     setFormData(updated);
@@ -1161,12 +1293,29 @@ ${bankReference}
           </div>
           <div className="inline-meta-field">
             <label>שנת לימודים:</label>
-            <input
-              type="text"
-              value={formData.schoolYear || ''}
-              onChange={(e) => handleFieldChange('schoolYear', e.target.value)}
-              placeholder='למשל: תשפ"ז'
-            />
+            <select
+              value={formData.schoolYear || 'תשפ"ו (2025-2026)'}
+              onChange={(e) => handleSchoolYearChange(e.target.value)}
+              title="בחר שנת לימודים להצגה או ליצירת דו״ח חדש לתלמיד/ה עבור שנה זו"
+            >
+              {!SCHOOL_YEARS_LIST.includes(formData.schoolYear || 'תשפ"ו (2025-2026)') && (
+                <option value={formData.schoolYear}>
+                  {formData.schoolYear}
+                </option>
+              )}
+              {SCHOOL_YEARS_LIST.map((yr) => {
+                const isCurrent = yr === (formData.schoolYear || 'תשפ"ו (2025-2026)');
+                const rep = isCurrent
+                  ? extractYearReportFromFormData(formData)
+                  : formData.reportsByYear?.[yr];
+                const hasData = hasContentInYearReport(rep);
+                return (
+                  <option key={yr} value={yr} style={{ color: '#24344d', background: '#ffffff' }}>
+                    {yr}{hasData ? ' • (קיים דו"ח)' : ''}
+                  </option>
+                );
+              })}
+            </select>
           </div>
         </div>
       </div>

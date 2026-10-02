@@ -838,7 +838,8 @@ input, textarea, select, button {
   color: #f5f0ff;
 }
 
-.inline-meta-field input {
+.inline-meta-field input,
+.inline-meta-field select {
   background: rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(220, 208, 250, 0.6);
   color: #ffffff;
@@ -846,6 +847,14 @@ input, textarea, select, button {
   border-radius: 6px;
   font-size: 13px;
   width: 145px;
+  outline: none;
+}
+
+.inline-meta-field select {
+  width: auto;
+  min-width: 165px;
+  cursor: pointer;
+  font-weight: 600;
 }
 
 .main-ecological-heading {
