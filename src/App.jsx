@@ -190,11 +190,10 @@ export default function App() {
     );
   };
 
-  const [selectedStudentId, setSelectedStudentId] = useState(() => {
-    const initialUserStudents = getStudentsForUser(students, currentUser);
-    return initialUserStudents[0]?.id || null;
-  });
+  // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [studentSearch, setStudentSearch] = useState('');
+  const [insideLandingSearch, setInsideLandingSearch] = useState('');
   // Clustered by educationalFramework — collapsed by default
   const [expandedFrameworks, setExpandedFrameworks] = useState({});
   // Student deletion & archive confirmation modal states
@@ -329,17 +328,18 @@ export default function App() {
     }
   }, [allowedUsers]);
 
-  // Whenever the logged-in user or students list changes, ensure selectedStudentId belongs to that user
+  // If the currently selected student no longer belongs to the logged-in user (or was deleted/archived), return to the inside landing page (null)
   useEffect(() => {
     if (!currentUser) {
       setSelectedStudentId(null);
       return;
     }
+    if (!selectedStudentId) return;
     const myStudents = getStudentsForUser(students, currentUser);
     if (!myStudents.some((s) => s.id === selectedStudentId)) {
-      setSelectedStudentId(myStudents[0]?.id || null);
+      setSelectedStudentId(null);
     }
-  }, [currentUser?.email, students.length]);
+  }, [currentUser?.email, students.length, selectedStudentId]);
 
   const handleUpdateAllowedUsers = (updatedList) => {
     setAllowedUsers(updatedList);
@@ -367,9 +367,9 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     localStorage.setItem(SESSION_USER_KEY, JSON.stringify(user));
-    const myStudents = getStudentsForUser(students, user);
-    setSelectedStudentId(myStudents[0]?.id || null);
+    setSelectedStudentId(null);
     setStudentSearch('');
+    setInsideLandingSearch('');
   };
 
   const performLogout = () => {
@@ -475,8 +475,7 @@ export default function App() {
     setStudents(remainingAll);
     deleteStudentFromCloud(id);
     if (selectedStudentId === id) {
-      const remainingMine = getStudentsForUser(remainingAll, currentUser);
-      setSelectedStudentId(remainingMine[0]?.id || null);
+      setSelectedStudentId(null);
     }
     if (selectedArchivedStudentId === id) {
       const remainingArchived = getArchivedStudentsForUser(remainingAll, currentUser);
@@ -517,8 +516,7 @@ export default function App() {
       saveStudentToCloud(archivedStudentDoc);
     }
     if (selectedStudentId === id) {
-      const remainingActive = getStudentsForUser(updatedAll, currentUser);
-      setSelectedStudentId(remainingActive[0]?.id || null);
+      setSelectedStudentId(null);
       setUnsavedDraftState({ isDirty: false, draftData: null });
     }
     setSelectedArchivedStudentId(id);
@@ -730,7 +728,12 @@ export default function App() {
       <div className="stained-glass-top-strip" />
       {/* Top Header */}
       <header className="tala-header">
-        <div className="tala-brand">
+        <div
+          className="tala-brand"
+          onClick={() => setSelectedStudentId(null)}
+          style={{ cursor: 'pointer' }}
+          title="חזרה לדף הבית הפנימי (בחירת או יצירת תלמיד/ה)"
+        >
           <div className="brand-logo-circle">
             <img src="./tala-logo.png" alt="TALA Logo" className="header-logo-img" />
           </div>
@@ -999,18 +1002,89 @@ export default function App() {
               onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
             />
           ) : (
-            <div className="empty-student-selection">
-              <BookOpen size={48} />
-              <h3>לא נבחר תלמיד מהרשימה</h3>
-              <p>בחרי תלמיד מרשימת התלמידים מימין או לחצי על "+ תלמיד/ה חדש/ה" ליצירת תכנית עבודה אקולוגית חדשה.</p>
-              <button
-                type="button"
-                className="btn-new-student"
-                onClick={handleAddNewStudent}
-              >
-                <Plus size={18} />
-                <span>צור תכנית עבודה לתלמיד/ה חדש/ה</span>
-              </button>
+            <div className="inside-landing-page">
+              <div className="inside-landing-hero">
+                <div className="inside-landing-badge">
+                  <Sparkles size={15} />
+                  <span>ברוכה הבאה למרחב העבודה האישי</span>
+                </div>
+                <h2>שלום, {currentUser.name} 👋</h2>
+                <p>
+                  כדי להתחיל לעבוד, בחרי האם ליצור תוכנית עבודה אקולוגית לתלמיד/ה חדש/ה או לפתוח תוכנית קיימת מתוך רשימת התלמידים שלך.
+                </p>
+              </div>
+
+              <div className="inside-landing-cards-grid">
+                {/* Card 1: Create New Student */}
+                <div className="inside-landing-card create-card">
+                  <div className="inside-card-icon create-icon">
+                    <Plus size={28} />
+                  </div>
+                  <h3>יצירת תוכנית לתלמיד/ה חדש/ה</h3>
+                  <p>
+                    פתיחת גיליון תוכנית עבודה אקולוגית ותח"י חדשה מאפס, כולל הגדרת פרופיל תלמיד, תחומי תפקוד, בחירת מטרות מהמאגר ושאלות מנחות ב-AI.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-inside-landing-primary"
+                    onClick={handleAddNewStudent}
+                  >
+                    <Plus size={18} />
+                    <span>צור תוכנית עבודה לתלמיד/ה חדש/ה</span>
+                  </button>
+                </div>
+
+                {/* Card 2: Open Existing Student */}
+                <div className="inside-landing-card open-card">
+                  <div className="inside-card-icon open-icon">
+                    <BookOpen size={26} />
+                  </div>
+                  <h3>פתיחת תוכנית של תלמיד/ה קיים/ת ({myStudents.length})</h3>
+                  <p>
+                    בחרי תלמיד/ה מתוך הרשימה להמשך עריכה, עדכון מטרות, הדפסה או שליחה למייל:
+                  </p>
+
+                  <div className="inside-landing-search">
+                    <Search size={15} />
+                    <input
+                      type="text"
+                      placeholder="חיפוש מהיר לפי שם תלמיד/ה או מסגרת חינוכית..."
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                    />
+                  </div>
+
+                  {filteredStudents.length === 0 ? (
+                    <div className="inside-landing-empty-list">
+                      {myStudents.length === 0
+                        ? 'עדיין לא הוגדרו תלמידים במערכת. לחצי על הכפתור מימין ליצירת התלמיד/ה הראשון/ה.'
+                        : 'לא נמצאו תלמידים התואמים לחיפוש.'}
+                    </div>
+                  ) : (
+                    <div className="inside-landing-student-list">
+                      {filteredStudents.map((st) => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          className="inside-landing-student-row"
+                          onClick={() => setSelectedStudentId(st.id)}
+                        >
+                          <div className="inside-st-main">
+                            <strong>{st.name || 'ללא שם'}</strong>
+                            <span>{st.educationalFramework || 'ללא מסגרת חינוכית מוגדרת'}</span>
+                          </div>
+                          <div className="inside-st-meta">
+                            <span className="st-goals-badge">
+                              {(st.goals || []).filter((g) => g.title).length} מטרות
+                            </span>
+                            <ChevronLeft size={16} className="inside-st-arrow" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </main>
