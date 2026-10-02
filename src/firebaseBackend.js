@@ -285,6 +285,24 @@ export function subscribeToTalaBackend({
   );
   unsubscribers.push(unsubStudents);
 
+  // 5. Contact Admin Requests (tala_config/admin_requests)
+  const adminReqsDocRef = doc(db, 'tala_config', 'admin_requests');
+  const unsubAdminReqs = onSnapshot(
+    adminReqsDocRef,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data?.requests)) {
+          onSettingsChange?.({ adminRequests: data.requests });
+        }
+      }
+    },
+    (err) => {
+      console.error('Firestore admin_requests listener error:', err);
+    }
+  );
+  unsubscribers.push(unsubAdminReqs);
+
   return () => {
     unsubscribers.forEach((u) => {
       try {
@@ -307,6 +325,21 @@ export async function saveAllowedUsersToCloud(usersList) {
     return true;
   } catch (err) {
     console.error('Failed to save allowedUsers to Firestore:', err);
+    return false;
+  }
+}
+
+export async function saveAdminRequestsToCloud(requestsList) {
+  const db = getFirestoreDb();
+  if (!db) return false;
+  try {
+    await setDoc(doc(db, 'tala_config', 'admin_requests'), {
+      requests: requestsList,
+      updatedAt: new Date().toISOString()
+    });
+    return true;
+  } catch (err) {
+    console.error('Failed to save adminRequests to Firestore:', err);
     return false;
   }
 }
@@ -371,3 +404,4 @@ export async function deleteStudentFromCloud(studentId) {
     return false;
   }
 }
+

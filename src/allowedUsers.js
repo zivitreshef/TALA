@@ -57,6 +57,8 @@ export function saveAllowedUsers(users) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
 }
 
+export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+
 export function verifyAllowedUser(email, accessCode, usersList) {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanCode = (accessCode || '').trim();
@@ -69,27 +71,84 @@ export function verifyAllowedUser(email, accessCode, usersList) {
   if (!found) {
     return {
       allowed: false,
-      reason: 'גישה נדחתה: כתובת האימייל אינה מופיעה ברשימת המשתמשים המורשים (Allowlist) של מערכת TALA.'
+      reason: 'גישה נדחתה: כתובת האימייל אינה מופיעה ברשימת המשתמשים המורשים של מערכת TALA.'
     };
   }
 
+  const isMainAdmin = found.email.trim().toLowerCase() === 'zivit.reshef@gmail.com';
+
   if (!found.active) {
+    if (found.lockedOut) {
+      return {
+        allowed: false,
+        isLockedOut: true,
+        reason:
+          'חשבונך נחסם אוטומטית מטעמי אבטחה לאחר 5 ניסיונות כניסה שגויים. לשחרור החסימה יש לפנות למנהל/ת המערכת.'
+      };
+    }
     return {
       allowed: false,
-      reason: 'גישה נדחתה: חשבון משתמש זה הושהה על ידי מנהל/ת המערכת.'
+      isDisabled: true,
+      reason: 'גישה נדחתה: חשבון משתמש זה הושבת על ידי מנהל/ת המערכת. לפרטים ניתן לפנות למנהל/ת המערכת.'
     };
   }
 
   if (found.accessCode && found.accessCode !== cleanCode) {
+    const nextAttempts = (Number(found.failedLoginAttempts) || 0) + 1;
+    const nowFormatted = new Date().toLocaleString('he-IL', {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+
+    if (nextAttempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+      const updatedUsersList = list.map((u) => {
+        if (u.id !== found.id) return u;
+        return {
+          ...u,
+          failedLoginAttempts: nextAttempts,
+          lockedOut: true,
+          lockedOutAt: nowFormatted,
+          // Disable the user automatically (keep primary admin able to log in with real password so system is never bricked)
+          active: isMainAdmin ? true : false
+        };
+      });
+
+      return {
+        allowed: false,
+        isLockedOut: true,
+        failedAttempts: nextAttempts,
+        updatedUsersList,
+        reason:
+          'הזנת סיסמה שגויה 5 פעמים ברציפות – החשבון נחסם אוטומטית בהתאם למדיניות האבטחה. נשלחה התראה למנהל/ת המערכת.'
+      };
+    }
+
+    const remaining = MAX_FAILED_LOGIN_ATTEMPTS - nextAttempts;
+    const updatedUsersList = list.map((u) =>
+      u.id === found.id ? { ...u, failedLoginAttempts: nextAttempts } : u
+    );
+
     return {
       allowed: false,
-      reason: 'קוד הגישה שהוזן שגוי עבור כתובת אימייל זו.'
+      failedAttempts: nextAttempts,
+      remainingAttempts: remaining,
+      updatedUsersList,
+      reason: `קוד הגישה שהוזן שגוי (ניסיון ${nextAttempts} מתוך ${MAX_FAILED_LOGIN_ATTEMPTS} – נותרו עוד ${remaining} ניסיונות לפני חסימה אוטומטית של החשבון).`
     };
+  }
+
+  // Successful login: reset failed attempts counter (for regular users; for admin, keep lockedOut alert until dismissed if any)
+  let updatedUsersList = null;
+  if ((found.failedLoginAttempts || 0) > 0 && !isMainAdmin) {
+    updatedUsersList = list.map((u) =>
+      u.id === found.id ? { ...u, failedLoginAttempts: 0 } : u
+    );
   }
 
   return {
     allowed: true,
-    user: found
+    user: found,
+    updatedUsersList
   };
 }
 

@@ -17,7 +17,11 @@ import {
   Wand2,
   FileText,
   Check,
-  ShieldAlert
+  ShieldAlert,
+  Mail,
+  Send,
+  Download,
+  X
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
@@ -103,6 +107,14 @@ export default function EcologicalWorkPlanForm({
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
   const [showFullDocPreview, setShowFullDocPreview] = useState(false);
+
+  // State for "Send to Email" (שלח למייל) modal
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [emailFormat, setEmailFormat] = useState('docx'); // 'docx' | 'pdf'
+  const [emailClientMode, setEmailClientMode] = useState('default'); // 'default' (mailto) | 'gmail'
+  const [emailStatusMsg, setEmailStatusMsg] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // State for Goal Picker / Autocomplete per goal card
   const [openPickerGoalId, setOpenPickerGoalId] = useState(null);
@@ -1209,6 +1221,233 @@ ${bankReference}
     }, 400);
   };
 
+  // === Build & Download Official Word (.doc / .docx compatible) Document ===
+  const getSafeReportFilename = (ext = 'doc') => {
+    const displayName = getDisplayStudentName().replace(/[^a-zA-Z0-9א-ת_-]/g, '_');
+    const yearStr = (formData.schoolYear || '2026').replace(/[^a-zA-Z0-9א-ת_-]/g, '_');
+    return `תוכנית_עבודה_${displayName}_${yearStr}.${ext}`;
+  };
+
+  const buildWordDocumentHtml = () => {
+    const displayName = getDisplayStudentName();
+    const displayId = getDisplayMaskedField(formData.idNumber);
+    const displayBirthDate = getDisplayMaskedField(formData.birthDate);
+    const displayFramework = hideStudentDetailsOnPrint
+      ? maskSensitiveValue(formData.educationalFramework)
+      : formData.educationalFramework || '__________';
+    const displayAddress = getDisplayMaskedField(formData.address);
+    const displayPhone = getDisplayMaskedField(formData.phone);
+    const fullDocTitle = getFullDocTitle();
+
+    const goalsRowsHtml = (formData.goals || [])
+      .map((g) => {
+        const activityText = (getRedactedText(g.activityParticipation) || '').replace(/\n/g, '<br/>');
+        const titleText = (getRedactedText(g.title) || '').replace(/\n/g, '<br/>');
+        const objectivesText = (getRedactedText(g.objectives) || '').replace(/\n/g, '<br/>');
+        const opportunitiesText = (getRedactedText(g.opportunities) || '').replace(/\n/g, '<br/>');
+        const partnersText = (getRedactedText(g.partners) || '').replace(/\n/g, '<br/>');
+        const durationText = (getRedactedText(g.duration) || '').replace(/\n/g, '<br/>');
+        const evaluationText = (getRedactedText(g.evaluationCriteria) || '').replace(/\n/g, '<br/>');
+
+        return `
+          <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family: Arial, sans-serif; font-size: 10.5pt;">
+            <tr style="background-color:#eef3fb;">
+              <td colspan="6" style="border:1px solid #7997be; padding:8pt; text-align:right;">
+                <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
+                <div style="margin-top:4pt;"><strong>פעילות והשתתפות:</strong> ${activityText}</div>
+              </td>
+            </tr>
+            <tr style="background-color:#eaf3fc; color:#2b4c73; font-weight:bold; text-align:center;">
+              <th style="width:18%; border:1px solid #7997be; padding:6pt;">מטרה</th>
+              <th style="width:22%; border:1px solid #7997be; padding:6pt;">יעדים, ציוני דרך</th>
+              <th style="width:24%; border:1px solid #7997be; padding:6pt;">הזדמנויות, אמצעים</th>
+              <th style="width:13%; border:1px solid #7997be; padding:6pt;">שותפים</th>
+              <th style="width:9%; border:1px solid #7997be; padding:6pt;">משך</th>
+              <th style="width:14%; border:1px solid #7997be; padding:6pt;">אמות מידה להערכה</th>
+            </tr>
+            <tr>
+              <td style="border:1px solid #7997be; padding:6pt; font-weight:bold; color:#0d2b56; vertical-align:top; text-align:right;">${titleText}</td>
+              <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${objectivesText}</td>
+              <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${opportunitiesText}</td>
+              <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${partnersText}</td>
+              <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${durationText}</td>
+              <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${evaluationText}</td>
+            </tr>
+          </table>
+        `;
+      })
+      .join('');
+
+    const strengthsExistingHtml = (getRedactedText(formData.strengthsExisting) || '').replace(/\n/g, '<br/>');
+    const strengthsToEmpowerHtml = (getRedactedText(formData.strengthsToEmpower) || '').replace(/\n/g, '<br/>');
+    const recommendationsHtml = (getRedactedText(formData.recommendations) || '').replace(/\n/g, '<br/>');
+
+    return `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:w="urn:schemas-microsoft-com:office:word"
+            xmlns="http://www.w3.org/TR/REC-html40"
+            lang="he" dir="rtl">
+      <head>
+        <meta charset="utf-8" />
+        <title>${fullDocTitle} - ${displayName}</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
+        <style>
+          @page WordSection1 {
+            size: 841.9pt 595.3pt;
+            mso-page-orientation: landscape;
+            margin: 36.0pt 36.0pt 36.0pt 36.0pt;
+          }
+          div.WordSection1 { page: WordSection1; direction: rtl; text-align: right; font-family: Arial, sans-serif; }
+        </style>
+      </head>
+      <body lang="he" dir="rtl" style="direction:rtl; text-align:right; font-family:Arial, sans-serif; color:#243b47;">
+        <div class="WordSection1" dir="rtl">
+          <div style="background-color:#3b6ea5; color:#ffffff; padding:12pt 16pt; margin-bottom:10pt; text-align:center;">
+            <h1 style="margin:0; font-size:16pt;">${fullDocTitle}</h1>
+            <div style="font-size:10.5pt; margin-top:4pt;">
+              <strong>תאריך:</strong> ${formData.date || '__________'} &nbsp;|&nbsp;
+              <strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}
+            </div>
+          </div>
+
+          <div style="background-color:#eef3fb; border:1px solid #5b9bd5; padding:8pt 12pt; margin-bottom:12pt; font-size:11pt;">
+            <strong>שם הילד/ה:</strong> ${displayName} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>ת.ז:</strong> ${displayId} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>ת.ל:</strong> ${displayBirthDate} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>מסגרת חינוכית:</strong> ${displayFramework}
+            ${formData.address ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
+            ${formData.phone ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
+          </div>
+
+          <table dir="rtl" border="1" cellspacing="0" cellpadding="8" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family:Arial, sans-serif; font-size:10.5pt;">
+            <tr>
+              <th style="width:50%; background-color:#5b9bd5; color:#ffffff; border:1px solid #7997be; padding:6pt; text-align:center;">מוקדי כוח: כוחות קיימים</th>
+              <th style="width:50%; background-color:#8b6fc0; color:#ffffff; border:1px solid #7997be; padding:6pt; text-align:center;">כוחות להעצמה וחיזוק</th>
+            </tr>
+            <tr>
+              <td style="border:1px solid #7997be; padding:8pt; vertical-align:top; text-align:right;">${strengthsExistingHtml}</td>
+              <td style="border:1px solid #7997be; padding:8pt; vertical-align:top; text-align:right;">${strengthsToEmpowerHtml}</td>
+            </tr>
+          </table>
+
+          ${goalsRowsHtml}
+
+          <div style="background-color:#eef3fb; border:1px solid #5b9bd5; padding:8pt 12pt; margin-top:12pt; margin-bottom:18pt; font-size:10.5pt;">
+            <strong>המלצות:</strong><br/>
+            ${recommendationsHtml}
+          </div>
+
+          <table dir="rtl" border="0" style="width:100%; margin-top:18pt; font-weight:bold; color:#2b4c73; font-size:11pt;">
+            <tr>
+              <td style="width:50%; text-align:right;">חתימת צוות חינוכי: _________________________</td>
+              <td style="width:50%; text-align:left;">חתימת הורים: _________________________</td>
+            </tr>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  const downloadWordFile = () => {
+    const wordHtml = buildWordDocumentHtml();
+    const blob = new Blob(['\ufeff', wordHtml], {
+      type: 'application/msword;charset=utf-8'
+    });
+    const filename = getSafeReportFilename('doc');
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return { blob, filename };
+  };
+
+  const handleOpenEmailModal = () => {
+    // Ensure report is saved before opening the Send to Email modal
+    handleSaveProgress();
+    setEmailError('');
+    setEmailStatusMsg('');
+    setShowEmailModal(true);
+  };
+
+  const handleSendReportByEmail = async (e) => {
+    e.preventDefault();
+    setEmailError('');
+    setEmailStatusMsg('');
+
+    const trimmedEmail = emailRecipient.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setEmailError('נא להזין כתובת אימייל תקינה של הנמען (למשל: name@example.com).');
+      return;
+    }
+
+    // Save latest progress
+    handleSaveProgress();
+
+    const displayName = getDisplayStudentName();
+    const fullDocTitle = getFullDocTitle();
+    const formatLabel = emailFormat === 'docx' ? 'Word (DOCX/DOC)' : 'PDF';
+    const subject = `${fullDocTitle} – ${displayName} (${formData.schoolYear || ''})`;
+    const bodyLines = [
+      'שלום רב,',
+      '',
+      `מצורפת ${fullDocTitle} עבור ${displayName} לשנת הלימודים ${formData.schoolYear || ''}.`,
+      `פורמט הקובץ שנבחר: ${formatLabel}.`,
+      hideStudentDetailsOnPrint
+        ? '(המסמך הופק במצב הגנת פרטיות – ראשי תיבות והשחרת פרטים מזהים).'
+        : '',
+      '',
+      'הנחיה לצירוף הקובץ:',
+      emailFormat === 'docx'
+        ? `קובץ ה-Word (${getSafeReportFilename('doc')}) הורד כעת למחשב שלך באופן אוטומטי – נא לגרור או לצרף (Attach) אותו להודעה זו לפני השליחה.`
+        : 'חלון שמירת ה-PDF נפתח כעת – לאחר שמירת הקובץ כ-PDF במחשב, נא לצרף (Attach) אותו להודעה זו לפני השליחה.',
+      '',
+      'בברכה,',
+      'מערכת TALA – תוכנית עבודה אקולוגית'
+    ].filter(Boolean);
+
+    const bodyText = bodyLines.join('\r\n');
+
+    if (emailFormat === 'docx') {
+      downloadWordFile();
+      setEmailStatusMsg(
+        `קובץ ה-Word הורד למחשב שלך (${getSafeReportFilename('doc')}) ונפתחה תיבת המייל אל ${trimmedEmail}. כל שנותר הוא לצרף את הקובץ שהורד וללחוץ שלח!`
+      );
+    } else {
+      handlePrintDocument();
+      setEmailStatusMsg(
+        `חלון הפקת ה-PDF נפתח לצורך שמירת הקובץ במחשב, ונפתחה תיבת המייל אל ${trimmedEmail}. שמור כ-PDF וצרף להודעה!`
+      );
+    }
+
+    // Open either Gmail Web Compose or default installed mail client (mailto:)
+    setTimeout(() => {
+      if (emailClientMode === 'gmail') {
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+          trimmedEmail
+        )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+        window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        const mailtoUrl = `mailto:${encodeURIComponent(trimmedEmail)}?subject=${encodeURIComponent(
+          subject
+        )}&body=${encodeURIComponent(bodyText)}`;
+        window.location.href = mailtoUrl;
+      }
+    }, 350);
+  };
+
   const handleTextareaAutoResize = (e) => {
     const ta = e.currentTarget;
     ta.style.overflowY = 'hidden';
@@ -1269,6 +1508,20 @@ ${bankReference}
           <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
             <Printer size={17} />
             <span>הדפס תוכנית עבודה</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-send-email-doc"
+            onClick={handleOpenEmailModal}
+            title={
+              formData.lastSavedAt
+                ? 'שלח את תוכנית העבודה במייל בפורמט Word או PDF'
+                : 'שמור ושלח את תוכנית העבודה במייל בפורמט Word או PDF'
+            }
+          >
+            <Mail size={17} />
+            <span>שלח למייל</span>
           </button>
         </div>
       </div>
@@ -2206,8 +2459,176 @@ ${bankReference}
               הדפס מסמך ({hideStudentDetailsOnPrint ? 'במצב חסוי: ראשי תיבות והשחרה' : 'במצב גלוי מלא'})
             </span>
           </button>
+
+          <button type="button" className="btn-send-email-doc" onClick={handleOpenEmailModal}>
+            <Mail size={18} />
+            <span>שלח למייל (DOCX / PDF)</span>
+          </button>
         </div>
       </section>
+
+      {/* Send Report to Email Modal ("שלח למייל") */}
+      {showEmailModal && (
+        <div className="modal-backdrop" onClick={() => setShowEmailModal(false)}>
+          <div
+            className="modal-card email-report-modal"
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header email-modal-header">
+              <div className="modal-title-row">
+                <Mail size={22} />
+                <div>
+                  <h3>שליחת תוכנית עבודה במייל</h3>
+                  <p className="modal-subtitle">
+                    {getFullDocTitle()} • <strong>{getDisplayStudentName()}</strong> ({formData.schoolYear})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-close-modal"
+                onClick={() => setShowEmailModal(false)}
+                title="סגור"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form className="modal-body email-modal-body" onSubmit={handleSendReportByEmail}>
+              {/* 1. Recipient Email ("Mail To") */}
+              <div className="email-modal-field">
+                <label className="email-modal-label">
+                  שלח אל (Mail To – כתובת אימייל של הנמען): <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  dir="ltr"
+                  value={emailRecipient}
+                  onChange={(e) => setEmailRecipient(e.target.value)}
+                  placeholder="recipient@example.com"
+                  className="email-recipient-input"
+                  autoFocus
+                />
+              </div>
+
+              {/* 2. Choose Report Format: DOCX or PDF */}
+              <div className="email-modal-field">
+                <label className="email-modal-label">בחר פורמט קובץ לדוח המצורף:</label>
+                <div className="email-format-options">
+                  <label
+                    className={`email-format-card ${emailFormat === 'docx' ? 'selected' : ''}`}
+                    onClick={() => setEmailFormat('docx')}
+                  >
+                    <input
+                      type="radio"
+                      name="emailFormat"
+                      value="docx"
+                      checked={emailFormat === 'docx'}
+                      onChange={() => setEmailFormat('docx')}
+                    />
+                    <div className="email-format-icon docx-badge">DOCX</div>
+                    <div className="email-format-info">
+                      <strong>קובץ Word (DOCX / DOC)</strong>
+                      <span>מסמך ניתן לעריכה ב-Microsoft Word (יורד אוטומטית למחשב לצירוף למייל)</span>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`email-format-card ${emailFormat === 'pdf' ? 'selected' : ''}`}
+                    onClick={() => setEmailFormat('pdf')}
+                  >
+                    <input
+                      type="radio"
+                      name="emailFormat"
+                      value="pdf"
+                      checked={emailFormat === 'pdf'}
+                      onChange={() => setEmailFormat('pdf')}
+                    />
+                    <div className="email-format-icon pdf-badge">PDF</div>
+                    <div className="email-format-info">
+                      <strong>קובץ PDF רשמי</strong>
+                      <span>מסמך מעוצב לקריאה והדפסה (פותח שמירה כ-PDF לצירוף למייל)</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* 3. Choose Mail App Mode */}
+              <div className="email-modal-field">
+                <label className="email-modal-label">אופן פתיחת המייל:</label>
+                <div className="email-client-pills">
+                  <button
+                    type="button"
+                    className={`email-client-pill ${emailClientMode === 'default' ? 'active' : ''}`}
+                    onClick={() => setEmailClientMode('default')}
+                  >
+                    תוכנת הדוא"ל במחשב (Outlook / Mail)
+                  </button>
+                  <button
+                    type="button"
+                    className={`email-client-pill ${emailClientMode === 'gmail' ? 'active' : ''}`}
+                    onClick={() => setEmailClientMode('gmail')}
+                  >
+                    פתיחה ב-Gmail בדפדפן
+                  </button>
+                </div>
+              </div>
+
+              {/* Privacy Redaction Toggle inside modal */}
+              <label className="email-privacy-toggle">
+                <input
+                  type="checkbox"
+                  checked={hideStudentDetailsOnPrint}
+                  onChange={(e) => setHideStudentDetailsOnPrint(e.target.checked)}
+                />
+                {hideStudentDetailsOnPrint ? <EyeOff size={16} /> : <Eye size={16} />}
+                <span>
+                  הפעל הגנת פרטיות בקובץ המיוצא (ראשי תיבות: <strong>{toHebrewAcronym(formData.name)}</strong> והשחרת ת.ז/טלפון/כתובת)
+                </span>
+              </label>
+
+              {emailError && <div className="email-modal-error">{emailError}</div>}
+              {emailStatusMsg && <div className="email-modal-success">{emailStatusMsg}</div>}
+
+              <div className="email-modal-actions">
+                <button
+                  type="button"
+                  className="btn-download-only"
+                  onClick={() => {
+                    handleSaveProgress();
+                    if (emailFormat === 'docx') {
+                      downloadWordFile();
+                      setEmailStatusMsg(`קובץ ה-Word הורד למחשב שלך (${getSafeReportFilename('doc')}).`);
+                    } else {
+                      handlePrintDocument();
+                      setEmailStatusMsg('חלון השמירה כ-PDF נפתח.');
+                    }
+                  }}
+                >
+                  <Download size={16} />
+                  <span>הורד קובץ {emailFormat === 'docx' ? 'Word' : 'PDF'} בלבד</span>
+                </button>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn-cancel-modal"
+                    onClick={() => setShowEmailModal(false)}
+                  >
+                    סגור
+                  </button>
+                  <button type="submit" className="btn-submit-email">
+                    <Send size={16} />
+                    <span>הפק קובץ ופתח מייל לשליחה</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -46,6 +46,7 @@ import {
 import {
   subscribeToTalaBackend,
   saveAllowedUsersToCloud,
+  saveAdminRequestsToCloud,
   saveGoalBankToCloud,
   saveSettingsToCloud,
   saveStudentToCloud,
@@ -57,6 +58,7 @@ import './index.css';
 const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
 const SESSION_USER_KEY = 'tala_current_session_user_v1';
 const PASSWORD_POLICY_STORAGE_KEY = 'tala_enforce_password_policy_v1';
+const ADMIN_REQUESTS_STORAGE_KEY = 'tala_admin_requests_v1';
 
 export default function App() {
   // Allowed users list
@@ -66,6 +68,16 @@ export default function App() {
   const [cloudSyncState, setCloudSyncState] = useState({
     connected: false,
     status: 'local_only'
+  });
+
+  // Contact Admin requests from landing page
+  const [adminRequests, setAdminRequests] = useState(() => {
+    try {
+      const saved = localStorage.getItem(ADMIN_REQUESTS_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   // Password Policy Enforcement flag (Admin setting)
@@ -82,6 +94,24 @@ export default function App() {
     setEnforcePasswordPolicy(nextVal);
     localStorage.setItem(PASSWORD_POLICY_STORAGE_KEY, String(nextVal));
     saveSettingsToCloud({ enforcePasswordPolicy: nextVal });
+  };
+
+  const handleSubmitAdminRequest = (newReq) => {
+    setAdminRequests((prev) => {
+      const next = [newReq, ...prev];
+      localStorage.setItem(ADMIN_REQUESTS_STORAGE_KEY, JSON.stringify(next));
+      saveAdminRequestsToCloud(next);
+      return next;
+    });
+  };
+
+  const handleDismissAdminRequest = (reqId) => {
+    setAdminRequests((prev) => {
+      const next = prev.filter((r) => r.id !== reqId);
+      localStorage.setItem(ADMIN_REQUESTS_STORAGE_KEY, JSON.stringify(next));
+      saveAdminRequestsToCloud(next);
+      return next;
+    });
   };
 
   // Current logged-in user (must be in Allowed Users List)
@@ -245,6 +275,13 @@ export default function App() {
           localStorage.setItem(
             PASSWORD_POLICY_STORAGE_KEY,
             String(settings.enforcePasswordPolicy)
+          );
+        }
+        if (Array.isArray(settings?.adminRequests)) {
+          setAdminRequests(settings.adminRequests);
+          localStorage.setItem(
+            ADMIN_REQUESTS_STORAGE_KEY,
+            JSON.stringify(settings.adminRequests)
           );
         }
       },
@@ -603,9 +640,14 @@ export default function App() {
       <AllowlistAuthGate
         allowedUsers={allowedUsers}
         onLoginSuccess={handleLoginSuccess}
+        onUpdateAllowedUsers={handleUpdateAllowedUsers}
+        onSubmitAdminRequest={handleSubmitAdminRequest}
       />
     );
   }
+
+  const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
+  const totalAdminAlerts = lockedOutUsers.length + (adminRequests || []).length;
 
   const userStudents = getStudentsForUser(students, currentUser);
   const archivedUserStudents = getArchivedStudentsForUser(students, currentUser);
@@ -704,9 +746,25 @@ export default function App() {
               type="button"
               className="btn-header-admin"
               onClick={() => setShowAdminModal(true)}
+              style={{ position: 'relative' }}
             >
               <ShieldCheck size={16} />
               <span>ניהול משתמשים מורשים ({allowedUsers.filter((u) => u.active).length})</span>
+              {totalAdminAlerts > 0 && (
+                <span
+                  style={{
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    borderRadius: '999px',
+                    padding: '1px 7px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    marginRight: '4px'
+                  }}
+                >
+                  🚨 {totalAdminAlerts}
+                </span>
+              )}
             </button>
           )}
 
@@ -734,6 +792,53 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Admin Security Lockout / Contact Request Notification Banner Under Site ADMIN */}
+      {currentUser.role === 'admin' && totalAdminAlerts > 0 && (
+        <div
+          style={{
+            background: '#fef2f2',
+            borderBottom: '2px solid #f87171',
+            padding: '10px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+            fontSize: '13px',
+            color: '#991b1b',
+            fontWeight: 700
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
+            <span>
+              {lockedOutUsers.length > 0 &&
+                `התראת אבטחה למנהל/ת המערכת: ${lockedOutUsers.length} משתמש/ים נחסמו אוטומטית לאחר 5 ניסיונות סיסמה שגויים (${lockedOutUsers
+                  .map((u) => u.name)
+                  .join(', ')}). `}
+              {adminRequests.length > 0 &&
+                `קיימות ${adminRequests.length} פניות חדשות מדף הכניסה הממתינות לטיפולך.`}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAdminModal(true)}
+            style={{
+              background: '#dc2626',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            לצפייה ושחרור חסימה בניהול משתמשים
+          </button>
+        </div>
+      )}
 
       {/* Main Workspace: Student Roster Sidebar + Interactive Ecological Form */}
       <div className="tala-workspace-layout">
@@ -902,6 +1007,8 @@ export default function App() {
           onChangeGeminiApiKey={handleChangeGeminiApiKey}
           enforcePasswordPolicy={enforcePasswordPolicy}
           onChangeEnforcePasswordPolicy={handleChangeEnforcePasswordPolicy}
+          adminRequests={adminRequests}
+          onDismissAdminRequest={handleDismissAdminRequest}
           cloudSyncState={cloudSyncState}
         />
       )}
