@@ -35,6 +35,13 @@ import {
   maskSensitiveValue,
   redactStudentNameInText
 } from './goalBankData';
+import {
+  GOOGLE_APPS_SCRIPT_TEMPLATE,
+  loadEmailEngineConfig,
+  isDirectEmailEngineConfigured,
+  generatePdfBlobFromHtml,
+  sendReportEmailInBackground
+} from './emailService';
 
 const extractYearReportFromFormData = (data) => ({
   date: data?.date || new Date().toLocaleDateString('he-IL'),
@@ -68,7 +75,9 @@ export default function EcologicalWorkPlanForm({
   onOpenGoalBankManager,
   onSaveStudentPlan,
   onUseOrAddGoalToBank,
-  onDraftStateChange
+  onDraftStateChange,
+  emailEngineConfig,
+  onUpdateEmailEngineConfig
 }) {
   const containerRef = useRef(null);
 
@@ -112,9 +121,14 @@ export default function EcologicalWorkPlanForm({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailRecipient, setEmailRecipient] = useState('');
   const [emailFormat, setEmailFormat] = useState('docx'); // 'docx' | 'pdf'
-  const [emailClientMode, setEmailClientMode] = useState('default'); // 'default' (mailto) | 'gmail'
   const [emailStatusMsg, setEmailStatusMsg] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [showEngineSetupInModal, setShowEngineSetupInModal] = useState(false);
+  const [localEngineDraft, setLocalEngineDraft] = useState(() =>
+    emailEngineConfig || loadEmailEngineConfig()
+  );
+  const [copiedAppsScript, setCopiedAppsScript] = useState(false);
 
   // State for Goal Picker / Autocomplete per goal card
   const [openPickerGoalId, setOpenPickerGoalId] = useState(null);
@@ -1357,12 +1371,37 @@ ${bankReference}
     `;
   };
 
-  const downloadWordFile = () => {
+  const createWordBlob = () => {
     const wordHtml = buildWordDocumentHtml();
     const blob = new Blob(['\ufeff', wordHtml], {
       type: 'application/msword;charset=utf-8'
     });
     const filename = getSafeReportFilename('doc');
+    return { blob, filename, mimeType: 'application/msword', htmlContent: wordHtml };
+  };
+
+  const downloadWordFile = () => {
+    const { blob, filename } = createWordBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return { blob, filename };
+  };
+
+  const createPdfBlob = async () => {
+    const filename = getSafeReportFilename('pdf');
+    const reportHtml = buildWordDocumentHtml();
+    const blob = await generatePdfBlobFromHtml(reportHtml, filename);
+    return { blob, filename, mimeType: 'application/pdf', htmlContent: reportHtml };
+  };
+
+  const downloadPdfFileDirectly = async () => {
+    const { blob, filename } = await createPdfBlob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -1379,7 +1418,29 @@ ${bankReference}
     handleSaveProgress();
     setEmailError('');
     setEmailStatusMsg('');
+    const currentCfg = emailEngineConfig || loadEmailEngineConfig();
+    setLocalEngineDraft(currentCfg);
+    setShowEngineSetupInModal(!isDirectEmailEngineConfigured(currentCfg));
     setShowEmailModal(true);
+  };
+
+  const handleSaveEngineConfigInModal = () => {
+    setEmailError('');
+    if (onUpdateEmailEngineConfig) {
+      onUpdateEmailEngineConfig(localEngineDraft);
+    }
+    if (isDirectEmailEngineConfigured(localEngineDraft)) {
+      setShowEngineSetupInModal(false);
+      setEmailStatusMsg('מנוע שליחת המייל הישיר הוגדר ונשמר בענן בהצלחה! כעת ניתן לשלוח דוחות בלחיצת כפתור.');
+    } else {
+      setEmailError('נא להזין כתובת Web App URL תקינה של Google Apps Script (המתחילה ב-https://script.google.com/) או פרטי EmailJS מלאים.');
+    }
+  };
+
+  const handleCopyAppsScriptCode = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_TEMPLATE);
+    setCopiedAppsScript(true);
+    setTimeout(() => setCopiedAppsScript(false), 2500);
   };
 
   const handleSendReportByEmail = async (e) => {
@@ -1393,59 +1454,88 @@ ${bankReference}
       return;
     }
 
-    // Save latest progress
-    handleSaveProgress();
+    const activeEngineCfg = isDirectEmailEngineConfigured(localEngineDraft)
+      ? localEngineDraft
+      : emailEngineConfig || loadEmailEngineConfig();
 
-    const displayName = getDisplayStudentName();
-    const fullDocTitle = getFullDocTitle();
-    const formatLabel = emailFormat === 'docx' ? 'Word (DOCX/DOC)' : 'PDF';
-    const subject = `${fullDocTitle} – ${displayName} (${formData.schoolYear || ''})`;
-    const bodyLines = [
-      'שלום רב,',
-      '',
-      `מצורפת ${fullDocTitle} עבור ${displayName} לשנת הלימודים ${formData.schoolYear || ''}.`,
-      `פורמט הקובץ שנבחר: ${formatLabel}.`,
-      hideStudentDetailsOnPrint
-        ? '(המסמך הופק במצב הגנת פרטיות – ראשי תיבות והשחרת פרטים מזהים).'
-        : '',
-      '',
-      'הנחיה לצירוף הקובץ:',
-      emailFormat === 'docx'
-        ? `קובץ ה-Word (${getSafeReportFilename('doc')}) הורד כעת למחשב שלך באופן אוטומטי – נא לגרור או לצרף (Attach) אותו להודעה זו לפני השליחה.`
-        : 'חלון שמירת ה-PDF נפתח כעת – לאחר שמירת הקובץ כ-PDF במחשב, נא לצרף (Attach) אותו להודעה זו לפני השליחה.',
-      '',
-      'בברכה,',
-      'מערכת TALA – תוכנית עבודה אקולוגית'
-    ].filter(Boolean);
-
-    const bodyText = bodyLines.join('\r\n');
-
-    if (emailFormat === 'docx') {
-      downloadWordFile();
-      setEmailStatusMsg(
-        `קובץ ה-Word הורד למחשב שלך (${getSafeReportFilename('doc')}) ונפתחה תיבת המייל אל ${trimmedEmail}. כל שנותר הוא לצרף את הקובץ שהורד וללחוץ שלח!`
+    if (!isDirectEmailEngineConfigured(activeEngineCfg)) {
+      setShowEngineSetupInModal(true);
+      setEmailError(
+        'כדי לשלוח את המייל והקובץ המצורף ישירות ברקע (ללא פתיחת תוכנת מייל במחשב), יש להשלים הגדרה חד-פעמית קצרה של מנוע השליחה למטה.'
       );
-    } else {
-      handlePrintDocument();
-      setEmailStatusMsg(
-        `חלון הפקת ה-PDF נפתח לצורך שמירת הקובץ במחשב, ונפתחה תיבת המייל אל ${trimmedEmail}. שמור כ-PDF וצרף להודעה!`
-      );
+      return;
     }
 
-    // Open either Gmail Web Compose or default installed mail client (mailto:)
-    setTimeout(() => {
-      if (emailClientMode === 'gmail') {
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
-          trimmedEmail
-        )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
-        window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+    // Save latest progress & engine config if updated
+    handleSaveProgress();
+    if (onUpdateEmailEngineConfig) {
+      onUpdateEmailEngineConfig(activeEngineCfg);
+    }
+
+    setIsSendingEmail(true);
+    try {
+      const displayName = getDisplayStudentName();
+      const fullDocTitle = getFullDocTitle();
+      const formatLabel = emailFormat === 'docx' ? 'Word (DOCX/DOC)' : 'PDF';
+      const subject = `${fullDocTitle} – ${displayName} (${formData.schoolYear || ''})`;
+
+      let attachmentInfo;
+      if (emailFormat === 'docx') {
+        attachmentInfo = createWordBlob();
       } else {
-        const mailtoUrl = `mailto:${encodeURIComponent(trimmedEmail)}?subject=${encodeURIComponent(
-          subject
-        )}&body=${encodeURIComponent(bodyText)}`;
-        window.location.href = mailtoUrl;
+        attachmentInfo = await createPdfBlob();
       }
-    }, 350);
+
+      const textBody = [
+        'שלום רב,',
+        '',
+        `מצורפת ${fullDocTitle} עבור ${displayName} לשנת הלימודים ${formData.schoolYear || ''} בפורמט ${formatLabel}.`,
+        hideStudentDetailsOnPrint
+          ? '(המסמך הופק במצב הגנת פרטיות – ראשי תיבות והשחרת פרטים מזהים).'
+          : '',
+        '',
+        'בברכה,',
+        activeEngineCfg.senderName || 'מערכת TALA – תוכנית עבודה אקולוגית'
+      ]
+        .filter(Boolean)
+        .join('\r\n');
+
+      const emailHtmlWrapper = `
+        <div dir="rtl" style="font-family: Arial, sans-serif; color: #1e293b; line-height: 1.6; text-align: right;">
+          <p>שלום רב,</p>
+          <p>מצורפת <strong>${fullDocTitle}</strong> עבור <strong>${displayName}</strong> לשנת הלימודים <strong>${formData.schoolYear || ''}</strong> בקובץ מצורף (<strong>${attachmentInfo.filename}</strong>).</p>
+          ${
+            hideStudentDetailsOnPrint
+              ? '<p style="color: #4c1d95; font-size: 12px;">🔒 המסמך הופק במצב הגנת פרטיות (ראשי תיבות והשחרת פרטים מזהים).</p>'
+              : ''
+          }
+          <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 16px 0;" />
+          ${attachmentInfo.htmlContent}
+        </div>
+      `;
+
+      await sendReportEmailInBackground({
+        config: activeEngineCfg,
+        toEmail: trimmedEmail,
+        subject,
+        htmlBody: emailHtmlWrapper,
+        textBody,
+        attachmentBlob: attachmentInfo.blob,
+        filename: attachmentInfo.filename,
+        mimeType: attachmentInfo.mimeType
+      });
+
+      setEmailStatusMsg(
+        `✅ המייל נשלח בהצלחה ברקע אל ${trimmedEmail} יחד עם הקובץ המצורף (${attachmentInfo.filename})!`
+      );
+    } catch (err) {
+      console.error('Direct background email send error:', err);
+      setEmailError(
+        `שגיאה בשליחת המייל ברקע: ${err?.message || 'בדוק את חיבור האינטרנט או את הגדרת מנוע המייל.'}`
+      );
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const handleTextareaAutoResize = (e) => {
@@ -2515,7 +2605,7 @@ ${bankReference}
 
               {/* 2. Choose Report Format: DOCX or PDF */}
               <div className="email-modal-field">
-                <label className="email-modal-label">בחר פורמט קובץ לדוח המצורף:</label>
+                <label className="email-modal-label">בחר פורמט קובץ מצורף (ישלח אוטומטית ברקע):</label>
                 <div className="email-format-options">
                   <label
                     className={`email-format-card ${emailFormat === 'docx' ? 'selected' : ''}`}
@@ -2531,7 +2621,7 @@ ${bankReference}
                     <div className="email-format-icon docx-badge">DOCX</div>
                     <div className="email-format-info">
                       <strong>קובץ Word (DOCX / DOC)</strong>
-                      <span>מסמך ניתן לעריכה ב-Microsoft Word (יורד אוטומטית למחשב לצירוף למייל)</span>
+                      <span>מסמך ניתן לעריכה ב-Microsoft Word (מצורף אוטומטית למייל ברקע)</span>
                     </div>
                   </label>
 
@@ -2549,30 +2639,9 @@ ${bankReference}
                     <div className="email-format-icon pdf-badge">PDF</div>
                     <div className="email-format-info">
                       <strong>קובץ PDF רשמי</strong>
-                      <span>מסמך מעוצב לקריאה והדפסה (פותח שמירה כ-PDF לצירוף למייל)</span>
+                      <span>מופק אוטומטית ברקע ומצורף ישירות למייל (ללא צורך בחלון הדפסה)</span>
                     </div>
                   </label>
-                </div>
-              </div>
-
-              {/* 3. Choose Mail App Mode */}
-              <div className="email-modal-field">
-                <label className="email-modal-label">אופן פתיחת המייל:</label>
-                <div className="email-client-pills">
-                  <button
-                    type="button"
-                    className={`email-client-pill ${emailClientMode === 'default' ? 'active' : ''}`}
-                    onClick={() => setEmailClientMode('default')}
-                  >
-                    תוכנת הדוא"ל במחשב (Outlook / Mail)
-                  </button>
-                  <button
-                    type="button"
-                    className={`email-client-pill ${emailClientMode === 'gmail' ? 'active' : ''}`}
-                    onClick={() => setEmailClientMode('gmail')}
-                  >
-                    פתיחה ב-Gmail בדפדפן
-                  </button>
                 </div>
               </div>
 
@@ -2585,9 +2654,176 @@ ${bankReference}
                 />
                 {hideStudentDetailsOnPrint ? <EyeOff size={16} /> : <Eye size={16} />}
                 <span>
-                  הפעל הגנת פרטיות בקובץ המיוצא (ראשי תיבות: <strong>{toHebrewAcronym(formData.name)}</strong> והשחרת ת.ז/טלפון/כתובת)
+                  הפעל הגנת פרטיות בקובץ המצורף (ראשי תיבות: <strong>{toHebrewAcronym(formData.name)}</strong> והשחרת ת.ז/טלפון/כתובת)
                 </span>
               </label>
+
+              {/* Direct Background Email Engine Status & One-Time Setup */}
+              <div className="email-engine-status-box">
+                <div className="email-engine-status-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span
+                      className={`engine-status-dot ${
+                        isDirectEmailEngineConfigured(localEngineDraft) ? 'ready' : 'pending'
+                      }`}
+                    />
+                    <strong style={{ fontSize: '12.5px', color: '#1e3a5f' }}>
+                      {isDirectEmailEngineConfigured(localEngineDraft)
+                        ? 'מנוע שליחה ישירה ברקע פעיל ומוכן (ללא פתיחת תוכנת מייל במחשב)'
+                        : 'הגדרה חד-פעמית של מנוע שליחה ישירה ברקע (Cloud Email Relay)'}
+                    </strong>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-toggle-engine-setup"
+                    onClick={() => setShowEngineSetupInModal(!showEngineSetupInModal)}
+                  >
+                    {showEngineSetupInModal ? 'הסתר הגדרות מנוע' : 'הגדרות מנוע שליחה ⚙️'}
+                  </button>
+                </div>
+
+                {showEngineSetupInModal && (
+                  <div className="email-engine-setup-panel">
+                    <div className="email-client-pills" style={{ marginBottom: '10px' }}>
+                      <button
+                        type="button"
+                        className={`email-client-pill ${
+                          localEngineDraft.provider !== 'emailjs' ? 'active' : ''
+                        }`}
+                        onClick={() =>
+                          setLocalEngineDraft({ ...localEngineDraft, provider: 'apps_script' })
+                        }
+                      >
+                        ⭐ מומלץ: Google Apps Script (חינמי, תומך בקבצי DOCX ו-PDF מלאים)
+                      </button>
+                      <button
+                        type="button"
+                        className={`email-client-pill ${
+                          localEngineDraft.provider === 'emailjs' ? 'active' : ''
+                        }`}
+                        onClick={() =>
+                          setLocalEngineDraft({ ...localEngineDraft, provider: 'emailjs' })
+                        }
+                      >
+                        EmailJS API
+                      </button>
+                    </div>
+
+                    {localEngineDraft.provider !== 'emailjs' ? (
+                      <div className="engine-setup-steps">
+                        <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#334155', lineHeight: 1.5 }}>
+                          כדי שהאתר ישלח מיילים עם קבצי Word ו-PDF מצורפים ישירות ברקע (בחינם וללא הגבלת גודל של ספקים חיצוניים), בצע/י הגדרה חד-פעמית של 60 שניות (נשמרת בענן לכל המשתמשים):
+                        </p>
+                        <ol style={{ margin: '0 0 10px 0', paddingRight: '18px', fontSize: '11.5px', color: '#1e293b', lineHeight: 1.55 }}>
+                          <li>
+                            פתח/י את{' '}
+                            <a
+                              href="https://script.google.com/home/start"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: '#2563eb', fontWeight: 700 }}
+                            >
+                              script.google.com
+                            </a>{' '}
+                            ולחץ/י על <strong>New Project (פרויקט חדש)</strong>.
+                          </li>
+                          <li>
+                            לחץ/י על הכפתור להעתקת קוד השליחה והדבק/י אותו במקום הקוד הקיים:
+                            <button
+                              type="button"
+                              onClick={handleCopyAppsScriptCode}
+                              className="btn-copy-script-inline"
+                            >
+                              {copiedAppsScript ? '✓ הקוד הועתק!' : '📋 העתק קוד Google Apps Script'}
+                            </button>
+                          </li>
+                          <li>
+                            לחץ/י למעלה על <strong>Deploy &rarr; New deployment</strong>, בחר/י סוג <strong>Web app</strong>, הגדר/י <em>Who has access</em> ל-<strong>Anyone</strong> ולחץ/י <strong>Deploy</strong>.
+                          </li>
+                          <li>העתק/י את כתובת ה-<strong>Web app URL</strong> והדבק/י כאן למטה:</li>
+                        </ol>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <input
+                            type="url"
+                            dir="ltr"
+                            value={localEngineDraft.appsScriptUrl || ''}
+                            onChange={(e) =>
+                              setLocalEngineDraft({
+                                ...localEngineDraft,
+                                appsScriptUrl: e.target.value
+                              })
+                            }
+                            placeholder="https://script.google.com/macros/s/.../exec"
+                            className="email-recipient-input"
+                            style={{ flex: 1, fontSize: '12.5px', padding: '8px 10px' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSaveEngineConfigInModal}
+                            className="btn-save-engine-inline"
+                          >
+                            שמור מנוע בענן
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="engine-setup-steps" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={localEngineDraft.emailjsServiceId || ''}
+                          onChange={(e) =>
+                            setLocalEngineDraft({
+                              ...localEngineDraft,
+                              emailjsServiceId: e.target.value
+                            })
+                          }
+                          placeholder="EmailJS Service ID (e.g. service_xxx)"
+                          className="email-recipient-input"
+                          style={{ fontSize: '12.5px', padding: '7px 10px' }}
+                        />
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={localEngineDraft.emailjsTemplateId || ''}
+                          onChange={(e) =>
+                            setLocalEngineDraft({
+                              ...localEngineDraft,
+                              emailjsTemplateId: e.target.value
+                            })
+                          }
+                          placeholder="EmailJS Template ID (e.g. template_xxx)"
+                          className="email-recipient-input"
+                          style={{ fontSize: '12.5px', padding: '7px 10px' }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input
+                            type="text"
+                            dir="ltr"
+                            value={localEngineDraft.emailjsPublicKey || ''}
+                            onChange={(e) =>
+                              setLocalEngineDraft({
+                                ...localEngineDraft,
+                                emailjsPublicKey: e.target.value
+                              })
+                            }
+                            placeholder="EmailJS Public Key"
+                            className="email-recipient-input"
+                            style={{ flex: 1, fontSize: '12.5px', padding: '7px 10px' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSaveEngineConfigInModal}
+                            className="btn-save-engine-inline"
+                          >
+                            שמור מנוע בענן
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {emailError && <div className="email-modal-error">{emailError}</div>}
               {emailStatusMsg && <div className="email-modal-success">{emailStatusMsg}</div>}
@@ -2596,19 +2832,21 @@ ${bankReference}
                 <button
                   type="button"
                   className="btn-download-only"
-                  onClick={() => {
+                  disabled={isSendingEmail}
+                  onClick={async () => {
                     handleSaveProgress();
                     if (emailFormat === 'docx') {
                       downloadWordFile();
                       setEmailStatusMsg(`קובץ ה-Word הורד למחשב שלך (${getSafeReportFilename('doc')}).`);
                     } else {
-                      handlePrintDocument();
-                      setEmailStatusMsg('חלון השמירה כ-PDF נפתח.');
+                      setEmailStatusMsg('מפיק ומוריד קובץ PDF ישירות למחשב...');
+                      await downloadPdfFileDirectly();
+                      setEmailStatusMsg(`קובץ ה-PDF הורד למחשב שלך (${getSafeReportFilename('pdf')}).`);
                     }
                   }}
                 >
                   <Download size={16} />
-                  <span>הורד קובץ {emailFormat === 'docx' ? 'Word' : 'PDF'} בלבד</span>
+                  <span>הורד קובץ {emailFormat === 'docx' ? 'Word' : 'PDF'} למחשב</span>
                 </button>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -2616,12 +2854,17 @@ ${bankReference}
                     type="button"
                     className="btn-cancel-modal"
                     onClick={() => setShowEmailModal(false)}
+                    disabled={isSendingEmail}
                   >
                     סגור
                   </button>
-                  <button type="submit" className="btn-submit-email">
+                  <button type="submit" className="btn-submit-email" disabled={isSendingEmail}>
                     <Send size={16} />
-                    <span>הפק קובץ ופתח מייל לשליחה</span>
+                    <span>
+                      {isSendingEmail
+                        ? `מפיק קובץ ${emailFormat.toUpperCase()} ושולח ברקע...`
+                        : `שלח דוח במייל כעת (${emailFormat.toUpperCase()})`}
+                    </span>
                   </button>
                 </div>
               </div>

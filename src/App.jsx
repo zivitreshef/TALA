@@ -52,6 +52,10 @@ import {
   saveStudentToCloud,
   deleteStudentFromCloud
 } from './firebaseBackend';
+import {
+  loadEmailEngineConfig,
+  saveEmailEngineConfig
+} from './emailService';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
 
@@ -88,6 +92,15 @@ export default function App() {
       return false;
     }
   });
+
+  // Direct Background Email Engine configuration (synced across cloud for all users)
+  const [emailEngineConfig, setEmailEngineConfig] = useState(() => loadEmailEngineConfig());
+
+  const handleUpdateEmailEngineConfig = (nextCfg) => {
+    const saved = saveEmailEngineConfig(nextCfg);
+    setEmailEngineConfig(saved);
+    saveSettingsToCloud({ emailEngineConfig: saved });
+  };
 
   const handleChangeEnforcePasswordPolicy = (enabled) => {
     const nextVal = Boolean(enabled);
@@ -283,6 +296,10 @@ export default function App() {
             ADMIN_REQUESTS_STORAGE_KEY,
             JSON.stringify(settings.adminRequests)
           );
+        }
+        if (settings?.emailEngineConfig && typeof settings.emailEngineConfig === 'object') {
+          const syncedEmailCfg = saveEmailEngineConfig(settings.emailEngineConfig);
+          setEmailEngineConfig(syncedEmailCfg);
         }
       },
       onSyncStatusChange: (statusObj) => {
@@ -968,6 +985,8 @@ export default function App() {
               onSaveStudentPlan={handleSaveStudentPlan}
               onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
               onDraftStateChange={setUnsavedDraftState}
+              emailEngineConfig={emailEngineConfig}
+              onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
             />
           ) : (
             <div className="empty-student-selection">
@@ -1010,6 +1029,8 @@ export default function App() {
           adminRequests={adminRequests}
           onDismissAdminRequest={handleDismissAdminRequest}
           cloudSyncState={cloudSyncState}
+          emailEngineConfig={emailEngineConfig}
+          onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
         />
       )}
 
