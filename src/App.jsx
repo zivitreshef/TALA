@@ -453,7 +453,7 @@ export default function App() {
       date: todayStr,
       schoolYear: 'תשפ"ו (2025-2026)',
       planType: 'תל"א (תוכנית לימודים אישית)',
-      name: 'תלמיד/ה חדש/ה',
+      name: '',
       gender: 'boy',
       idNumber: '',
       birthDate: '',
