@@ -2509,7 +2509,7 @@ ${goalsContext}
             <label>שם הילד/ה:</label>
             <input
               type="text"
-              value={formData.name || ''}
+              value={formData.name === 'תלמיד/ה חדש/ה' ? '' : (formData.name || '')}
               onChange={(e) => handleFieldChange('name', e.target.value)}
               placeholder="שם פרטי ושם משפחה"
             />

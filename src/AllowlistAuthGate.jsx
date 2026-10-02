@@ -8,7 +8,6 @@ import {
   UserCheck,
   Plus,
   Trash2,
-  Copy,
   Check,
   X,
   Sparkles,
@@ -698,7 +697,6 @@ export function AdminAllowlistModal({
   const [showEditingPassword, setShowEditingPassword] = useState(false);
   const [rowPasswordError, setRowPasswordError] = useState('');
   const [passwordSavedToastId, setPasswordSavedToastId] = useState(null);
-  const [copiedConfig, setCopiedConfig] = useState(false);
 
   if (!isOpen) return null;
 
@@ -931,13 +929,6 @@ export function AdminAllowlistModal({
     if (window.confirm('האם להסיר משתמש זה לצמיתות מרשימת המורשים? (ניתן גם להשבית זמנית במקום למחוק)')) {
       onUpdateAllowedUsers(allowedUsers.filter((u) => u.id !== id));
     }
-  };
-
-  const handleCopyConfigCode = () => {
-    const code = `export const DEFAULT_ALLOWED_USERS = ${JSON.stringify(allowedUsers, null, 2)};`;
-    navigator.clipboard.writeText(code);
-    setCopiedConfig(true);
-    setTimeout(() => setCopiedConfig(false), 2500);
   };
 
   return (
@@ -1647,11 +1638,7 @@ export function AdminAllowlistModal({
           </div>
         </div>
 
-        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <button type="button" className="btn-secondary-sm" onClick={handleCopyConfigCode}>
-            {copiedConfig ? <Check size={15} /> : <Copy size={15} />}
-            <span>{copiedConfig ? 'הועתק לקליפבורד!' : 'העתק קוד הגדרת מורשים ל-GitHub'}</span>
-          </button>
+        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <button type="button" className="btn-primary-sm" onClick={onClose}>
             סגור ושמור
           </button>
