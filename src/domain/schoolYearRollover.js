@@ -60,6 +60,9 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
   const newYearReport = {
     date: todayStr,
     planType: sourceReport.planType || studentObj.planType || 'תל"א (תוכנית לימודים אישית)',
+    isLocked: false,
+    lockedAt: '',
+    lockedBy: '',
     teacherFreeText: sourceReport.teacherFreeText || studentObj.teacherFreeText || '',
     strengthsExisting: sourceReport.strengthsExisting || studentObj.strengthsExisting || '',
     strengthsToEmpower: sourceReport.strengthsToEmpower || studentObj.strengthsToEmpower || '',
@@ -97,6 +100,9 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
       [fromYear]: {
         date: sourceReport.date || studentObj.date || todayStr,
         planType: sourceReport.planType || studentObj.planType || 'תל"א (תוכנית לימודים אישית)',
+        isLocked: Boolean(sourceReport.isLocked),
+        lockedAt: sourceReport.lockedAt || '',
+        lockedBy: sourceReport.lockedBy || '',
         teacherFreeText: sourceReport.teacherFreeText || '',
         strengthsExisting: sourceReport.strengthsExisting || '',
         strengthsToEmpower: sourceReport.strengthsToEmpower || '',

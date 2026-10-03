@@ -8,6 +8,7 @@ import {
   canArchiveStudent,
   canRestoreStudent,
   canShareStudent,
+  canLockReport,
   getStudentsForUser,
   getArchivedStudentsForUser
 } from '../domain/permissions';
@@ -63,7 +64,7 @@ describe('Permissions & Shared Student Guards', () => {
     archived: false
   };
 
-  it('allows owner teacher full permissions including delete and archive', () => {
+  it('allows owner teacher full permissions including delete, archive, and lock/unlock report', () => {
     expect(isStudentOwnedByUser(student, ownerTeacher)).toBe(true);
     expect(isStudentSharedWithUser(student, ownerTeacher)).toBe(false);
     expect(canViewStudent(student, ownerTeacher)).toBe(true);
@@ -72,9 +73,10 @@ describe('Permissions & Shared Student Guards', () => {
     expect(canArchiveStudent(student, ownerTeacher)).toBe(true);
     expect(canRestoreStudent(student, ownerTeacher)).toBe(true);
     expect(canShareStudent(student, ownerTeacher)).toBe(true);
+    expect(canLockReport(student, ownerTeacher)).toBe(true);
   });
 
-  it('allows shared teacher to view and edit, but strictly blocks delete, archive, restore, and share', () => {
+  it('allows shared teacher to view and edit, but strictly blocks delete, archive, restore, share, and lock/unlock toggle', () => {
     expect(isStudentOwnedByUser(student, sharedTeacher)).toBe(false);
     expect(isStudentSharedWithUser(student, sharedTeacher)).toBe(true);
     expect(canViewStudent(student, sharedTeacher)).toBe(true);
@@ -83,6 +85,7 @@ describe('Permissions & Shared Student Guards', () => {
     expect(canArchiveStudent(student, sharedTeacher)).toBe(false);
     expect(canRestoreStudent(student, sharedTeacher)).toBe(false);
     expect(canShareStudent(student, sharedTeacher)).toBe(false);
+    expect(canLockReport(student, sharedTeacher)).toBe(false);
   });
 
   it('denies all permissions to unrelated teachers', () => {
@@ -90,6 +93,7 @@ describe('Permissions & Shared Student Guards', () => {
     expect(canEditStudent(student, unrelatedTeacher)).toBe(false);
     expect(canDeleteStudent(student, unrelatedTeacher)).toBe(false);
     expect(canArchiveStudent(student, unrelatedTeacher)).toBe(false);
+    expect(canLockReport(student, unrelatedTeacher)).toBe(false);
   });
 
   it('filters active and archived students accurately for owner and shared teachers', () => {
@@ -277,6 +281,9 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
       name: 'יונתן',
       schoolYear: prevYear,
       archived: true,
+      isLocked: true,
+      lockedAt: '01/05/2026',
+      lockedBy: 'teacher1@tala.edu.il',
       goals: [
         {
           id: 'g1',
@@ -291,7 +298,10 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     const rolled = buildRolloverStudentForNextYear(st, prevYear, nextYear);
     expect(rolled.archived).toBe(false);
     expect(rolled.schoolYear).toBe(nextYear);
+    expect(rolled.isLocked).toBe(false);
     expect(rolled.reportsByYear[prevYear]).toBeDefined();
+    expect(rolled.reportsByYear[prevYear].isLocked).toBe(true);
+    expect(rolled.reportsByYear[nextYear].isLocked).toBe(false);
     expect(rolled.goals[0].activityParticipation).toContain('רצף מתכנית');
   });
 
