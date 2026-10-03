@@ -3487,3 +3487,80 @@ body {
   font-size: 13px;
   color: var(--text-muted);
 }
+
+/* === AI ANALYSIS BUSY INDICATOR === */
+@keyframes tala-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes tala-progress-slide {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.tala-spin-icon {
+  animation: tala-spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+.btn-submit-generate-summary:disabled {
+  cursor: wait;
+  opacity: 0.92;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+}
+
+.ai-busy-indicator-card {
+  margin-top: 12px;
+  background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+  border: 1.5px solid #c4b5fd;
+  border-radius: 10px;
+  padding: 13px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.1);
+}
+
+.ai-busy-indicator-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #4c1d95;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ai-busy-indicator-sub {
+  font-size: 12.5px;
+  color: #5b21b6;
+  margin-right: 28px;
+  line-height: 1.45;
+}
+
+.ai-busy-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #ddd6fe;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ai-busy-progress-bar {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 35%, #38bdf8 50%, #8b5cf6 65%, #6366f1 100%);
+  background-size: 200% 100%;
+  animation: tala-progress-slide 1.8s linear infinite;
+}
+

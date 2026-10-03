@@ -23,6 +23,7 @@ import {
   Download,
   Users,
   Calendar,
+  Loader2,
   X
 } from 'lucide-react';
 import {
@@ -43,7 +44,10 @@ import {
   maskSensitiveValue,
   redactStudentNameInText,
   getNextSchoolYear,
-  buildRolloverStudentForNextYear
+  buildRolloverStudentForNextYear,
+  STATUS_REPORT_SECTIONS_SCHEMA,
+  sanitizeStatusReportSections,
+  generateStatusReportLocally
 } from './goalBankData';
 import {
   GOOGLE_APPS_SCRIPT_TEMPLATE,
@@ -64,6 +68,8 @@ const extractYearReportFromFormData = (data) => ({
   recommendations: data?.recommendations || '',
   evalReportFreeText: data?.evalReportFreeText || '',
   evalReportSummary: data?.evalReportSummary || '',
+  statusReportSections: Array.isArray(data?.statusReportSections) ? data.statusReportSections : [],
+  statusReportUpdatedAt: data?.statusReportUpdatedAt || '',
   lastSavedAt: data?.lastSavedAt || '',
   goals: (data?.goals || []).map((g) => adaptGoalToGender(g, data?.gender || 'boy'))
 });
@@ -86,6 +92,7 @@ const hasContentInYearReport = (rep) => {
       (rep.recommendations && rep.recommendations.trim()) ||
       (rep.evalReportFreeText && rep.evalReportFreeText.trim()) ||
       (rep.evalReportSummary && rep.evalReportSummary.trim()) ||
+      (Array.isArray(rep.statusReportSections) && rep.statusReportSections.length > 0) ||
       (rep.goals || []).some(
         (g) => (g.title && g.title.trim()) || (g.objectives && g.objectives.trim())
       )
@@ -108,6 +115,7 @@ export default function EcologicalWorkPlanForm({
 }) {
   const containerRef = useRef(null);
   const evalReportSectionRef = useRef(null);
+  const statusReportSectionRef = useRef(null);
 
   const buildNormalizedStudentData = (st) => {
     const initialGender = st?.gender || 'boy';
@@ -117,6 +125,9 @@ export default function EcologicalWorkPlanForm({
     );
     const existingReports = { ...(st?.reportsByYear || {}) };
     const initialRemovedAiGoals = Array.isArray(st?.removedAiGoals) ? st.removedAiGoals : [];
+    const initialStatusReportSections = Array.isArray(st?.statusReportSections)
+      ? st.statusReportSections
+      : [];
     existingReports[currentYear] = {
       date: st?.date || new Date().toLocaleDateString('he-IL'),
       planType: st?.planType || 'תל"א (תוכנית לימודים אישית)',
@@ -128,6 +139,8 @@ export default function EcologicalWorkPlanForm({
       recommendations: st?.recommendations || '',
       evalReportFreeText: st?.evalReportFreeText || '',
       evalReportSummary: st?.evalReportSummary || '',
+      statusReportSections: initialStatusReportSections,
+      statusReportUpdatedAt: st?.statusReportUpdatedAt || '',
       lastSavedAt: st?.lastSavedAt || '',
       goals: normalizedGoals
     };
@@ -140,6 +153,8 @@ export default function EcologicalWorkPlanForm({
       removedAiGoals: initialRemovedAiGoals,
       evalReportFreeText: st?.evalReportFreeText || '',
       evalReportSummary: st?.evalReportSummary || '',
+      statusReportSections: initialStatusReportSections,
+      statusReportUpdatedAt: st?.statusReportUpdatedAt || '',
       sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
       goals: normalizedGoals,
       reportsByYear: existingReports
@@ -153,11 +168,29 @@ export default function EcologicalWorkPlanForm({
   const [autoSavedTime, setAutoSavedTime] = useState('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
+  const [reverseEngineerStepIdx, setReverseEngineerStepIdx] = useState(0);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
   const [showFullDocPreview, setShowFullDocPreview] = useState(false);
   const [isFreeTextCollapsed, setIsFreeTextCollapsed] = useState(() =>
     isRawFreeTextAlreadyAnalyzed(student)
   );
+
+  const AI_BUSY_STEPS = [
+    'שלב 1/3: מנתח את התיאור החופשי ומזהה מוקדי כוח, תחומי תפקוד ואתגרים של הילד/ה...',
+    'שלב 2/3: מתאים מטרות ויעדים לפי גיל ורמת הילד/ה ומחשב משך זמן יחסי (T-Shirt Size)...',
+    'שלב 3/3: מנסח בעברית פדגוגית תקנית את טבלת המטרות, היעדים ופרק ההמלצות...'
+  ];
+
+  useEffect(() => {
+    if (!isReverseEngineering) {
+      setReverseEngineerStepIdx(0);
+      return;
+    }
+    const stepTimer = setInterval(() => {
+      setReverseEngineerStepIdx((prev) => (prev + 1) % 3);
+    }, 1800);
+    return () => clearInterval(stepTimer);
+  }, [isReverseEngineering]);
 
   // State for Separate Mid-Year / End-of-Year Evaluation Report & AI Processing
   const [showEvalReportSection, setShowEvalReportSection] = useState(false);
@@ -165,7 +198,31 @@ export default function EcologicalWorkPlanForm({
   const [evalAiSuccessKey, setEvalAiSuccessKey] = useState(null);
   const [isProcessingFullEvalAi, setIsProcessingFullEvalAi] = useState(false);
   const [evalReportAiBanner, setEvalReportAiBanner] = useState('');
-  const [emailReportMode, setEmailReportMode] = useState('tala'); // 'tala' | 'eval'
+  const [emailReportMode, setEmailReportMode] = useState('tala'); // 'tala' | 'eval' | 'status'
+
+  // State for Separate Status Report ("דו"ח מצב")
+  const [showStatusReportSection, setShowStatusReportSection] = useState(false);
+  const [isGeneratingStatusReport, setIsGeneratingStatusReport] = useState(false);
+  const [statusReportStepIdx, setStatusReportStepIdx] = useState(0);
+  const [statusReportBanner, setStatusReportBanner] = useState('');
+  const [selectedNewStatusSectionNum, setSelectedNewStatusSectionNum] = useState('');
+
+  const STATUS_REPORT_BUSY_STEPS = [
+    'שלב 1/3: אוסף ומצליב נתונים מכרטיס התלמיד/ה, המטרות והערכת מחצית / סוף שנה...',
+    'שלב 2/3: מסנן סעיפים ללא מידע כדי למנוע השערות ומארגן את תמונת התפקוד העדכנית...',
+    'שלב 3/3: מנסח דו"ח מצב חינוכי-תפקודי מקצועי, מכבד וקוהרנטי...'
+  ];
+
+  useEffect(() => {
+    if (!isGeneratingStatusReport) {
+      setStatusReportStepIdx(0);
+      return;
+    }
+    const stepTimer = setInterval(() => {
+      setStatusReportStepIdx((prev) => (prev + 1) % 3);
+    }, 1800);
+    return () => clearInterval(stepTimer);
+  }, [isGeneratingStatusReport]);
 
   // State for lightweight Team Sharing modal (Option C)
   const [showShareModal, setShowShareModal] = useState(false);
@@ -211,6 +268,7 @@ export default function EcologicalWorkPlanForm({
     setExpandedEvalMap({});
     setAutoSavedTime('');
     setEvalReportAiBanner('');
+    setStatusReportBanner('');
   }, [student?.id]);
 
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
@@ -282,7 +340,7 @@ export default function EcologicalWorkPlanForm({
       clearTimeout(timer);
       window.removeEventListener('resize', resizeAllTextareas);
     };
-  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection, isFreeTextCollapsed]);
+  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection, showStatusReportSection, isFreeTextCollapsed]);
 
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
@@ -368,6 +426,10 @@ export default function EcologicalWorkPlanForm({
           recommendations: existingTargetReport.recommendations || '',
           evalReportFreeText: existingTargetReport.evalReportFreeText || '',
           evalReportSummary: existingTargetReport.evalReportSummary || '',
+          statusReportSections: Array.isArray(existingTargetReport.statusReportSections)
+            ? existingTargetReport.statusReportSections
+            : [],
+          statusReportUpdatedAt: existingTargetReport.statusReportUpdatedAt || '',
           lastSavedAt: existingTargetReport.lastSavedAt || '',
           goals: (existingTargetReport.goals || []).map((g) =>
             adaptGoalToGender(g, genderToUse)
@@ -401,6 +463,8 @@ export default function EcologicalWorkPlanForm({
         recommendations: '',
         evalReportFreeText: '',
         evalReportSummary: '',
+        statusReportSections: [],
+        statusReportUpdatedAt: '',
         lastSavedAt: '',
         goals: [freshGoal]
       };
@@ -1109,6 +1173,9 @@ ${bankReference}
   "recommendations": "..."
 }`;
 
+      // Yield briefly so the busy indicator renders immediately
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
       const parsed = await callGeminiJson(prompt);
       if (
         parsed &&
@@ -1184,6 +1251,9 @@ ${bankReference}
     }
 
     // 2. Coherent Built-in Hebrew Pedagogical NLP & Synthesis Engine
+    // Give the busy indicator time to display clearly so the teacher sees the analysis in progress
+    await new Promise((resolve) => setTimeout(resolve, 1400));
+
     const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
     if (engineered) {
       const updated = {
@@ -1358,6 +1428,8 @@ ${rawText}
       }
     }
 
+    await new Promise((resolve) => setTimeout(resolve, 900));
+
     const localResult = refineGoalEvaluationLocally(rawText, goalRow, genderToUse, fieldName);
     setFormData((prev) => ({
       ...prev,
@@ -1427,6 +1499,8 @@ ${goalsContext}
   ]
 }`;
 
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
       const parsed = await callGeminiJson(prompt);
       if (parsed && parsed.evalReportSummary) {
         const evalById = {};
@@ -1463,6 +1537,8 @@ ${goalsContext}
     }
 
     // Built-in Hebrew Pedagogical Evaluation Synthesis Fallback
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+
     const isGirl = genderToUse === 'girl';
     const cleanGeneral = adaptTextToGender(rawText.replace(/\s+/g, ' ').trim(), genderToUse).replace(/\.$/, '');
     const synthesizedSummary = isGirl
@@ -1489,6 +1565,212 @@ ${goalsContext}
     setEvalReportAiBanner('✨ דוח הערכת מחצית / סוף שנה עובד ונוסח בהצלחה עבור מטרות התלמיד/ה!');
   };
 
+  // === Generate Professional Educational-Functional Status Report ("דו"ח מצב עדכני") ===
+  const handleGenerateStatusReport = async () => {
+    setIsGeneratingStatusReport(true);
+    setStatusReportBanner('');
+
+    const genderToUse = formData.gender || 'boy';
+    const isGirl = genderToUse === 'girl';
+    const validGoals = (formData.goals || []).filter((g) => !isGoalEmpty(g));
+    const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
+
+    const hasEvalData = Boolean(
+      (formData.evalReportFreeText || '').trim() ||
+        (formData.evalReportSummary || '').trim() ||
+        validGoals.some(
+          (g) =>
+            (g.achievementStatus && g.achievementStatus.trim()) ||
+            (g.midYearEvaluation && g.midYearEvaluation.trim()) ||
+            (g.endYearEvaluation && g.endYearEvaluation.trim())
+        )
+    );
+
+    if (geminiApiKey && geminiApiKey.trim()) {
+      const studentCardPayload = {
+        name: formData.name && formData.name !== 'תלמיד/ה חדש/ה' ? formData.name : '',
+        gender: isGirl ? 'נקבה (בת)' : 'זכר (בן)',
+        birthDate: formData.birthDate || '',
+        calculatedAge: dateInfo.ageYears !== null ? dateInfo.ageDescription : '',
+        educationalFramework: formData.educationalFramework || '',
+        schoolYear: formData.schoolYear || '',
+        reportDate: formData.date || '',
+        planType: formData.planType || '',
+        teacherFreeText: formData.teacherFreeText || '',
+        strengthsExisting: formData.strengthsExisting || '',
+        strengthsToEmpower: formData.strengthsToEmpower || '',
+        recommendations: formData.recommendations || '',
+        goals: validGoals.map((g, idx) => ({
+          goalNumber: idx + 1,
+          environment: g.environment || '',
+          activityParticipation: g.activityParticipation || '',
+          title: g.title || '',
+          objectives: g.objectives || '',
+          opportunities: g.opportunities || '',
+          partners: g.partners || '',
+          duration: g.duration || '',
+          evaluationCriteria: g.evaluationCriteria || '',
+          achievementStatus: g.achievementStatus || '',
+          midYearEvaluation: g.midYearEvaluation || '',
+          endYearEvaluation: g.endYearEvaluation || ''
+        })),
+        midAndEndYearEvaluationReport: {
+          exists: hasEvalData,
+          evalReportFreeText: formData.evalReportFreeText || '',
+          evalReportSummary: formData.evalReportSummary || ''
+        }
+      };
+
+      const prompt = `אתה משמש כמומחה לכתיבת דו״חות חינוכיים-תפקודיים מקצועיים.
+
+עליך ליצור **דו"ח מצב עדכני ומקצועי עבור התלמיד/ה (${isGirl ? 'בלשון נקבה' : 'בלשון זכר'})**, המבוסס **אך ורק על המידע הקיים בכרטיס התלמיד, במטרות שהוגדרו עבורו, ובמידע המופיע בתוך "הערכת מחצית / סוף שנה", ככל שקיים**.
+
+### כללי עבודה מחייבים
+1. **אין להמציא מידע.** אין להוסיף פרטים, אבחנות, יכולות, קשיים, טיפולים, התנהגויות או מסקנות שאינם מופיעים במידע שסופק.
+2. **אם מידע מסוים אינו קיים – אין להתייחס אליו.** אין לכתוב "לא ידוע", "לא קיים מידע", "לא נמסר" או ניסוחים דומים, אלא פשוט להשמיט את הסעיף או את התת-סעיף.
+3. יש להשתמש במידע מתוך **"הערכת מחצית / סוף שנה"** כאשר הוא קיים ורלוונטי לדו"ח, ולשלב אותו באופן טבעי בתיאור המצב הנוכחי.
+4. כאשר קיימים מספר מקורות מידע או עדכונים לאורך זמן, יש להעדיף את **המידע העדכני ביותר**, אך ניתן להשתמש במידע קודם כדי לתאר נקודת מוצא, תהליך או התקדמות.
+5. אין להסיק אבחנות או מסקנות קליניות שאינן כתובות במפורש במידע המקורי.
+6. אין להשתמש בשפה שיפוטית, ביקורתית או מתייגת. יש להשתמש בשפה מקצועית, מכבדת, עניינית וניטרלית.
+7. יש להבחין בין:
+   - מידע עובדתי שנמסר על התלמיד.
+   - תיאור תפקוד שנצפה או דווח.
+   - התקדמות שניתן לזהות מהמידע הקיים.
+   - מטרות שהוגדרו לתלמיד.
+   אין להציג השערה או פרשנות כאילו היא עובדה.
+8. יש להימנע מחזרות מיותרות. אם מידע מסוים רלוונטי למספר תחומים, שלב אותו באופן תמציתי בכל מקום שבו הוא משמעותי.
+9. הדו"ח צריך לתאר את **מצבו הנוכחי של התלמיד**, ולא להיות רשימה טכנית של הנתונים שהוזנו.
+10. כתוב בעברית מקצועית, ברורה, טבעית וזורמת.
+11. אין להוסיף סעיפים חדשים מעבר למבנה המוגדר להלן.
+12. אם אין מספיק מידע כדי למלא סעיף מסוים, השמט אותו לחלוטין (אל תכלול אותו במערך "sections" ב-JSON).
+
+### מבנה הדו"ח (כלול במערך "sections" אך ורק סעיפים מתוך 1-15 שיש עבורם מידע מבוסס בנתונים!):
+1. פרטים מזהים ורקע כללי (גיל, מסגרת, כיתה / גן, ותק במסגרת, סיבת הדיווח – רק אם קיים מידע)
+2. רקע התפתחותי ואבחוני רלוונטי (אבחנות, טיפולים, מידע רפואי / התפתחותי המשפיע על התפקוד – רק אם קיים מידע)
+3. תיאור תפקוד כללי במסגרת (השתלבות בשגרת היום, רמת עצמאות, צורך בתיווך ובסיוע – רק על בסיס מידע קיים)
+4. תחום לימודי / קוגניטיבי (הבנת הוראות, למידה, קשב והתמדה, שפה, קריאה וכתיבה, חשבון, קצב ועצמאות בלמידה – רק לנושאים שלגביהם קיים מידע)
+5. תחום שפתי ותקשורתי (הבנה, הבעה, אוצר מילים, ניהול שיח, תקשורת עם מבוגרים וילדים)
+6. תחום חברתי (יצירת קשר, משחק, השתתפות בקבוצה, יוזמה חברתית, הבנת מצבים חברתיים, פתרון קונפליקטים)
+7. תחום רגשי והתנהגותי (ויסות, התמודדות עם תסכול, גמישות, תגובה לשינויים, התנהגויות מאתגרות והנסיבות שבהן הן מופיעות)
+8. תפקודי עצמאות והתארגנות (התארגנות, מעברים, אכילה ושירותים בהתאם לגיל ולרלוונטיות, שימוש בציוד, ביצוע שגרות)
+9. חוזקות ותחומי עניין (יכולות בולטות, תחומי עניין, תנאים שבהם הילד מצליח במיוחד)
+10. מענים והתערבויות שניתנו (מה ניתן, באיזו תדירות ולמשך כמה זמן, התאמות ותיווך, מי סיפק את המענה – רק אם המידע קיים)
+11. התקדמות בעקבות ההתערבות (נקודת מוצא, שינויים שהתרחשו, מה הילד עושה כיום, מה עדיין דורש סיוע – רק כאשר קיים מידע המאפשר זאת; אין לטעון שהתרחשה התקדמות אם אין מידע המאפשר לקבוע זאת)
+12. רמת התמיכה הנדרשת כיום (מה מבצע באופן עצמאי, מה דורש תזכורת / רמז, מה דורש תיווך או סיוע משמעותי, באילו מצבים התמיכה נדרשת)
+13. השפעת הקשיים על ההשתתפות והתפקוד (למידה, השתתפות בפעילויות, עצמאות, קשרים חברתיים, השתלבות במסגרת – רק השפעות הנתמכות במידע)
+14. מטרות להמשך (מבוסס על המטרות שהוגדרו לתלמיד ועל מידע רלוונטי הקיים בהערכת מחצית / סוף שנה: יעדים מרכזיים, סדרי עדיפויות, מדדי הצלחה; אין להמציא מטרות חדשות ואם לא הוגדרו מדדי הצלחה אין להמציא מדדים)
+15. סיכום והמלצות מקצועיות (תמונת התפקוד הכוללת, צרכים מרכזיים, התאמות ומענים הנדרשים להמשך – מבוסס על המידע הקיים בלבד)
+
+### הנחיה חשובה לגבי "הערכת מחצית / סוף שנה"
+לפני כתיבת הדו"ח, בדוק האם קיימת עבור התלמיד "הערכת מחצית / סוף שנה" (שדה midAndEndYearEvaluationReport.exists או הערכות במטרות).
+- אם קיימת: השתמש במידע שבה כחלק מרכזי מתיאור המצב, זהה מידע המתאר את התפקוד הנוכחי, זהה שינויים או התקדמות ביחס למצב קודם רק כאשר הדבר מתועד, ושלב את המידע בסעיפים המתאימים במקום להעתיק את ההערכה כמות שהיא.
+- אם אינה קיימת: התבסס רק על שאר המידע הזמין (והשמט את סעיף 11 אם אין תיעוד על התקדמות).
+
+### סגנון הכתיבה
+הדו"ח צריך להישמע כאילו נכתב על ידי איש מקצוע שמכיר את התלמיד ואת תפקודו במסגרת. השתמש בפסקאות מקצועיות וקוהרנטיות, ולא ברשימת מילות מפתח. הכלל החשוב ביותר: עדיף להשמיט מידע חסר מאשר להשלים אותו באמצעות הנחה או המצאה.
+
+נתוני כרטיס התלמיד/ה, המטרות והערכת מחצית/סוף שנה:
+${JSON.stringify(studentCardPayload, null, 2)}
+
+החזר JSON תקין בלבד במבנה הבא (ללא סעיפים חסרי מידע!):
+{
+  "sections": [
+    {
+      "sectionNumber": 1,
+      "title": "פרטים מזהים ורקע כללי",
+      "content": "..."
+    }
+  ]
+}`;
+
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      const parsed = await callGeminiJson(prompt);
+      if (parsed && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+        const sanitized = sanitizeStatusReportSections(parsed.sections, genderToUse);
+        if (sanitized.length > 0) {
+          const nowStamp = new Date().toLocaleTimeString('he-IL', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          const updated = {
+            ...formData,
+            statusReportSections: sanitized,
+            statusReportUpdatedAt: nowStamp
+          };
+          setFormData(updated);
+          onSaveStudentPlan(updated);
+          setIsGeneratingStatusReport(false);
+          setStatusReportBanner(
+            `✨ דו"ח המצב הופק בהצלחה ב-Gemini AI (${sanitized.length} סעיפים מבוססי-מידע מתוך כרטיס התלמיד/ה${hasEvalData ? ' והערכת מחצית/סוף שנה' : ''}; סעיפים ללא מידע הושמטו אוטומטית).`
+          );
+          return;
+        }
+      }
+    }
+
+    // Built-in Deterministic Pedagogical Status Report Generator
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    const localSections = generateStatusReportLocally(formData);
+    const nowStamp = new Date().toLocaleTimeString('he-IL', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const updated = {
+      ...formData,
+      statusReportSections: localSections,
+      statusReportUpdatedAt: nowStamp
+    };
+    setFormData(updated);
+    onSaveStudentPlan(updated);
+    setIsGeneratingStatusReport(false);
+    setStatusReportBanner(
+      `✨ דו"ח המצב העדכני הופק בהצלחה (${localSections.length} סעיפים מבוססי-מידע מתוך כרטיס התלמיד/ה${hasEvalData ? ' והערכת מחצית/סוף שנה' : ''}; סעיפים ללא מידע הושמטו אוטומטית).`
+    );
+  };
+
+  const handleUpdateStatusSectionContent = (sectionNumber, newContent) => {
+    setFormData((prev) => ({
+      ...prev,
+      statusReportSections: (prev.statusReportSections || []).map((sec) =>
+        sec.sectionNumber === sectionNumber ? { ...sec, content: newContent } : sec
+      )
+    }));
+  };
+
+  const handleRemoveStatusSection = (sectionNumber) => {
+    setFormData((prev) => ({
+      ...prev,
+      statusReportSections: (prev.statusReportSections || []).filter(
+        (sec) => sec.sectionNumber !== sectionNumber
+      )
+    }));
+  };
+
+  const handleAddManualStatusSection = (sectionNumber) => {
+    const num = Number(sectionNumber);
+    if (!num) return;
+    const schemaItem = STATUS_REPORT_SECTIONS_SCHEMA.find((s) => s.sectionNumber === num);
+    if (!schemaItem) return;
+    setFormData((prev) => {
+      const current = prev.statusReportSections || [];
+      if (current.some((s) => s.sectionNumber === num)) return prev;
+      const next = [
+        ...current,
+        {
+          id: `status_sec_${num}`,
+          sectionNumber: num,
+          title: schemaItem.title,
+          content: ''
+        }
+      ].sort((a, b) => a.sectionNumber - b.sectionNumber);
+      return {
+        ...prev,
+        statusReportSections: next
+      };
+    });
+    setSelectedNewStatusSectionNum('');
+  };
+
   // === Build Official Document HTML (with or without Privacy Redaction) ===
   const getFullDocTitle = () => {
     return formData.planType
@@ -1498,6 +1780,10 @@ ${goalsContext}
 
   const getEvalReportTitle = () => {
     return 'דוח הערכת מחצית / סוף שנה';
+  };
+
+  const getStatusReportTitle = () => {
+    return 'דו"ח מצב חינוכי-תפקודי עדכני';
   };
 
   const getDisplayStudentName = () => {
@@ -1799,7 +2085,12 @@ ${goalsContext}
   const getSafeReportFilename = (ext = 'doc', mode = 'tala') => {
     const displayName = getDisplayStudentName().replace(/[^a-zA-Z0-9א-ת_-]/g, '_');
     const yearStr = (formData.schoolYear || '2026').replace(/[^a-zA-Z0-9א-ת_-]/g, '_');
-    const prefix = mode === 'eval' ? 'דוח_הערכת_מחצית_וסוף_שנה' : 'תוכנית_עבודה';
+    const prefix =
+      mode === 'status'
+        ? 'דוח_מצב'
+        : mode === 'eval'
+        ? 'דוח_הערכת_מחצית_וסוף_שנה'
+        : 'תוכנית_עבודה';
     return `${prefix}_${displayName}_${yearStr}.${ext}`;
   };
 
@@ -2291,8 +2582,287 @@ ${goalsContext}
     }, 400);
   };
 
+  // === Build & Print Separate Status Report ("דו"ח מצב חינוכי-תפקודי עדכני") ===
+  const getActiveStatusReportSections = () => {
+    const existing = Array.isArray(formData.statusReportSections)
+      ? formData.statusReportSections.filter((s) => s && (s.content || '').trim())
+      : [];
+    if (existing.length > 0) return existing;
+    return generateStatusReportLocally(formData);
+  };
+
+  const buildStatusReportWordDocumentHtml = () => {
+    const displayName = getDisplayStudentName();
+    const displayId = getDisplayMaskedField(formData.idNumber);
+    const displayBirthDate = getDisplayMaskedField(formData.birthDate);
+    const displayFramework = hideStudentDetailsOnPrint
+      ? maskSensitiveValue(formData.educationalFramework)
+      : formData.educationalFramework || '__________';
+    const displayAddress = getDisplayMaskedField(formData.address);
+    const displayPhone = getDisplayMaskedField(formData.phone);
+    const statusDocTitle = getStatusReportTitle();
+    const sectionsToRender = getActiveStatusReportSections();
+
+    const sectionsHtml = sectionsToRender
+      .map((sec) => {
+        const redactedContent = (getRedactedText(sec.content) || '').replace(/\n/g, '<br/>');
+        return `
+          <div style="border:1px solid #cbd5e1; border-right:4px solid #3b6ea5; background-color:#ffffff; padding:8pt 12pt; margin-bottom:10pt;">
+            <div style="font-weight:bold; font-size:11.5pt; color:#1e3a5f; margin-bottom:4pt;">
+              ${sec.sectionNumber}. ${sec.title}
+            </div>
+            <div style="font-size:10.5pt; color:#243b47; line-height:1.55;">
+              ${redactedContent}
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    return `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:w="urn:schemas-microsoft-com:office:word"
+            xmlns="http://www.w3.org/TR/REC-html40"
+            lang="he" dir="rtl">
+      <head>
+        <meta charset="utf-8" />
+        <title>${statusDocTitle} - ${displayName}</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
+        <style>
+          @page WordSection1 {
+            size: 595.3pt 841.9pt;
+            mso-page-orientation: portrait;
+            margin: 36.0pt 36.0pt 36.0pt 36.0pt;
+          }
+          div.WordSection1 { page: WordSection1; direction: rtl; text-align: right; font-family: Arial, sans-serif; }
+        </style>
+      </head>
+      <body lang="he" dir="rtl" style="direction:rtl; text-align:right; font-family:Arial, sans-serif; color:#243b47;">
+        <div class="WordSection1" dir="rtl">
+          <div style="background-color:#2b4c73; color:#ffffff; padding:12pt 16pt; margin-bottom:10pt; text-align:center;">
+            <h1 style="margin:0; font-size:16pt;">${statusDocTitle}</h1>
+            <div style="font-size:10.5pt; margin-top:4pt;">
+              <strong>תאריך:</strong> ${formData.date || '__________'} &nbsp;|&nbsp;
+              <strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}
+            </div>
+          </div>
+
+          <div style="background-color:#eef3fb; border:1px solid #5b9bd5; padding:8pt 12pt; margin-bottom:12pt; font-size:11pt;">
+            <strong>שם הילד/ה:</strong> ${displayName} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>ת.ז:</strong> ${displayId} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>ת.ל:</strong> ${displayBirthDate} &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>מסגרת חינוכית:</strong> ${displayFramework}
+            ${formData.address ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
+            ${formData.phone ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
+          </div>
+
+          ${sectionsHtml}
+
+          <table dir="rtl" border="0" style="width:100%; margin-top:18pt; font-weight:bold; color:#2b4c73; font-size:11pt;">
+            <tr>
+              <td style="width:50%; text-align:right;">חתימת צוות חינוכי: _________________________</td>
+              <td style="width:50%; text-align:left;">חתימת הורים / גורם מקצועי: _________________________</td>
+            </tr>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
+  };
+
+  const handlePrintStatusReport = () => {
+    handleSaveProgress();
+
+    const displayName = getDisplayStudentName();
+    const displayId = getDisplayMaskedField(formData.idNumber);
+    const displayBirthDate = getDisplayMaskedField(formData.birthDate);
+    const displayFramework = hideStudentDetailsOnPrint
+      ? maskSensitiveValue(formData.educationalFramework)
+      : formData.educationalFramework || '__________';
+    const displayAddress = getDisplayMaskedField(formData.address);
+    const displayPhone = getDisplayMaskedField(formData.phone);
+    const statusDocTitle = getStatusReportTitle();
+    const logoUrl = new URL('./tala-logo.png', window.location.href).href;
+    const sectionsToRender = getActiveStatusReportSections();
+
+    const sectionsHtml = sectionsToRender
+      .map((sec) => {
+        const redactedContent = getRedactedText(sec.content);
+        return `
+          <div class="status-section-box">
+            <div class="status-section-title">${sec.sectionNumber}. ${sec.title}</div>
+            <div class="status-section-body">${redactedContent || ''}</div>
+          </div>
+        `;
+      })
+      .join('');
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="he" dir="rtl">
+        <head>
+          <meta charset="utf-8" />
+          <title>${statusDocTitle.replace(/\s+/g, '_')}_${displayName}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+            @page {
+              size: A4 portrait;
+              margin: 12mm;
+            }
+            body {
+              font-family: 'Rubik', Arial, sans-serif;
+              direction: rtl;
+              text-align: right;
+              color: #243b47;
+              background: #ffffff;
+              margin: 0;
+              padding: 0;
+              font-size: 13px;
+              line-height: 1.55;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .stained-glass-strip {
+              height: 6px;
+              width: 100%;
+              background: linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%);
+              border-radius: 6px 6px 0 0;
+            }
+            .print-banner {
+              background: linear-gradient(135deg, #2b4c73 0%, #3b6ea5 55%, #6b46c1 100%);
+              color: #ffffff;
+              padding: 14px 20px;
+              border-bottom: 4px solid #c5aef2;
+              border-radius: 0 0 10px 10px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 12px;
+            }
+            .print-banner-center {
+              display: flex;
+              align-items: center;
+              gap: 14px;
+            }
+            .print-logo {
+              width: 52px;
+              height: 52px;
+              border-radius: 50%;
+              object-fit: cover;
+              border: 2px solid #d6c6f7;
+              background: #f4f7fc;
+            }
+            .doc-main-title {
+              margin: 0;
+              font-size: 19px;
+              font-weight: 700;
+              color: #ffffff;
+            }
+            .doc-meta-side {
+              font-size: 12.5px;
+              color: #f5f0ff;
+            }
+            .student-details-bar {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 18px;
+              padding: 10px 14px;
+              border: 1.5px solid #5b9bd5;
+              border-right: 5px solid #3b6ea5;
+              background: #eef3fb;
+              border-radius: 8px;
+              margin-bottom: 14px;
+              font-size: 13px;
+            }
+            .status-section-box {
+              border: 1px solid #cbd5e1;
+              border-right: 4px solid #3b6ea5;
+              background: #fbfdff;
+              border-radius: 8px;
+              padding: 10px 14px;
+              margin-bottom: 10px;
+              page-break-inside: avoid;
+            }
+            .status-section-title {
+              font-weight: 700;
+              font-size: 14px;
+              color: #1e3a5f;
+              margin-bottom: 4px;
+            }
+            .status-section-body {
+              white-space: pre-line;
+              color: #1e293b;
+              font-size: 13px;
+              line-height: 1.55;
+            }
+            .signatures-row {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 24px;
+              font-weight: 600;
+              color: #2b4c73;
+              page-break-inside: avoid;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="stained-glass-strip"></div>
+          <div class="print-banner">
+            <div class="doc-meta-side"><strong>תאריך:</strong> ${formData.date || '__________'}</div>
+            <div class="print-banner-center">
+              <img src="${logoUrl}" alt="TALA Logo" class="print-logo" />
+              <h1 class="doc-main-title">${statusDocTitle}</h1>
+            </div>
+            <div class="doc-meta-side"><strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}</div>
+          </div>
+
+          <div class="student-details-bar">
+            <div><strong>שם הילד/ה:</strong> ${displayName}</div>
+            <div><strong>ת.ז:</strong> ${displayId}</div>
+            <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
+            <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
+            ${formData.planType ? `<div><strong>סוג תוכנית:</strong> ${formData.planType}</div>` : ''}
+            ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
+            ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
+          </div>
+
+          ${sectionsHtml}
+
+          <div class="signatures-row">
+            <div>חתימת צוות חינוכי: _________________________</div>
+            <div>חתימת הורים / גורם מקצועי: _________________________</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 400);
+  };
+
   const createWordBlob = (mode = 'tala') => {
-    const wordHtml = mode === 'eval' ? buildEvalWordDocumentHtml() : buildWordDocumentHtml();
+    const wordHtml =
+      mode === 'status'
+        ? buildStatusReportWordDocumentHtml()
+        : mode === 'eval'
+        ? buildEvalWordDocumentHtml()
+        : buildWordDocumentHtml();
     const blob = new Blob(['\ufeff', wordHtml], {
       type: 'application/msword;charset=utf-8'
     });
@@ -2315,7 +2885,12 @@ ${goalsContext}
 
   const createPdfBlob = async (mode = 'tala') => {
     const filename = getSafeReportFilename('pdf', mode);
-    const reportHtml = mode === 'eval' ? buildEvalWordDocumentHtml() : buildWordDocumentHtml();
+    const reportHtml =
+      mode === 'status'
+        ? buildStatusReportWordDocumentHtml()
+        : mode === 'eval'
+        ? buildEvalWordDocumentHtml()
+        : buildWordDocumentHtml();
     const blob = await generatePdfBlobFromHtml(reportHtml, filename);
     return { blob, filename, mimeType: 'application/pdf', htmlContent: reportHtml };
   };
@@ -2336,7 +2911,7 @@ ${goalsContext}
   const handleOpenEmailModal = (mode = 'tala') => {
     // Ensure report is saved before opening the Send to Email modal
     handleSaveProgress();
-    setEmailReportMode(mode === 'eval' ? 'eval' : 'tala');
+    setEmailReportMode(mode === 'status' ? 'status' : mode === 'eval' ? 'eval' : 'tala');
     setEmailError('');
     setEmailStatusMsg('');
     const currentCfg = emailEngineConfig || loadEmailEngineConfig();
@@ -2396,8 +2971,14 @@ ${goalsContext}
     setIsSendingEmail(true);
     try {
       const displayName = getDisplayStudentName();
-      const activeMode = emailReportMode === 'eval' ? 'eval' : 'tala';
-      const fullDocTitle = activeMode === 'eval' ? getEvalReportTitle() : getFullDocTitle();
+      const activeMode =
+        emailReportMode === 'status' ? 'status' : emailReportMode === 'eval' ? 'eval' : 'tala';
+      const fullDocTitle =
+        activeMode === 'status'
+          ? getStatusReportTitle()
+          : activeMode === 'eval'
+          ? getEvalReportTitle()
+          : getFullDocTitle();
       const formatLabel = emailFormat === 'docx' ? 'Word (DOCX/DOC)' : 'PDF';
       const subject = `${fullDocTitle} – ${displayName} (${formData.schoolYear || ''})`;
 
@@ -2846,16 +3427,38 @@ ${goalsContext}
                   onClick={handleReverseEngineerFullReport}
                   disabled={isReverseEngineering}
                 >
-                  <Sparkles size={17} />
+                  {isReverseEngineering ? (
+                    <Loader2 size={17} className="tala-spin-icon" />
+                  ) : (
+                    <Sparkles size={17} />
+                  )}
                   <span>
-                    {isReverseEngineering ? 'מעבד מידע ומייצר מטרות ודוח...' : 'עיבוד המידע'}
+                    {isReverseEngineering ? 'מעבד ומנתח את המידע ב-AI...' : 'עיבוד המידע'}
                   </span>
                 </button>
               </div>
             </>
           )}
 
-          {reverseEngineerBanner && (
+          {isReverseEngineering && (
+            <div className="ai-busy-indicator-card" role="status" aria-live="polite">
+              <div className="ai-busy-indicator-header">
+                <Loader2 size={19} className="tala-spin-icon" />
+                <Sparkles size={16} />
+                <span>
+                  ה-AI מנתח את התיאור החופשי ובונה את תוכנית העבודה... (התהליך עשוי להימשך מספר שניות, נא להמתין)
+                </span>
+              </div>
+              <div className="ai-busy-indicator-sub">
+                {AI_BUSY_STEPS[reverseEngineerStepIdx]}
+              </div>
+              <div className="ai-busy-progress-track">
+                <div className="ai-busy-progress-bar" />
+              </div>
+            </div>
+          )}
+
+          {reverseEngineerBanner && !isReverseEngineering && (
             <div className="reverse-engineer-success-banner" style={{ marginTop: isFreeTextCollapsed ? '10px' : undefined }}>
               <CheckCircle2 size={18} />
               <span>{reverseEngineerBanner}</span>
@@ -3706,7 +4309,11 @@ ${goalsContext}
                                 onClick={() => handleProcessSingleGoalEvalAi(goalRow, 'midYearEvaluation')}
                                 disabled={loadingEvalAiKey === `${goalRow.id}_midYearEvaluation`}
                               >
-                                <Sparkles size={14} />
+                                {loadingEvalAiKey === `${goalRow.id}_midYearEvaluation` ? (
+                                  <Loader2 size={14} className="tala-spin-icon" />
+                                ) : (
+                                  <Sparkles size={14} />
+                                )}
                                 <span>
                                   {loadingEvalAiKey === `${goalRow.id}_midYearEvaluation`
                                     ? 'מעבד מידע ב-AI...'
@@ -3742,7 +4349,11 @@ ${goalsContext}
                                 onClick={() => handleProcessSingleGoalEvalAi(goalRow, 'endYearEvaluation')}
                                 disabled={loadingEvalAiKey === `${goalRow.id}_endYearEvaluation`}
                               >
-                                <Sparkles size={14} />
+                                {loadingEvalAiKey === `${goalRow.id}_endYearEvaluation` ? (
+                                  <Loader2 size={14} className="tala-spin-icon" />
+                                ) : (
+                                  <Sparkles size={14} />
+                                )}
                                 <span>
                                   {loadingEvalAiKey === `${goalRow.id}_endYearEvaluation`
                                     ? 'מעבד מידע ב-AI...'
@@ -3860,6 +4471,39 @@ ${goalsContext}
             </button>
           )}
 
+          <button
+            type="button"
+            className="btn-print-doc"
+            onClick={() => {
+              const next = !showStatusReportSection;
+              setShowStatusReportSection(next);
+              if (next) {
+                const currentSections = Array.isArray(formData.statusReportSections)
+                  ? formData.statusReportSections.filter((s) => (s.content || '').trim())
+                  : [];
+                if (currentSections.length === 0 && !isGeneratingStatusReport) {
+                  handleGenerateStatusReport();
+                } else {
+                  setTimeout(() => {
+                    statusReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 80);
+                }
+              }
+            }}
+            style={{
+              background: showStatusReportSection
+                ? 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)'
+                : 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              color: showStatusReportSection ? '#ffffff' : '#1e40af',
+              borderColor: showStatusReportSection ? '#1d4ed8' : '#93c5fd',
+              fontWeight: 700
+            }}
+            title="הפקת דו״ח מצב חינוכי-תפקודי עדכני ומקצועי מבוסס על נתוני הכרטיס, המטרות והערכת מחצית/סוף שנה"
+          >
+            <FileText size={18} />
+            <span>דו"ח מצב</span>
+          </button>
+
           <button type="button" className="btn-send-email-doc" onClick={() => handleOpenEmailModal('tala')}>
             <Mail size={18} />
             <span>שלח למייל</span>
@@ -3923,15 +4567,34 @@ ${goalsContext}
                   onClick={handleProcessFullEvalReportAi}
                   disabled={isProcessingFullEvalAi}
                 >
-                  <Sparkles size={17} />
+                  {isProcessingFullEvalAi ? (
+                    <Loader2 size={17} className="tala-spin-icon" />
+                  ) : (
+                    <Sparkles size={17} />
+                  )}
                   <span>
-                    {isProcessingFullEvalAi ? 'מעבד מידע ב-AI...' : 'עיבוד מידע ב-AI'}
+                    {isProcessingFullEvalAi ? 'מעבד ומנתח מידע ב-AI...' : 'עיבוד מידע ב-AI'}
                   </span>
                 </button>
               </div>
             )}
 
-            {evalReportAiBanner && (
+            {isProcessingFullEvalAi && (
+              <div className="ai-busy-indicator-card" role="status" aria-live="polite">
+                <div className="ai-busy-indicator-header">
+                  <Loader2 size={19} className="tala-spin-icon" />
+                  <Sparkles size={16} />
+                  <span>
+                    ה-AI מנתח את תיאור ההערכה ומנסח את דוח ההתקדמות למטרות... (נא להמתין מספר שניות)
+                  </span>
+                </div>
+                <div className="ai-busy-progress-track">
+                  <div className="ai-busy-progress-bar" />
+                </div>
+              </div>
+            )}
+
+            {evalReportAiBanner && !isProcessingFullEvalAi && (
               <div className="reverse-engineer-success-banner" style={{ marginTop: '10px' }}>
                 <CheckCircle2 size={18} />
                 <span>{evalReportAiBanner}</span>
@@ -4032,7 +4695,11 @@ ${goalsContext}
                           onClick={() => handleProcessSingleGoalEvalAi(goalRow, 'midYearEvaluation')}
                           disabled={loadingEvalAiKey === `${goalRow.id}_midYearEvaluation`}
                         >
-                          <Sparkles size={14} />
+                          {loadingEvalAiKey === `${goalRow.id}_midYearEvaluation` ? (
+                            <Loader2 size={14} className="tala-spin-icon" />
+                          ) : (
+                            <Sparkles size={14} />
+                          )}
                           <span>
                             {loadingEvalAiKey === `${goalRow.id}_midYearEvaluation`
                               ? 'מעבד מידע ב-AI...'
@@ -4068,7 +4735,11 @@ ${goalsContext}
                           onClick={() => handleProcessSingleGoalEvalAi(goalRow, 'endYearEvaluation')}
                           disabled={loadingEvalAiKey === `${goalRow.id}_endYearEvaluation`}
                         >
-                          <Sparkles size={14} />
+                          {loadingEvalAiKey === `${goalRow.id}_endYearEvaluation` ? (
+                            <Loader2 size={14} className="tala-spin-icon" />
+                          ) : (
+                            <Sparkles size={14} />
+                          )}
                           <span>
                             {loadingEvalAiKey === `${goalRow.id}_endYearEvaluation`
                               ? 'מעבד מידע ב-AI...'
@@ -4114,6 +4785,259 @@ ${goalsContext}
             >
               <Mail size={18} />
               <span>שלח דוח הערכה למייל</span>
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Separate Report Section: דו"ח מצב חינוכי-תפקודי עדכני */}
+      {showStatusReportSection && (
+        <section
+          ref={statusReportSectionRef}
+          className="form-section-card highlight-summary-section"
+          style={{ borderTop: '4px solid #1d4ed8' }}
+        >
+          <div
+            className="section-header-line"
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}
+          >
+            <div>
+              <h3>דו"ח מצב חינוכי-תפקודי עדכני</h3>
+              <p className="section-sub-desc">
+                מבוסס אך ורק על המידע הקיים בכרטיס התלמיד/ה, במטרות שהוגדרו, ובהערכת מחצית / סוף שנה (סעיפים ללא מידע מושמטים אוטומטית)
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-submit-generate-summary"
+                onClick={handleGenerateStatusReport}
+                disabled={isGeneratingStatusReport}
+              >
+                {isGeneratingStatusReport ? (
+                  <Loader2 size={16} className="tala-spin-icon" />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+                <span>
+                  {isGeneratingStatusReport
+                    ? 'מפיק ומעדכן דו"ח מצב...'
+                    : (formData.statusReportSections || []).length > 0
+                      ? 'הפק / עדכן דו"ח מצב מחדש'
+                      : 'הפק דו"ח מצב ב-AI'}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="btn-preview-doc"
+                onClick={() => setShowStatusReportSection(false)}
+              >
+                <X size={15} />
+                <span>סגור דו"ח מצב</span>
+              </button>
+            </div>
+          </div>
+
+          {isGeneratingStatusReport && (
+            <div className="ai-busy-indicator-card" role="status" aria-live="polite" style={{ marginBottom: '16px' }}>
+              <div className="ai-busy-indicator-header">
+                <Loader2 size={19} className="tala-spin-icon" />
+                <Sparkles size={16} />
+                <span>
+                  המערכת מנתחת את כרטיס התלמיד/ה, המטרות והערכת מחצית/סוף שנה ומפיקה דו"ח מצב מקצועי... (נא להמתין מספר שניות)
+                </span>
+              </div>
+              <p className="ai-busy-indicator-sub">
+                נכללים אך ורק סעיפים שלגביהם קיים מידע מתועד — ללא השלמות או הנחות וללא ציון "לא ידוע".
+              </p>
+              <div className="ai-busy-progress-track">
+                <div className="ai-busy-progress-bar" />
+              </div>
+            </div>
+          )}
+
+          {statusReportBanner && !isGeneratingStatusReport && (
+            <div className="reverse-engineer-success-banner" style={{ marginBottom: '16px' }}>
+              <CheckCircle2 size={18} />
+              <span>{statusReportBanner}</span>
+            </div>
+          )}
+
+          {/* Render only active sections that have content */}
+          {(() => {
+            const currentSections = Array.isArray(formData.statusReportSections)
+              ? formData.statusReportSections
+              : [];
+            const usedNums = new Set(currentSections.map((s) => Number(s.sectionNumber)));
+            const availableToAdd = STATUS_REPORT_SECTIONS_SCHEMA.filter(
+              (s) => !usedNums.has(s.sectionNumber)
+            );
+
+            return (
+              <>
+                {currentSections.length === 0 && !isGeneratingStatusReport ? (
+                  <div
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px dashed #94a3b8',
+                      borderRadius: '10px',
+                      padding: '20px',
+                      textAlign: 'center',
+                      color: '#475569',
+                      marginBottom: '16px'
+                    }}
+                  >
+                    <p style={{ margin: '0 0 10px 0', fontWeight: 600 }}>
+                      טרם הופק דו"ח מצב עבור התלמיד/ה או שטרם הוזן מידע בכרטיס.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn-submit-generate-summary"
+                      onClick={handleGenerateStatusReport}
+                      disabled={isGeneratingStatusReport}
+                    >
+                      <Sparkles size={16} />
+                      <span>הפק דו"ח מצב מתוך נתוני הכרטיס כעת</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {currentSections.map((sec) => (
+                      <div
+                        key={sec.id || `status_sec_${sec.sectionNumber}`}
+                        style={{
+                          background: '#ffffff',
+                          border: '1.5px solid #cbd5e1',
+                          borderRadius: '10px',
+                          padding: '14px 16px'
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: '10px',
+                            marginBottom: '8px'
+                          }}
+                        >
+                          <strong style={{ color: '#1e3a5f', fontSize: '14.5px' }}>
+                            {sec.sectionNumber}. {sec.title}
+                          </strong>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStatusSection(sec.sectionNumber)}
+                            title="השמט סעיף זה מהדו״ח"
+                            style={{
+                              background: '#fef2f2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              borderRadius: '6px',
+                              padding: '4px 9px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <Trash2 size={13} />
+                            <span>השמט סעיף</span>
+                          </button>
+                        </div>
+                        <textarea
+                          rows={Math.max(2, Math.min(7, Math.ceil((sec.content || '').length / 110)))}
+                          value={sec.content || ''}
+                          onInput={handleTextareaAutoResize}
+                          onChange={(e) =>
+                            handleUpdateStatusSectionContent(sec.sectionNumber, e.target.value)
+                          }
+                          placeholder={`תוכן מקצועי עבור סעיף "${sec.title}"... (אם הסעיף ריק הוא יושמט מההדפסה ומקובץ ה-Word)`}
+                          style={{
+                            width: '100%',
+                            lineHeight: 1.65,
+                            fontSize: '13.5px'
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {availableToAdd.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      flexWrap: 'wrap',
+                      background: '#f8fafc',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0'
+                    }}
+                  >
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>
+                      הוספת סעיף מהמבנה המוגדר (רק אם קיים מידע רלוונטי להזנה ידנית):
+                    </span>
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        if (val) {
+                          handleAddManualStatusSection(val);
+                          e.target.value = '';
+                        }
+                      }}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '13px',
+                        background: '#ffffff'
+                      }}
+                    >
+                      <option value="">+ בחר סעיף להוספה...</option>
+                      {availableToAdd.map((schemaSec) => (
+                        <option key={schemaSec.sectionNumber} value={schemaSec.sectionNumber}>
+                          {schemaSec.sectionNumber}. {schemaSec.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
+          {/* Status Report Actions Bar */}
+          <div className="bottom-final-actions" style={{ marginTop: '18px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" className="btn-print-doc" onClick={handlePrintStatusReport}>
+              <Printer size={18} />
+              <span>הדפס דו"ח מצב</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
+                handleSaveProgress();
+                downloadWordFile('status');
+              }}
+            >
+              <Download size={18} />
+              <span>הורד קובץ Word – דו"ח מצב</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-send-email-doc"
+              onClick={() => handleOpenEmailModal('status')}
+            >
+              <Mail size={18} />
+              <span>שלח דו"ח מצב למייל</span>
             </button>
           </div>
         </section>
@@ -4276,12 +5200,19 @@ ${goalsContext}
                 <Mail size={22} />
                 <div>
                   <h3>
-                    {emailReportMode === 'eval'
-                      ? 'שליחת דוח הערכת מחצית / סוף שנה במייל'
-                      : 'שליחת תוכנית עבודה במייל'}
+                    {emailReportMode === 'status'
+                      ? 'שליחת דו״ח מצב חינוכי-תפקודי במייל'
+                      : emailReportMode === 'eval'
+                        ? 'שליחת דוח הערכת מחצית / סוף שנה במייל'
+                        : 'שליחת תוכנית עבודה במייל'}
                   </h3>
                   <p className="modal-subtitle">
-                    {emailReportMode === 'eval' ? getEvalReportTitle() : getFullDocTitle()} • <strong>{getDisplayStudentName()}</strong>
+                    {emailReportMode === 'status'
+                      ? getStatusReportTitle()
+                      : emailReportMode === 'eval'
+                        ? getEvalReportTitle()
+                        : getFullDocTitle()}{' '}
+                    • <strong>{getDisplayStudentName()}</strong>
                   </p>
                 </div>
               </div>
@@ -4378,7 +5309,12 @@ ${goalsContext}
                   disabled={isSendingEmail}
                   onClick={async () => {
                     handleSaveProgress();
-                    const activeMode = emailReportMode === 'eval' ? 'eval' : 'tala';
+                    const activeMode =
+                      emailReportMode === 'status'
+                        ? 'status'
+                        : emailReportMode === 'eval'
+                          ? 'eval'
+                          : 'tala';
                     if (emailFormat === 'docx') {
                       downloadWordFile(activeMode);
                       setEmailStatusMsg('קובץ ה-Word הורד למחשב שלך.');
