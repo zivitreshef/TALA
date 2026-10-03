@@ -53,7 +53,7 @@ export default function StatusReportPanel({
         <div>
           <h3>דו"ח מצב חינוכי-תפקודי עדכני</h3>
           <p className="section-sub-desc">
-            מבוסס אך ורק על המידע הקיים בכרטיס התלמיד/ה, במטרות שהוגדרו, ובהערכת מחצית / סוף שנה (סעיפים ללא מידע מושמטים אוטומטית)
+            מבוסס אך ורק על המידע הקיים בכרטיס התלמיד/ה, במטרות שהוגדרו, ובהערכת מחצית / סוף שנה
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

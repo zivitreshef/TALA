@@ -277,8 +277,30 @@ export default function App() {
       getInitialStudents: () => students,
       getInitialGeminiKey: () => geminiApiKey,
       onAllowedUsersChange: (cloudUsers) => {
-        setAllowedUsers(cloudUsers);
-        saveAllowedUsers(cloudUsers);
+        const localUsers = loadAllowedUsers();
+        let needsCloudHeal = false;
+        const mergedUsers = cloudUsers.map((cu) => {
+          const lu = localUsers.find(
+            (u) => u.email?.toLowerCase() === cu.email?.toLowerCase()
+          );
+          if (
+            lu &&
+            lu.accessCode &&
+            lu.accessCode !== cu.accessCode &&
+            (cu.accessCode === 'TALA2026' || cu.accessCode === '1234') &&
+            lu.accessCode !== 'TALA2026' &&
+            lu.accessCode !== '1234'
+          ) {
+            needsCloudHeal = true;
+            return { ...cu, accessCode: lu.accessCode, failedLoginAttempts: 0, lockedOut: false };
+          }
+          return cu;
+        });
+        if (needsCloudHeal) {
+          saveAllowedUsersToCloud(mergedUsers);
+        }
+        setAllowedUsers(mergedUsers);
+        saveAllowedUsers(mergedUsers);
       },
       onGoalBankChange: (cloudGoals) => {
         const hasOldTestingWeights =

@@ -393,7 +393,25 @@ export function subscribeToTalaBackend({
   };
 }
 
-// === Direct Write Helpers to Cloud Firestore ===
+// === Direct Read/Write Helpers to Cloud Firestore ===
+
+export async function fetchAllowedUsersFromCloud() {
+  const db = getFirestoreDb();
+  if (!db) return null;
+  try {
+    const snap = await getDoc(doc(db, 'tala_config', 'allowed_users'));
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Array.isArray(data?.users) && data.users.length > 0) {
+        return data.users;
+      }
+    }
+    return null;
+  } catch (err) {
+    console.warn('Failed to fetch allowedUsers from Firestore:', err);
+    return null;
+  }
+}
 
 export async function saveAllowedUsersToCloud(usersList) {
   const db = getFirestoreDb();

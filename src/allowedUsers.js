@@ -96,7 +96,12 @@ export function verifyAllowedUser(email, accessCode, usersList) {
     };
   }
 
-  if (found.accessCode && found.accessCode !== cleanCode) {
+  const isPasswordMatch =
+    !found.accessCode ||
+    found.accessCode === cleanCode ||
+    (found.accessCode.toUpperCase() === 'TALA2026' && cleanCode.toUpperCase() === 'TALA2026');
+
+  if (!isPasswordMatch) {
     const nextAttempts = (Number(found.failedLoginAttempts) || 0) + 1;
     const nowFormatted = new Date().toLocaleString('he-IL', {
       dateStyle: 'short',
@@ -140,11 +145,11 @@ export function verifyAllowedUser(email, accessCode, usersList) {
     };
   }
 
-  // Successful login: reset failed attempts counter (for regular users; for admin, keep lockedOut alert until dismissed if any)
+  // Successful login: reset failed attempts counter
   let updatedUsersList = null;
-  if ((found.failedLoginAttempts || 0) > 0 && !isMainAdmin) {
+  if ((found.failedLoginAttempts || 0) > 0) {
     updatedUsersList = list.map((u) =>
-      u.id === found.id ? { ...u, failedLoginAttempts: 0 } : u
+      u.id === found.id ? { ...u, failedLoginAttempts: 0, lockedOut: false } : u
     );
   }
 
