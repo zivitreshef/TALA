@@ -206,3 +206,43 @@ export function validatePasswordPolicy(password) {
   };
 }
 
+/**
+ * Returns the local calendar date string 'YYYY-MM-DD' for daily session reset.
+ */
+export function getCurrentLocalDayKey(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Stamps a logged-in user object with the current calendar day key and timestamp
+ * so the session automatically resets every new day.
+ */
+export function stampSessionUserWithDate(user, date = new Date()) {
+  if (!user || typeof user !== 'object') return null;
+  const d = date instanceof Date ? date : new Date(date);
+  return {
+    ...user,
+    sessionDate: getCurrentLocalDayKey(d),
+    loginAt: d.getTime()
+  };
+}
+
+/**
+ * Checks whether a persisted session user object is still valid for the current calendar day.
+ * Sessions from a previous calendar day (or legacy sessions without sessionDate) expire automatically.
+ */
+export function isSessionUserValidForToday(sessionUser, now = new Date()) {
+  if (!sessionUser || typeof sessionUser !== 'object' || !sessionUser.email) {
+    return false;
+  }
+  if (!sessionUser.sessionDate || typeof sessionUser.sessionDate !== 'string') {
+    return false;
+  }
+  return sessionUser.sessionDate === getCurrentLocalDayKey(now);
+}
+
+

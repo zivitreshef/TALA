@@ -25,7 +25,9 @@ import {
 } from 'lucide-react';
 import {
   loadAllowedUsers,
-  saveAllowedUsers
+  saveAllowedUsers,
+  stampSessionUserWithDate,
+  isSessionUserValidForToday
 } from './allowedUsers';
 import {
   AllowlistAuthGate,
@@ -150,16 +152,28 @@ export default function App() {
     });
   };
 
-  // Current logged-in user (must be in Allowed Users List)
+  // Current logged-in user (must be in Allowed Users List and logged in today)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem(SESSION_USER_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (!isSessionUserValidForToday(parsed)) {
+          localStorage.removeItem(SESSION_USER_KEY);
+          return null;
+        }
         const stillAllowed = loadAllowedUsers().find(
           (u) => u.email.toLowerCase() === parsed.email?.toLowerCase() && u.active
         );
-        return stillAllowed || null;
+        if (!stillAllowed) {
+          localStorage.removeItem(SESSION_USER_KEY);
+          return null;
+        }
+        return {
+          ...stillAllowed,
+          sessionDate: parsed.sessionDate,
+          loginAt: parsed.loginAt
+        };
       }
     } catch (e) {
       return null;
@@ -393,8 +407,9 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user) => {
-    setCurrentUser(user);
-    safeSetStorageJson(SESSION_USER_KEY, user);
+    const stampedUser = stampSessionUserWithDate(user);
+    setCurrentUser(stampedUser);
+    safeSetStorageJson(SESSION_USER_KEY, stampedUser);
     ensureFirebaseAuthSession(user.email, user.accessCode);
     setSelectedStudentId(null);
     setStudentSearch('');
@@ -444,6 +459,37 @@ export default function App() {
     }
     performLogout();
   };
+
+  // Daily auto-logout: reset session automatically when a new calendar day starts
+  useEffect(() => {
+    if (!currentUser) return undefined;
+
+    const checkDailySessionExpiry = () => {
+      if (!isSessionUserValidForToday(currentUser)) {
+        if (unsavedDraftState.isDirty && unsavedDraftState.draftData) {
+          handleSaveAndLogout();
+        } else {
+          performLogout();
+        }
+      }
+    };
+
+    const intervalId = setInterval(checkDailySessionExpiry, 60 * 1000);
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        checkDailySessionExpiry();
+      }
+    };
+
+    window.addEventListener('focus', checkDailySessionExpiry);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('focus', checkDailySessionExpiry);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
+  }, [currentUser, unsavedDraftState.isDirty, unsavedDraftState.draftData, students]);
 
   // Create a new student owned strictly by the currently logged-in user
   const handleAddNewStudent = () => {
