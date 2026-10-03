@@ -50,7 +50,11 @@ import {
   updateGoalByAdmin,
   deleteGoalByAdmin,
   getNextSchoolYear,
-  buildRolloverStudentForNextYear
+  buildRolloverStudentForNextYear,
+  adaptTextToGender,
+  resolveStudentAgeAndDateInfo,
+  normalizeAndSizeGoalDuration,
+  isGoalEmpty
 } from './goalBankData';
 import {
   subscribeToTalaBackend,
@@ -249,6 +253,10 @@ export default function App() {
   const [goalBank, setGoalBank] = useState(() => loadGoalBank());
   const [showGoalBankOverview, setShowGoalBankOverview] = useState(false);
   const [goalBankSearch, setGoalBankSearch] = useState('');
+  const [goalBankEnvFilter, setGoalBankEnvFilter] = useState('הכל');
+  const [targetBankStudentId, setTargetBankStudentId] = useState('');
+  const [bankAddToast, setBankAddToast] = useState('');
+  const [externalGoalsRevision, setExternalGoalsRevision] = useState(0);
   const [editingBankGoal, setEditingBankGoal] = useState(null); // null | { mode: 'add' | 'edit', ...fields }
 
   // Pre-configured Gemini API Key (assembled at runtime to avoid plaintext scanner revocation)
@@ -936,6 +944,125 @@ export default function App() {
     });
   };
 
+  const handleAddBankGoalToStudent = (bankItem, targetStudentObj) => {
+    if (!bankItem || !targetStudentObj) return;
+    const baseStudent =
+      unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === targetStudentObj.id
+        ? unsavedDraftState.draftData
+        : targetStudentObj;
+
+    const genderToUse = baseStudent.gender || 'boy';
+    const studentFirstName = (
+      baseStudent.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד')
+    )
+      .trim()
+      .split(/\s+/)[0];
+
+    const genderTitle = adaptTextToGender(bankItem.title || '', genderToUse);
+    const genderActivity = adaptTextToGender(bankItem.defaultActivity || '', genderToUse);
+    const genderObjectives = (bankItem.suggestedObjectives || [])
+      .map((o) => `• ${adaptTextToGender(o, genderToUse)}`)
+      .join('\n');
+    const personalizedOpportunities = adaptTextToGender(
+      (bankItem.defaultOpportunities || '').replace(/הילד/g, studentFirstName),
+      genderToUse
+    );
+    const genderEval = adaptTextToGender(bankItem.defaultEvaluation || '', genderToUse);
+    const dateInfo = resolveStudentAgeAndDateInfo(
+      baseStudent,
+      baseStudent.teacherFreeText || ''
+    );
+
+    const existingGoals = Array.isArray(baseStudent.goals) ? baseStudent.goals : [];
+    const alreadyExists = existingGoals.some(
+      (g) =>
+        (g.title || '').trim() === genderTitle.trim() ||
+        (g.title || '').trim() === (bankItem.title || '').trim()
+    );
+    if (alreadyExists) return;
+
+    const draftGoal = {
+      id: 'g_bank_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      environment: bankItem.environment || ENVIRONMENTS_LIST[0],
+      activityParticipation: genderActivity || '',
+      title: genderTitle,
+      objectives: genderObjectives || '',
+      opportunities: personalizedOpportunities || '',
+      partners: bankItem.defaultPartners || 'צוות הגן, סייעת אישית',
+      duration: '',
+      evaluationCriteria: genderEval || '',
+      isTeacherAdded: true,
+      isTeacherModified: true
+    };
+
+    const sizedGoal = {
+      ...draftGoal,
+      duration: normalizeAndSizeGoalDuration(
+        draftGoal,
+        baseStudent.teacherFreeText || '',
+        baseStudent,
+        dateInfo
+      )
+    };
+
+    const nextGoals =
+      existingGoals.length === 1 && isGoalEmpty(existingGoals[0])
+        ? [sizedGoal]
+        : [...existingGoals, sizedGoal];
+
+    const nowTime = new Date().toLocaleTimeString('he-IL', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const activeYear = baseStudent.schoolYear || 'תשפ"ו (2025-2026)';
+    const updatedStudent = {
+      ...baseStudent,
+      goals: nextGoals,
+      lastSavedAt: nowTime,
+      reportsByYear: {
+        ...(baseStudent.reportsByYear || {}),
+        [activeYear]: {
+          ...(baseStudent.reportsByYear?.[activeYear] || {}),
+          date: baseStudent.date || new Date().toLocaleDateString('he-IL'),
+          planType: baseStudent.planType || 'תל"א (תוכנית לימודים אישית)',
+          teacherFreeText: baseStudent.teacherFreeText || '',
+          freeTextAnalyzed: Boolean(baseStudent.freeTextAnalyzed),
+          removedAiGoals: Array.isArray(baseStudent.removedAiGoals)
+            ? baseStudent.removedAiGoals
+            : [],
+          strengthsExisting: baseStudent.strengthsExisting || '',
+          strengthsToEmpower: baseStudent.strengthsToEmpower || '',
+          recommendations: baseStudent.recommendations || '',
+          evalReportFreeText: baseStudent.evalReportFreeText || '',
+          evalReportSummary: baseStudent.evalReportSummary || '',
+          statusReportSections: Array.isArray(baseStudent.statusReportSections)
+            ? baseStudent.statusReportSections
+            : [],
+          statusReportUpdatedAt: baseStudent.statusReportUpdatedAt || '',
+          lastSavedAt: nowTime,
+          goals: nextGoals
+        }
+      }
+    };
+
+    setStudents((prev) =>
+      prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
+    );
+    saveStudentToCloud(updatedStudent);
+    handleUseOrAddGoalToBank({
+      title: bankItem.title,
+      environment: bankItem.environment
+    });
+    setExternalGoalsRevision((r) => r + 1);
+    setUnsavedDraftState({ isDirty: false, draftData: updatedStudent });
+
+    const studentDisplayName = baseStudent.name?.trim() || 'התלמיד/ה';
+    setBankAddToast(
+      `✅ המטרה "${genderTitle}" נוספה לתכנית של ${studentDisplayName} ומשקלה במאגר עלה ב-+1!`
+    );
+    setTimeout(() => setBankAddToast(''), 3500);
+  };
+
   // === Admin Goal Bank CRUD Handlers ===
   const handleStartAddGoalToBank = () => {
     setEditingBankGoal({
@@ -1076,6 +1203,24 @@ export default function App() {
   }, {});
   const frameworkClusters = Object.entries(studentsByFramework);
   const sortedBank = getSortedGoalBank(goalBank);
+  const goalBankEnvironments = [
+    'הכל',
+    ...Array.from(
+      new Set(
+        [
+          ...ENVIRONMENTS_LIST,
+          ...(goalBank || []).map((g) => (g.environment || '').trim()).filter(Boolean)
+        ]
+      )
+    )
+  ];
+  const activeBankTargetStudent =
+    userStudents.find(
+      (s) => s.id === (targetBankStudentId || selectedStudentId)
+    ) ||
+    selectedStudent ||
+    userStudents[0] ||
+    null;
 
   const filteredArchivedStudents = archivedUserStudents.filter(
     (s) =>
@@ -1107,7 +1252,7 @@ export default function App() {
     {};
 
   const siteVersion =
-    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.27';
+    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.28';
 
   return (
     <div className="tala-app-root" dir="rtl">
@@ -1145,8 +1290,11 @@ export default function App() {
           <button
             type="button"
             className="btn-header-bank"
-            onClick={() => setShowGoalBankOverview(true)}
-            title="צפה בדירוג שכיחות המטרות במאגר"
+            onClick={() => {
+              setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
+              setShowGoalBankOverview(true);
+            }}
+            title="צפה בדירוג שכיחות המטרות במאגר והוסף מטרות לתכנית התלמיד/ה"
           >
             <TrendingUp size={16} />
             <span>מאגר מטרות דינמי ({goalBank.length})</span>
@@ -1456,12 +1604,16 @@ export default function App() {
             <ErrorBoundary key={selectedStudent.id}>
               <EcologicalWorkPlanForm
                 student={selectedStudent}
+                externalRevision={externalGoalsRevision}
                 goalBank={goalBank}
                 geminiApiKey={geminiApiKey}
                 isAdmin={currentUser.role === 'admin'}
                 currentUser={currentUser}
                 allowedUsers={allowedUsers}
-                onOpenGoalBankManager={() => setShowGoalBankOverview(true)}
+                onOpenGoalBankManager={() => {
+                  if (selectedStudent?.id) setTargetBankStudentId(selectedStudent.id);
+                  setShowGoalBankOverview(true);
+                }}
                 onSaveStudentPlan={handleSaveStudentPlan}
                 onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
                 onDraftStateChange={setUnsavedDraftState}
@@ -1876,6 +2028,89 @@ export default function App() {
                 </form>
               )}
 
+              {/* Target Student Bar for Direct Goal Injection from the Bank */}
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #f3eefc 0%, #eef6ff 100%)',
+                  border: '1.5px solid #d6c6f7',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '10px'
+                }}
+              >
+                {userStudents.length > 0 ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#3b2868' }}>
+                        🎯 הוספת מטרה מהמאגר ישירות לתכנית של:
+                      </span>
+                      <select
+                        value={activeBankTargetStudent?.id || ''}
+                        onChange={(e) => setTargetBankStudentId(e.target.value)}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #b39ddb',
+                          background: '#ffffff',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          color: '#24344d',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {userStudents.map((st) => (
+                          <option key={st.id} value={st.id}>
+                            {st.name || 'תלמיד/ה ללא שם'}{' '}
+                            {st.educationalFramework ? `(${st.educationalFramework})` : ''} –{' '}
+                            {(st.goals || []).filter((g) => (g.title || '').trim()).length} מטרות
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {activeBankTargetStudent &&
+                      selectedStudentId !== activeBankTargetStudent.id && (
+                        <button
+                          type="button"
+                          className="btn-secondary-sm"
+                          onClick={() => {
+                            setSelectedStudentId(activeBankTargetStudent.id);
+                            setShowGoalBankOverview(false);
+                          }}
+                          style={{ fontSize: '12px', padding: '4px 10px' }}
+                        >
+                          פתח את תכנית התלמיד/ה ⬅
+                        </button>
+                      )}
+                  </>
+                ) : (
+                  <span style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>
+                    💡 צרי כרטיס תלמיד/ה כדי להוסיף אליו מטרות בלחיצה אחת מתוך המאגר.
+                  </span>
+                )}
+              </div>
+
+              {bankAddToast && (
+                <div
+                  style={{
+                    background: '#f0fdf4',
+                    border: '1.5px solid #86efac',
+                    color: '#166534',
+                    borderRadius: '10px',
+                    padding: '8px 14px',
+                    marginBottom: '10px',
+                    fontSize: '13px',
+                    fontWeight: 700
+                  }}
+                >
+                  {bankAddToast}
+                </div>
+              )}
+
               {/* Search Filter inside Goal Bank Modal */}
               <div className="bank-modal-search-row">
                 <Search size={15} />
@@ -1887,9 +2122,51 @@ export default function App() {
                 />
               </div>
 
+              {/* Quick Environment Filter Pills */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '6px',
+                  flexWrap: 'wrap',
+                  marginBottom: '12px'
+                }}
+              >
+                {goalBankEnvironments.map((envName) => {
+                  const isActiveEnv = goalBankEnvFilter === envName;
+                  return (
+                    <button
+                      key={envName}
+                      type="button"
+                      onClick={() => setGoalBankEnvFilter(envName)}
+                      style={{
+                        padding: '4px 11px',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontWeight: isActiveEnv ? 700 : 600,
+                        cursor: 'pointer',
+                        border: isActiveEnv ? '1.5px solid #6d28d9' : '1px solid #cbd5e1',
+                        background: isActiveEnv
+                          ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)'
+                          : '#f8fafc',
+                        color: isActiveEnv ? '#ffffff' : '#334155',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {envName}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="goal-bank-items-scroll" style={{ maxHeight: '420px' }}>
                 {sortedBank
                   .filter((g) => {
+                    if (
+                      goalBankEnvFilter !== 'הכל' &&
+                      (g.environment || '').trim() !== goalBankEnvFilter
+                    ) {
+                      return false;
+                    }
                     const q = goalBankSearch.trim();
                     if (!q) return true;
                     return (
@@ -1898,48 +2175,126 @@ export default function App() {
                       (g.suggestedObjectives || []).some((o) => o.includes(q))
                     );
                   })
-                  .map((g, i) => (
-                    <div key={g.id} className="goal-bank-option-row" style={{ cursor: 'default' }}>
-                      <div className="goal-bank-option-main">
-                        <div className="goal-option-title-line">
-                          <span className="popularity-rank-badge">#{i + 1}</span>
-                          <strong>{g.title}</strong>
-                          <span className="env-tag-chip">{g.environment}</span>
-                          <span className="usage-count-badge">
-                            נבחר {g.usageCount ?? 0} פעמים
-                          </span>
-                        </div>
-                        {g.suggestedObjectives?.length > 0 && (
-                          <div className="goal-option-sub-preview">
-                            יעדים משויכים: {g.suggestedObjectives.join(' • ')}
-                          </div>
-                        )}
-                      </div>
+                  .map((g, i) => {
+                    const targetStudentForCheck =
+                      activeBankTargetStudent &&
+                      unsavedDraftState.isDirty &&
+                      unsavedDraftState.draftData?.id === activeBankTargetStudent.id
+                        ? unsavedDraftState.draftData
+                        : activeBankTargetStudent;
+                    const targetGender = targetStudentForCheck?.gender || 'boy';
+                    const genderAdaptedTitle = adaptTextToGender(g.title || '', targetGender);
+                    const isAlreadyInTargetStudent = Boolean(
+                      targetStudentForCheck &&
+                        (targetStudentForCheck.goals || []).some(
+                          (stGoal) =>
+                            (stGoal.title || '').trim() === genderAdaptedTitle.trim() ||
+                            (stGoal.title || '').trim() === (g.title || '').trim()
+                        )
+                    );
 
-                      {currentUser.role === 'admin' && (
-                        <div className="goal-bank-admin-actions">
-                          <button
-                            type="button"
-                            className="btn-admin-edit-goal"
-                            onClick={() => handleStartEditBankGoal(g)}
-                            title="ערוך מטרה זו"
-                          >
-                            <Edit2 size={14} />
-                            <span>ערוך</span>
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-admin-delete-goal"
-                            onClick={() => handleDeleteAdminBankGoal(g)}
-                            title="מחק מטרה זו מהמאגר"
-                          >
-                            <Trash2 size={14} />
-                            <span>הסר</span>
-                          </button>
+                    return (
+                      <div key={g.id} className="goal-bank-option-row" style={{ cursor: 'default' }}>
+                        <div className="goal-bank-option-main">
+                          <div className="goal-option-title-line">
+                            <span className="popularity-rank-badge">#{i + 1}</span>
+                            <strong>{g.title}</strong>
+                            <span className="env-tag-chip">{g.environment}</span>
+                            <span className="usage-count-badge">
+                              נבחר {g.usageCount ?? 0} פעמים
+                            </span>
+                          </div>
+                          {g.suggestedObjectives?.length > 0 && (
+                            <div className="goal-option-sub-preview">
+                              יעדים משויכים: {g.suggestedObjectives.join(' • ')}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        <div
+                          className="goal-bank-admin-actions"
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}
+                        >
+                          {activeBankTargetStudent && (
+                            isAlreadyInTargetStudent ? (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '5px 10px',
+                                  borderRadius: '8px',
+                                  background: '#dcfce7',
+                                  color: '#166534',
+                                  border: '1px solid #86efac',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                <Check size={14} />
+                                <span>כבר בתכנית</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleAddBankGoalToStudent(g, activeBankTargetStudent)
+                                }
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  padding: '5px 11px',
+                                  borderRadius: '8px',
+                                  background: 'linear-gradient(135deg, #4a88c7 0%, #6d5cae 100%)',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  boxShadow: '0 2px 6px rgba(74, 136, 199, 0.25)'
+                                }}
+                                title={`הוסף מטרה זו (מותאמת למגדר) ישירות אל תכנית העבודה של ${
+                                  activeBankTargetStudent.name || 'התלמיד/ה'
+                                } והעלה את משקל המטרה במאגר`}
+                              >
+                                <Plus size={14} />
+                                <span>
+                                  הוסף לתכנית של{' '}
+                                  {(activeBankTargetStudent.name || 'התלמיד/ה').split(/\s+/)[0]}
+                                </span>
+                              </button>
+                            )
+                          )}
+
+                          {currentUser.role === 'admin' && (
+                            <>
+                              <button
+                                type="button"
+                                className="btn-admin-edit-goal"
+                                onClick={() => handleStartEditBankGoal(g)}
+                                title="ערוך מטרה זו"
+                              >
+                                <Edit2 size={14} />
+                                <span>ערוך</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-admin-delete-goal"
+                                onClick={() => handleDeleteAdminBankGoal(g)}
+                                title="מחק מטרה זו מהמאגר"
+                              >
+                                <Trash2 size={14} />
+                                <span>הסר</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
             <div className="modal-footer" style={{ textAlign: 'left' }}>

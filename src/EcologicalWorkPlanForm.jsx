@@ -120,6 +120,7 @@ const hasContentInYearReport = (rep) => {
 
 export default function EcologicalWorkPlanForm({
   student,
+  externalRevision = 0,
   goalBank,
   geminiApiKey,
   isAdmin,
@@ -288,7 +289,7 @@ export default function EcologicalWorkPlanForm({
     setAutoSavedTime('');
     setEvalReportAiBanner('');
     setStatusReportBanner('');
-  }, [student?.id]);
+  }, [student?.id, externalRevision]);
 
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
   useEffect(() => {
