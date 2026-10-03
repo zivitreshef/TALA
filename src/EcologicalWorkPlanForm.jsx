@@ -33,6 +33,12 @@ import {
   reverseEngineerRawTextLocally,
   adaptTextToGender,
   adaptGoalToGender,
+  resolveStudentAgeAndDateInfo,
+  normalizeAndSizeGoalDuration,
+  isGoalEmpty,
+  attachAiBaselineToGoal,
+  isGoalProtectedFromAiOverwrite,
+  mergeReanalyzedGoals,
   toHebrewAcronym,
   maskSensitiveValue,
   redactStudentNameInText,
@@ -52,6 +58,7 @@ const extractYearReportFromFormData = (data) => ({
   planType: data?.planType || 'תל"א (תוכנית לימודים אישית)',
   teacherFreeText: data?.teacherFreeText || '',
   freeTextAnalyzed: Boolean(data?.freeTextAnalyzed),
+  removedAiGoals: Array.isArray(data?.removedAiGoals) ? data.removedAiGoals : [],
   strengthsExisting: data?.strengthsExisting || '',
   strengthsToEmpower: data?.strengthsToEmpower || '',
   recommendations: data?.recommendations || '',
@@ -109,11 +116,13 @@ export default function EcologicalWorkPlanForm({
       adaptGoalToGender(g, initialGender)
     );
     const existingReports = { ...(st?.reportsByYear || {}) };
+    const initialRemovedAiGoals = Array.isArray(st?.removedAiGoals) ? st.removedAiGoals : [];
     existingReports[currentYear] = {
       date: st?.date || new Date().toLocaleDateString('he-IL'),
       planType: st?.planType || 'תל"א (תוכנית לימודים אישית)',
       teacherFreeText: st?.teacherFreeText || '',
       freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
+      removedAiGoals: initialRemovedAiGoals,
       strengthsExisting: st?.strengthsExisting || '',
       strengthsToEmpower: st?.strengthsToEmpower || '',
       recommendations: st?.recommendations || '',
@@ -128,6 +137,7 @@ export default function EcologicalWorkPlanForm({
       schoolYear: currentYear,
       gender: initialGender,
       freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
+      removedAiGoals: initialRemovedAiGoals,
       evalReportFreeText: st?.evalReportFreeText || '',
       evalReportSummary: st?.evalReportSummary || '',
       sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
@@ -350,6 +360,9 @@ export default function EcologicalWorkPlanForm({
           planType: existingTargetReport.planType || prev.planType || 'תל"א (תוכנית לימודים אישית)',
           teacherFreeText: existingTargetReport.teacherFreeText || '',
           freeTextAnalyzed: Boolean(existingTargetReport.freeTextAnalyzed),
+          removedAiGoals: Array.isArray(existingTargetReport.removedAiGoals)
+            ? existingTargetReport.removedAiGoals
+            : [],
           strengthsExisting: existingTargetReport.strengthsExisting || '',
           strengthsToEmpower: existingTargetReport.strengthsToEmpower || '',
           recommendations: existingTargetReport.recommendations || '',
@@ -373,7 +386,7 @@ export default function EcologicalWorkPlanForm({
         objectives: '',
         opportunities: '',
         partners: 'צוות הגן, סייעת אישית',
-        duration: 'עד סוף השנה',
+        duration: '',
         evaluationCriteria: ''
       };
 
@@ -382,6 +395,7 @@ export default function EcologicalWorkPlanForm({
         planType: prev.planType || 'תל"א (תוכנית לימודים אישית)',
         teacherFreeText: '',
         freeTextAnalyzed: false,
+        removedAiGoals: [],
         strengthsExisting: '',
         strengthsToEmpower: '',
         recommendations: '',
@@ -423,19 +437,35 @@ export default function EcologicalWorkPlanForm({
     }));
   };
 
-  // Update specific goal row
+  // Update specific goal row (marks goal as teacher-modified so re-analysis won't overwrite it)
   const handleGoalChange = (goalId, field, value) => {
     setFormData((prev) => ({
       ...prev,
       goals: (prev.goals || []).map((g) =>
-        g.id === goalId ? { ...g, [field]: value } : g
+        g.id === goalId ? { ...g, [field]: value, isTeacherModified: true } : g
       )
+    }));
+  };
+
+  // Toggle whether a specific goal is locked against AI re-analysis
+  const handleToggleGoalLock = (goalId) => {
+    setFormData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) => {
+        if (g.id !== goalId) return g;
+        const currentlyLocked = isGoalProtectedFromAiOverwrite(g);
+        if (currentlyLocked) {
+          return attachAiBaselineToGoal(g);
+        }
+        return { ...g, isTeacherModified: true };
+      })
     }));
   };
 
   // Add a new empty goal block and open the smart Goal Picker immediately
   const handleAddGoalRow = () => {
     const newId = 'g_row_' + Date.now();
+    const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
     const newGoalObj = {
       id: newId,
       environment: ENVIRONMENTS_LIST[0],
@@ -444,8 +474,10 @@ export default function EcologicalWorkPlanForm({
       objectives: '',
       opportunities: '',
       partners: 'צוות הגן, סייעת אישית',
-      duration: 'עד סוף השנה',
-      evaluationCriteria: ''
+      duration: `3 חודשים (עד ${dateInfo.plus3Months})`,
+      evaluationCriteria: '',
+      isTeacherAdded: true,
+      isTeacherModified: true
     };
     setFormData((prev) => ({
       ...prev,
@@ -460,10 +492,24 @@ export default function EcologicalWorkPlanForm({
     if ((formData.goals || []).length <= 1) {
       if (!window.confirm('זוהי המטרה היחידה בתכנית. האם למחוק אותה?')) return;
     }
-    setFormData((prev) => ({
-      ...prev,
-      goals: (prev.goals || []).filter((g) => g.id !== goalId)
-    }));
+    setFormData((prev) => {
+      const targetGoal = (prev.goals || []).find((g) => g.id === goalId);
+      const nextRemoved = [...(prev.removedAiGoals || [])];
+      if (targetGoal && !isGoalEmpty(targetGoal)) {
+        nextRemoved.push({
+          id: targetGoal.id,
+          environment: (targetGoal.environment || '').trim(),
+          title: (targetGoal.title || '').trim(),
+          activityParticipation: (targetGoal.activityParticipation || '').trim(),
+          aiSnapshot: targetGoal.aiSnapshot || null
+        });
+      }
+      return {
+        ...prev,
+        removedAiGoals: nextRemoved,
+        goals: (prev.goals || []).filter((g) => g.id !== goalId)
+      };
+    });
   };
 
   // Select a goal from the Dynamic Goal Bank (automatically adjusted to student's gender!)
@@ -483,6 +529,7 @@ export default function EcologicalWorkPlanForm({
       .map((o) => `• ${adaptTextToGender(o, genderToUse)}`)
       .join('\n');
     const genderEval = adaptTextToGender(bankItem.defaultEvaluation || '', genderToUse);
+    const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
 
     setFormData((prev) => ({
       ...prev,
@@ -492,10 +539,11 @@ export default function EcologicalWorkPlanForm({
           return {
             ...g,
             title: genderTitle,
-            environment: bankItem.environment || g.environment
+            environment: bankItem.environment || g.environment,
+            isTeacherModified: true
           };
         }
-        return {
+        const draftGoal = {
           ...g,
           title: genderTitle,
           environment: bankItem.environment || g.environment,
@@ -503,8 +551,21 @@ export default function EcologicalWorkPlanForm({
           objectives: g.objectives || genderObjectives,
           opportunities: g.opportunities || personalizedOpportunities || '',
           partners: g.partners || bankItem.defaultPartners || 'צוות חינוכי, הורים',
-          duration: g.duration || bankItem.defaultDuration || 'עד סוף השנה',
-          evaluationCriteria: g.evaluationCriteria || genderEval || ''
+          duration: g.duration || '',
+          evaluationCriteria: g.evaluationCriteria || genderEval || '',
+          isTeacherModified: true
+        };
+        return {
+          ...draftGoal,
+          duration:
+            g.duration && g.duration !== 'עד סוף השנה'
+              ? g.duration
+              : normalizeAndSizeGoalDuration(
+                  draftGoal,
+                  prev.teacherFreeText || '',
+                  prev,
+                  dateInfo
+                )
         };
       })
     }));
@@ -519,7 +580,7 @@ export default function EcologicalWorkPlanForm({
     const questions =
       bankItem.facilitatingQuestions && bankItem.facilitatingQuestions.length > 0
         ? bankItem.facilitatingQuestions.slice(0, 3)
-        : generateDefaultQuestionsForCustomGoal(genderTitle, bankItem.environment);
+        : generateDefaultQuestionsForCustomGoal(genderTitle, bankItem.environment, formData);
 
     setAiQuestionsMap((prev) => ({
       ...prev,
@@ -532,6 +593,13 @@ export default function EcologicalWorkPlanForm({
   // Define a brand new custom Goal and trigger AI Facilitating Questions
   const handleConfirmCustomGoal = async (goalRow) => {
     if (!goalRow.title || !goalRow.title.trim()) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      goals: (prev.goals || []).map((g) =>
+        g.id === goalRow.id ? { ...g, isTeacherModified: true } : g
+      )
+    }));
 
     // Save to global Goal Bank for future usage
     onUseOrAddGoalToBank(goalRow);
@@ -548,6 +616,7 @@ export default function EcologicalWorkPlanForm({
     if (!goalTitle) return;
 
     setLoadingAiForGoalId(goalRow.id);
+    const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
 
     // Check if bank already has tailored questions and no API key is set
     const existingBankItem = sortedGoals.find(
@@ -557,7 +626,7 @@ export default function EcologicalWorkPlanForm({
     );
     const fallbackQuestions =
       existingBankItem?.facilitatingQuestions?.slice(0, 3) ||
-      generateDefaultQuestionsForCustomGoal(goalTitle, goalRow.environment);
+      generateDefaultQuestionsForCustomGoal(goalTitle, goalRow.environment, formData);
 
     if (!geminiApiKey) {
       setAiQuestionsMap((prev) => ({
@@ -572,15 +641,16 @@ export default function EcologicalWorkPlanForm({
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
       const genderLabel = currentGender === 'girl' ? 'בת (לשון נקבה)' : 'בן (לשון זכר)';
       const prompt = `אתה מדריך פדגוגי מומחה לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית" ותח"י.
-המורה הגדירה את המטרה העליונה הבאה עבור תלמיד/ה (${genderLabel}):
+המורה הגדירה את המטרה העליונה הבאה עבור תלמיד/ה (${genderLabel}, גיל: ${dateInfo.ageDescription}):
 מטרה: "${goalTitle}"
 סביבה / תחום: "${goalRow.environment || 'מרחב הגן / הכיתה'}"
+תאריך הזנת המטרה: ${dateInfo.entryDateFormatted}
 מידע חופשי על הילד/ה: "${formData.teacherFreeText || ''}"
 
 נסח בדיוק 3 שאלות מנחות (Facilitating Questions) קצרות, מכוונות ומעשיות בעברית (מותאמות ל${genderLabel}) שיסייעו למורה לדייק את מילוי השדות של מטרה זו בטבלה:
 - שאלה 1: על התפקוד הנוכחי של הילד/ה והגורמים המאפשרים/המגבילים בסביבה (עבור שדה "פעילות והשתתפות").
-- שאלה 2: על צעדים אופרטיביים הדרגתיים ואמצעי תיווך של הצוות (עבור שדות "יעדים וציוני דרך" ו-"הזדמנויות ואמצעים").
-- שאלה 3: על השותפים לתהליך ואמות המידה להערכה בסוף התקופה.
+- שאלה 2: על צעדים אופרטיביים הדרגתיים ואמצעי תיווך של הצוות בהתאם לגיל הילד/ה ורמתו/ה (עבור שדות "יעדים וציוני דרך" ו-"הזדמנויות ואמצעים").
+- שאלה 3: על השותפים לתהליך, תיחום הזמן המשוער לפי גודל המטרה (T-Shirt Size: למשל חודש עד ${dateInfo.plus1Month}, 3 חודשים עד ${dateInfo.plus3Months}, או חצי שנה עד ${dateInfo.plus6Months}) ואמות המידה להערכה.
 
 עבור כל שאלה הצע גם 2-3 תשובות קצרות לדוגמה שהמורה יכולה לבחור בלחיצה.
 החזר תשובה בפורמט JSON בלבד במבנה הבא:
@@ -639,6 +709,7 @@ export default function EcologicalWorkPlanForm({
     const firstName = (formData.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד'))
       .trim()
       .split(/\s+/)[0];
+    const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
 
     setLoadingAiForGoalId(goalRow.id);
 
@@ -648,6 +719,8 @@ export default function EcologicalWorkPlanForm({
         const prompt = `אתה מומחה לכתיבת תכנית עבודה אקולוגית ותח"י בעברית.
 שם הילד/ה: ${firstName}
 מין הילד/ה: ${genderLabel}
+גיל הילד/ה: ${dateInfo.ageDescription}
+תאריך הזנת המטרה: ${dateInfo.entryDateFormatted}
 סביבה: ${goalRow.environment}
 מטרה (מה אנחנו רוצים שיקרה?): ${goalRow.title}
 
@@ -656,13 +729,20 @@ export default function EcologicalWorkPlanForm({
 2. צעדים אופרטיביים ואמצעי תיווך: ${ans2 || 'לא צוין'}
 3. שותפים, משך ואמות מידה להערכה: ${ans3 || 'לא צוין'}
 
+הנחיה לקביעת משך הזמן ("duration") לפי גודל המטרה (T-Shirt Size: S / M / L) ותאריך יחסי מתאריך הזנת המטרה (${dateInfo.entryDateFormatted}):
+- אל תקבע כברירת מחדל "עד סוף השנה"! העריך את גודל המטרה לפי גיל הילד/ה, רמתו/ה והקושי:
+- אם המטרה ממוקדת וברת השגה בטווח קצר (SMALL): קבע "חודש (עד ${dateInfo.plus1Month})" או "חודשיים (עד ${dateInfo.plus2Months})".
+- אם המטרה בינונית (MEDIUM): קבע "3 חודשים (עד ${dateInfo.plus3Months})" או "4 חודשים (עד ${dateInfo.plus4Months})".
+- אם המטרה רחבה וארוכת טווח (LARGE): קבע "חצי שנה (עד ${dateInfo.plus6Months})" או "עד סוף השנה (עד ${dateInfo.endOfYear})".
+
 נסח באופן מקצועי, בהיר ומותאם למין הילד/ה (${genderLabel}) את השדות הבאים והחזר JSON בלבד:
 {
   "activityParticipation": "תיאור פעילות והשתתפות בסביבה...",
   "objectives": "• יעד 1\\n• יעד 2\\n• יעד 3",
   "opportunities": "• הזדמנות ותיווך 1\\n• הזדמנות ותיווך 2",
   "partners": "שותפים לתהליך...",
-  "duration": "משך הזמן...",
+  "tShirtSize": "S",
+  "duration": "חודש (עד ${dateInfo.plus1Month})",
   "evaluationCriteria": "אמות מידה להערכה..."
 }`;
 
@@ -680,23 +760,28 @@ export default function EcologicalWorkPlanForm({
             const enriched = JSON.parse(jsonMatch[0]);
             setFormData((prev) => ({
               ...prev,
-              goals: (prev.goals || []).map((g) =>
-                g.id === goalRow.id
-                  ? adaptGoalToGender(
-                      {
-                        ...g,
-                        activityParticipation:
-                          enriched.activityParticipation || g.activityParticipation,
-                        objectives: enriched.objectives || g.objectives,
-                        opportunities: enriched.opportunities || g.opportunities,
-                        partners: enriched.partners || g.partners,
-                        duration: enriched.duration || g.duration,
-                        evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria
-                      },
-                      genderToUse
-                    )
-                  : g
-              )
+              goals: (prev.goals || []).map((g) => {
+                if (g.id !== goalRow.id) return g;
+                const mergedGoal = {
+                  ...g,
+                  activityParticipation:
+                    enriched.activityParticipation || g.activityParticipation,
+                  objectives: enriched.objectives || g.objectives,
+                  opportunities: enriched.opportunities || g.opportunities,
+                  partners: enriched.partners || g.partners,
+                  tShirtSize: enriched.tShirtSize || g.tShirtSize,
+                  duration: enriched.duration || g.duration,
+                  evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria,
+                  isTeacherModified: true
+                };
+                mergedGoal.duration = normalizeAndSizeGoalDuration(
+                  mergedGoal,
+                  prev.teacherFreeText || '',
+                  prev,
+                  dateInfo
+                );
+                return adaptGoalToGender(mergedGoal, genderToUse);
+              })
             }));
             setLoadingAiForGoalId(null);
             return;
@@ -712,29 +797,34 @@ export default function EcologicalWorkPlanForm({
       ...prev,
       goals: (prev.goals || []).map((g) => {
         if (g.id !== goalRow.id) return g;
-        return adaptGoalToGender(
-          {
-            ...g,
-            activityParticipation: ans1
-              ? `${ans1}${g.activityParticipation ? `\n${g.activityParticipation}` : ''}`
-              : g.activityParticipation ||
-                `בסביבת ${g.environment}, ${firstName} מתנסה בפעילות עם תיווך מותאם של הצוות.`,
-            objectives: ans2
-              ? `${g.objectives ? g.objectives + '\n' : ''}• ${ans2}`
-              : g.objectives || `• יתקדם בהדרגה לעבר המטרה: ${g.title}.`,
-            opportunities: ans2
-              ? `${g.opportunities ? g.opportunities + '\n' : ''}• הצוות יתווך ל${firstName} באמצעות: ${ans2}.`
-              : g.opportunities || `• המבוגר יזמין ויתווך ל${firstName} באופן יומיומי ומדורג.`,
-            partners: ans3 ? ans3 : g.partners || 'צוות הגן / הכיתה, סייעת אישית, הורים',
-            duration: g.duration || 'עד סוף השנה',
-            evaluationCriteria:
-              ans3 && ans3.length > 15
-                ? ans3
-                : g.evaluationCriteria ||
-                  `יישום עצמאי ועקבי של המטרה (${g.title}) בסביבת ${g.environment}.`
-          },
-          genderToUse
+        const draftGoal = {
+          ...g,
+          activityParticipation: ans1
+            ? `${ans1}${g.activityParticipation ? `\n${g.activityParticipation}` : ''}`
+            : g.activityParticipation ||
+              `בסביבת ${g.environment}, ${firstName} מתנסה בפעילות עם תיווך מותאם של הצוות.`,
+          objectives: ans2
+            ? `${g.objectives ? g.objectives + '\n' : ''}• ${ans2}`
+            : g.objectives || `• יתקדם בהדרגה לעבר המטרה: ${g.title}.`,
+          opportunities: ans2
+            ? `${g.opportunities ? g.opportunities + '\n' : ''}• הצוות יתווך ל${firstName} באמצעות: ${ans2}.`
+            : g.opportunities || `• המבוגר יזמין ויתווך ל${firstName} באופן יומיומי ומדורג.`,
+          partners: ans3 ? ans3 : g.partners || 'צוות הגן / הכיתה, סייעת אישית, הורים',
+          duration: ans3 && /\d|חודש|שבוע|שנה/.test(ans3) ? ans3 : g.duration || '',
+          evaluationCriteria:
+            ans3 && ans3.length > 15
+              ? ans3
+              : g.evaluationCriteria ||
+                `יישום עצמאי ועקבי של המטרה (${g.title}) בסביבת ${g.environment}.`,
+          isTeacherModified: true
+        };
+        draftGoal.duration = normalizeAndSizeGoalDuration(
+          draftGoal,
+          prev.teacherFreeText || '',
+          prev,
+          dateInfo
         );
+        return adaptGoalToGender(draftGoal, genderToUse);
       })
     }));
     setLoadingAiForGoalId(null);
@@ -754,7 +844,7 @@ export default function EcologicalWorkPlanForm({
         const nextObjectives = current
           ? `${current}\n• ${genderAdjustedObj}`
           : `• ${genderAdjustedObj}`;
-        return { ...g, objectives: nextObjectives };
+        return { ...g, objectives: nextObjectives, isTeacherModified: true };
       })
     }));
   };
@@ -893,6 +983,14 @@ ${goalsSummary}
         ? 'בת (נקבה) – חובה לנסח את כל המטרות, היעדים והתיאורים בלשון נקבה בלבד (למשל: תשתתף, תמתין, תבחר, תגיב)!'
         : 'בן (זכר) – חובה לנסח את כל המטרות, היעדים והתיאורים בלשון זכר בלבד (למשל: ישתתף, ימתין, יבחר, יגיב)!';
 
+    const dateInfo = resolveStudentAgeAndDateInfo(formData, rawText);
+    const existingGoals = formData.goals || [];
+    const protectedGoals = existingGoals.filter((g) => isGoalProtectedFromAiOverwrite(g));
+    const unprotectedGoals = existingGoals.filter(
+      (g) => !isGoalEmpty(g) && !isGoalProtectedFromAiOverwrite(g)
+    );
+    const removedGoals = Array.isArray(formData.removedAiGoals) ? formData.removedAiGoals : [];
+
     // 1. Try Live Gemini AI if API key is provided
     if (geminiApiKey && geminiApiKey.trim()) {
       const bankReference = sortedGoals
@@ -903,30 +1001,80 @@ ${goalsSummary}
         )
         .join('\n');
 
+      const protectedGoalsPromptBlock =
+        protectedGoals.length > 0
+          ? `\nהנחיה קריטית – מטרות שנערכו או נוספו על ידי המורה (נעולות לשינוי!):
+המורה ערכה או הוסיפה ידנית את ${protectedGoals.length} המטרות הבאות לאחר ניתוח קודם:
+${protectedGoals
+  .map((pg, idx) => {
+    const origNote =
+      pg.aiSnapshot?.title && pg.aiSnapshot.title !== pg.title
+        ? ` (עודכן מתוך מטרת ה-AI המקורית: "${pg.aiSnapshot.title}")`
+        : '';
+    return `  * מטרה נעולה #${idx + 1}: סביבה="${pg.environment}" | מטרה="${pg.title}"${origNote} | תפקוד="${pg.activityParticipation}"`;
+  })
+  .join('\n')}
+- **אסור לשנות דבר במטרות נעולות אלו ואסור להחזיר אותן או את גרסתן המקורית או כפילויות שלהן במערך "goals"!**
+- התייחס בניתוח של מערך "goals" **אך ורק לשאר המטרות** (עדכון/ניתוח של מטרות קיימות שלא נערכו ידנית, או יצירת מטרות חדשות עבור אתגרים בטקסט שאינם מכוסים כבר במטרות הנעולות). אם כל הנושאים בטקסט כבר מכוסים במטרות הנעולות, החזר מערך ריק [] עבור "goals".\n`
+          : '';
+
+      const removedGoalsPromptBlock =
+        removedGoals.length > 0
+          ? `\nהנחיה קריטית – מטרות שהוסרו על ידי המורה:
+המורה מחקה מהתוכנית את המטרות הבאות:
+${removedGoals
+  .map((rg, idx) => `  * הוסרה #${idx + 1}: סביבה="${rg.environment}" | מטרה="${rg.title}"`)
+  .join('\n')}
+- **אל תחזיר ואל תיצור מחדש מטרות אלו במערך "goals"!**\n`
+          : '';
+
+      const unprotectedGoalsPromptBlock =
+        unprotectedGoals.length > 0 && (protectedGoals.length > 0 || removedGoals.length > 0)
+          ? `\nמטרות קיימות שטרם נערכו ידנית על ידי המורה (אליהן ולמטרות חדשות מהטקסט עליך להתייחס במערך "goals"):
+${unprotectedGoals
+  .map((ug, idx) => `  * מטרה קיימת #${idx + 1}: סביבה="${ug.environment}" | מטרה="${ug.title}"`)
+  .join('\n')}\n`
+          : '';
+
       const prompt = `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
 המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות (העלול להכיל שגיאות כתיב, שגיאות הקלדה או ניסוח יומיומי).
 מין הילד/ה שהוגדר בטופס: ${genderInstruction}
+גיל הילד/ה: ${dateInfo.ageDescription}
+מסגרת חינוכית: ${formData.educationalFramework || 'לא צוין'}
+תאריך הזנת המטרות (תאריך ייחוס לחישוב משך הזמן): ${dateInfo.entryDateFormatted}
 
 הנחיות קריטיות לעיבוד המידע:
 1. אל תעתיק משפטים גולמיים מהטקסט "As-Is"! עליך לפרש את המשמעות מתוך ההקשר, לתקן כל שגיאת כתיב או דקדוק, ולנסח מחדש בעברית פדגוגית מקצועית, רהוטה ותקנית המותאמת למין הילד/ה (${genderToUse === 'girl' ? 'לשון נקבה' : 'לשון זכר'}).
 2. עבור "strengthsExisting" (מוקדי כוח: כוחות קיימים) ו-"strengthsToEmpower" (כוחות להעצמה וחיזוק) כתוב **תקציר מנהלים (Executive Summary) תמציתי ומזוקק לפי נושאים** – לכל היותר 3 עד 4 נקודות קצרות בכל עמודה (במבנה: "• [נושא/תחום]: [תמצית קצרה של 5-9 מילים]"). אל תעמיס מלל ואל תחזור על משפטים ארוכים!
-
+3. **סיווג מטרות לפי גודל (T-Shirt Size: SMALL / MEDIUM / LARGE) וקביעת משך הזמן ("duration") לפי תאריך יחסי מתאריך הזנת המטרות (${dateInfo.entryDateFormatted}):**
+   - נתח כל מטרה בהתאם ל**גיל הילד/ה (${dateInfo.ageDescription}), רמת התפקוד שלו/ה, האתגרים והקשיים** והפרטים שכתבה המורה.
+   - **אסור להגדיר את כל המטרות כברירת מחדל לכל השנה ("עד סוף השנה")!** עליך להעריך את גודל המטרה (T-Shirt Size) ולהגביל את משך הזמן שלה ("duration") לתאריך יחסי מתאריך הזנת המטרות (${dateInfo.entryDateFormatted}):
+     * **SMALL ("S")** – מטרה ממוקדת, הרגל קונקרטי או מיומנות נקודתית שנראית ברת-השגה בטווח קצר (כחודש עד חודשיים) בהתאם לגיל הילד/ה, רמתו/ה והקושי:
+       - אם ניתנת להשגה תוך חודש: הגדר \`"tShirtSize": "S"\` ו-\`"duration": "חודש (עד ${dateInfo.plus1Month})"\`
+       - אם ניתנת להשגה תוך חודשיים: הגדר \`"tShirtSize": "S"\` ו-\`"duration": "חודשיים (עד ${dateInfo.plus2Months})"\`
+     * **MEDIUM ("M")** – מטרה בינונית הדורשת תרגול הדרגתי ותיווך עקבי לאורך 3 עד 4 חודשים:
+       - הגדר \`"tShirtSize": "M"\` ו-\`"duration": "3 חודשים (עד ${dateInfo.plus3Months})"\` (או \`"4 חודשים (עד ${dateInfo.plus4Months})"\`)
+     * **LARGE ("L")** – מטרה התפתחותית/רגשית-חברתית רחבה ומורכבת הדורשת תהליך עומק ממושך:
+       - הגדר \`"tShirtSize": "L"\` ו-\`"duration": "חצי שנה (עד ${dateInfo.plus6Months})"\` או \`"עד סוף השנה (עד ${dateInfo.endOfYear})"\`
+   - התאם גם את היקף היעדים האופרטיביים ("objectives") לגיל הילד/ה, לרמתו/ה ולגודל המטרה (מטרת SMALL תכלול 2-3 צעדים קונקרטיים ומהירים להשגה; מטרת MEDIUM/LARGE תכלול 3-5 צעדים מדורגים).
+${protectedGoalsPromptBlock}${removedGoalsPromptBlock}${unprotectedGoalsPromptBlock}
 הדוח הרשמי ב-JSON חייב לכלול:
 1. "name": שם הילד/ה אם הוזכר בטקסט (או השאר ריק אם לא הוזכר).
 2. "educationalFramework": מסגרת חינוכית/גן אם הוזכרו בטקסט (או השאר ריק).
 3. "strengthsExisting": תקציר מנהלים תמציתי (3-4 נקודות קצרות לפי נושאים) של מוקדי הכוח הקיימים.
 4. "strengthsToEmpower": תקציר מנהלים תמציתי (2-4 נקודות קצרות לפי נושאים) של הכוחות להעצמה וחיזוק.
-5. "goals": מערך של 2 עד 4 מטרות המותאמות במדויק לצרכים ולאתגרים שתוארו בטקסט של המורה:
+5. "goals": מערך המטרות (עבור שאר המטרות שאינן נעולות ושלא הוסרו על ידי המורה):
    - תחילה בדוק אם קיימות מטרות מתאימות במאגר המטרות הקיים שלהלן.
-   - **חשוב מאוד – יצירת מטרה חדשה במידת הצורך:** אם הטקסט הגולמי של המורה מתאר קושי, צורך או תחום תפקוד שאף אחת מהמטרות הקיימות במאגר אינה מתאימה לו, **חובה ליצור ולנסח מטרה חדשה ומקורית המותאמת אישית לתלמיד/ה זה/זו** (וכן לנסח עבורה יעדים אופרטיביים חדשים, הזדמנויות ואמצעים ואמות מידה להערכה)! המערכת תוסיף אוטומטית כל מטרה חדשה שתנסח אל מאגר המטרות הדינמי.
-   לכל מטרה (בין אם נבחרה מהמאגר ובין אם נוצרה כמטרה חדשה עבור התלמיד/ה) מלא את כל 6 העמודות בניסוח מקצועי וללא שגיאות כתיב (בלשון ${genderToUse === 'girl' ? 'נקבה' : 'זכר'}):
+   - **חשוב מאוד – יצירת מטרה חדשה במידת הצורך:** אם הטקסט הגולמי של המורה מתאר קושי, צורך או תחום תפקוד שאף אחת מהמטרות הקיימות במאגר אינה מתאימה לו, **חובה ליצור ולנסח מטרה חדשה ומקורית המותאמת אישית לתלמיד/ה זה/זו** (וכן לנסח עבורה יעדים אופרטיביים חדשים, הזדמנויות ואמצעים ואמות מידה להערכה)!
+   לכל מטרה מלא את השדות בניסוח מקצועי וללא שגיאות כתיב (בלשון ${genderToUse === 'girl' ? 'נקבה' : 'זכר'}):
    - "environment": סביבת השתתפות מתאימה (מתוך הרשימה: ${ENVIRONMENTS_LIST.join(', ')} – או סביבה מותאמת אם נדרש)
    - "activityParticipation": סינתזה פדגוגית מקצועית ותמציתית של תפקוד הילד/ה בסביבה זו (ללא העתקת הטקסט הגולמי כפי שהוא!)
-   - "title": מטרה מתאימה מהמאגר, או **מטרה חדשה ומותאמת אישית** שנוסחה במיוחד עבור התלמיד/ה אם אין מטרה מתאימה במאגר
-   - "objectives": יעדים אופרטיביים ומדורגים (מתוך המאגר או יעדים חדשים שנוסחו במיוחד למטרה החדשה, בנקודות • מופרדות בשורות חדשות)
+   - "title": מטרה מתאימה מהמאגר, או **מטרה חדשה ומותאמת אישית** שנוסחה במיוחד עבור התלמיד/ה
+   - "objectives": יעדים אופרטיביים ומדורגים המותאמים לגיל הילד/ה, רמתו/ה וגודל המטרה (בנקודות • מופרדות בשורות חדשות)
    - "opportunities": הזדמנויות, אמצעים ודרכי תיווך מעשיות של הצוות עבור הילד/ה (נקודות • מופרדות בשורות חדשות)
    - "partners": שותפים לתהליך
-   - "duration": משך הזמן
+   - "tShirtSize": "S" | "M" | "L"
+   - "duration": משך הזמן מתוחם בתאריך יחסי מתאריך הזנת המטרות (למשל: "חודש (עד ${dateInfo.plus1Month})" למטרת S, "3 חודשים (עד ${dateInfo.plus3Months})" למטרת M, וכו')
    - "evaluationCriteria": אמות מידה ברורות להערכה
 6. "recommendations": 3 המלצות מערכתיות קצרות וממוקדות לצוות הגן ולהורים.
 
@@ -953,7 +1101,8 @@ ${bankReference}
       "objectives": "• יעד 1\\n• יעד 2\\n• יעד 3",
       "opportunities": "• אמצעי תיווך 1\\n• אמצעי תיווך 2",
       "partners": "...",
-      "duration": "...",
+      "tShirtSize": "S",
+      "duration": "חודש (עד ${dateInfo.plus1Month})",
       "evaluationCriteria": "..."
     }
   ],
@@ -961,23 +1110,39 @@ ${bankReference}
 }`;
 
       const parsed = await callGeminiJson(prompt);
-      if (parsed && Array.isArray(parsed.goals) && parsed.goals.length > 0) {
-        const formattedGoals = parsed.goals.map((g, i) =>
-          adaptGoalToGender(
-            {
-              id: 'g_airev_' + Date.now() + '_' + i,
-              environment: g.environment || ENVIRONMENTS_LIST[0],
-              activityParticipation: g.activityParticipation || '',
-              title: g.title || '',
-              objectives: g.objectives || '',
-              opportunities: g.opportunities || '',
-              partners: g.partners || 'צוות הגן, הורים',
-              duration: g.duration || 'עד סוף השנה',
-              evaluationCriteria: g.evaluationCriteria || ''
-            },
-            genderToUse
-          )
-        );
+      if (
+        parsed &&
+        Array.isArray(parsed.goals) &&
+        (parsed.goals.length > 0 || protectedGoals.length > 0)
+      ) {
+        const candidateGoals = parsed.goals.map((g, i) => {
+          const rawCandidate = {
+            id: 'g_airev_' + Date.now() + '_' + i,
+            environment: g.environment || ENVIRONMENTS_LIST[0],
+            activityParticipation: g.activityParticipation || '',
+            title: g.title || '',
+            objectives: g.objectives || '',
+            opportunities: g.opportunities || '',
+            partners: g.partners || 'צוות הגן, הורים',
+            tShirtSize: g.tShirtSize || '',
+            duration: g.duration || '',
+            evaluationCriteria: g.evaluationCriteria || ''
+          };
+          rawCandidate.duration = normalizeAndSizeGoalDuration(
+            rawCandidate,
+            rawText,
+            formData,
+            dateInfo
+          );
+          return attachAiBaselineToGoal(adaptGoalToGender(rawCandidate, genderToUse));
+        });
+
+        const mergedGoals = mergeReanalyzedGoals({
+          existingGoals,
+          candidateNewGoals: candidateGoals,
+          removedGoals,
+          gender: genderToUse
+        });
 
         const updated = {
           ...formData,
@@ -992,7 +1157,7 @@ ${bankReference}
               : formData.educationalFramework,
           strengthsExisting: parsed.strengthsExisting || formData.strengthsExisting,
           strengthsToEmpower: parsed.strengthsToEmpower || formData.strengthsToEmpower,
-          goals: formattedGoals,
+          goals: mergedGoals,
           recommendations: parsed.recommendations || formData.recommendations,
           status: 'מוכן להדפסה',
           lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
@@ -1000,13 +1165,17 @@ ${bankReference}
 
         setFormData(updated);
         onSaveStudentPlan(updated);
-        formattedGoals.forEach((g) => {
+        mergedGoals.forEach((g) => {
           if (g.title) onUseOrAddGoalToBank(g);
         });
         setIsReverseEngineering(false);
         setIsFreeTextCollapsed(true);
+        const preservedNote =
+          protectedGoals.length > 0
+            ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
+            : '';
         setReverseEngineerBanner(
-          `✨ הדוח הרשמי הופק בהצלחה ב-Gemini AI מתוך הטקסט הגולמי! נוסחו באופן קוהרנטי טבלת מוקדי הכוח, ${formattedGoals.length} מטרות מותאמות אישית ופרק ההמלצות.`
+          `✨ הדוח הרשמי הופק בהצלחה ב-Gemini AI מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו טבלת מוקדי הכוח, ${mergedGoals.length} מטרות${preservedNote} ופרק ההמלצות.`
         );
         setSaveBanner(true);
         setTimeout(() => setSaveBanner(false), 3500);
@@ -1037,8 +1206,12 @@ ${bankReference}
         if (g.title) onUseOrAddGoalToBank(g);
       });
       setIsFreeTextCollapsed(true);
+      const preservedNote =
+        protectedGoals.length > 0
+          ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
+          : '';
       setReverseEngineerBanner(
-        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! נוסחו באופן פדגוגי קוהרנטי טבלת מוקדי הכוח, ${engineered.goals.length} מטרות רשמיות מותאמות לתלמיד/ה (6 עמודות) ופרק ההמלצות.`
+        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו טבלת מוקדי הכוח, ${engineered.goals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות.`
       );
       setSaveBanner(true);
       setTimeout(() => setSaveBanner(false), 3500);
@@ -2902,15 +3075,55 @@ ${goalsContext}
                     />
                   </div>
 
-                  <button
-                    type="button"
-                    className="btn-remove-goal"
-                    onClick={() => handleDeleteGoalRow(goalRow.id)}
-                    title="מחק בלוק מטרה זה"
-                  >
-                    <Trash2 size={16} />
-                    <span>הסר מטרה</span>
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {!isGoalEmpty(goalRow) && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleGoalLock(goalRow.id)}
+                        title={
+                          isGoalProtectedFromAiOverwrite(goalRow)
+                            ? 'מטרה זו עודכנה או נוספה על ידך ולכן היא שמורה ולא תשתנה בעיבוד AI חוזר. לחצי אם ברצונך לאפשר ל-AI לעדכן אותה מחדש.'
+                            : 'מטרה זו נוצרה ע"י AI ותתעדכן בעיבוד חוזר. לחצי כדי לנעול אותה מעדכון AI.'
+                        }
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '4px 10px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: isGoalProtectedFromAiOverwrite(goalRow)
+                            ? '1px solid #bbf7d0'
+                            : '1px solid #e2e8f0',
+                          background: isGoalProtectedFromAiOverwrite(goalRow)
+                            ? '#f0fdf4'
+                            : '#f8fafc',
+                          color: isGoalProtectedFromAiOverwrite(goalRow)
+                            ? '#166534'
+                            : '#64748b'
+                        }}
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>
+                          {isGoalProtectedFromAiOverwrite(goalRow)
+                            ? 'שמור מעדכון AI (עודכן ידנית)'
+                            : 'יתעדכן בעיבוד AI'}
+                        </span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="btn-remove-goal"
+                      onClick={() => handleDeleteGoalRow(goalRow.id)}
+                      title="מחק בלוק מטרה זה"
+                    >
+                      <Trash2 size={16} />
+                      <span>הסר מטרה</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Row 1 (Colspan 6 in Doc): Activity & Participation */}
@@ -3355,7 +3568,7 @@ ${goalsContext}
                             onChange={(e) =>
                               handleGoalChange(goalRow.id, 'duration', e.target.value)
                             }
-                            placeholder="כשלושה חודשים / עד סוף השנה"
+                            placeholder="חודש (עד תאריך יעד) / כשלושה חודשים / עד סוף השנה"
                           />
                         </td>
                         <td data-label="אמות מידה להערכה">
