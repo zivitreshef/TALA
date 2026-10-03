@@ -28,6 +28,7 @@ import {
   MAX_FAILED_LOGIN_ATTEMPTS
 } from './allowedUsers';
 import { sendUserInvitationEmailInBackground } from './emailService';
+import { fetchAllowedUsersFromCloud } from './firebaseBackend';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -88,15 +89,26 @@ export function AllowlistAuthGate({
   const [contactNotes, setContactNotes] = useState('');
   const [contactSentSuccess, setContactSentSuccess] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setIsAccountLockedError(false);
 
-    const result = verifyAllowedUser(email, accessCode, allowedUsers);
+    // Ensure we always verify against the latest cloud allowed_users (prevents race condition on mobile/new devices)
+    const latestCloudUsers = await fetchAllowedUsersFromCloud();
+    const effectiveUsersList =
+      Array.isArray(latestCloudUsers) && latestCloudUsers.length > 0
+        ? latestCloudUsers
+        : allowedUsers;
 
-    // If login attempt updated failedLoginAttempts or locked the user, persist immediately
-    if (result.updatedUsersList && onUpdateAllowedUsers) {
+    const result = verifyAllowedUser(email, accessCode, effectiveUsersList);
+
+    // Only persist failedLoginAttempts / lockout back to cloud if we verified against the authoritative cloud list
+    if (
+      result.updatedUsersList &&
+      onUpdateAllowedUsers &&
+      (Array.isArray(latestCloudUsers) || result.allowed)
+    ) {
       onUpdateAllowedUsers(result.updatedUsersList);
     }
 
@@ -255,6 +267,9 @@ export function AllowlistAuthGate({
                 <input
                   type="email"
                   required
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   dir="ltr"
@@ -270,6 +285,9 @@ export function AllowlistAuthGate({
                 <input
                   type={showLoginPassword ? 'text' : 'password'}
                   required
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
                   style={{ paddingLeft: '40px', paddingRight: '36px' }}

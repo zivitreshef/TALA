@@ -1720,7 +1720,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           onSaveStudentPlan(updated);
           setIsGeneratingStatusReport(false);
           setStatusReportBanner(
-            `✨ דו"ח המצב הופק בהצלחה ב-Gemini AI (${sanitized.length} סעיפים מבוססי-מידע מתוך כרטיס התלמיד/ה${hasEvalData ? ' והערכת מחצית/סוף שנה' : ''}; סעיפים ללא מידע הושמטו אוטומטית).`
+            '✨ דו"ח המצב הופק בהצלחה ב-Gemini AI.'
           );
           return;
         }
@@ -1743,7 +1743,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     onSaveStudentPlan(updated);
     setIsGeneratingStatusReport(false);
     setStatusReportBanner(
-      `✨ דו"ח המצב העדכני הופק בהצלחה (${localSections.length} סעיפים מבוססי-מידע מתוך כרטיס התלמיד/ה${hasEvalData ? ' והערכת מחצית/סוף שנה' : ''}; סעיפים ללא מידע הושמטו אוטומטית).`
+      '✨ דו"ח המצב העדכני הופק בהצלחה.'
     );
   };
 
