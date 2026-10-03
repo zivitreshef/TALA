@@ -96,6 +96,16 @@ export function verifyAllowedUser(email, accessCode, usersList) {
     };
   }
 
+  if (isTrialUserExpired(found)) {
+    return {
+      allowed: false,
+      isDisabled: true,
+      isTrialExpired: true,
+      reason:
+        'גישה נדחתה: תקופת הניסיון (Trial) שהוגדרה עבור חשבונך הסתיימה. להארכת תקופת הגישה ניתן לפנות למנהל/ת המערכת.'
+    };
+  }
+
   const isPasswordMatch =
     !found.accessCode ||
     found.accessCode === cleanCode ||
@@ -249,5 +259,41 @@ export function isSessionUserValidForToday(sessionUser, now = new Date()) {
   }
   return sessionUser.sessionDate === getCurrentLocalDayKey(now);
 }
+
+export const DEFAULT_TRIAL_DAYS = 7;
+
+/**
+ * Computes an ISO expiration timestamp for a trial user given a number of days.
+ */
+export function computeTrialExpirationIso(days = DEFAULT_TRIAL_DAYS, fromDate = new Date()) {
+  const validDays = Math.max(1, Number(days) || DEFAULT_TRIAL_DAYS);
+  const baseMs = (fromDate instanceof Date ? fromDate : new Date(fromDate)).getTime();
+  return new Date(baseMs + validDays * 24 * 60 * 60 * 1000).toISOString();
+}
+
+/**
+ * Returns true if the user is a trial user and their trial period has expired.
+ */
+export function isTrialUserExpired(user, now = new Date()) {
+  if (!user || !user.isTrialUser || !user.trialExpiresAt) return false;
+  const expMs = new Date(user.trialExpiresAt).getTime();
+  if (Number.isNaN(expMs)) return false;
+  const nowMs = (now instanceof Date ? now : new Date(now)).getTime();
+  return nowMs > expMs;
+}
+
+/**
+ * Returns the remaining days (rounded up) for a trial user, or null if not a trial user.
+ */
+export function getTrialRemainingDays(user, now = new Date()) {
+  if (!user || !user.isTrialUser || !user.trialExpiresAt) return null;
+  const expMs = new Date(user.trialExpiresAt).getTime();
+  if (Number.isNaN(expMs)) return null;
+  const nowMs = (now instanceof Date ? now : new Date(now)).getTime();
+  const diffMs = expMs - nowMs;
+  if (diffMs <= 0) return 0;
+  return Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+}
+
 
 

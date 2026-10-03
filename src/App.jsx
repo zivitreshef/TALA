@@ -27,7 +27,8 @@ import {
   loadAllowedUsers,
   saveAllowedUsers,
   stampSessionUserWithDate,
-  isSessionUserValidForToday
+  isSessionUserValidForToday,
+  isTrialUserExpired
 } from './allowedUsers';
 import {
   AllowlistAuthGate,
@@ -60,7 +61,8 @@ import {
 } from './firebaseBackend';
 import {
   loadEmailEngineConfig,
-  saveEmailEngineConfig
+  saveEmailEngineConfig,
+  sendSignedNdaEmailToAdmin
 } from './emailService';
 import {
   PRIMARY_ADMIN_EMAIL,
@@ -81,6 +83,7 @@ import {
   ArchiveStudentModal,
   LogoutUnsavedModal
 } from './components/modals/StudentActionModals';
+import TrialNdaModal from './components/modals/TrialNdaModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
 
@@ -158,14 +161,14 @@ export default function App() {
       const saved = localStorage.getItem(SESSION_USER_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (!isSessionUserValidForToday(parsed)) {
+        if (!isSessionUserValidForToday(parsed) || isTrialUserExpired(parsed)) {
           localStorage.removeItem(SESSION_USER_KEY);
           return null;
         }
         const stillAllowed = loadAllowedUsers().find(
           (u) => u.email.toLowerCase() === parsed.email?.toLowerCase() && u.active
         );
-        if (!stillAllowed) {
+        if (!stillAllowed || isTrialUserExpired(stillAllowed)) {
           localStorage.removeItem(SESSION_USER_KEY);
           return null;
         }
@@ -362,23 +365,36 @@ export default function App() {
     };
   }, []);
 
-  // Ensure logged-in user is still active and sync mustChangePassword when allowedUsers changes in real time
+  // Ensure logged-in user is still active, not trial-expired, and sync mustChangePassword / trial / NDA fields when allowedUsers changes in real time
   useEffect(() => {
     if (!currentUser) return;
     const matchingUser = allowedUsers.find(
       (u) => u.email.toLowerCase() === currentUser.email?.toLowerCase()
     );
     if (matchingUser) {
-      if (!matchingUser.active) {
+      if (!matchingUser.active || isTrialUserExpired(matchingUser)) {
         performLogout();
       } else if (
         Boolean(matchingUser.mustChangePassword) !== Boolean(currentUser.mustChangePassword) ||
-        (matchingUser.group || '') !== (currentUser.group || '')
+        (matchingUser.group || '') !== (currentUser.group || '') ||
+        Boolean(matchingUser.isTrialUser) !== Boolean(currentUser.isTrialUser) ||
+        Boolean(matchingUser.mustSignNda) !== Boolean(currentUser.mustSignNda) ||
+        Boolean(matchingUser.ndaSigned) !== Boolean(currentUser.ndaSigned) ||
+        (matchingUser.trialExpiresAt || '') !== (currentUser.trialExpiresAt || '') ||
+        (matchingUser.trialDays || 0) !== (currentUser.trialDays || 0)
       ) {
         const syncedUser = {
           ...currentUser,
           group: matchingUser.group || '',
-          mustChangePassword: Boolean(matchingUser.mustChangePassword)
+          mustChangePassword: Boolean(matchingUser.mustChangePassword),
+          isTrialUser: Boolean(matchingUser.isTrialUser),
+          trialDays: matchingUser.trialDays,
+          trialStartedAt: matchingUser.trialStartedAt,
+          trialExpiresAt: matchingUser.trialExpiresAt,
+          mustSignNda: Boolean(matchingUser.mustSignNda),
+          ndaSigned: Boolean(matchingUser.ndaSigned),
+          ndaSignedAt: matchingUser.ndaSignedAt,
+          ndaSignerIdNumber: matchingUser.ndaSignerIdNumber
         };
         setCurrentUser(syncedUser);
         localStorage.setItem(SESSION_USER_KEY, JSON.stringify(syncedUser));
@@ -426,6 +442,56 @@ export default function App() {
     };
     setCurrentUser(updatedCurrent);
     safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+  };
+
+  const handleCompleteTrialNda = async (ndaPayload) => {
+    if (!currentUser) return;
+    const signedAtStr = new Date().toLocaleString('he-IL');
+    const updatedList = allowedUsers.map((u) =>
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+        ? {
+            ...u,
+            mustSignNda: false,
+            ndaSigned: true,
+            ndaSignedAt: signedAtStr,
+            ndaSignedDate: ndaPayload.signedDate,
+            ndaSignerIdNumber: ndaPayload.signerIdNumber
+          }
+        : u
+    );
+    handleUpdateAllowedUsers(updatedList);
+
+    const updatedCurrent = {
+      ...currentUser,
+      mustSignNda: false,
+      ndaSigned: true,
+      ndaSignedAt: signedAtStr,
+      ndaSignedDate: ndaPayload.signedDate,
+      ndaSignerIdNumber: ndaPayload.signerIdNumber
+    };
+    setCurrentUser(updatedCurrent);
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+
+    handleSubmitAdminRequest({
+      id: 'nda_' + Date.now(),
+      topic: 'אישור וחתימה על הסכם סודיות (NDA) – משתמש ניסיון',
+      name: ndaPayload.signerName || currentUser.name,
+      email: ndaPayload.signerEmail || currentUser.email,
+      notes: `ת.ז.: ${ndaPayload.signerIdNumber} | תאריך חתימה: ${ndaPayload.signedDate} | תקופת ניסיון: ${ndaPayload.trialDays || 7} ימים`,
+      createdAt: signedAtStr
+    });
+
+    try {
+      await sendSignedNdaEmailToAdmin({
+        config: emailEngineConfig,
+        ...ndaPayload
+      });
+    } catch (err) {
+      console.warn(
+        'Could not send signed NDA email in background, recorded in admin notifications:',
+        err
+      );
+    }
   };
 
   const handleLoginSuccess = (user) => {
@@ -482,12 +548,12 @@ export default function App() {
     performLogout();
   };
 
-  // Daily auto-logout: reset session automatically when a new calendar day starts
+  // Daily auto-logout & trial expiration check: reset session automatically when a new calendar day starts or trial expires
   useEffect(() => {
     if (!currentUser) return undefined;
 
     const checkDailySessionExpiry = () => {
-      if (!isSessionUserValidForToday(currentUser)) {
+      if (!isSessionUserValidForToday(currentUser) || isTrialUserExpired(currentUser)) {
         if (unsavedDraftState.isDirty && unsavedDraftState.draftData) {
           handleSaveAndLogout();
         } else {
@@ -1296,6 +1362,19 @@ export default function App() {
         enforcePasswordPolicy={enforcePasswordPolicy}
         onChangeOwnPassword={handleChangeOwnPassword}
         isMandatoryFirstLogin={Boolean(currentUser?.mustChangePassword)}
+      />
+
+      {/* Mandatory Hebrew NDA Modal for Trial Users (opens immediately after password change) */}
+      <TrialNdaModal
+        isOpen={Boolean(
+          currentUser &&
+            !currentUser.mustChangePassword &&
+            currentUser.isTrialUser &&
+            (currentUser.mustSignNda || !currentUser.ndaSigned)
+        )}
+        currentUser={currentUser}
+        onCompleteNda={handleCompleteTrialNda}
+        onLogout={performLogout}
       />
 
       {/* Admin Allowlist Management Modal (Only accessible to Admin) */}

@@ -386,3 +386,158 @@ export async function sendUserInvitationEmailInBackground({
   });
 }
 
+/**
+ * Builds the official Hebrew NDA Agreement HTML document signed by a trial user.
+ */
+export function buildSignedNdaDocumentHtml({
+  signerName,
+  signerEmail,
+  signerIdNumber,
+  signerDate,
+  signatureText,
+  signatureDataUrl,
+  trialDays = 7,
+  signedAtTimestamp
+}) {
+  const cleanName = signerName || 'משתמש/ת ניסיון';
+  const cleanEmail = signerEmail || '';
+  const cleanId = signerIdNumber || '';
+  const cleanDate = signerDate || new Date().toLocaleDateString('he-IL');
+  const cleanStamp =
+    signedAtTimestamp ||
+    new Date().toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+
+  const signatureBlockHtml = signatureDataUrl
+    ? `<div style="margin-top:8px;"><img src="${signatureDataUrl}" alt="חתימת המשתמש" style="max-height:95px; max-width:280px; border-bottom:2px solid #1e3a5f; padding-bottom:4px;" /></div>`
+    : `<div style="margin-top:8px; font-family:'Rubik', cursive, Arial, sans-serif; font-size:22px; font-weight:bold; color:#1e3a5f; border-bottom:2px solid #1e3a5f; display:inline-block; padding:2px 18px;">${signatureText || cleanName}</div>`;
+
+  return `
+    <!DOCTYPE html>
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:w="urn:schemas-microsoft-com:office:word"
+          lang="he" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+      <title>הסכם שמירת סודיות (NDA) – ${cleanName}</title>
+    </head>
+    <body dir="rtl" style="margin:0; padding:24px; background:#f8fafc; font-family:Arial, Helvetica, sans-serif; color:#1e293b; text-align:right; direction:rtl;">
+      <div dir="rtl" style="max-width:720px; margin:0 auto; background:#ffffff; border:2px solid #2b4c7e; border-radius:14px; overflow:hidden;">
+        <div style="background:linear-gradient(135deg, #1b365d 0%, #3b6ea5 55%, #6b46c1 100%); color:#ffffff; padding:22px 26px;">
+          <div style="font-size:12px; opacity:0.9; margin-bottom:6px;">מסמך משפטי חתום • מערכת TALA (גרסת התנסות סגורה)</div>
+          <h1 style="margin:0; font-size:22px; font-weight:800;">כתב התחייבות לשמירת סודיות, קניין רוחני ואי-הפצה (NDA)</h1>
+        </div>
+
+        <div style="padding:24px 28px; line-height:1.7; font-size:14px;">
+          <p style="margin:0 0 14px 0;">
+            שנערך ונחתם באופן דיגיטלי בתאריך <strong>${cleanDate}</strong> (${cleanStamp})
+          </p>
+
+          <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-right:4px solid #3b6ea5; border-radius:8px; padding:12px 16px; margin-bottom:18px;">
+            <div><strong>שם החותם/ת:</strong> ${cleanName}</div>
+            <div><strong>מספר תעודת זהות (ת.ז.):</strong> ${cleanId}</div>
+            <div><strong>כתובת דוא"ל:</strong> <span dir="ltr">${cleanEmail}</span></div>
+            <div><strong>תקופת גישה מוגדרת למשתמש ניסיון:</strong> ${trialDays} ימים</div>
+          </div>
+
+          <p><strong>הואיל</strong> ומערכת <strong>TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</strong> הינה מערכת טכנולוגית-פדגוגית ייחודית המצויה בשלבי פיתוח והרצה מבוקרים וטרם הופצה באופן פומבי או מסחרי;</p>
+          <p><strong>והואיל</strong> וכל זכויות היוצרים, הקניין הרוחני, הסודות המסחריים, המתודולוגיה הפדגוגית, מבנה המאגרים, מנגנוני ה-AI, העיצוב וקוד המקור במערכת שייכים באופן בלעדי ליוצרת ובעלת המערכת, <strong>גב' זיוית רשף</strong>;</p>
+          <p><strong>והואיל</strong> ולמשתמש/ת ניתנת בזאת הרשאת גישה זמנית ואישית להתנסות במערכת ("משתמש ניסיון") לתקופה קצובה של <strong>${trialDays} ימים</strong> בלבד;</p>
+
+          <h3 style="color:#1e3a5f; font-size:15.5px; margin:18px 0 8px 0;">לפיכך מצהיר/ה ומתחייב/ת החותם/ת כדלקמן:</h3>
+          <ol style="margin:0 0 18px 0; padding-right:20px;">
+            <li style="margin-bottom:8px;">
+              <strong>שמירת סודיות מוחלטת:</strong> לשמור בסודיות מוחלטת ולא לגלות, להציג, להעביר או לחשוף בפני כל צד שלישי כל מידע הקשור למערכת TALA, לרבות ממשק המשתמש, מבנה הטפסים, מאגר המטרות והיעדים, מנגנוני הבינה המלאכותית, דו"חות המצב וההערכה, או כל חלק מהם.
+            </li>
+            <li style="margin-bottom:8px;">
+              <strong>איסור העתקה, צילום או הפצה:</strong> לא להעתיק, לצלם מסכים, לשכפל, להנדס לאחור (Reverse Engineer), לפתח מוצר מתחרה או לעשות כל שימוש מסחרי או ארגוני ברעיונות, במבנה הפדגוגי או בתוצרי המערכת ללא אישור מראש ובכתב מבעלת המערכת.
+            </li>
+            <li style="margin-bottom:8px;">
+              <strong>שימוש אישי בלבד ושמירה על פרטיות:</strong> הרשאת הכניסה הינה אישית בלבד ואינה ניתנת להעברה. החותם/ת מתחייב/ת שלא להעביר את קוד הגישה לאף אדם אחר ולשמור על חיסיון מלא של כל מידע שיוזן למערכת.
+            </li>
+            <li style="margin-bottom:8px;">
+              <strong>פקיעת הרשאת הניסיון:</strong> ידוע לחותם/ת כי הגישה למערכת מוגבלת לתקופת הניסיון שהוגדרה (${trialDays} ימים, או כפי שיעודכן על ידי מנהלת המערכת), וכי תוקף התחייבות סודיות זו אינו מוגבל בזמן ויעמוד בתוקפו גם לאחר סיום תקופת הניסיון.
+            </li>
+          </ol>
+
+          <div style="background:#eef3fb; border:1.5px solid #5b9bd5; border-radius:10px; padding:16px 20px; margin-top:20px;">
+            <div style="font-weight:bold; color:#1b365d; margin-bottom:8px;">✍️ הצהרה וחתימת משתמש/ת הניסיון:</div>
+            <div style="font-size:13.5px; margin-bottom:6px;">
+              אני הח"מ, <strong>${cleanName}</strong>, ת.ז. <strong>${cleanId}</strong>, מאשר/ת כי קראתי בעיון את כתב ההתחייבות לשמירת סודיות וקניין רוחני, הבנתי את תוכנו ואני מתחייב/ת לקיימו במלואו.
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; margin-top:12px;">
+              <div>
+                <div style="font-size:12px; color:#475569;">חתימה דיגיטלית:</div>
+                ${signatureBlockHtml}
+                ${signatureText ? `<div style="font-size:12px; color:#334155; margin-top:4px;">שם בחתימה: ${signatureText}</div>` : ''}
+              </div>
+              <div style="font-size:13px; color:#1e3a5f;">
+                <div><strong>תאריך חתימה:</strong> ${cleanDate}</div>
+                <div><strong>חותמת זמן מערכת:</strong> ${cleanStamp}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Sends the signed NDA agreement directly to the Admin email address (zivit.reshef@gmail.com)
+ * with an attached Word-compatible (.doc) signed copy.
+ */
+export async function sendSignedNdaEmailToAdmin({
+  config,
+  adminEmail = 'zivit.reshef@gmail.com',
+  signerName,
+  signerEmail,
+  signerIdNumber,
+  signerDate,
+  signatureText,
+  signatureDataUrl,
+  trialDays = 7,
+  signedAtTimestamp
+}) {
+  const htmlDoc = buildSignedNdaDocumentHtml({
+    signerName,
+    signerEmail,
+    signerIdNumber,
+    signerDate,
+    signatureText,
+    signatureDataUrl,
+    trialDays,
+    signedAtTimestamp
+  });
+
+  const subject = `✍️ הסכם סודיות (NDA) חתום – משתמש ניסיון: ${signerName} (ת.ז. ${signerIdNumber})`;
+  const textBody = [
+    `שלום זיוית,`,
+    '',
+    `משתמש/ת הניסיון ${signerName} (${signerEmail}) התחבר/ה למערכת TALA, החליף/ה סיסמה וחתם/ה כעת על הסכם שמירת סודיות (NDA).`,
+    `מספר ת.ז.: ${signerIdNumber}`,
+    `תאריך חתימה: ${signerDate}`,
+    `מגבלת ימי ניסיון: ${trialDays} ימים`,
+    '',
+    `מצורף עותק המסמך החתום.`
+  ].join('\r\n');
+
+  const docBlob = new Blob(['\ufeff', htmlDoc], {
+    type: 'application/msword;charset=utf-8'
+  });
+
+  const safeName = String(signerName || 'TrialUser').replace(/[^א-תa-zA-Z0-9_-]/g, '_');
+
+  return sendReportEmailInBackground({
+    config,
+    toEmail: adminEmail,
+    subject,
+    htmlBody: htmlDoc,
+    textBody,
+    attachmentBlob: docBlob,
+    filename: `TALA_Signed_NDA_${safeName}_${signerIdNumber}.doc`,
+    mimeType: 'application/msword'
+  });
+}
+
+
