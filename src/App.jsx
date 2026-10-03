@@ -21,7 +21,8 @@ import {
   Archive,
   RotateCcw,
   Printer,
-  KeyRound
+  KeyRound,
+  MessageSquareHeart
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -62,7 +63,8 @@ import {
 import {
   loadEmailEngineConfig,
   saveEmailEngineConfig,
-  sendSignedNdaEmailToAdmin
+  sendSignedNdaEmailToAdmin,
+  sendUserSurveyEmailToAdmin
 } from './emailService';
 import {
   PRIMARY_ADMIN_EMAIL,
@@ -84,6 +86,7 @@ import {
   LogoutUnsavedModal
 } from './components/modals/StudentActionModals';
 import TrialNdaModal from './components/modals/TrialNdaModal';
+import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
 
@@ -91,12 +94,15 @@ const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
 const SESSION_USER_KEY = 'tala_current_session_user_v1';
 const PASSWORD_POLICY_STORAGE_KEY = 'tala_enforce_password_policy_v1';
 const ADMIN_REQUESTS_STORAGE_KEY = 'tala_admin_requests_v1';
+const USER_USAGE_TRACKER_KEY = 'tala_user_usage_tracker_v1';
 
 export default function App() {
   // Allowed users list
   const [allowedUsers, setAllowedUsers] = useState(() => loadAllowedUsers());
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showSelfPasswordModal, setShowSelfPasswordModal] = useState(false);
+  const [showFeedbackSurveyModal, setShowFeedbackSurveyModal] = useState(false);
+  const [surveySnoozedInSession, setSurveySnoozedInSession] = useState(false);
   const [cloudSyncState, setCloudSyncState] = useState({
     connected: false,
     status: 'local_only'
@@ -499,11 +505,136 @@ export default function App() {
     });
   };
 
+  const handleSubmitUserSurvey = (surveyPayload) => {
+    if (!currentUser) return;
+    setShowFeedbackSurveyModal(false);
+    setSurveySnoozedInSession(true);
+
+    const submittedAtStr =
+      surveyPayload.submittedAt ||
+      new Date().toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+
+    const updatedList = allowedUsers.map((u) =>
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+        ? {
+            ...u,
+            surveyCompleted: true,
+            surveyCompletedAt: submittedAtStr
+          }
+        : u
+    );
+    handleUpdateAllowedUsers(updatedList);
+
+    const updatedCurrent = {
+      ...currentUser,
+      surveyCompleted: true,
+      surveyCompletedAt: submittedAtStr
+    };
+    setCurrentUser(updatedCurrent);
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+
+    const r = surveyPayload.ratings || {};
+    const summaryNotes = [
+      `קלות שימוש: ${r.easeOfWebsite || 5}/5`,
+      `יצירת תלמיד: ${r.createStudent || 5}/5`,
+      `מטרות ו-AI: ${r.generateGoals || 5}/5`,
+      `הפקת דוחות: ${r.createReport || 5}/5`,
+      `שיתוף עם קולגות: ${r.collaborateWithColleagues || 5}/5`,
+      `המלצה לרכישה: ${surveyPayload.recommendToColleaguesAndManager || '—'}`,
+      surveyPayload.overallFeedback ? `משוב: ${surveyPayload.overallFeedback}` : '',
+      surveyPayload.improvementSuggestions ? `הצעות שיפור: ${surveyPayload.improvementSuggestions}` : ''
+    ]
+      .filter(Boolean)
+      .join(' | ');
+
+    handleSubmitAdminRequest({
+      id: 'survey_' + Date.now(),
+      topic: '⭐ משוב חוויית משתמש במערכת TALA',
+      name: surveyPayload.userName || currentUser.name,
+      email: surveyPayload.userEmail || currentUser.email,
+      notes: summaryNotes,
+      createdAt: submittedAtStr
+    });
+
+    sendUserSurveyEmailToAdmin({
+      config: emailEngineConfig,
+      ...surveyPayload,
+      submittedAt: submittedAtStr
+    }).catch((err) => {
+      console.warn('Could not send user survey email in background:', err);
+    });
+  };
+
+  const handleSnoozeUserSurvey = () => {
+    setShowFeedbackSurveyModal(false);
+    setSurveySnoozedInSession(true);
+  };
+
+  const handleDismissUserSurveyPermanently = () => {
+    setShowFeedbackSurveyModal(false);
+    setSurveySnoozedInSession(true);
+    if (!currentUser) return;
+
+    const updatedList = allowedUsers.map((u) =>
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+        ? { ...u, surveyDismissed: true }
+        : u
+    );
+    handleUpdateAllowedUsers(updatedList);
+
+    const updatedCurrent = { ...currentUser, surveyDismissed: true };
+    setCurrentUser(updatedCurrent);
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+  };
+
+  // Track active usage for new users and automatically trigger the optional survey after working with the webapp for a while
+  useEffect(() => {
+    if (!currentUser || currentUser.role === 'admin') return undefined;
+    if (currentUser.mustChangePassword) return undefined;
+    if (currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned)) {
+      return undefined;
+    }
+    if (currentUser.surveyCompleted || currentUser.surveyDismissed || surveySnoozedInSession) {
+      return undefined;
+    }
+
+    const emailKey = currentUser.email.trim().toLowerCase();
+    const ownedCount = students.filter(
+      (s) => s.ownerEmail?.toLowerCase() === emailKey && (s.name || '').trim()
+    ).length;
+
+    const checkAndAdvanceUsage = () => {
+      if (document.visibilityState !== 'visible') return;
+      const allUsage = safeGetStorageJson(USER_USAGE_TRACKER_KEY, {}) || {};
+      const prevEntry = allUsage[emailKey] || {
+        firstSeenAt: Date.now(),
+        activeSeconds: 0
+      };
+      const nextSeconds = (Number(prevEntry.activeSeconds) || 0) + 30;
+      allUsage[emailKey] = {
+        ...prevEntry,
+        activeSeconds: nextSeconds
+      };
+      safeSetStorageJson(USER_USAGE_TRACKER_KEY, allUsage);
+
+      // Trigger optional survey after ~8 minutes of active usage, or after ~3 minutes if the user already created/worked on a student card
+      const hasWorkedEnough =
+        nextSeconds >= 480 || (ownedCount >= 1 && nextSeconds >= 180);
+      if (hasWorkedEnough) {
+        setShowFeedbackSurveyModal(true);
+      }
+    };
+
+    const timerId = setInterval(checkAndAdvanceUsage, 30 * 1000);
+    return () => clearInterval(timerId);
+  }, [currentUser, students, surveySnoozedInSession]);
+
   const handleLoginSuccess = (user) => {
     const stampedUser = stampSessionUserWithDate(user);
     setCurrentUser(stampedUser);
     safeSetStorageJson(SESSION_USER_KEY, stampedUser);
     ensureFirebaseAuthSession(user.email, user.accessCode);
+    setSurveySnoozedInSession(false);
     setSelectedStudentId(null);
     setStudentSearch('');
     setInsideLandingSearch('');
@@ -511,6 +642,7 @@ export default function App() {
 
   const performLogout = () => {
     setShowLogoutUnsavedModal(false);
+    setShowFeedbackSurveyModal(false);
     setUnsavedDraftState({ isDirty: false, draftData: null });
     setCurrentUser(null);
     setSelectedStudentId(null);
@@ -981,6 +1113,29 @@ export default function App() {
             <span>ארכיון ({archivedUserStudents.length})</span>
           </button>
 
+          <button
+            type="button"
+            className="btn-header-bank"
+            onClick={() => setShowFeedbackSurveyModal(true)}
+            title="מילוי שאלון משוב חוויית משתמש (אופציונלי)"
+            style={{ position: 'relative' }}
+          >
+            <MessageSquareHeart size={16} />
+            <span>משוב על המערכת</span>
+            {!currentUser.surveyCompleted && currentUser.role !== 'admin' && (
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: '#8b5cf6',
+                  display: 'inline-block',
+                  marginRight: '4px'
+                }}
+              />
+            )}
+          </button>
+
           {currentUser.role === 'admin' && (
             <button
               type="button"
@@ -1381,6 +1536,20 @@ export default function App() {
         onCompleteNda={handleCompleteTrialNda}
         onSignNdaComplete={handleCompleteTrialNda}
         onLogout={performLogout}
+      />
+
+      {/* Optional Post-Usage User Experience & Recommendation Survey Modal */}
+      <UserFeedbackSurveyModal
+        isOpen={Boolean(
+          showFeedbackSurveyModal &&
+            currentUser &&
+            !currentUser.mustChangePassword &&
+            !(currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned))
+        )}
+        currentUser={currentUser}
+        onSubmitSurvey={handleSubmitUserSurvey}
+        onSnoozeSurvey={handleSnoozeUserSurvey}
+        onDismissSurveyPermanently={handleDismissUserSurveyPermanently}
       />
 
       {/* Admin Allowlist Management Modal (Only accessible to Admin) */}

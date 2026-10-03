@@ -646,4 +646,200 @@ export async function sendSignedNdaEmailToAdmin({
   });
 }
 
+/**
+ * Builds a formatted Hebrew HTML document for the User Experience & Feedback Survey.
+ */
+export function buildUserSurveyEmailHtml({
+  userName,
+  userEmail,
+  userTitle,
+  userGroup,
+  isTrialUser,
+  ratings = {},
+  recommendToColleaguesAndManager = '',
+  overallFeedback = '',
+  improvementSuggestions = '',
+  submittedAt
+}) {
+  const cleanName = userName || 'משתמש/ת מערכת TALA';
+  const cleanEmail = userEmail || '';
+  const cleanTitle = userTitle || 'צוות חינוכי';
+  const cleanGroup = userGroup || '—';
+  const stamp =
+    submittedAt ||
+    new Date().toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
+
+  const categories = [
+    {
+      key: 'easeOfWebsite',
+      label: '1. קלות ונוחות השימוש באתר ובממשק המערכת (Ease of Website)'
+    },
+    {
+      key: 'createStudent',
+      label: '2. יצירה והקמה של כרטיס תלמיד/ה חדש/ה (Creating New Student)'
+    },
+    {
+      key: 'generateGoals',
+      label: '3. ניסוח ובניית מטרות ויעדים – מאגר מטרות ו-AI (Generating Goals)'
+    },
+    {
+      key: 'createReport',
+      label: '4. הפקת דוחות – תל"א/תח"י, דו"ח מצב ודוח הערכה (Creating Reports)'
+    },
+    {
+      key: 'collaborateWithColleagues',
+      label: '5. שיתוף תלמיד/ה ועבודה משותפת עם קולגות בצוות (Maintaining Student with Colleagues)'
+    }
+  ];
+
+  const numericScores = categories
+    .map((c) => Number(ratings[c.key]) || 0)
+    .filter((v) => v > 0);
+  const avgScore =
+    numericScores.length > 0
+      ? (numericScores.reduce((acc, v) => acc + v, 0) / numericScores.length).toFixed(1)
+      : '—';
+
+  const renderStars = (score) => {
+    const n = Math.max(0, Math.min(5, Number(score) || 0));
+    if (!n) return '<span style="color:#94a3b8;">לא דורג</span>';
+    return (
+      '<span style="color:#f59e0b; font-size:16px; letter-spacing:1px;">' +
+      '★'.repeat(n) +
+      '☆'.repeat(5 - n) +
+      `</span> <strong style="color:#1e3a5f;">(${n}/5)</strong>`
+    );
+  };
+
+  const rowsHtml = categories
+    .map(
+      (cat) => `
+      <tr>
+        <td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; font-weight:bold; color:#1e293b;">
+          ${cat.label}
+        </td>
+        <td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; text-align:left; white-space:nowrap;">
+          ${renderStars(ratings[cat.key])}
+        </td>
+      </tr>`
+    )
+    .join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+      <title>משוב משתמש מערכת TALA – ${cleanName}</title>
+    </head>
+    <body dir="rtl" style="margin:0; padding:20px; background:#f0f4fa; font-family:Arial, Helvetica, sans-serif; color:#1e293b; text-align:right; direction:rtl;">
+      <div dir="rtl" style="max-width:680px; margin:0 auto; background:#ffffff; border:2px solid #3b6ea5; border-radius:16px; overflow:hidden;">
+        <div style="background:linear-gradient(135deg, #1b365d 0%, #3b6ea5 55%, #6b46c1 100%); color:#ffffff; padding:22px 26px;">
+          <div style="font-size:12px; opacity:0.9; margin-bottom:6px;">⭐ שאלון חוויית משתמש ומשוב תקופתי • מערכת TALA</div>
+          <h1 style="margin:0; font-size:22px; font-weight:800;">משוב משתמש/ת על העבודה במערכת TALA</h1>
+        </div>
+
+        <div style="padding:22px 26px; line-height:1.65; font-size:13.5px;">
+          <div style="background:#f8fafc; border:1px solid #cbd5e1; border-right:4px solid #6b46c1; border-radius:10px; padding:12px 16px; margin-bottom:18px;">
+            <div><strong>שם המשתמש/ת:</strong> ${cleanName} ${isTrialUser ? '(משתמש/ת ניסיון)' : ''}</div>
+            <div><strong>דוא"ל:</strong> <span dir="ltr">${cleanEmail}</span></div>
+            <div><strong>תפקיד:</strong> ${cleanTitle} &nbsp;|&nbsp; <strong>מסגרת/מתי"א:</strong> ${cleanGroup}</div>
+            <div><strong>תאריך שליחת המשוב:</strong> ${stamp} &nbsp;|&nbsp; <strong>ציון משוקלל ממוצע:</strong> <strong style="color:#4c1d95;">${avgScore} / 5</strong></div>
+          </div>
+
+          <h3 style="color:#1e3a5f; font-size:15px; margin:0 0 10px 0;">📊 דירוג חוויית השימוש לפי תחומים (1–5 כוכבים):</h3>
+          <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; margin-bottom:18px; font-size:13px;">
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div style="background:#eef3fb; border:1.5px solid #5b9bd5; border-radius:10px; padding:12px 16px; margin-bottom:16px;">
+            <div style="font-weight:bold; color:#1b365d; margin-bottom:4px;">
+              💡 האם תמליץ/י לקולגות ולמנהל/ת המסגרת לרכוש גישה להמשך שימוש במערכת?
+            </div>
+            <div style="font-size:14px; font-weight:bold; color:#4c1d95;">
+              ${recommendToColleaguesAndManager || 'לא צוין'}
+            </div>
+          </div>
+
+          <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px 16px; margin-bottom:14px;">
+            <div style="font-weight:bold; color:#1e3a5f; margin-bottom:6px;">💬 משוב כללי במילים חופשיות (Overall Feedback):</div>
+            <div style="white-space:pre-wrap; color:#334155;">${overallFeedback ? overallFeedback : 'לא הוזן פירוט נוסף.'}</div>
+          </div>
+
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:12px 16px;">
+            <div style="font-weight:bold; color:#92400e; margin-bottom:6px;">🚀 הצעות לשיפור וייעול (Suggestions for Improvement):</div>
+            <div style="white-space:pre-wrap; color:#78350f;">${improvementSuggestions ? improvementSuggestions : 'לא הוזנו הצעות לשיפור.'}</div>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Sends the completed User Experience Survey directly to the Admin email (zivit.reshef@gmail.com).
+ */
+export async function sendUserSurveyEmailToAdmin({
+  config,
+  adminEmail = 'zivit.reshef@gmail.com',
+  userName,
+  userEmail,
+  userTitle,
+  userGroup,
+  isTrialUser,
+  ratings = {},
+  recommendToColleaguesAndManager = '',
+  overallFeedback = '',
+  improvementSuggestions = '',
+  submittedAt
+}) {
+  const htmlBody = buildUserSurveyEmailHtml({
+    userName,
+    userEmail,
+    userTitle,
+    userGroup,
+    isTrialUser,
+    ratings,
+    recommendToColleaguesAndManager,
+    overallFeedback,
+    improvementSuggestions,
+    submittedAt
+  });
+
+  const subject = `⭐ משוב משתמש חדש במערכת TALA – מאת ${userName || userEmail}`;
+  const textBody = [
+    `שלום זיוית,`,
+    '',
+    `התקבל משוב חוויית משתמש חדש במערכת TALA מאת ${userName} (${userEmail}).`,
+    `1. קלות ונוחות השימוש באתר: ${ratings.easeOfWebsite || '—'}/5`,
+    `2. יצירת כרטיס תלמיד/ה חדש/ה: ${ratings.createStudent || '—'}/5`,
+    `3. ניסוח ובניית מטרות ויעדים: ${ratings.generateGoals || '—'}/5`,
+    `4. הפקת דוחות: ${ratings.createReport || '—'}/5`,
+    `5. עבודה משותפת ושיתוף תלמיד/ה עם קולגות: ${ratings.collaborateWithColleagues || '—'}/5`,
+    `המלצה לקולגות ולמנהל/ת לרכישת גישה: ${recommendToColleaguesAndManager || '—'}`,
+    `משוב כללי: ${overallFeedback || '—'}`,
+    `הצעות לשיפור: ${improvementSuggestions || '—'}`
+  ].join('\r\n');
+
+  const safeName = String(userName || 'User').replace(/[^א-תa-zA-Z0-9_-]/g, '_');
+  const docBlob = new Blob(['\ufeff', htmlBody], {
+    type: 'application/msword;charset=utf-8'
+  });
+
+  return sendReportEmailInBackground({
+    config,
+    toEmail: adminEmail,
+    subject,
+    htmlBody,
+    textBody,
+    attachmentBlob: docBlob,
+    filename: `TALA_User_Survey_${safeName}.doc`,
+    mimeType: 'application/msword'
+  });
+}
+
+
 

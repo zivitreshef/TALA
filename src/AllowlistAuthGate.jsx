@@ -1684,6 +1684,26 @@ export function AdminAllowlistModal({
                                 </span>
                               </>
                             )}
+                            {u.surveyCompleted && (
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: '999px',
+                                  background: '#fef3c7',
+                                  color: '#92400e',
+                                  border: '1px solid #fde68a'
+                                }}
+                                title={
+                                  u.surveyCompletedAt
+                                    ? `מילא/ה משוב חוויית משתמש בתאריך ${u.surveyCompletedAt}`
+                                    : 'מילא/ה משוב חוויית משתמש'
+                                }
+                              >
+                                ⭐ משוב נשלח ✓
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>
