@@ -100,22 +100,52 @@ export function AllowlistAuthGate({
     setErrorMsg('');
     setIsAccountLockedError(false);
 
-    // Ensure we always verify against the latest cloud allowed_users (prevents race condition on mobile/new devices)
+    // Ensure we always verify against the latest cloud allowed_users merged with any local users
     const latestCloudUsers = await fetchAllowedUsersFromCloud();
-    const effectiveUsersList =
-      Array.isArray(latestCloudUsers) && latestCloudUsers.length > 0
-        ? latestCloudUsers
-        : allowedUsers;
+    let effectiveUsersList = allowedUsers;
+    let needsCloudSync = false;
 
-    const result = verifyAllowedUser(email, accessCode, effectiveUsersList);
+    if (Array.isArray(latestCloudUsers) && latestCloudUsers.length > 0) {
+      const cloudByEmail = new Map(
+        latestCloudUsers.map((cu) => [(cu.email || '').trim().toLowerCase(), cu])
+      );
+      const merged = [...latestCloudUsers];
+      (allowedUsers || []).forEach((lu) => {
+        const key = (lu.email || '').trim().toLowerCase();
+        if (key && !cloudByEmail.has(key)) {
+          merged.push(lu);
+          needsCloudSync = true;
+        }
+      });
+      effectiveUsersList = merged;
+    }
 
-    // Only persist failedLoginAttempts / lockout back to cloud if we verified against the authoritative cloud list
-    if (
-      result.updatedUsersList &&
-      onUpdateAllowedUsers &&
-      (Array.isArray(latestCloudUsers) || result.allowed)
-    ) {
-      onUpdateAllowedUsers(result.updatedUsersList);
+    let result = verifyAllowedUser(email, accessCode, effectiveUsersList);
+
+    // If cloud verification failed due to stale password on cloud, check if local allowedUsers has the updated password
+    if (!result.allowed && Array.isArray(allowedUsers) && allowedUsers.length > 0) {
+      const localCheck = verifyAllowedUser(email, accessCode, allowedUsers);
+      if (localCheck.allowed && localCheck.user) {
+        const healedList = effectiveUsersList.map((u) =>
+          (u.email || '').trim().toLowerCase() === (localCheck.user.email || '').trim().toLowerCase()
+            ? { ...u, ...localCheck.user, failedLoginAttempts: 0, lockedOut: false }
+            : u
+        );
+        result = {
+          allowed: true,
+          user: localCheck.user,
+          updatedUsersList: healedList
+        };
+        needsCloudSync = true;
+      }
+    }
+
+    if (onUpdateAllowedUsers) {
+      if (result.updatedUsersList && (Array.isArray(latestCloudUsers) || result.allowed)) {
+        onUpdateAllowedUsers(result.updatedUsersList);
+      } else if (needsCloudSync && result.allowed) {
+        onUpdateAllowedUsers(effectiveUsersList);
+      }
     }
 
     if (!result.allowed) {
@@ -825,9 +855,9 @@ export function AdminAllowlistModal({
       lockedOut: false,
       mustChangePassword: true, // Require password change on first login!
       isTrialUser: isTrial,
-      trialDays: isTrial ? normalizedTrialDays : undefined,
-      trialStartedAt: isTrial ? new Date().toISOString() : undefined,
-      trialExpiresAt: isTrial ? computeTrialExpirationIso(normalizedTrialDays) : undefined,
+      trialDays: isTrial ? normalizedTrialDays : null,
+      trialStartedAt: isTrial ? new Date().toISOString() : null,
+      trialExpiresAt: isTrial ? computeTrialExpirationIso(normalizedTrialDays) : null,
       mustSignNda: isTrial ? true : false,
       ndaSigned: false
     };
