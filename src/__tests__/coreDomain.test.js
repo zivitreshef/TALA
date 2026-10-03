@@ -387,18 +387,39 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(res.isTrialExpired).toBe(true);
     expect(res.reason).toContain('תקופת הניסיון');
 
-    // Signed NDA HTML document contains signer details, ID number, and Hebrew NDA text
-    const ndaHtml = buildSignedNdaDocumentHtml({
+    // Signed NDA HTML document contains signer details, ID number, Hebrew NDA text, and both graphical + stamp signatures
+    const sampleTableSig = '<table width="224"><tr><td bgcolor="#1e3a5f">&nbsp;</td></tr></table>';
+    const sampleDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    const ndaEmailHtml = buildSignedNdaDocumentHtml({
       signerName: 'דנה כהן',
       signerEmail: 'dana@trial.edu.il',
       signerIdNumber: '012345678',
-      signedDate: '03/10/2026',
+      signerDate: '03/10/2026',
       signatureText: 'דנה כהן',
+      signatureTableHtml: sampleTableSig,
+      signatureDataUrl: sampleDataUrl,
+      preferImageSignature: false,
       trialDays: 7
     });
-    expect(ndaHtml).toContain('כתב התחייבות לשמירת סודיות, קניין רוחני ואי-הפצה (NDA)');
-    expect(ndaHtml).toContain('012345678');
-    expect(ndaHtml).toContain('דנה כהן');
+    expect(ndaEmailHtml).toContain('כתב התחייבות לשמירת סודיות, קניין רוחני ואי-הפצה (NDA)');
+    expect(ndaEmailHtml).toContain('012345678');
+    expect(ndaEmailHtml).toContain(sampleTableSig);
+    expect(ndaEmailHtml).toContain('✍️ דנה כהן');
+
+    const ndaPdfHtml = buildSignedNdaDocumentHtml({
+      signerName: 'דנה כהן',
+      signerEmail: 'dana@trial.edu.il',
+      signerIdNumber: '012345678',
+      signerDate: '03/10/2026',
+      signatureText: 'דנה כהן',
+      signatureTableHtml: sampleTableSig,
+      signatureDataUrl: sampleDataUrl,
+      preferImageSignature: true,
+      trialDays: 7
+    });
+    expect(ndaPdfHtml).toContain(sampleDataUrl);
+    expect(ndaPdfHtml).toContain('✍️ דנה כהן');
   });
 });
 

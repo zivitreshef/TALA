@@ -388,6 +388,8 @@ export async function sendUserInvitationEmailInBackground({
 
 /**
  * Builds the official Hebrew NDA Agreement HTML document signed by a trial user.
+ * - For email bodies & Word (.doc), uses `signatureTableHtml` (pure HTML table bitmap that Gmail and Word never strip).
+ * - For PDF generation (`preferImageSignature = true`), uses the high-resolution `signatureDataUrl` PNG.
  */
 export function buildSignedNdaDocumentHtml({
   signerName,
@@ -396,6 +398,8 @@ export function buildSignedNdaDocumentHtml({
   signerDate,
   signatureText,
   signatureDataUrl,
+  signatureTableHtml,
+  preferImageSignature = false,
   trialDays = 7,
   signedAtTimestamp
 }) {
@@ -407,9 +411,19 @@ export function buildSignedNdaDocumentHtml({
     signedAtTimestamp ||
     new Date().toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
 
-  const signatureBlockHtml = signatureDataUrl
-    ? `<div style="margin-top:8px;"><img src="${signatureDataUrl}" alt="חתימת המשתמש" style="max-height:95px; max-width:280px; border-bottom:2px solid #1e3a5f; padding-bottom:4px;" /></div>`
-    : `<div style="margin-top:8px; font-family:'Rubik', cursive, Arial, sans-serif; font-size:22px; font-weight:bold; color:#1e3a5f; border-bottom:2px solid #1e3a5f; display:inline-block; padding:2px 18px;">${signatureText || cleanName}</div>`;
+  const stampLabel = signatureText || cleanName;
+  const digitalSignatureStampHtml = `<div style="margin-top:6px; font-family:'Segoe Script', 'Rubik', cursive, Arial, sans-serif; font-size:18px; font-weight:bold; font-style:italic; color:#1e3a5f; background:#ffffff; border:1px solid #94a3b8; border-bottom:2px solid #1e3a5f; border-radius:6px; display:inline-block; padding:5px 16px;">✍️ ${stampLabel}</div>`;
+
+  let graphicSignatureHtml = '';
+  if (preferImageSignature && signatureDataUrl) {
+    graphicSignatureHtml = `<div style="margin-top:8px;"><img src="${signatureDataUrl}" alt="חתימת המשתמש" style="display:block; height:72px; width:240px; object-fit:contain; background:#ffffff; border:1.5px solid #64748b; border-bottom:2.5px solid #1e3a5f; border-radius:6px; padding:4px;" /></div>`;
+  } else if (signatureTableHtml) {
+    graphicSignatureHtml = `<div style="margin-top:8px;">${signatureTableHtml}</div>`;
+  } else if (signatureDataUrl) {
+    graphicSignatureHtml = `<div style="margin-top:8px;"><img src="${signatureDataUrl}" alt="חתימת המשתמש" style="display:block; max-height:80px; max-width:240px; background:#ffffff; border:1.5px solid #64748b; border-bottom:2.5px solid #1e3a5f; border-radius:6px; padding:4px;" /></div>`;
+  }
+
+  const signatureBlockHtml = `${graphicSignatureHtml}${digitalSignatureStampHtml}`;
 
   return `
     <!DOCTYPE html>
@@ -420,61 +434,65 @@ export function buildSignedNdaDocumentHtml({
       <meta charset="utf-8" />
       <title>הסכם שמירת סודיות (NDA) – ${cleanName}</title>
     </head>
-    <body dir="rtl" style="margin:0; padding:24px; background:#f8fafc; font-family:Arial, Helvetica, sans-serif; color:#1e293b; text-align:right; direction:rtl;">
-      <div dir="rtl" style="max-width:720px; margin:0 auto; background:#ffffff; border:2px solid #2b4c7e; border-radius:14px; overflow:hidden;">
-        <div style="background:linear-gradient(135deg, #1b365d 0%, #3b6ea5 55%, #6b46c1 100%); color:#ffffff; padding:22px 26px;">
+    <body dir="rtl" style="margin:0; padding:20px; background:#f8fafc; font-family:Arial, Helvetica, sans-serif; color:#1e293b; text-align:right; direction:rtl;">
+      <div dir="rtl" style="max-width:700px; margin:0 auto; background:#ffffff; border:2px solid #2b4c7e; border-radius:14px; overflow:hidden;">
+        <div style="background:linear-gradient(135deg, #1b365d 0%, #3b6ea5 55%, #6b46c1 100%); color:#ffffff; padding:20px 24px;">
           <div style="font-size:12px; opacity:0.9; margin-bottom:6px;">מסמך משפטי חתום • מערכת TALA (גרסת התנסות סגורה)</div>
-          <h1 style="margin:0; font-size:22px; font-weight:800;">כתב התחייבות לשמירת סודיות, קניין רוחני ואי-הפצה (NDA)</h1>
+          <h1 style="margin:0; font-size:21px; font-weight:800;">כתב התחייבות לשמירת סודיות, קניין רוחני ואי-הפצה (NDA)</h1>
         </div>
 
-        <div style="padding:24px 28px; line-height:1.7; font-size:14px;">
-          <p style="margin:0 0 14px 0;">
+        <div style="padding:22px 26px; line-height:1.65; font-size:13.5px;">
+          <p style="margin:0 0 12px 0;">
             שנערך ונחתם באופן דיגיטלי בתאריך <strong>${cleanDate}</strong> (${cleanStamp})
           </p>
 
-          <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-right:4px solid #3b6ea5; border-radius:8px; padding:12px 16px; margin-bottom:18px;">
+          <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-right:4px solid #3b6ea5; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
             <div><strong>שם החותם/ת:</strong> ${cleanName}</div>
             <div><strong>מספר תעודת זהות (ת.ז.):</strong> ${cleanId}</div>
             <div><strong>כתובת דוא"ל:</strong> <span dir="ltr">${cleanEmail}</span></div>
             <div><strong>תקופת גישה מוגדרת למשתמש ניסיון:</strong> ${trialDays} ימים</div>
           </div>
 
-          <p><strong>הואיל</strong> ומערכת <strong>TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</strong> הינה מערכת טכנולוגית-פדגוגית ייחודית המצויה בשלבי פיתוח והרצה מבוקרים וטרם הופצה באופן פומבי או מסחרי;</p>
-          <p><strong>והואיל</strong> וכל זכויות היוצרים, הקניין הרוחני, הסודות המסחריים, המתודולוגיה הפדגוגית, מבנה המאגרים, מנגנוני ה-AI, העיצוב וקוד המקור במערכת שייכים באופן בלעדי ליוצרת ובעלת המערכת, <strong>גב' זיוית רשף</strong>;</p>
-          <p><strong>והואיל</strong> ולמשתמש/ת ניתנת בזאת הרשאת גישה זמנית ואישית להתנסות במערכת ("משתמש ניסיון") לתקופה קצובה של <strong>${trialDays} ימים</strong> בלבד;</p>
+          <p style="margin:0 0 8px 0;"><strong>הואיל</strong> ומערכת <strong>TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</strong> הינה מערכת טכנולוגית-פדגוגית ייחודית המצויה בשלבי פיתוח והרצה מבוקרים וטרם הופצה באופן פומבי או מסחרי;</p>
+          <p style="margin:0 0 8px 0;"><strong>והואיל</strong> וכל זכויות היוצרים, הקניין הרוחני, הסודות המסחריים, המתודולוגיה הפדגוגית, מבנה המאגרים, מנגנוני ה-AI, העיצוב וקוד המקור במערכת שייכים באופן בלעדי ליוצרת ובעלת המערכת, <strong>גב' זיוית רשף</strong>;</p>
+          <p style="margin:0 0 12px 0;"><strong>והואיל</strong> ולמשתמש/ת ניתנת בזאת הרשאת גישה זמנית ואישית להתנסות במערכת ("משתמש ניסיון") לתקופה קצובה של <strong>${trialDays} ימים</strong> בלבד;</p>
 
-          <h3 style="color:#1e3a5f; font-size:15.5px; margin:18px 0 8px 0;">לפיכך מצהיר/ה ומתחייב/ת החותם/ת כדלקמן:</h3>
-          <ol style="margin:0 0 18px 0; padding-right:20px;">
-            <li style="margin-bottom:8px;">
+          <h3 style="color:#1e3a5f; font-size:15px; margin:14px 0 8px 0;">לפיכך מצהיר/ה ומתחייב/ת החותם/ת כדלקמן:</h3>
+          <ol style="margin:0 0 16px 0; padding-right:20px;">
+            <li style="margin-bottom:6px;">
               <strong>שמירת סודיות מוחלטת:</strong> לשמור בסודיות מוחלטת ולא לגלות, להציג, להעביר או לחשוף בפני כל צד שלישי כל מידע הקשור למערכת TALA, לרבות ממשק המשתמש, מבנה הטפסים, מאגר המטרות והיעדים, מנגנוני הבינה המלאכותית, דו"חות המצב וההערכה, או כל חלק מהם.
             </li>
-            <li style="margin-bottom:8px;">
+            <li style="margin-bottom:6px;">
               <strong>איסור העתקה, צילום או הפצה:</strong> לא להעתיק, לצלם מסכים, לשכפל, להנדס לאחור (Reverse Engineer), לפתח מוצר מתחרה או לעשות כל שימוש מסחרי או ארגוני ברעיונות, במבנה הפדגוגי או בתוצרי המערכת ללא אישור מראש ובכתב מבעלת המערכת.
             </li>
-            <li style="margin-bottom:8px;">
+            <li style="margin-bottom:6px;">
               <strong>שימוש אישי בלבד ושמירה על פרטיות:</strong> הרשאת הכניסה הינה אישית בלבד ואינה ניתנת להעברה. החותם/ת מתחייב/ת שלא להעביר את קוד הגישה לאף אדם אחר ולשמור על חיסיון מלא של כל מידע שיוזן למערכת.
             </li>
-            <li style="margin-bottom:8px;">
+            <li style="margin-bottom:6px;">
               <strong>פקיעת הרשאת הניסיון:</strong> ידוע לחותם/ת כי הגישה למערכת מוגבלת לתקופת הניסיון שהוגדרה (${trialDays} ימים, או כפי שיעודכן על ידי מנהלת המערכת), וכי תוקף התחייבות סודיות זו אינו מוגבל בזמן ויעמוד בתוקפו גם לאחר סיום תקופת הניסיון.
             </li>
           </ol>
 
-          <div style="background:#eef3fb; border:1.5px solid #5b9bd5; border-radius:10px; padding:16px 20px; margin-top:20px;">
-            <div style="font-weight:bold; color:#1b365d; margin-bottom:8px;">✍️ הצהרה וחתימת משתמש/ת הניסיון:</div>
-            <div style="font-size:13.5px; margin-bottom:6px;">
-              אני הח"מ, <strong>${cleanName}</strong>, ת.ז. <strong>${cleanId}</strong>, מאשר/ת כי קראתי בעיון את כתב ההתחייבות לשמירת סודיות וקניין רוחני, הבנתי את תוכנו ואני מתחייב/ת לקיימו במלואו.
+          <div style="background:#eef3fb; border:1.5px solid #5b9bd5; border-radius:10px; padding:14px 18px; margin-top:16px;">
+            <div style="font-weight:bold; color:#1b365d; margin-bottom:6px;">✍️ הצהרה וחתימת משתמש/ת הניסיון:</div>
+            <div style="font-size:13px; margin-bottom:10px;">
+              אני הח"מ, <strong>${cleanName}</strong>, נושא/ת ת.ז. מס' <strong>${cleanId}</strong>, מאשר/ת כי קראתי בעיון את כתב ההתחייבות לשמירת סודיות וקניין רוחני, הבנתי את תוכנו ואני מתחייב/ת לקיימו במלואו.
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; margin-top:12px;">
-              <div>
-                <div style="font-size:12px; color:#475569;">חתימה דיגיטלית:</div>
-                ${signatureBlockHtml}
-                ${signatureText ? `<div style="font-size:12px; color:#334155; margin-top:4px;">שם בחתימה: ${signatureText}</div>` : ''}
-              </div>
-              <div style="font-size:13px; color:#1e3a5f;">
-                <div><strong>תאריך חתימה:</strong> ${cleanDate}</div>
-                <div><strong>חותמת זמן מערכת:</strong> ${cleanStamp}</div>
-              </div>
-            </div>
+            <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; margin-top:8px;">
+              <tr>
+                <td style="vertical-align:bottom; padding-left:16px;">
+                  <div style="font-size:12px; font-weight:bold; color:#1e3a5f; margin-bottom:4px;">חתימת המשתמש/ת:</div>
+                  ${signatureBlockHtml}
+                  <div style="font-size:12.5px; font-weight:bold; color:#1e293b; margin-top:6px;">
+                    שם החותם/ת: ${stampLabel} &nbsp;|&nbsp; ת.ז.: ${cleanId}
+                  </div>
+                </td>
+                <td style="vertical-align:bottom; text-align:left; font-size:12.5px; color:#1e3a5f; white-space:nowrap;">
+                  <div><strong>תאריך חתימה:</strong> ${cleanDate}</div>
+                  <div><strong>חותמת זמן:</strong> ${cleanStamp}</div>
+                </td>
+              </tr>
+            </table>
           </div>
         </div>
       </div>
@@ -484,8 +502,65 @@ export function buildSignedNdaDocumentHtml({
 }
 
 /**
+ * Generates a Portrait A4 PDF Blob of the signed NDA document (with the drawn signature image baked in).
+ * Note: html2pdf.js creates its own hidden .html2pdf__overlay (opacity:0) and clones `container`,
+ * so `container` must NOT have `position:fixed; top:-9999px; left:-9999px` (which would push the clone off-canvas).
+ */
+async function generateSignedNdaPdfBlob(htmlString, filename = 'TALA_Signed_NDA.pdf') {
+  const container = document.createElement('div');
+  container.style.width = '720px';
+  container.style.direction = 'rtl';
+  container.style.background = '#ffffff';
+  container.style.padding = '8px';
+  container.style.boxSizing = 'border-box';
+  container.innerHTML = htmlString;
+
+  // Ensure any embedded <img> (such as the drawn signature PNG) is decoded before html2canvas captures
+  const images = Array.from(container.querySelectorAll('img'));
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+      if (typeof img.decode === 'function') {
+        return img.decode().catch(() => {});
+      }
+      return new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    })
+  );
+
+  const opt = {
+    margin: [8, 8, 8, 8],
+    filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      scrollX: 0,
+      scrollY: 0
+    },
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait'
+    }
+  };
+
+  const html2pdfModule = await import('html2pdf.js');
+  const html2pdf = html2pdfModule.default || html2pdfModule;
+  const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob');
+  if (!pdfBlob || pdfBlob.size < 500) {
+    throw new Error('Generated PDF blob was empty');
+  }
+  return pdfBlob;
+}
+
+/**
  * Sends the signed NDA agreement directly to the Admin email address (zivit.reshef@gmail.com)
- * with an attached Word-compatible (.doc) signed copy.
+ * with the signature visible both in the email body (via HTML table bitmap) and in the attached signed PDF document.
  */
 export async function sendSignedNdaEmailToAdmin({
   config,
@@ -496,16 +571,34 @@ export async function sendSignedNdaEmailToAdmin({
   signerDate,
   signatureText,
   signatureDataUrl,
+  signatureTableHtml,
   trialDays = 7,
   signedAtTimestamp
 }) {
-  const htmlDoc = buildSignedNdaDocumentHtml({
+  // Email body uses signatureTableHtml because Gmail strips data:image/png URIs
+  const emailHtmlBody = buildSignedNdaDocumentHtml({
     signerName,
     signerEmail,
     signerIdNumber,
     signerDate,
     signatureText,
     signatureDataUrl,
+    signatureTableHtml,
+    preferImageSignature: false,
+    trialDays,
+    signedAtTimestamp
+  });
+
+  // PDF attachment uses high-resolution PNG signatureDataUrl (with table fallback)
+  const pdfHtmlSource = buildSignedNdaDocumentHtml({
+    signerName,
+    signerEmail,
+    signerIdNumber,
+    signerDate,
+    signatureText,
+    signatureDataUrl,
+    signatureTableHtml,
+    preferImageSignature: true,
     trialDays,
     signedAtTimestamp
   });
@@ -519,24 +612,37 @@ export async function sendSignedNdaEmailToAdmin({
     `תאריך חתימה: ${signerDate}`,
     `מגבלת ימי ניסיון: ${trialDays} ימים`,
     '',
-    `מצורף עותק המסמך החתום.`
+    `מצורף עותק PDF רשמי של המסמך החתום הכולל את חתימת המשתמש/ת.`
   ].join('\r\n');
 
-  const docBlob = new Blob(['\ufeff', htmlDoc], {
-    type: 'application/msword;charset=utf-8'
-  });
-
   const safeName = String(signerName || 'TrialUser').replace(/[^א-תa-zA-Z0-9_-]/g, '_');
+
+  let attachmentBlob;
+  let filename;
+  let mimeType;
+
+  try {
+    filename = `TALA_Signed_NDA_${safeName}_${signerIdNumber}.pdf`;
+    attachmentBlob = await generateSignedNdaPdfBlob(pdfHtmlSource, filename);
+    mimeType = 'application/pdf';
+  } catch (pdfErr) {
+    console.warn('Fallback to .doc attachment for NDA:', pdfErr);
+    filename = `TALA_Signed_NDA_${safeName}_${signerIdNumber}.doc`;
+    attachmentBlob = new Blob(['\ufeff', emailHtmlBody], {
+      type: 'application/msword;charset=utf-8'
+    });
+    mimeType = 'application/msword';
+  }
 
   return sendReportEmailInBackground({
     config,
     toEmail: adminEmail,
     subject,
-    htmlBody: htmlDoc,
+    htmlBody: emailHtmlBody,
     textBody,
-    attachmentBlob: docBlob,
-    filename: `TALA_Signed_NDA_${safeName}_${signerIdNumber}.doc`,
-    mimeType: 'application/msword'
+    attachmentBlob,
+    filename,
+    mimeType
   });
 }
 
