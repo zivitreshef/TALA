@@ -16,6 +16,7 @@ import {
   getDocs,
   writeBatch
 } from 'firebase/firestore';
+import { ensureUsersListPasswordsHashed } from './allowedUsers.js';
 
 const FIREBASE_CONFIG_STORAGE_KEY = 'tala_firebase_config_v1';
 
@@ -28,18 +29,18 @@ const DEFAULT_FB_KEY_CODES = [
 // Default Firebase configuration for project: tala-d9aaa
 export const DEFAULT_FIREBASE_CONFIG = {
   apiKey:
-    import.meta.env.VITE_FIREBASE_API_KEY ||
+    import.meta.env?.VITE_FIREBASE_API_KEY ||
     String.fromCharCode(...DEFAULT_FB_KEY_CODES),
   authDomain:
-    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'tala-d9aaa.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'tala-d9aaa',
+    import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || 'tala-d9aaa.firebaseapp.com',
+  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || 'tala-d9aaa',
   storageBucket:
-    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ||
+    import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET ||
     'tala-d9aaa.firebasestorage.app',
   messagingSenderId:
-    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '205311517565',
+    import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '205311517565',
   appId:
-    import.meta.env.VITE_FIREBASE_APP_ID ||
+    import.meta.env?.VITE_FIREBASE_APP_ID ||
     '1:205311517565:web:ddc13ed67786971540a214'
 };
 
@@ -242,8 +243,9 @@ export function subscribeToTalaBackend({
         const seedUsers = getInitialAllowedUsers?.() || [];
         if (seedUsers.length > 0) {
           try {
+            const { users: hashedSeed } = ensureUsersListPasswordsHashed(seedUsers);
             await setDoc(usersDocRef, {
-              users: seedUsers,
+              users: sanitizeForFirestore(hashedSeed),
               updatedAt: new Date().toISOString()
             });
           } catch (e) {
@@ -423,7 +425,11 @@ export async function fetchAllowedUsersFromCloud() {
     if (snap.exists()) {
       const data = snap.data();
       if (Array.isArray(data?.users) && data.users.length > 0) {
-        return data.users;
+        const { users: hashedUsers, migrated } = ensureUsersListPasswordsHashed(data.users);
+        if (migrated) {
+          saveAllowedUsersToCloud(hashedUsers).catch(() => {});
+        }
+        return hashedUsers;
       }
     }
     return null;
@@ -437,7 +443,8 @@ export async function saveAllowedUsersToCloud(usersList) {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
-    const cleanUsers = sanitizeForFirestore(usersList || []);
+    const { users: hashedUsers } = ensureUsersListPasswordsHashed(usersList || []);
+    const cleanUsers = sanitizeForFirestore(hashedUsers);
     await setDoc(doc(db, 'tala_config', 'allowed_users'), {
       users: cleanUsers,
       updatedAt: new Date().toISOString()

@@ -29,7 +29,10 @@ import {
   saveAllowedUsers,
   stampSessionUserWithDate,
   isSessionUserValidForToday,
-  isTrialUserExpired
+  isTrialUserExpired,
+  createPasswordCredentials,
+  ensureUsersListPasswordsHashed,
+  verifyUserPassword
 } from './allowedUsers';
 import {
   AllowlistAuthGate,
@@ -286,23 +289,33 @@ export default function App() {
       getInitialGoalBank: () => loadGoalBank(),
       getInitialStudents: () => students,
       getInitialGeminiKey: () => geminiApiKey,
-      onAllowedUsersChange: (cloudUsers) => {
+      onAllowedUsersChange: (rawCloudUsers) => {
         const localUsers = loadAllowedUsers();
-        let needsCloudHeal = false;
+        const { users: cloudUsers, migrated: cloudMigrated } =
+          ensureUsersListPasswordsHashed(rawCloudUsers);
+        let needsCloudHeal = cloudMigrated;
         const mergedUsers = cloudUsers.map((cu) => {
           const lu = localUsers.find(
             (u) => u.email?.toLowerCase() === cu.email?.toLowerCase()
           );
-          if (
+          const cuIsDefaultPassword =
+            verifyUserPassword(cu, 'TALA2026') || verifyUserPassword(cu, '1234');
+          const luHasCustomPassword =
             lu &&
-            lu.accessCode &&
-            lu.accessCode !== cu.accessCode &&
-            (cu.accessCode === 'TALA2026' || cu.accessCode === '1234') &&
-            lu.accessCode !== 'TALA2026' &&
-            lu.accessCode !== '1234'
-          ) {
+            lu.passwordHash &&
+            lu.passwordSalt &&
+            !verifyUserPassword(lu, 'TALA2026') &&
+            !verifyUserPassword(lu, '1234');
+
+          if (luHasCustomPassword && cuIsDefaultPassword && lu.passwordHash !== cu.passwordHash) {
             needsCloudHeal = true;
-            return { ...cu, accessCode: lu.accessCode, failedLoginAttempts: 0, lockedOut: false };
+            return {
+              ...cu,
+              passwordHash: lu.passwordHash,
+              passwordSalt: lu.passwordSalt,
+              failedLoginAttempts: 0,
+              lockedOut: false
+            };
           }
           return cu;
         });
@@ -445,28 +458,34 @@ export default function App() {
   }, [currentUser?.email, students.length, selectedStudentId]);
 
   const handleUpdateAllowedUsers = (updatedList) => {
-    setAllowedUsers(updatedList);
-    saveAllowedUsers(updatedList);
-    saveAllowedUsersToCloud(updatedList);
+    const { users: hashedList } = ensureUsersListPasswordsHashed(updatedList);
+    setAllowedUsers(hashedList);
+    saveAllowedUsers(hashedList);
+    saveAllowedUsersToCloud(hashedList);
   };
 
   useEffect(() => {
     if (currentUser?.email) {
-      ensureFirebaseAuthSession(currentUser.email, currentUser.accessCode);
+      ensureFirebaseAuthSession(
+        currentUser.email,
+        currentUser.passwordHash || currentUser.accessCode
+      );
     }
   }, [currentUser?.email]);
 
   const handleChangeOwnPassword = (newAccessCode) => {
     if (!currentUser) return;
-    const updatedList = allowedUsers.map((u) =>
-      u.email.toLowerCase() === currentUser.email.toLowerCase()
-        ? { ...u, accessCode: newAccessCode, mustChangePassword: false }
-        : u
-    );
+    const creds = createPasswordCredentials(newAccessCode);
+    const updatedList = allowedUsers.map((u) => {
+      if (u.email.toLowerCase() !== currentUser.email.toLowerCase()) return u;
+      const { accessCode: _removed, ...rest } = u;
+      return { ...rest, ...creds, mustChangePassword: false };
+    });
     handleUpdateAllowedUsers(updatedList);
+    const { accessCode: _removedCurrent, ...restCurrent } = currentUser;
     const updatedCurrent = {
-      ...currentUser,
-      accessCode: newAccessCode,
+      ...restCurrent,
+      ...creds,
       mustChangePassword: false
     };
     setCurrentUser(updatedCurrent);
