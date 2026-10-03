@@ -499,6 +499,20 @@ input, textarea, select, button {
   color: #eef4ff;
 }
 
+.site-version-watermark {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  padding: 1.5px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.4px;
+  user-select: none;
+}
+
 .tala-header-controls {
   display: flex;
   align-items: center;
@@ -544,11 +558,21 @@ input, textarea, select, button {
   border: 1px solid rgba(220, 208, 250, 0.6);
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
-  transition: background 0.15s;
+  transition: background 0.15s, opacity 0.15s;
 }
 
-.btn-header-bank:hover {
+.btn-header-bank:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.26);
+}
+
+.btn-header-bank:disabled,
+.btn-header-bank.btn-header-disabled {
+  opacity: 0.45;
+  background: rgba(203, 213, 225, 0.14);
+  border-color: rgba(203, 213, 225, 0.35);
+  color: rgba(255, 255, 255, 0.65);
+  cursor: not-allowed;
+  filter: grayscale(100%);
 }
 
 .btn-header-admin {
