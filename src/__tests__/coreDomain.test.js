@@ -23,8 +23,12 @@ import {
   redactStudentNameInText,
   STATUS_REPORT_SECTIONS_SCHEMA,
   sanitizeStatusReportSections,
-  generateStatusReportLocally
+  generateStatusReportLocally,
+  getNextSchoolYear,
+  buildRolloverStudentForNextYear
 } from '../goalBankData';
+import { deriveFirebaseAuthPassword } from '../firebaseBackend';
+import { safeGetStorageJson } from '../services/storage';
 
 describe('Permissions & Shared Student Guards', () => {
   const ownerTeacher = { email: 'teacher1@tala.edu.il', name: 'מיכל' };
@@ -241,3 +245,43 @@ describe('Privacy Redaction & Gender Adaptation', () => {
     expect(adapted).toContain('תקשיב');
   });
 });
+
+describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () => {
+  it('rolls a student over to the next school year and preserves previous year history', () => {
+    const prevYear = 'תשפ"ו (2025-2026)';
+    const nextYear = getNextSchoolYear(prevYear);
+    expect(nextYear).toBe('תשפ"ז (2026-2027)');
+
+    const st = {
+      id: 'st_roll_1',
+      name: 'יונתן',
+      schoolYear: prevYear,
+      archived: true,
+      goals: [
+        {
+          id: 'g1',
+          environment: 'חצר',
+          title: 'ישתתף במשחק כדור',
+          achievementStatus: 'הושגה חלקית',
+          endYearEvaluation: 'התקדמות יפה בזריקה ותפיסה'
+        }
+      ]
+    };
+
+    const rolled = buildRolloverStudentForNextYear(st, prevYear, nextYear);
+    expect(rolled.archived).toBe(false);
+    expect(rolled.schoolYear).toBe(nextYear);
+    expect(rolled.reportsByYear[prevYear]).toBeDefined();
+    expect(rolled.goals[0].activityParticipation).toContain('רצף מתכנית');
+  });
+
+  it('pads short teacher access codes deterministically for Firebase Auth (>= 6 chars)', () => {
+    expect(deriveFirebaseAuthPassword('1234').length).toBeGreaterThanOrEqual(6);
+    expect(deriveFirebaseAuthPassword('StrongPass123')).toBe('StrongPass123');
+  });
+
+  it('returns fallback value safely when storage key is missing', () => {
+    expect(safeGetStorageJson('non_existent_key_xyz', { ok: true })).toEqual({ ok: true });
+  });
+});
+
