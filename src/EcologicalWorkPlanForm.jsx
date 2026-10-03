@@ -2532,6 +2532,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
           {!isFreeTextCollapsed && (
             <>
+              <div className="privacy-sensitive-info-note">
+                🔒 <strong>לתשומת לבך (שמירה על פרטיות):</strong> נא להימנע מהקלדת פרטים מזהים או מידע אישי רגיש בטקסט החופשי (כגון שמות מלאים של הילד/ה או בני משפחה, מספרי תעודת זהות, טלפונים או כתובות). מומלץ להשתמש בתיאור כללי כגון "הילד/ה" או בראשי תיבות בלבד.
+              </div>
               <textarea
                 rows={4}
                 disabled={isReportLocked}
@@ -3436,6 +3439,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         })}
                       </div>
 
+                      <div className="privacy-sensitive-info-note" style={{ margin: 0 }}>
+                        🔒 <strong>שמירה על פרטיות:</strong> נא להימנע מהקלדת שמות מלאים או פרטים מזהים רגישים בהערכת המחצית / סוף השנה (מומלץ להשתמש ב"הילד/ה" או בראשי תיבות בלבד).
+                      </div>
+
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
                         <div className="form-field" style={{ margin: 0 }}>
                           <label style={{ fontSize: '12.5px', fontWeight: 600 }}>הערכת מחצית:</label>
@@ -3696,6 +3703,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label className="bold-label">
               ✍️ תיאור חופשי להערכת מחצית / סוף שנה:
             </label>
+            <div className="privacy-sensitive-info-note">
+              🔒 <strong>לתשומת לבך (שמירה על פרטיות):</strong> נא להימנע מהקלדת פרטים מזהים או מידע אישי רגיש בהערכת המחצית / סוף השנה (כגון שמות מלאים של הילד/ה או בני משפחה, מספרי תעודת זהות, טלפונים או כתובות). מומלץ להשתמש בתיאור כללי כגון "הילד/ה" או בראשי תיבות בלבד.
+            </div>
             <textarea
               rows={3}
               value={formData.evalReportFreeText || ''}
