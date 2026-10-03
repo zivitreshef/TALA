@@ -3699,4 +3699,17 @@ body {
   cursor: not-allowed !important;
 }
 
+.privacy-sensitive-info-note {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid #f59e0b;
+  border-right: 4px solid #d97706;
+  color: #92400e;
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+
 
