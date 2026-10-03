@@ -1,5 +1,3 @@
-import html2pdf from 'html2pdf.js';
-
 export const EMAIL_ENGINE_STORAGE_KEY = 'tala_email_engine_config_v1';
 
 // Default template for Google Apps Script Direct Email Dispatcher (100% Free, Unlimited Attachments up to 25MB)
@@ -136,6 +134,8 @@ export async function generatePdfBlobFromHtml(htmlString, filename = 'report.pdf
       }
     };
 
+    const html2pdfModule = await import('html2pdf.js');
+    const html2pdf = html2pdfModule.default || html2pdfModule;
     const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob');
     return pdfBlob;
   } finally {
