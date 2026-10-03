@@ -1113,28 +1113,30 @@ export default function App() {
             <span>ארכיון ({archivedUserStudents.length})</span>
           </button>
 
-          <button
-            type="button"
-            className="btn-header-bank"
-            onClick={() => setShowFeedbackSurveyModal(true)}
-            title="מילוי שאלון משוב חוויית משתמש (אופציונלי)"
-            style={{ position: 'relative' }}
-          >
-            <MessageSquareHeart size={16} />
-            <span>משוב על המערכת</span>
-            {!currentUser.surveyCompleted && currentUser.role !== 'admin' && (
-              <span
-                style={{
-                  width: '7px',
-                  height: '7px',
-                  borderRadius: '50%',
-                  background: '#8b5cf6',
-                  display: 'inline-block',
-                  marginRight: '4px'
-                }}
-              />
-            )}
-          </button>
+          {!currentUser.surveyCompleted && !currentUser.surveyDismissed && (
+            <button
+              type="button"
+              className="btn-header-bank"
+              onClick={() => setShowFeedbackSurveyModal(true)}
+              title="מילוי שאלון משוב חוויית משתמש (אופציונלי)"
+              style={{ position: 'relative' }}
+            >
+              <MessageSquareHeart size={16} />
+              <span>משוב על המערכת</span>
+              {currentUser.role !== 'admin' && (
+                <span
+                  style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    background: '#8b5cf6',
+                    display: 'inline-block',
+                    marginRight: '4px'
+                  }}
+                />
+              )}
+            </button>
+          )}
 
           {currentUser.role === 'admin' && (
             <button
