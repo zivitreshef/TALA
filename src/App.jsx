@@ -1106,6 +1106,9 @@ export default function App() {
     activeArchivedStudent ||
     {};
 
+  const siteVersion =
+    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.27';
+
   return (
     <div className="tala-app-root" dir="rtl">
       {/* Top Stained-Glass Accent Strip */}
@@ -1122,7 +1125,16 @@ export default function App() {
             <img src="./tala-logo.png" alt="TALA Logo" className="header-logo-img" />
           </div>
           <div>
-            <h1>TALA – תכנית עבודה אקולוגית ותח"י</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h1>TALA – תכנית עבודה אקולוגית ותח"י</h1>
+              <span
+                className="site-version-watermark"
+                dir="ltr"
+                title={`גרסת מערכת TALA (מבוסס על PR): ver. ${siteVersion}`}
+              >
+                ver. {siteVersion}
+              </span>
+            </div>
             <span className="brand-subtitle">
               מערכת אינטראקטיבית לבניית תכנית עבודה משותפת, מאגר מטרות דינמי ושאלות מנחות ב-AI
             </span>
@@ -1142,14 +1154,22 @@ export default function App() {
 
           <button
             type="button"
-            className="btn-header-bank"
+            className={`btn-header-bank ${
+              archivedUserStudents.length === 0 ? 'btn-header-disabled' : ''
+            }`}
+            disabled={archivedUserStudents.length === 0}
             onClick={() => {
+              if (archivedUserStudents.length === 0) return;
               if (!selectedArchivedStudentId && archivedUserStudents.length > 0) {
                 setSelectedArchivedStudentId(archivedUserStudents[0].id);
               }
               setShowArchiveModal(true);
             }}
-            title="צפה בתלמידים שהועברו לארכיון ובדוחות שלהם"
+            title={
+              archivedUserStudents.length === 0
+                ? 'הארכיון ריק – אין תלמידים בארכיון'
+                : 'צפה בתלמידים שהועברו לארכיון ובדוחות שלהם'
+            }
           >
             <Archive size={16} />
             <span>ארכיון ({archivedUserStudents.length})</span>
