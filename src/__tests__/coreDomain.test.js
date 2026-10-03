@@ -36,13 +36,17 @@ import {
   getSafeReportFilename
 } from '../export/wordAndPrintBuilders';
 import {
+  DEFAULT_ALLOWED_USERS,
   getCurrentLocalDayKey,
   stampSessionUserWithDate,
   isSessionUserValidForToday,
   computeTrialExpirationIso,
   isTrialUserExpired,
   getTrialRemainingDays,
-  verifyAllowedUser
+  verifyAllowedUser,
+  createPasswordCredentials,
+  verifyUserPassword,
+  ensureUsersListPasswordsHashed
 } from '../allowedUsers';
 import { buildSignedNdaDocumentHtml, buildUserSurveyEmailHtml } from '../emailService';
 
@@ -461,6 +465,50 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     const sanitized = sanitizeForFirestore(rawUsers);
     expect(sanitized[0].email).toBe('moti.reshef@gmail.com');
     expect('trialDays' in sanitized[0]).toBe(false);
+  });
+
+  it('hashes and salts user passwords with unique per-user salts and migrates legacy plaintext accessCode', () => {
+    // DEFAULT_ALLOWED_USERS must never contain plaintext accessCode
+    DEFAULT_ALLOWED_USERS.forEach((u) => {
+      expect('accessCode' in u).toBe(false);
+      expect(u.passwordSalt).toMatch(/^[0-9a-f]{32}$/);
+      expect(u.passwordHash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    // Two users with the exact same password receive distinct random salts and distinct hashes
+    const creds1 = createPasswordCredentials('Secret#2026!');
+    const creds2 = createPasswordCredentials('Secret#2026!');
+    expect(creds1.passwordSalt).not.toBe(creds2.passwordSalt);
+    expect(creds1.passwordHash).not.toBe(creds2.passwordHash);
+    expect(verifyUserPassword(creds1, 'Secret#2026!')).toBe(true);
+    expect(verifyUserPassword(creds2, 'Secret#2026!')).toBe(true);
+    expect(verifyUserPassword(creds1, 'WrongPassword!')).toBe(false);
+
+    // Legacy user record with plaintext accessCode is automatically migrated to passwordHash + passwordSalt
+    const legacyUsers = [
+      {
+        id: 'u_legacy_1',
+        name: 'מוטי רשף',
+        email: 'moti.reshef@gmail.com',
+        accessCode: 'Moti#2026!',
+        active: true
+      }
+    ];
+    const { users: migratedUsers, migrated } = ensureUsersListPasswordsHashed(legacyUsers);
+    expect(migrated).toBe(true);
+    expect('accessCode' in migratedUsers[0]).toBe(false);
+    expect(migratedUsers[0].passwordSalt).toMatch(/^[0-9a-f]{32}$/);
+    expect(migratedUsers[0].passwordHash).toMatch(/^[0-9a-f]{64}$/);
+
+    // verifyAllowedUser authenticates against the salted hash and strips any legacy accessCode
+    const authOk = verifyAllowedUser('moti.reshef@gmail.com', 'Moti#2026!', legacyUsers);
+    expect(authOk.allowed).toBe(true);
+    expect('accessCode' in authOk.user).toBe(false);
+    expect(authOk.updatedUsersList).not.toBeNull();
+    expect('accessCode' in authOk.updatedUsersList[0]).toBe(false);
+
+    const authFail = verifyAllowedUser('moti.reshef@gmail.com', 'BadPass#1', migratedUsers);
+    expect(authFail.allowed).toBe(false);
   });
 });
 

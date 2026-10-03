@@ -1,3 +1,217 @@
+// ============================================================================
+// Salted Cryptographic Password Hashing (SHA-256 + Per-User Random Salt)
+// Ensures plaintext passwords (`accessCode`) are never stored in Firestore or localStorage.
+// ============================================================================
+
+const SHA256_K = new Uint32Array([
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+]);
+
+function rotr32(x, n) {
+  return (x >>> n) | (x << (32 - n));
+}
+
+/**
+ * Synchronous FIPS 180-4 SHA-256 digest over UTF-8 input string, returning 64-char lowercase hex.
+ */
+export function sha256Hex(message) {
+  const bytes = new TextEncoder().encode(String(message ?? ''));
+  const bitLen = bytes.length * 8;
+  const totalBytes = (((bytes.length + 8) >> 6) + 1) << 6;
+  const padded = new Uint8Array(totalBytes);
+  padded.set(bytes);
+  padded[bytes.length] = 0x80;
+
+  const view = new DataView(padded.buffer);
+  view.setUint32(totalBytes - 8, Math.floor(bitLen / 0x100000000), false);
+  view.setUint32(totalBytes - 4, bitLen >>> 0, false);
+
+  let h0 = 0x6a09e667;
+  let h1 = 0xbb67ae85;
+  let h2 = 0x3c6ef372;
+  let h3 = 0xa54ff53a;
+  let h4 = 0x510e527f;
+  let h5 = 0x9b05688c;
+  let h6 = 0x1f83d9ab;
+  let h7 = 0x5be0cd19;
+
+  const w = new Uint32Array(64);
+
+  for (let offset = 0; offset < totalBytes; offset += 64) {
+    for (let i = 0; i < 16; i++) {
+      w[i] = view.getUint32(offset + i * 4, false);
+    }
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr32(w[i - 15], 7) ^ rotr32(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr32(w[i - 2], 17) ^ rotr32(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+
+    let a = h0;
+    let b = h1;
+    let c = h2;
+    let d = h3;
+    let e = h4;
+    let f = h5;
+    let g = h6;
+    let h = h7;
+
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + S1 + ch + SHA256_K[i] + w[i]) >>> 0;
+      const S0 = rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) >>> 0;
+
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) >>> 0;
+    }
+
+    h0 = (h0 + a) >>> 0;
+    h1 = (h1 + b) >>> 0;
+    h2 = (h2 + c) >>> 0;
+    h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0;
+    h5 = (h5 + f) >>> 0;
+    h6 = (h6 + g) >>> 0;
+    h7 = (h7 + h) >>> 0;
+  }
+
+  return [h0, h1, h2, h3, h4, h5, h6, h7]
+    .map((v) => v.toString(16).padStart(8, '0'))
+    .join('');
+}
+
+/**
+ * Generates a cryptographically random per-user salt (32 hex chars / 128 bits).
+ */
+export function generatePasswordSalt(byteLength = 16) {
+  const bytes = new Uint8Array(byteLength);
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < byteLength; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Computes a stretched, salted SHA-256 password hash (256 rounds with domain separation).
+ */
+export function hashPasswordWithSalt(password, salt) {
+  const cleanPassword = String(password ?? '').trim();
+  const cleanSalt = String(salt ?? '').trim();
+  let digest = sha256Hex(`TALA_PBKDF_V1:${cleanSalt}:${cleanPassword}`);
+  for (let round = 1; round < 256; round++) {
+    digest = sha256Hex(`${digest}:${cleanSalt}:${cleanPassword}:${round}`);
+  }
+  return digest;
+}
+
+/**
+ * Creates `{ passwordSalt, passwordHash }` credentials for a plaintext password.
+ */
+export function createPasswordCredentials(password, existingSalt = null) {
+  const passwordSalt = existingSalt || generatePasswordSalt();
+  const passwordHash = hashPasswordWithSalt(password, passwordSalt);
+  return { passwordSalt, passwordHash };
+}
+
+/**
+ * Verifies whether a candidate password matches a user's stored salted hash (or legacy accessCode).
+ */
+export function verifyUserPassword(user, candidatePassword) {
+  if (!user || typeof user !== 'object') return false;
+  const cleanCode = String(candidatePassword ?? '').trim();
+
+  if (user.passwordHash && user.passwordSalt) {
+    if (hashPasswordWithSalt(cleanCode, user.passwordSalt) === user.passwordHash) {
+      return true;
+    }
+    // Support case-insensitive match for the default TALA2026 bootstrap code
+    if (
+      cleanCode.toUpperCase() === 'TALA2026' &&
+      hashPasswordWithSalt('TALA2026', user.passwordSalt) === user.passwordHash
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  // Legacy fallback for unmigrated user records that still carry plaintext `accessCode`
+  if (typeof user.accessCode === 'string' && user.accessCode.trim()) {
+    return (
+      user.accessCode === cleanCode ||
+      (user.accessCode.toUpperCase() === 'TALA2026' && cleanCode.toUpperCase() === 'TALA2026')
+    );
+  }
+
+  return true;
+}
+
+/**
+ * Ensures a single user object has `{ passwordSalt, passwordHash }` and strips plaintext `accessCode`.
+ */
+export function ensureUserPasswordHashed(user) {
+  if (!user || typeof user !== 'object') {
+    return { user, migrated: false };
+  }
+
+  if (user.passwordHash && user.passwordSalt) {
+    if ('accessCode' in user) {
+      const { accessCode: _removed, ...rest } = user;
+      return { user: rest, migrated: true };
+    }
+    return { user, migrated: false };
+  }
+
+  if (typeof user.accessCode === 'string' && user.accessCode.trim()) {
+    const { accessCode, ...rest } = user;
+    const creds = createPasswordCredentials(accessCode.trim());
+    return {
+      user: {
+        ...rest,
+        ...creds
+      },
+      migrated: true
+    };
+  }
+
+  return { user, migrated: false };
+}
+
+/**
+ * Ensures all users in an array have hashed + salted passwords and no plaintext `accessCode`.
+ */
+export function ensureUsersListPasswordsHashed(usersList) {
+  if (!Array.isArray(usersList)) {
+    return { users: [], migrated: false };
+  }
+  let anyMigrated = false;
+  const users = usersList.map((u) => {
+    const { user: normalized, migrated } = ensureUserPasswordHashed(u);
+    if (migrated) anyMigrated = true;
+    return normalized;
+  });
+  return { users, migrated: anyMigrated };
+}
+
 // רשימת המשתמשים המורשים (Allowlist) לגישה למערכת TALA
 export const DEFAULT_ALLOWED_USERS = [
   {
@@ -7,7 +221,7 @@ export const DEFAULT_ALLOWED_USERS = [
     role: 'admin', // 'admin' | 'teacher'
     title: 'מנהלת מערכת',
     group: 'מתי"א מרכז',
-    accessCode: 'TALA2026',
+    ...createPasswordCredentials('TALA2026', 'a1f0e8c49b2d471683a5c7e901234567'),
     active: true
   },
   {
@@ -17,7 +231,7 @@ export const DEFAULT_ALLOWED_USERS = [
     role: 'teacher',
     title: 'גננת שילוב / מורת מתי"א',
     group: 'מתי"א מרכז',
-    accessCode: '1234',
+    ...createPasswordCredentials('1234', 'b2e1f9d50c3e582794b6d8f012345678'),
     active: true
   },
   {
@@ -27,7 +241,7 @@ export const DEFAULT_ALLOWED_USERS = [
     role: 'teacher',
     title: 'מנהלת גן ורכזת תכניות עבודה',
     group: 'מתי"א מרכז',
-    accessCode: '1234',
+    ...createPasswordCredentials('1234', 'c3f20ae61d4f693805c7e90123456789'),
     active: true
   }
 ];
@@ -40,14 +254,15 @@ export function loadAllowedUsers() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const migrated = parsed.map((u) =>
+        const titleMigrated = parsed.map((u) =>
           (u.email?.toLowerCase() === 'zivit.reshef@gmail.com' || u.id === 'u_admin_1') &&
           u.title === 'מנהלת מערכת ומדריכה פדגוגית'
             ? { ...u, title: 'מנהלת מערכת' }
             : u
         );
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-        return migrated;
+        const { users: hashedUsers } = ensureUsersListPasswordsHashed(titleMigrated);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(hashedUsers));
+        return hashedUsers;
       }
     }
   } catch (e) {
@@ -57,7 +272,8 @@ export function loadAllowedUsers() {
 }
 
 export function saveAllowedUsers(users) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+  const { users: hashedUsers } = ensureUsersListPasswordsHashed(users);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(hashedUsers));
 }
 
 export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
@@ -65,7 +281,8 @@ export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 export function verifyAllowedUser(email, accessCode, usersList) {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanCode = (accessCode || '').trim();
-  const list = usersList || loadAllowedUsers();
+  const rawList = usersList || loadAllowedUsers();
+  const { users: list, migrated: listMigrated } = ensureUsersListPasswordsHashed(rawList);
 
   const found = list.find(
     (u) => u.email.trim().toLowerCase() === cleanEmail
@@ -106,10 +323,7 @@ export function verifyAllowedUser(email, accessCode, usersList) {
     };
   }
 
-  const isPasswordMatch =
-    !found.accessCode ||
-    found.accessCode === cleanCode ||
-    (found.accessCode.toUpperCase() === 'TALA2026' && cleanCode.toUpperCase() === 'TALA2026');
+  const isPasswordMatch = verifyUserPassword(found, cleanCode);
 
   if (!isPasswordMatch) {
     const nextAttempts = (Number(found.failedLoginAttempts) || 0) + 1;
@@ -155,8 +369,8 @@ export function verifyAllowedUser(email, accessCode, usersList) {
     };
   }
 
-  // Successful login: reset failed attempts counter
-  let updatedUsersList = null;
+  // Successful login: reset failed attempts counter and persist any migrated password hashes
+  let updatedUsersList = listMigrated ? list : null;
   if ((found.failedLoginAttempts || 0) > 0) {
     updatedUsersList = list.map((u) =>
       u.id === found.id ? { ...u, failedLoginAttempts: 0, lockedOut: false } : u

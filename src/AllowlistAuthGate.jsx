@@ -31,7 +31,9 @@ import {
   DEFAULT_TRIAL_DAYS,
   computeTrialExpirationIso,
   isTrialUserExpired,
-  getTrialRemainingDays
+  getTrialRemainingDays,
+  createPasswordCredentials,
+  verifyUserPassword
 } from './allowedUsers';
 import { sendUserInvitationEmailInBackground } from './emailService';
 import { fetchAllowedUsersFromCloud } from './firebaseBackend';
@@ -534,7 +536,7 @@ export function UserSelfPasswordModal({
       return;
     }
 
-    if (isMandatoryFirstLogin && trimmed === currentUser.accessCode) {
+    if (isMandatoryFirstLogin && verifyUserPassword(currentUser, trimmed)) {
       setErrorMsg('נא לבחור סיסמה חדשה השונה מהסיסמה הזמנית שקיבלת במייל.');
       return;
     }
@@ -840,6 +842,7 @@ export function AdminAllowlistModal({
     }
 
     const tempPassword = newUser.accessCode.trim();
+    const creds = createPasswordCredentials(tempPassword);
     const isTrial = Boolean(newUser.isTrialUser);
     const normalizedTrialDays = Math.max(1, Math.min(365, parseInt(newUser.trialDays, 10) || DEFAULT_TRIAL_DAYS));
     const created = {
@@ -849,7 +852,7 @@ export function AdminAllowlistModal({
       title: newUser.title.trim() || 'צוות חינוכי',
       group: (newUser.group || '').trim(),
       role: newUser.role,
-      accessCode: tempPassword,
+      ...creds,
       active: true,
       failedLoginAttempts: 0,
       lockedOut: false,
@@ -883,7 +886,7 @@ export function AdminAllowlistModal({
           userName: created.name,
           userEmail: created.email,
           userTitle: created.title,
-          tempPassword: created.accessCode,
+          tempPassword,
           siteUrl: 'https://zivitreshef.github.io/TALA/'
         });
         setInviteStatusBanner(
@@ -913,19 +916,23 @@ export function AdminAllowlistModal({
     setInviteStatusBanner('');
     setSendingInviteForUserId(userObj.id);
     try {
-      // Mark user as mustChangePassword: true if sending onboarding invitation with their current temp password
+      // Since passwords are stored one-way hashed+salted, generate a fresh temporary password for the re-sent invite
+      const freshTempPassword = generateRandomTempPassword();
+      const creds = createPasswordCredentials(freshTempPassword);
+
       onUpdateAllowedUsers(
-        allowedUsers.map((u) =>
-          u.id === userObj.id
-            ? {
-                ...u,
-                mustChangePassword: true,
-                active: true,
-                lockedOut: false,
-                failedLoginAttempts: 0
-              }
-            : u
-        )
+        allowedUsers.map((u) => {
+          if (u.id !== userObj.id) return u;
+          const { accessCode: _removed, ...rest } = u;
+          return {
+            ...rest,
+            ...creds,
+            mustChangePassword: true,
+            active: true,
+            lockedOut: false,
+            failedLoginAttempts: 0
+          };
+        })
       );
 
       await sendUserInvitationEmailInBackground({
@@ -933,12 +940,12 @@ export function AdminAllowlistModal({
         userName: userObj.name,
         userEmail: userObj.email,
         userTitle: userObj.title,
-        tempPassword: userObj.accessCode,
+        tempPassword: freshTempPassword,
         siteUrl: 'https://zivitreshef.github.io/TALA/'
       });
 
       setInviteStatusBanner(
-        `📨 מייל הזמנה והדרכה נשלח בהצלחה אל ${userObj.name} (${userObj.email}) עם הסיסמה הזמנית!`
+        `📨 מייל הזמנה והדרכה נשלח בהצלחה אל ${userObj.name} (${userObj.email}) עם סיסמה זמנית חדשה!`
       );
     } catch (err) {
       console.error('Error resending invite:', err);
@@ -971,19 +978,20 @@ export function AdminAllowlistModal({
       }
     }
 
+    const creds = createPasswordCredentials(trimmed);
     onUpdateAllowedUsers(
-      allowedUsers.map((u) =>
-        u.id === userId
-          ? {
-              ...u,
-              accessCode: trimmed,
-              failedLoginAttempts: 0,
-              lockedOut: false,
-              active: true,
-              mustChangePassword: true
-            }
-          : u
-      )
+      allowedUsers.map((u) => {
+        if (u.id !== userId) return u;
+        const { accessCode: _removed, ...rest } = u;
+        return {
+          ...rest,
+          ...creds,
+          failedLoginAttempts: 0,
+          lockedOut: false,
+          active: true,
+          mustChangePassword: true
+        };
+      })
     );
     setEditingPasswordUserId(null);
     setNewPasswordValue('');
@@ -1836,9 +1844,24 @@ export function AdminAllowlistModal({
                             )}
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ letterSpacing: '2px', color: '#5a717d', fontWeight: 700 }}>
-                              ••••••••
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                background: '#f0fdf4',
+                                color: '#166534',
+                                border: '1px solid #bbf7d0',
+                                borderRadius: '999px',
+                                padding: '2px 8px',
+                                fontSize: '11px',
+                                fontWeight: 700
+                              }}
+                              title="הסיסמה שמורה באופן מוצפן וחד-כיווני (SHA-256 Hash + Salt ייחודי)"
+                            >
+                              <Lock size={11} />
+                              <span>מוצפן (Hash+Salt)</span>
                             </span>
                             <button
                               type="button"
