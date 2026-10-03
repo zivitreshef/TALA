@@ -1,6 +1,161 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ShieldCheck, Check, RotateCcw, LogOut, Loader2, FileCheck2 } from 'lucide-react';
 
+function extractSignatureAssetsFromCanvas(canvas, fallbackText = '') {
+  try {
+    const targetW = 280;
+    const targetH = 84;
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = targetW;
+    exportCanvas.height = targetH;
+    const exportCtx = exportCanvas.getContext('2d');
+    if (!exportCtx) return { signatureDataUrl: '', signatureTableHtml: '' };
+
+    exportCtx.fillStyle = '#ffffff';
+    exportCtx.fillRect(0, 0, targetW, targetH);
+
+    let drewFromSourceCanvas = false;
+
+    if (canvas) {
+      const w = canvas.width;
+      const h = canvas.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const imgData = ctx.getImageData(0, 0, w, h).data;
+        let minX = w;
+        let minY = h;
+        let maxX = -1;
+        let maxY = -1;
+
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const alpha = imgData[(y * w + x) * 4 + 3];
+            if (alpha > 20) {
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+
+        if (maxX >= minX && maxY >= minY) {
+          const pad = 8;
+          const sx = Math.max(0, minX - pad);
+          const sy = Math.max(0, minY - pad);
+          const sw = Math.min(w - sx, maxX - minX + pad * 2);
+          const sh = Math.min(h - sy, maxY - minY + pad * 2);
+
+          const availW = targetW - 16;
+          const availH = targetH - 12;
+          const scale = Math.min(availW / Math.max(sw, 1), availH / Math.max(sh, 1), 2.2);
+          const dw = sw * scale;
+          const dh = sh * scale;
+          const dx = (targetW - dw) / 2;
+          const dy = (targetH - dh) / 2;
+
+          exportCtx.drawImage(canvas, sx, sy, sw, sh, dx, dy, dw, dh);
+          drewFromSourceCanvas = true;
+        }
+      }
+    }
+
+    // If the user signed via typed text (or canvas had no ink pixels), render their signature onto exportCanvas
+    if (!drewFromSourceCanvas && fallbackText) {
+      exportCtx.fillStyle = '#1e3a5f';
+      exportCtx.font = 'italic bold 30px "Segoe Script", "Rubik", cursive, Arial, sans-serif';
+      exportCtx.textAlign = 'center';
+      exportCtx.textBaseline = 'middle';
+      exportCtx.fillText(fallbackText, targetW / 2, targetH / 2 - 4, targetW - 24);
+
+      exportCtx.strokeStyle = '#1e3a5f';
+      exportCtx.lineWidth = 2.5;
+      exportCtx.lineCap = 'round';
+      exportCtx.beginPath();
+      exportCtx.moveTo(40, targetH - 18);
+      exportCtx.quadraticCurveTo(targetW / 2, targetH - 10, targetW - 40, targetH - 20);
+      exportCtx.stroke();
+      drewFromSourceCanvas = true;
+    }
+
+    if (!drewFromSourceCanvas) {
+      return { signatureDataUrl: '', signatureTableHtml: '' };
+    }
+
+    const signatureDataUrl = exportCanvas.toDataURL('image/png');
+
+    // Build a Gmail & Microsoft Word (.doc) compatible HTML <table> bitmap
+    // IMPORTANT: Microsoft Word allows at most 63 columns per table, so we use 56 cols x 21 rows (224px x 63px).
+    const cols = 56;
+    const rows = 21;
+    const cellW = targetW / cols;
+    const cellH = targetH / rows;
+    const exportData = exportCtx.getImageData(0, 0, targetW, targetH).data;
+
+    const trList = [];
+    let anyInkFound = false;
+    for (let r = 0; r < rows; r++) {
+      const yStart = Math.max(0, Math.floor(r * cellH));
+      const yEnd = Math.min(targetH, Math.ceil((r + 1) * cellH));
+      const rowCells = [];
+
+      for (let c = 0; c < cols; c++) {
+        const xStart = Math.max(0, Math.floor(c * cellW));
+        const xEnd = Math.min(targetW, Math.ceil((c + 1) * cellW));
+        let hasInk = false;
+        for (let y = yStart; y < yEnd && !hasInk; y++) {
+          for (let x = xStart; x < xEnd; x++) {
+            const idx = (y * targetW + x) * 4;
+            // Check if pixel is non-white ink (dark blue #1e3a5f)
+            const rVal = exportData[idx];
+            const gVal = exportData[idx + 1];
+            const bVal = exportData[idx + 2];
+            const aVal = exportData[idx + 3];
+            if (aVal > 25 && (rVal < 215 || gVal < 215 || bVal < 225)) {
+              hasInk = true;
+              anyInkFound = true;
+              break;
+            }
+          }
+        }
+        rowCells.push(hasInk);
+      }
+
+      // Run-length encode each row
+      let tdHtml = '';
+      let runType = rowCells[0];
+      let runLen = 1;
+      for (let c = 1; c <= cols; c++) {
+        if (c < cols && rowCells[c] === runType) {
+          runLen++;
+        } else {
+          const hex = runType ? '#1e3a5f' : '#ffffff';
+          const pxWidth = runLen * 4;
+          tdHtml += `<td colspan="${runLen}" width="${pxWidth}" height="3" bgcolor="${hex}" style="width:${pxWidth}px;height:3px;line-height:3px;mso-line-height-rule:exactly;font-size:2px;padding:0;margin:0;border:none;border-top:3px solid ${hex};background-color:${hex};color:${hex};">&nbsp;</td>`;
+          if (c < cols) {
+            runType = rowCells[c];
+            runLen = 1;
+          }
+        }
+      }
+      trList.push(
+        `<tr height="3" style="height:3px;line-height:3px;mso-line-height-rule:exactly;font-size:2px;">${tdHtml}</tr>`
+      );
+    }
+
+    if (!anyInkFound) {
+      return { signatureDataUrl, signatureTableHtml: '' };
+    }
+
+    const signatureTableHtml = `<table dir="ltr" width="224" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#ffffff;border:1.5px solid #64748b;border-bottom:2.5px solid #1e3a5f;border-radius:6px;width:224px;table-layout:fixed;"><tbody>${trList.join('')}</tbody></table>`;
+
+    return { signatureDataUrl, signatureTableHtml };
+  } catch (err) {
+    console.warn('Could not extract canvas signature assets:', err);
+    return { signatureDataUrl: '', signatureTableHtml: '' };
+  }
+}
+
 export default function TrialNdaModal({
   isOpen,
   currentUser,
@@ -34,7 +189,7 @@ export default function TrialNdaModal({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.strokeStyle = '#1e3a5f';
-    ctx.lineWidth = 2.4;
+    ctx.lineWidth = 3.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
   }, [isOpen]);
@@ -62,10 +217,16 @@ export default function TrialNdaModal({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1e3a5f';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     const pos = getPointerPos(e);
     isDrawingRef.current = true;
     ctx.beginPath();
     ctx.moveTo(pos.x, pos.y);
+    ctx.lineTo(pos.x + 0.1, pos.y + 0.1);
+    ctx.stroke();
     setHasDrawnSignature(true);
     setErrorMsg('');
   };
@@ -76,6 +237,10 @@ export default function TrialNdaModal({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1e3a5f';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     const pos = getPointerPos(e);
     ctx.lineTo(pos.x, pos.y);
     ctx.stroke();
@@ -126,12 +291,12 @@ export default function TrialNdaModal({
       return;
     }
 
-    let signatureDataUrl = '';
-    if (hasDrawnSignature && canvasRef.current) {
-      try {
-        signatureDataUrl = canvasRef.current.toDataURL('image/png');
-      } catch (_) {}
-    }
+    const extracted = extractSignatureAssetsFromCanvas(
+      hasDrawnSignature ? canvasRef.current : null,
+      cleanSigText || cleanName
+    );
+    const signatureDataUrl = extracted.signatureDataUrl;
+    const signatureTableHtml = extracted.signatureTableHtml;
 
     const formattedDateHe = new Date(signerDate).toLocaleDateString('he-IL');
     const signedAtTimestamp = new Date().toLocaleString('he-IL', {
@@ -155,6 +320,7 @@ export default function TrialNdaModal({
         signedDate: formattedDateHe,
         signatureText: cleanSigText || cleanName,
         signatureDataUrl,
+        signatureTableHtml,
         trialDays,
         signedAtTimestamp
       });
