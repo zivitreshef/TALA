@@ -44,7 +44,7 @@ import {
   getTrialRemainingDays,
   verifyAllowedUser
 } from '../allowedUsers';
-import { buildSignedNdaDocumentHtml } from '../emailService';
+import { buildSignedNdaDocumentHtml, buildUserSurveyEmailHtml } from '../emailService';
 
 describe('Permissions & Shared Student Guards', () => {
   const ownerTeacher = { email: 'teacher1@tala.edu.il', name: 'מיכל' };
@@ -420,6 +420,32 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     });
     expect(ndaPdfHtml).toContain(sampleDataUrl);
     expect(ndaPdfHtml).toContain('✍️ דנה כהן');
+  });
+
+  it('builds the optional post-usage User Experience Survey HTML email with all ratings and recommendation', () => {
+    const surveyHtml = buildUserSurveyEmailHtml({
+      userName: 'דנה כהן',
+      userEmail: 'dana@trial.edu.il',
+      userTitle: 'גננת שילוב',
+      userGroup: 'מתי"א מרכז',
+      isTrialUser: true,
+      ratings: {
+        easeOfWebsite: 5,
+        createStudent: 5,
+        generateGoals: 4,
+        createReport: 5,
+        collaborateWithColleagues: 5
+      },
+      recommendToColleaguesAndManager: 'בהחלט כן – אמליץ בחום לקולגות ולמנהל/ת לרכוש גישה להמשך שימוש',
+      overallFeedback: 'מערכת נהדרת שחוסכת שעות של כתיבה.',
+      improvementSuggestions: 'להוסיף עוד תבניות למפגש בוקר.'
+    });
+
+    expect(surveyHtml).toContain('משוב משתמש/ת על העבודה במערכת TALA');
+    expect(surveyHtml).toContain('4.8 / 5');
+    expect(surveyHtml).toContain('בהחלט כן – אמליץ בחום לקולגות ולמנהל/ת לרכוש גישה להמשך שימוש');
+    expect(surveyHtml).toContain('מערכת נהדרת שחוסכת שעות של כתיבה.');
+    expect(surveyHtml).toContain('להוסיף עוד תבניות למפגש בוקר.');
   });
 });
 
