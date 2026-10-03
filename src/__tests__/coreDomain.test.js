@@ -38,8 +38,13 @@ import {
 import {
   getCurrentLocalDayKey,
   stampSessionUserWithDate,
-  isSessionUserValidForToday
+  isSessionUserValidForToday,
+  computeTrialExpirationIso,
+  isTrialUserExpired,
+  getTrialRemainingDays,
+  verifyAllowedUser
 } from '../allowedUsers';
+import { buildSignedNdaDocumentHtml } from '../emailService';
 
 describe('Permissions & Shared Student Guards', () => {
   const ownerTeacher = { email: 'teacher1@tala.edu.il', name: 'מיכל' };
@@ -346,7 +351,57 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     // Legacy session without sessionDate should also expire
     expect(isSessionUserValidForToday({ email: 'teacher@tala.edu.il' }, sameDayLater)).toBe(false);
   });
+
+  it('enforces time-limited trial user expiration and builds signed Hebrew NDA document', () => {
+    const start = new Date('2026-10-01T08:00:00.000Z');
+    const expiresAt = computeTrialExpirationIso(7, start);
+    const trialUser = {
+      id: 'u_trial_1',
+      name: 'דנה כהן',
+      email: 'dana@trial.edu.il',
+      accessCode: 'Trial1234',
+      active: true,
+      isTrialUser: true,
+      trialDays: 7,
+      trialStartedAt: start.toISOString(),
+      trialExpiresAt: expiresAt,
+      mustSignNda: true,
+      ndaSigned: false
+    };
+
+    const day3 = new Date('2026-10-04T08:00:00.000Z');
+    const day9 = new Date('2026-10-10T08:00:00.000Z');
+
+    expect(isTrialUserExpired(trialUser, day3)).toBe(false);
+    expect(getTrialRemainingDays(trialUser, day3)).toBe(4);
+    expect(isTrialUserExpired(trialUser, day9)).toBe(true);
+    expect(getTrialRemainingDays(trialUser, day9)).toBe(0);
+
+    // Expired trial user is blocked by verifyAllowedUser
+    const expiredUser = {
+      ...trialUser,
+      trialExpiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    };
+    const res = verifyAllowedUser('dana@trial.edu.il', 'Trial1234', [expiredUser]);
+    expect(res.allowed).toBe(false);
+    expect(res.isTrialExpired).toBe(true);
+    expect(res.reason).toContain('תקופת הניסיון');
+
+    // Signed NDA HTML document contains signer details, ID number, and Hebrew NDA text
+    const ndaHtml = buildSignedNdaDocumentHtml({
+      signerName: 'דנה כהן',
+      signerEmail: 'dana@trial.edu.il',
+      signerIdNumber: '012345678',
+      signedDate: '03/10/2026',
+      signatureText: 'דנה כהן',
+      trialDays: 7
+    });
+    expect(ndaHtml).toContain('כתב התחייבות לשמירת סודיות, קניין רוחני ואי-הפצה (NDA)');
+    expect(ndaHtml).toContain('012345678');
+    expect(ndaHtml).toContain('דנה כהן');
+  });
 });
+
 
 
 
