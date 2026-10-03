@@ -1844,24 +1844,9 @@ export function AdminAllowlistModal({
                             )}
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: '#f0fdf4',
-                                color: '#166534',
-                                border: '1px solid #bbf7d0',
-                                borderRadius: '999px',
-                                padding: '2px 8px',
-                                fontSize: '11px',
-                                fontWeight: 700
-                              }}
-                              title="הסיסמה שמורה באופן מוצפן וחד-כיווני (SHA-256 Hash + Salt ייחודי)"
-                            >
-                              <Lock size={11} />
-                              <span>מוצפן (Hash+Salt)</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ letterSpacing: '2px', color: '#5a717d', fontWeight: 700 }}>
+                              ••••••••
                             </span>
                             <button
                               type="button"
