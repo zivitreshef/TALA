@@ -58,6 +58,12 @@ import {
   loadEmailEngineConfig,
   saveEmailEngineConfig
 } from './emailService';
+import {
+  PRIMARY_ADMIN_EMAIL,
+  isStudentOwnedByUser,
+  getStudentsForUser,
+  getArchivedStudentsForUser
+} from './domain/permissions';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
 
@@ -157,7 +163,7 @@ export default function App() {
         if (Array.isArray(parsed)) {
           return parsed.map((s) => ({
             ...s,
-            ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
+            ownerEmail: (s.ownerEmail || PRIMARY_ADMIN_EMAIL).toLowerCase()
           }));
         }
       }
@@ -166,35 +172,9 @@ export default function App() {
     }
     return INITIAL_STUDENTS_DATA.map((s) => ({
       ...s,
-      ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
+      ownerEmail: (s.ownerEmail || PRIMARY_ADMIN_EMAIL).toLowerCase()
     }));
   });
-
-  // Helper: get only the ACTIVE (non-archived) students belonging to or shared with a specific user email
-  const getStudentsForUser = (allStudents, userObj) => {
-    if (!userObj || !userObj.email) return [];
-    const targetEmail = userObj.email.trim().toLowerCase();
-    return (allStudents || []).filter((s) => {
-      const isOwner = (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail;
-      const isShared =
-        Array.isArray(s.sharedWith) &&
-        s.sharedWith.some((em) => String(em || '').trim().toLowerCase() === targetEmail);
-      return (isOwner || isShared) && !s.archived;
-    });
-  };
-
-  // Helper: get only the ARCHIVED students belonging to or shared with a specific user email
-  const getArchivedStudentsForUser = (allStudents, userObj) => {
-    if (!userObj || !userObj.email) return [];
-    const targetEmail = userObj.email.trim().toLowerCase();
-    return (allStudents || []).filter((s) => {
-      const isOwner = (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase() === targetEmail;
-      const isShared =
-        Array.isArray(s.sharedWith) &&
-        s.sharedWith.some((em) => String(em || '').trim().toLowerCase() === targetEmail);
-      return (isOwner || isShared) && Boolean(s.archived);
-    });
-  };
 
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState(null);
@@ -488,13 +468,6 @@ export default function App() {
       ...prev,
       'ללא מסגרת חינוכית מוגדרת': true
     }));
-  };
-
-  // Helper: check whether the logged-in user is the original owner of a student record
-  const isStudentOwnedByUser = (studentObj, userObj) => {
-    if (!studentObj || !userObj || !userObj.email) return false;
-    const targetEmail = userObj.email.trim().toLowerCase();
-    return (studentObj.ownerEmail || 'zivit.reshef@gmail.com').trim().toLowerCase() === targetEmail;
   };
 
   const handleDeleteStudent = (studentObj, e) => {
