@@ -490,13 +490,24 @@ export default function App() {
     }));
   };
 
+  // Helper: check whether the logged-in user is the original owner of a student record
+  const isStudentOwnedByUser = (studentObj, userObj) => {
+    if (!studentObj || !userObj || !userObj.email) return false;
+    const targetEmail = userObj.email.trim().toLowerCase();
+    return (studentObj.ownerEmail || 'zivit.reshef@gmail.com').trim().toLowerCase() === targetEmail;
+  };
+
   const handleDeleteStudent = (studentObj, e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
+    if (!isStudentOwnedByUser(studentObj, currentUser)) return;
     setStudentToDelete(studentObj);
   };
 
   const confirmDeleteStudent = () => {
-    if (!studentToDelete) return;
+    if (!studentToDelete || !isStudentOwnedByUser(studentToDelete, currentUser)) {
+      setStudentToDelete(null);
+      return;
+    }
     const id = studentToDelete.id;
     const remainingAll = students.filter((s) => s.id !== id);
     setStudents(remainingAll);
@@ -513,12 +524,16 @@ export default function App() {
 
   const handleRequestArchiveStudent = (studentObj, e) => {
     if (e) e.stopPropagation();
+    if (!isStudentOwnedByUser(studentObj, currentUser)) return;
     setStudentToArchive(studentObj);
   };
 
   const confirmArchiveStudent = (overrideStudent = null) => {
     const target = overrideStudent || studentToArchive;
-    if (!target) return;
+    if (!target || !isStudentOwnedByUser(target, currentUser)) {
+      setStudentToArchive(null);
+      return;
+    }
     const id = target.id;
     const archivedDate = new Date().toLocaleDateString('he-IL');
 
@@ -552,6 +567,8 @@ export default function App() {
   };
 
   const handleRestoreFromArchive = (studentId) => {
+    const targetStudent = students.find((s) => s.id === studentId);
+    if (!targetStudent || !isStudentOwnedByUser(targetStudent, currentUser)) return;
     let restoredDoc = null;
     const updatedAll = students.map((s) => {
       if (s.id !== studentId) return s;
@@ -575,7 +592,7 @@ export default function App() {
   };
 
   const handleRolloverArchivedStudentToNewYear = (studentObj, sourceYear) => {
-    if (!studentObj) return;
+    if (!studentObj || !isStudentOwnedByUser(studentObj, currentUser)) return;
     const nextYr = getNextSchoolYear(sourceYear || studentObj.schoolYear);
     if (
       !window.confirm(
@@ -1048,25 +1065,27 @@ export default function App() {
                               )}
                             </div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                            <button
-                              type="button"
-                              className="btn-delete-st"
-                              onClick={(e) => handleRequestArchiveStudent(st, e)}
-                              title="העבר תלמיד/ה לארכיון"
-                              style={{ color: '#6b5b95' }}
-                            >
-                              <Archive size={15} />
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-delete-st"
-                              onClick={(e) => handleDeleteStudent(st, e)}
-                              title="מחק תלמיד"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
+                          {isStudentOwnedByUser(st, currentUser) && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                              <button
+                                type="button"
+                                className="btn-delete-st"
+                                onClick={(e) => handleRequestArchiveStudent(st, e)}
+                                title="העבר תלמיד/ה לארכיון"
+                                style={{ color: '#6b5b95' }}
+                              >
+                                <Archive size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-delete-st"
+                                onClick={(e) => handleDeleteStudent(st, e)}
+                                title="מחק תלמיד"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1977,78 +1996,80 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleRolloverArchivedStudentToNewYear(
-                                activeArchivedStudent,
-                                currentArchiveYear
-                              )
-                            }
-                            style={{
-                              background: '#ecfdf5',
-                              color: '#065f46',
-                              border: '1px solid #6ee7b7',
-                              borderRadius: '8px',
-                              padding: '7px 13px',
-                              fontSize: '12.5px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}
-                            title="שכפל ופתח תכנית המשך לשנת הלימודים הבאה"
-                          >
-                            <Plus size={15} />
-                            <span>פתח שנה חדשה</span>
-                          </button>
+                        {isStudentOwnedByUser(activeArchivedStudent, currentUser) && (
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleRolloverArchivedStudentToNewYear(
+                                  activeArchivedStudent,
+                                  currentArchiveYear
+                                )
+                              }
+                              style={{
+                                background: '#ecfdf5',
+                                color: '#065f46',
+                                border: '1px solid #6ee7b7',
+                                borderRadius: '8px',
+                                padding: '7px 13px',
+                                fontSize: '12.5px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                              title="שכפל ופתח תכנית המשך לשנת הלימודים הבאה"
+                            >
+                              <Plus size={15} />
+                              <span>פתח שנה חדשה</span>
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={() => handleRestoreFromArchive(activeArchivedStudent.id)}
-                            style={{
-                              background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
-                              color: '#ffffff',
-                              border: 'none',
-                              borderRadius: '8px',
-                              padding: '7px 13px',
-                              fontSize: '12.5px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px'
-                            }}
-                            title="החזר תלמיד/ה לרשימת התלמידים הפעילה"
-                          >
-                            <RotateCcw size={15} />
-                            <span>שחזר לרשימה הפעילה</span>
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreFromArchive(activeArchivedStudent.id)}
+                              style={{
+                                background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                padding: '7px 13px',
+                                fontSize: '12.5px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                              title="החזר תלמיד/ה לרשימת התלמידים הפעילה"
+                            >
+                              <RotateCcw size={15} />
+                              <span>שחזר לרשימה הפעילה</span>
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteStudent(activeArchivedStudent, e)}
-                            style={{
-                              background: '#fdf2f2',
-                              color: '#b83f3f',
-                              border: '1px solid #f3b4b4',
-                              borderRadius: '8px',
-                              padding: '7px 12px',
-                              fontSize: '12.5px',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '5px'
-                            }}
-                            title="מחק תלמיד/ה לצמיתות מהארכיון"
-                          >
-                            <Trash2 size={14} />
-                            <span>מחק לצמיתות</span>
-                          </button>
-                        </div>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteStudent(activeArchivedStudent, e)}
+                              style={{
+                                background: '#fdf2f2',
+                                color: '#b83f3f',
+                                border: '1px solid #f3b4b4',
+                                borderRadius: '8px',
+                                padding: '7px 12px',
+                                fontSize: '12.5px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                              title="מחק תלמיד/ה לצמיתות מהארכיון"
+                            >
+                              <Trash2 size={14} />
+                              <span>מחק לצמיתות</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Personal Info Grid */}
