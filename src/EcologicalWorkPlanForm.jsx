@@ -24,7 +24,9 @@ import {
   Users,
   Calendar,
   Loader2,
-  X
+  X,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
@@ -73,12 +75,16 @@ import {
   buildEvalWordDocumentHtml as renderEvalWordDocumentHtml,
   buildStatusReportWordDocumentHtml as renderStatusReportWordDocumentHtml
 } from './export/wordAndPrintBuilders';
+import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 
 const extractYearReportFromFormData = (data) => ({
   date: data?.date || new Date().toLocaleDateString('he-IL'),
   planType: data?.planType || 'תל"א (תוכנית לימודים אישית)',
+  isLocked: Boolean(data?.isLocked),
+  lockedAt: data?.lockedAt || '',
+  lockedBy: data?.lockedBy || '',
   teacherFreeText: data?.teacherFreeText || '',
   freeTextAnalyzed: Boolean(data?.freeTextAnalyzed),
   removedAiGoals: Array.isArray(data?.removedAiGoals) ? data.removedAiGoals : [],
@@ -148,9 +154,13 @@ export default function EcologicalWorkPlanForm({
     const initialStatusReportSections = Array.isArray(st?.statusReportSections)
       ? st.statusReportSections
       : [];
+    const initialLocked = Boolean(st?.isLocked);
     existingReports[currentYear] = {
       date: st?.date || new Date().toLocaleDateString('he-IL'),
       planType: st?.planType || 'תל"א (תוכנית לימודים אישית)',
+      isLocked: initialLocked,
+      lockedAt: st?.lockedAt || '',
+      lockedBy: st?.lockedBy || '',
       teacherFreeText: st?.teacherFreeText || '',
       freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
       removedAiGoals: initialRemovedAiGoals,
@@ -169,6 +179,9 @@ export default function EcologicalWorkPlanForm({
       ...st,
       schoolYear: currentYear,
       gender: initialGender,
+      isLocked: initialLocked,
+      lockedAt: st?.lockedAt || '',
+      lockedBy: st?.lockedBy || '',
       freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
       removedAiGoals: initialRemovedAiGoals,
       evalReportFreeText: st?.evalReportFreeText || '',
@@ -365,6 +378,49 @@ export default function EcologicalWorkPlanForm({
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
   const currentGender = formData.gender || 'boy';
+  const isReportLocked = Boolean(formData.isLocked);
+  const userCanLockReport = canLockReport(formData, currentUser);
+
+  // Toggle report lock (only owning teacher can lock/unlock; when locked, only Mid-Year/End-Year Evaluation remains editable)
+  const handleToggleReportLock = () => {
+    if (!userCanLockReport) return;
+    const nextLocked = !Boolean(formData.isLocked);
+    const nowTime = new Date().toLocaleTimeString('he-IL', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const nowDate = new Date().toLocaleDateString('he-IL');
+    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+
+    const updatedWithLock = {
+      ...formData,
+      isLocked: nextLocked,
+      lockedAt: nextLocked ? `${nowDate} ${nowTime}` : '',
+      lockedBy: nextLocked ? (currentUser?.name || currentUser?.email || '') : '',
+      lastSavedAt: nowTime
+    };
+    const updated = {
+      ...updatedWithLock,
+      reportsByYear: {
+        ...(formData.reportsByYear || {}),
+        [activeYear]: extractYearReportFromFormData(updatedWithLock)
+      }
+    };
+
+    if (nextLocked) {
+      setOpenPickerGoalId(null);
+      setActiveAiGoalId(null);
+    }
+
+    savedSnapshotRef.current = JSON.stringify(updated);
+    setFormData(updated);
+    onSaveStudentPlan(updated);
+    if (onDraftStateChange) {
+      onDraftStateChange({ isDirty: false, draftData: updated });
+    }
+    setSaveBanner(true);
+    setTimeout(() => setSaveBanner(false), 2500);
+  };
 
   // Rollover current student's plan into the next school year (Option D)
   const handleRolloverToNextYear = (targetYearOverride = null) => {
@@ -436,6 +492,9 @@ export default function EcologicalWorkPlanForm({
           schoolYear: newYear,
           date: existingTargetReport.date || new Date().toLocaleDateString('he-IL'),
           planType: existingTargetReport.planType || prev.planType || 'תל"א (תוכנית לימודים אישית)',
+          isLocked: Boolean(existingTargetReport.isLocked),
+          lockedAt: existingTargetReport.lockedAt || '',
+          lockedBy: existingTargetReport.lockedBy || '',
           teacherFreeText: existingTargetReport.teacherFreeText || '',
           freeTextAnalyzed: Boolean(existingTargetReport.freeTextAnalyzed),
           removedAiGoals: Array.isArray(existingTargetReport.removedAiGoals)
@@ -475,6 +534,9 @@ export default function EcologicalWorkPlanForm({
       const freshReport = {
         date: new Date().toLocaleDateString('he-IL'),
         planType: prev.planType || 'תל"א (תוכנית לימודים אישית)',
+        isLocked: false,
+        lockedAt: '',
+        lockedBy: '',
         teacherFreeText: '',
         freeTextAnalyzed: false,
         removedAiGoals: [],
@@ -504,8 +566,15 @@ export default function EcologicalWorkPlanForm({
     setActiveAiGoalId(null);
   };
 
-  // Update personal or top-level field
+  // Update personal or top-level field (when report is locked, only Evaluation Report fields may be updated)
   const handleFieldChange = (field, value) => {
+    const allowedWhenLocked = new Set([
+      'evalReportFreeText',
+      'evalReportSummary',
+      'statusReportSections',
+      'statusReportUpdatedAt'
+    ]);
+    if (formData.isLocked && !allowedWhenLocked.has(field)) return;
     setFormData((prev) => ({
       ...prev,
       [field]: value
@@ -514,6 +583,7 @@ export default function EcologicalWorkPlanForm({
 
   // Update student gender ('boy' = בן / זכר, 'girl' = בת / נקבה) and automatically inflect all goals & objectives
   const handleGenderChange = (newGender) => {
+    if (formData.isLocked) return;
     setFormData((prev) => ({
       ...prev,
       gender: newGender,
@@ -521,18 +591,30 @@ export default function EcologicalWorkPlanForm({
     }));
   };
 
-  // Update specific goal row (marks goal as teacher-modified so re-analysis won't overwrite it)
+  // Update specific goal row (when report is locked, only Mid-Year / End-of-Year Evaluation fields can be updated!)
   const handleGoalChange = (goalId, field, value) => {
+    const allowedEvalFields = new Set([
+      'achievementStatus',
+      'midYearEvaluation',
+      'endYearEvaluation'
+    ]);
+    const isEvalField = allowedEvalFields.has(field);
+    if (formData.isLocked && !isEvalField) return;
     setFormData((prev) => ({
       ...prev,
       goals: (prev.goals || []).map((g) =>
-        g.id === goalId ? { ...g, [field]: value, isTeacherModified: true } : g
+        g.id === goalId
+          ? isEvalField
+            ? { ...g, [field]: value }
+            : { ...g, [field]: value, isTeacherModified: true }
+          : g
       )
     }));
   };
 
   // Toggle whether a specific goal is locked against AI re-analysis
   const handleToggleGoalLock = (goalId) => {
+    if (formData.isLocked) return;
     setFormData((prev) => ({
       ...prev,
       goals: (prev.goals || []).map((g) => {
@@ -548,6 +630,7 @@ export default function EcologicalWorkPlanForm({
 
   // Add a new empty goal block and open the smart Goal Picker immediately
   const handleAddGoalRow = () => {
+    if (formData.isLocked) return;
     const newId = 'g_row_' + Date.now();
     const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
     const newGoalObj = {
@@ -573,6 +656,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   const handleDeleteGoalRow = (goalId) => {
+    if (formData.isLocked) return;
     if ((formData.goals || []).length <= 1) {
       if (!window.confirm('זוהי המטרה היחידה בתכנית. האם למחוק אותה?')) return;
     }
@@ -598,6 +682,7 @@ export default function EcologicalWorkPlanForm({
 
   // Select a goal from the Dynamic Goal Bank (automatically adjusted to student's gender!)
   const handleSelectGoalFromBank = (goalRowId, bankItem, fillTemplate = true) => {
+    if (formData.isLocked) return;
     const genderToUse = formData.gender || 'boy';
     const studentFirstName = (formData.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד'))
       .trim()
@@ -676,6 +761,7 @@ export default function EcologicalWorkPlanForm({
 
   // Define a brand new custom Goal and trigger AI Facilitating Questions
   const handleConfirmCustomGoal = async (goalRow) => {
+    if (formData.isLocked) return;
     if (!goalRow.title || !goalRow.title.trim()) return;
 
     setFormData((prev) => ({
@@ -696,6 +782,7 @@ export default function EcologicalWorkPlanForm({
 
   // Generate up to 3 Facilitating Questions via Gemini AI (or smart fallback)
   const handleGenerateAiQuestionsForGoal = async (goalRow) => {
+    if (formData.isLocked) return;
     const goalTitle = (goalRow.title || '').trim();
     if (!goalTitle) return;
 
@@ -781,6 +868,7 @@ export default function EcologicalWorkPlanForm({
 
   // Apply teacher's answers to the 3 Facilitating Questions to auto-fill/enrich the 6 columns of the goal!
   const handleApplyFacilitatingAnswers = async (goalRow) => {
+    if (formData.isLocked) return;
     const answers = aiAnswersMap[goalRow.id] || {};
     const ans1 = (answers[0] || '').trim();
     const ans2 = (answers[1] || '').trim();
@@ -916,6 +1004,7 @@ export default function EcologicalWorkPlanForm({
 
   // Add an operative objective chip from the Goal Bank (automatically adjusted to student's gender!)
   const handleAddSuggestedObjective = (goalRowId, objText) => {
+    if (formData.isLocked) return;
     const genderToUse = formData.gender || 'boy';
     const genderAdjustedObj = adaptTextToGender(objText, genderToUse);
 
@@ -966,6 +1055,7 @@ export default function EcologicalWorkPlanForm({
 
   // === SUBMIT BUTTON: Generate Top Summary Table (and Goals if empty) from Teacher's Free Text + All Goals ===
   const handleSubmitGenerateSummaryTable = async () => {
+    if (formData.isLocked) return;
     const freeText = (formData.teacherFreeText || '').trim();
     const goalsList = (formData.goals || []).filter((g) => g.title && g.title.trim());
 
@@ -1052,6 +1142,7 @@ ${goalsSummary}
 
   // === AI Reverse Engineering from Raw Data Text to Full Formal Report ===
   const handleReverseEngineerFullReport = async () => {
+    if (formData.isLocked) return;
     const rawText = (formData.teacherFreeText || '').trim();
     if (!rawText) {
       window.alert('נא להזין טקסט גולמי על התלמיד/ה בתיבת התיאור החופשי כדי שה-AI יוכל להפיק ממנו דוח רשמי מלא.');
@@ -2018,10 +2109,62 @@ ${JSON.stringify(studentCardPayload, null, 2)}
   };
 
   return (
-    <div className="workplan-form-container" dir="rtl" ref={containerRef}>
+    <div
+      className={`workplan-form-container ${isReportLocked ? 'report-is-locked' : ''}`}
+      dir="rtl"
+      ref={containerRef}
+    >
       {/* Sticky Top Action & Print Privacy Toolbar */}
       <div className="sticky-action-bar">
         <div className="action-bar-right">
+          {/* Yellow Lock / Unlocked Icon at Top of Report (No Labels, Hover Explanation Tooltip) */}
+          <div className="report-lock-toggle-wrapper">
+            <button
+              type="button"
+              className={`btn-report-lock-icon ${isReportLocked ? 'locked' : 'unlocked'} ${
+                !userCanLockReport ? 'readonly-lock' : ''
+              }`}
+              onClick={handleToggleReportLock}
+              disabled={!userCanLockReport}
+              aria-label={isReportLocked ? 'הדו"ח נעול לעריכה' : 'הדו"ח פתוח לעריכה'}
+              title={
+                isReportLocked
+                  ? userCanLockReport
+                    ? 'הדו"ח נעול לעריכה (מוסכם וסגור). לא ניתן לערוך את סעיפי התכנית והמטרות, למעט הוספה ועדכון של "הערכת מחצית / סוף שנה". לחצי לפתיחת הנעילה.'
+                    : 'הדו"ח נעול לעריכה על ידי המורה האחראי/ת. ניתן להוסיף ולעדכן את "הערכת מחצית / סוף שנה" בלבד.'
+                  : userCanLockReport
+                    ? 'הדו"ח פתוח לעריכה ולסקירה משותפת. לחצי לנעילת הדו"ח לאחר הסכמת הצוות (גם במצב נעול ניתן להוסיף ולעדכן "הערכת מחצית / סוף שנה").'
+                    : 'הדו"ח פתוח לעריכה משותפת. רק המורה האחראי/ת על הדו"ח יכול/ה לנעול אותו.'
+              }
+            >
+              {isReportLocked ? <Lock size={19} /> : <Unlock size={19} />}
+            </button>
+            <div className="report-lock-hover-tooltip" role="tooltip">
+              {isReportLocked ? (
+                <>
+                  <strong>🔒 הדו"ח נעול לעריכה</strong>
+                  <span>
+                    תכנית העבודה אושרה וננעלה כך שלא ניתן לערוך את סעיפיה או מטרותיה, למעט הוספה ועדכון של{' '}
+                    <strong>"הערכת מחצית / סוף שנה"</strong>.
+                    {userCanLockReport
+                      ? ' לחצי על הסמל לפתיחת הנעילה.'
+                      : ' רק המורה האחראי/ת על הדו"ח יכול/ה לפתוח או לנעול אותו.'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <strong>🔓 הדו"ח פתוח לעריכה</strong>
+                  <span>
+                    הדו"ח פתוח לעריכה ולסקירה משותפת.
+                    {userCanLockReport
+                      ? ' לאחר הסכמת הצוות, לחצי על הסמל לנעילת הדו"ח (גם במצב נעול ניתן לעדכן "הערכת מחצית / סוף שנה").'
+                      : ' רק המורה האחראי/ת על הדו"ח יכול/ה לנעול אותו.'}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
           <button type="button" className="btn-save-progress" onClick={handleSaveProgress}>
             <Save size={17} />
             <span>שמור התקדמות</span>
@@ -2096,6 +2239,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <input
               type="text"
               value={formData.date || ''}
+              disabled={isReportLocked}
               onChange={(e) => handleFieldChange('date', e.target.value)}
               placeholder="למשל: 01/10/2026"
             />
@@ -2164,6 +2308,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
           <button
             type="button"
+            disabled={isReportLocked && !userCanLockReport}
             onClick={() => setShowShareModal(true)}
             style={{
               display: 'inline-flex',
@@ -2176,7 +2321,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               padding: '6px 12px',
               fontSize: '13px',
               fontWeight: 600,
-              cursor: 'pointer'
+              cursor: isReportLocked && !userCanLockReport ? 'not-allowed' : 'pointer',
+              opacity: isReportLocked && !userCanLockReport ? 0.5 : 1
             }}
           >
             <Users size={15} />
@@ -2202,6 +2348,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 type="radio"
                 name="planType"
                 value='תל"א (תוכנית לימודים אישית)'
+                disabled={isReportLocked}
                 checked={formData.planType === 'תל"א (תוכנית לימודים אישית)'}
                 onChange={(e) => handleFieldChange('planType', e.target.value)}
               />
@@ -2217,6 +2364,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 type="radio"
                 name="planType"
                 value='תח"י (תוכנית חינוכית יחידנית)'
+                disabled={isReportLocked}
                 checked={formData.planType === 'תח"י (תוכנית חינוכית יחידנית)'}
                 onChange={(e) => handleFieldChange('planType', e.target.value)}
               />
@@ -2230,6 +2378,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label>שם הילד/ה:</label>
             <input
               type="text"
+              disabled={isReportLocked}
               value={formData.name === 'תלמיד/ה חדש/ה' ? '' : (formData.name || '')}
               onChange={(e) => handleFieldChange('name', e.target.value)}
               placeholder="שם פרטי ושם משפחה"
@@ -2244,6 +2393,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   type="radio"
                   name="studentGender"
                   value="boy"
+                  disabled={isReportLocked}
                   checked={currentGender === 'boy'}
                   onChange={() => handleGenderChange('boy')}
                 />
@@ -2254,6 +2404,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   type="radio"
                   name="studentGender"
                   value="girl"
+                  disabled={isReportLocked}
                   checked={currentGender === 'girl'}
                   onChange={() => handleGenderChange('girl')}
                 />
@@ -2266,6 +2417,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label>ת.ז:</label>
             <input
               type="text"
+              disabled={isReportLocked}
               value={formData.idNumber || ''}
               onChange={(e) => handleFieldChange('idNumber', e.target.value)}
               placeholder="מספר תעודת זהות"
@@ -2276,6 +2428,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label>תאריך לידה:</label>
             <input
               type="text"
+              disabled={isReportLocked}
               value={formData.birthDate || ''}
               onChange={(e) => handleFieldChange('birthDate', e.target.value)}
               placeholder="DD/MM/YYYY"
@@ -2286,6 +2439,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label>מסגרת חינוכית:</label>
             <input
               type="text"
+              disabled={isReportLocked}
               value={formData.educationalFramework || ''}
               onChange={(e) => handleFieldChange('educationalFramework', e.target.value)}
               placeholder="שם הגן / בית הספר והכיתה"
@@ -2296,6 +2450,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label>כתובת מגורים:</label>
             <input
               type="text"
+              disabled={isReportLocked}
               value={formData.address || ''}
               onChange={(e) => handleFieldChange('address', e.target.value)}
               placeholder="רחוב, מספר, עיר"
@@ -2306,6 +2461,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label>טלפון הורים / איש קשר:</label>
             <input
               type="text"
+              disabled={isReportLocked}
               value={formData.phone || ''}
               onChange={(e) => handleFieldChange('phone', e.target.value)}
               placeholder="050-0000000"
@@ -2378,6 +2534,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <>
               <textarea
                 rows={4}
+                disabled={isReportLocked}
                 value={formData.teacherFreeText || ''}
                 onInput={handleTextareaAutoResize}
                 onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
@@ -2392,7 +2549,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   type="button"
                   className="btn-submit-generate-summary"
                   onClick={handleReverseEngineerFullReport}
-                  disabled={isReverseEngineering}
+                  disabled={isReportLocked || isReverseEngineering}
                 >
                   {isReverseEngineering ? (
                     <Loader2 size={17} className="tala-spin-icon" />
@@ -2447,6 +2604,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <td data-label="💪 מוקדי כוח: כוחות קיימים">
                   <textarea
                     rows={5}
+                    disabled={isReportLocked}
                     value={formData.strengthsExisting || ''}
                     onInput={handleTextareaAutoResize}
                     onChange={(e) => handleFieldChange('strengthsExisting', e.target.value)}
@@ -2456,6 +2614,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <td data-label="🌱 כוחות להעצמה וחיזוק">
                   <textarea
                     rows={5}
+                    disabled={isReportLocked}
                     value={formData.strengthsToEmpower || ''}
                     onInput={handleTextareaAutoResize}
                     onChange={(e) => handleFieldChange('strengthsToEmpower', e.target.value)}
@@ -2568,7 +2727,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               בחרי מטרה מתוך מאגר המטרות הדינמי או הקלידי מטרה חדשה.
             </p>
           </div>
-          <button type="button" className="btn-add-goal-block" onClick={handleAddGoalRow}>
+          <button
+            type="button"
+            className="btn-add-goal-block"
+            onClick={handleAddGoalRow}
+            disabled={isReportLocked}
+          >
             <Plus size={18} />
             <span>הוסף מטרה / סביבה חדשה</span>
           </button>
@@ -2615,6 +2779,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     <span className="goal-number-badge">מטרה #{index + 1}</span>
                     <label style={{ fontWeight: 600, fontSize: '13px' }}>סביבה / תחום:</label>
                     <select
+                      disabled={isReportLocked}
                       value={
                         ENVIRONMENTS_LIST.includes(goalRow.environment)
                           ? goalRow.environment
@@ -2638,6 +2803,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     </select>
                     <input
                       type="text"
+                      disabled={isReportLocked}
                       value={goalRow.environment || ''}
                       onChange={(e) => handleGoalChange(goalRow.id, 'environment', e.target.value)}
                       placeholder="הקלד סביבה..."
@@ -2646,9 +2812,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    {!isGoalEmpty(goalRow) && (
+                    {!isGoalEmpty(goalRow) && !isReportLocked && (
                       <button
                         type="button"
+                        disabled={isReportLocked}
                         onClick={() => handleToggleGoalLock(goalRow.id)}
                         title={
                           isGoalProtectedFromAiOverwrite(goalRow)
@@ -2687,6 +2854,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     <button
                       type="button"
                       className="btn-remove-goal"
+                      disabled={isReportLocked}
                       onClick={() => handleDeleteGoalRow(goalRow.id)}
                       title="מחק בלוק מטרה זה"
                     >
@@ -2706,6 +2874,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   </label>
                   <textarea
                     rows={3}
+                    disabled={isReportLocked}
                     value={goalRow.activityParticipation || ''}
                     onInput={handleTextareaAutoResize}
                     onChange={(e) =>
@@ -2725,7 +2894,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       <button
                         type="button"
                         className="btn-open-bank"
+                        disabled={isReportLocked}
                         onClick={() => {
+                          if (isReportLocked) return;
                           setOpenPickerGoalId(isPickerOpen ? null : goalRow.id);
                           setPickerSearch('');
                         }}
@@ -2741,8 +2912,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
                       <button
                         type="button"
+                        disabled={isReportLocked}
                         className={`btn-toggle-ai-questions ${isAiOpen ? 'active' : ''}`}
                         onClick={() => {
+                          if (isReportLocked) return;
                           if (!isAiOpen) {
                             setActiveAiGoalId(goalRow.id);
                             if (!aiQuestionsMap[goalRow.id]) {
@@ -2763,21 +2936,24 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   <div className="hl-goal-input-wrapper">
                     <input
                       type="text"
+                      disabled={isReportLocked}
                       className="hl-goal-main-input"
                       value={goalRow.title || ''}
                       onFocus={() => {
-                        if (!goalRow.title) {
+                        if (!isReportLocked && !goalRow.title) {
                           setOpenPickerGoalId(goalRow.id);
                         }
                       }}
                       onChange={(e) => {
+                        if (isReportLocked) return;
                         handleGoalChange(goalRow.id, 'title', e.target.value);
                         setPickerSearch(e.target.value);
                         if (!isPickerOpen) setOpenPickerGoalId(goalRow.id);
                       }}
                       placeholder="הקלידי מטרה חדשה או בחרי מתוך ההשלמה האוטומטית של המטרות הנפוצות..."
                     />
-                    {goalRow.title &&
+                    {!isReportLocked &&
+                      goalRow.title &&
                       !sortedGoals.some(
                         (b) =>
                           adaptTextToGender(b.title.trim(), currentGender) ===
@@ -2796,7 +2972,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   </div>
 
                   {/* Light UX Dropdown: Dynamic Usage-Sorted Goal Bank */}
-                  {isPickerOpen && (
+                  {isPickerOpen && !isReportLocked && (
                     <div className="goal-bank-dropdown-panel">
                       <div className="goal-bank-dropdown-header">
                         <div className="bank-search-box">
@@ -2910,7 +3086,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   )}
 
                   {/* AI Facilitating Questions Panel (Up to 3 Guiding Questions) */}
-                  {isAiOpen && (
+                  {isAiOpen && !isReportLocked && (
                     <div className="ai-facilitating-panel">
                       <div className="ai-panel-header">
                         <div className="ai-panel-title">
@@ -3041,6 +3217,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         <td data-label="מטרה – מה אנחנו רוצים שיקרה?">
                           <textarea
                             rows={6}
+                            disabled={isReportLocked}
                             value={goalRow.title || ''}
                             onInput={handleTextareaAutoResize}
                             onChange={(e) =>
@@ -3053,6 +3230,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         <td data-label="יעדים, ציוני דרך (פירוט צעדים אופרטיביים)">
                           <textarea
                             rows={6}
+                            disabled={isReportLocked}
                             value={goalRow.objectives || ''}
                             onInput={handleTextareaAutoResize}
                             onChange={(e) =>
@@ -3060,7 +3238,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                             }
                             placeholder="• יעד אופרטיבי 1&#10;• יעד אופרטיבי 2..."
                           />
-                          {matchedBankItem?.suggestedObjectives?.length > 0 && (
+                          {!isReportLocked && matchedBankItem?.suggestedObjectives?.length > 0 && (
                             <div className="quick-objectives-bank">
                               <div
                                 className="quick-objectives-toggle-header"
@@ -3111,6 +3289,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         <td data-label="הזדמנויות, אמצעים (ואיך נגרום לזה לקרות?)">
                           <textarea
                             rows={6}
+                            disabled={isReportLocked}
                             value={goalRow.opportunities || ''}
                             onInput={handleTextareaAutoResize}
                             onChange={(e) =>
@@ -3122,6 +3301,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         <td data-label="שותפים (מי ובאיזה אופן?)">
                           <textarea
                             rows={6}
+                            disabled={isReportLocked}
                             value={goalRow.partners || ''}
                             onInput={handleTextareaAutoResize}
                             onChange={(e) =>
@@ -3133,6 +3313,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         <td data-label="משך">
                           <textarea
                             rows={6}
+                            disabled={isReportLocked}
                             value={goalRow.duration || ''}
                             onInput={handleTextareaAutoResize}
                             onChange={(e) =>
@@ -3144,6 +3325,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         <td data-label="אמות מידה להערכה">
                           <textarea
                             rows={6}
+                            disabled={isReportLocked}
                             value={goalRow.evaluationCriteria || ''}
                             onInput={handleTextareaAutoResize}
                             onChange={(e) =>
@@ -3345,7 +3527,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
 
         <div style={{ marginTop: '14px', textAlign: 'center' }}>
-          <button type="button" className="btn-add-goal-block-large" onClick={handleAddGoalRow}>
+          <button
+            type="button"
+            className="btn-add-goal-block-large"
+            onClick={handleAddGoalRow}
+            disabled={isReportLocked}
+          >
             <Plus size={18} />
             <span>הוסף מטרה / סביבה נוספת לתכנית העבודה</span>
           </button>
@@ -3361,6 +3548,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           <label>המלצות להמשך:</label>
           <textarea
             rows={3}
+            disabled={isReportLocked}
             value={formData.recommendations || ''}
             onChange={(e) => handleFieldChange('recommendations', e.target.value)}
             placeholder="המלצות יישומיות להמשך הליווי והעבודה המשותפת..."
@@ -3410,33 +3598,34 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <span>הורד קובץ Word</span>
           </button>
 
-          {((formData.evalReportSummary || '').trim() ||
-            (formData.evalReportFreeText || '').trim() ||
-            (formData.goals || []).some(
-              (g) =>
-                (g.achievementStatus || '').trim() ||
-                (g.midYearEvaluation || '').trim() ||
-                (g.endYearEvaluation || '').trim()
-            )) && (
-            <button
-              type="button"
-              className="btn-print-doc"
-              onClick={() => {
-                setShowEvalReportSection((prev) => {
-                  const next = !prev;
-                  if (next) {
-                    setTimeout(() => {
-                      evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 80);
+          <button
+            type="button"
+            className="btn-print-doc"
+            onClick={() => {
+              setShowEvalReportSection((prev) => {
+                const next = !prev;
+                if (next) {
+                  setTimeout(() => {
+                    evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 80);
+                }
+                return next;
+              });
+            }}
+            style={
+              showEvalReportSection
+                ? {
+                    background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)',
+                    color: '#ffffff',
+                    borderColor: '#6d28d9',
+                    fontWeight: 700
                   }
-                  return next;
-                });
-              }}
-            >
-              <FileText size={18} />
-              <span>הערכת מחצית / סוף שנה</span>
-            </button>
-          )}
+                : undefined
+            }
+          >
+            <FileText size={18} />
+            <span>הערכת מחצית / סוף שנה</span>
+          </button>
 
           <button
             type="button"
@@ -3479,15 +3668,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       </section>
 
       {/* Separate Report Section: דוח הערכת מחצית / סוף שנה */}
-      {showEvalReportSection &&
-        ((formData.evalReportSummary || '').trim() ||
-          (formData.evalReportFreeText || '').trim() ||
-          (formData.goals || []).some(
-            (g) =>
-              (g.achievementStatus || '').trim() ||
-              (g.midYearEvaluation || '').trim() ||
-              (g.endYearEvaluation || '').trim()
-          )) && (
+      {showEvalReportSection && (
         <section
           ref={evalReportSectionRef}
           className="form-section-card highlight-summary-section"

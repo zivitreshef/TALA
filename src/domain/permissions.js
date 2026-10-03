@@ -48,6 +48,12 @@ export function canShareStudent(studentObj, userObj) {
   return isStudentOwnedByUser(studentObj, userObj);
 }
 
+export function canLockReport(studentObj, userObj) {
+  if (!studentObj || !userObj || !userObj.email) return false;
+  if (!studentObj.ownerEmail) return true;
+  return isStudentOwnedByUser(studentObj, userObj);
+}
+
 export function getStudentsForUser(allStudents, userObj) {
   if (!userObj || !userObj.email) return [];
   return (allStudents || []).filter((s) => canViewStudent(s, userObj) && !s.archived);

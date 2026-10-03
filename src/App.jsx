@@ -22,7 +22,9 @@ import {
   RotateCcw,
   Printer,
   KeyRound,
-  MessageSquareHeart
+  MessageSquareHeart,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -951,6 +953,12 @@ export default function App() {
         ? unsavedDraftState.draftData
         : targetStudentObj;
 
+    if (baseStudent.isLocked) {
+      setGoalBankAddedToast('הדו"ח של התלמיד/ה נעול לעריכה – יש לפתוח את הנעילה כדי להוסיף מטרות.');
+      setTimeout(() => setGoalBankAddedToast(''), 3500);
+      return;
+    }
+
     const genderToUse = baseStudent.gender || 'boy';
     const studentFirstName = (
       baseStudent.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד')
@@ -1252,7 +1260,7 @@ export default function App() {
     {};
 
   const siteVersion =
-    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.28';
+    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.29';
 
   return (
     <div className="tala-app-root" dir="rtl">
@@ -1514,7 +1522,13 @@ export default function App() {
 
                   {isExpanded && (
                     <div className="sidebar-framework-students">
-                      {clusterStudents.map((st) => (
+                      {clusterStudents.map((st) => {
+                        const isStLocked = Boolean(
+                          unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === st.id
+                            ? unsavedDraftState.draftData.isLocked
+                            : st.isLocked
+                        );
+                        return (
                         <div
                           key={st.id}
                           className={`sidebar-student-card ${
@@ -1523,7 +1537,19 @@ export default function App() {
                           onClick={() => setSelectedStudentId(st.id)}
                         >
                           <div className="st-card-info">
-                            <strong>{st.name || 'ללא שם'}</strong>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <strong>{st.name || 'ללא שם'}</strong>
+                              <span
+                                className={`st-lock-indicator ${isStLocked ? 'locked' : 'unlocked'}`}
+                                title={
+                                  isStLocked
+                                    ? 'הדו"ח נעול לעריכה (ניתן לעדכן הערכת מחצית / סוף שנה)'
+                                    : 'הדו"ח פתוח לעריכה ולשיתוף'
+                                }
+                              >
+                                {isStLocked ? <Lock size={13} /> : <Unlock size={13} />}
+                              </span>
+                            </div>
                             <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
                             <div className="st-card-meta">
                               <span className="st-goals-badge">
@@ -1589,7 +1615,8 @@ export default function App() {
                             </div>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1690,7 +1717,19 @@ export default function App() {
                           onClick={() => setSelectedStudentId(st.id)}
                         >
                           <div className="inside-st-main">
-                            <strong>{st.name || 'ללא שם'}</strong>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <strong>{st.name || 'ללא שם'}</strong>
+                              <span
+                                className={`st-lock-indicator ${st.isLocked ? 'locked' : 'unlocked'}`}
+                                title={
+                                  st.isLocked
+                                    ? 'הדו"ח נעול לעריכה (ניתן לעדכן הערכת מחצית / סוף שנה)'
+                                    : 'הדו"ח פתוח לעריכה ולשיתוף'
+                                }
+                              >
+                                {st.isLocked ? <Lock size={13} /> : <Unlock size={13} />}
+                              </span>
+                            </div>
                             <span>{st.educationalFramework || 'ללא מסגרת חינוכית מוגדרת'}</span>
                           </div>
                           <div className="inside-st-meta">
@@ -2216,7 +2255,27 @@ export default function App() {
                           style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}
                         >
                           {activeBankTargetStudent && (
-                            isAlreadyInTargetStudent ? (
+                            targetStudentForCheck?.isLocked ? (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '5px 10px',
+                                  borderRadius: '8px',
+                                  background: '#fef3c7',
+                                  color: '#92400e',
+                                  border: '1px solid #f59e0b',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title="הדו״ח של התלמיד/ה נעול לעריכה"
+                              >
+                                <Lock size={13} />
+                                <span>הדו"ח נעול</span>
+                              </span>
+                            ) : isAlreadyInTargetStudent ? (
                               <span
                                 style={{
                                   display: 'inline-flex',
