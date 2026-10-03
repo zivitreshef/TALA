@@ -447,6 +447,11 @@ export default function App() {
   const handleCompleteTrialNda = async (ndaPayload) => {
     if (!currentUser) return;
     const signedAtStr = new Date().toLocaleString('he-IL');
+    const resolvedSignedDate =
+      ndaPayload.signedDate ||
+      ndaPayload.signerDate ||
+      new Date().toLocaleDateString('he-IL');
+
     const updatedList = allowedUsers.map((u) =>
       u.email.toLowerCase() === currentUser.email.toLowerCase()
         ? {
@@ -454,7 +459,7 @@ export default function App() {
             mustSignNda: false,
             ndaSigned: true,
             ndaSignedAt: signedAtStr,
-            ndaSignedDate: ndaPayload.signedDate,
+            ndaSignedDate: resolvedSignedDate,
             ndaSignerIdNumber: ndaPayload.signerIdNumber
           }
         : u
@@ -466,7 +471,7 @@ export default function App() {
       mustSignNda: false,
       ndaSigned: true,
       ndaSignedAt: signedAtStr,
-      ndaSignedDate: ndaPayload.signedDate,
+      ndaSignedDate: resolvedSignedDate,
       ndaSignerIdNumber: ndaPayload.signerIdNumber
     };
     setCurrentUser(updatedCurrent);
@@ -477,21 +482,21 @@ export default function App() {
       topic: 'אישור וחתימה על הסכם סודיות (NDA) – משתמש ניסיון',
       name: ndaPayload.signerName || currentUser.name,
       email: ndaPayload.signerEmail || currentUser.email,
-      notes: `ת.ז.: ${ndaPayload.signerIdNumber} | תאריך חתימה: ${ndaPayload.signedDate} | תקופת ניסיון: ${ndaPayload.trialDays || 7} ימים`,
+      notes: `ת.ז.: ${ndaPayload.signerIdNumber} | תאריך חתימה: ${resolvedSignedDate} | תקופת ניסיון: ${ndaPayload.trialDays || 7} ימים`,
       createdAt: signedAtStr
     });
 
-    try {
-      await sendSignedNdaEmailToAdmin({
-        config: emailEngineConfig,
-        ...ndaPayload
-      });
-    } catch (err) {
+    // Send signed NDA email to Admin in the background without blocking modal dismissal
+    sendSignedNdaEmailToAdmin({
+      config: emailEngineConfig,
+      ...ndaPayload,
+      signerDate: resolvedSignedDate
+    }).catch((err) => {
       console.warn(
         'Could not send signed NDA email in background, recorded in admin notifications:',
         err
       );
-    }
+    });
   };
 
   const handleLoginSuccess = (user) => {
@@ -1374,6 +1379,7 @@ export default function App() {
         )}
         currentUser={currentUser}
         onCompleteNda={handleCompleteTrialNda}
+        onSignNdaComplete={handleCompleteTrialNda}
         onLogout={performLogout}
       />
 
