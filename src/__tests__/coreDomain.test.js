@@ -35,6 +35,11 @@ import {
   buildStatusReportWordDocumentHtml,
   getSafeReportFilename
 } from '../export/wordAndPrintBuilders';
+import {
+  getCurrentLocalDayKey,
+  stampSessionUserWithDate,
+  isSessionUserValidForToday
+} from '../allowedUsers';
 
 describe('Permissions & Shared Student Guards', () => {
   const ownerTeacher = { email: 'teacher1@tala.edu.il', name: 'מיכל' };
@@ -323,6 +328,25 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(statusHtml).toContain('דו"ח מצב חינוכי-תפקודי עדכני');
     expect(getSafeReportFilename(sampleStudent, true, 'doc', 'status')).toContain('דוח_מצב');
   });
+
+  it('validates daily session expiration and resets session when calendar day changes', () => {
+    const loginTime = new Date(2026, 9, 3, 10, 30, 0); // Oct 3, 2026 10:30
+    const sameDayLater = new Date(2026, 9, 3, 22, 15, 0); // Oct 3, 2026 22:15
+    const nextDayMorning = new Date(2026, 9, 4, 7, 45, 0); // Oct 4, 2026 07:45
+
+    expect(getCurrentLocalDayKey(loginTime)).toBe('2026-10-03');
+
+    const stamped = stampSessionUserWithDate(
+      { email: 'teacher@tala.edu.il', name: 'מיכל' },
+      loginTime
+    );
+    expect(stamped.sessionDate).toBe('2026-10-03');
+    expect(isSessionUserValidForToday(stamped, sameDayLater)).toBe(true);
+    expect(isSessionUserValidForToday(stamped, nextDayMorning)).toBe(false);
+    // Legacy session without sessionDate should also expire
+    expect(isSessionUserValidForToday({ email: 'teacher@tala.edu.il' }, sameDayLater)).toBe(false);
+  });
 });
+
 
 

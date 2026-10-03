@@ -255,7 +255,6 @@ export function AllowlistAuthGate({
                 <input
                   type="email"
                   required
-                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   dir="ltr"
@@ -271,7 +270,6 @@ export function AllowlistAuthGate({
                 <input
                   type={showLoginPassword ? 'text' : 'password'}
                   required
-                  placeholder="הזן סיסמה אישית..."
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
                   style={{ paddingLeft: '40px', paddingRight: '36px' }}
