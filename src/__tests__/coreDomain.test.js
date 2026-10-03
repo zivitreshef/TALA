@@ -29,6 +29,12 @@ import {
 } from '../goalBankData';
 import { deriveFirebaseAuthPassword } from '../firebaseBackend';
 import { safeGetStorageJson } from '../services/storage';
+import {
+  buildWordDocumentHtml,
+  buildEvalWordDocumentHtml,
+  buildStatusReportWordDocumentHtml,
+  getSafeReportFilename
+} from '../export/wordAndPrintBuilders';
 
 describe('Permissions & Shared Student Guards', () => {
   const ownerTeacher = { email: 'teacher1@tala.edu.il', name: 'מיכל' };
@@ -283,5 +289,40 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
   it('returns fallback value safely when storage key is missing', () => {
     expect(safeGetStorageJson('non_existent_key_xyz', { ok: true })).toEqual({ ok: true });
   });
+
+  it('builds Word HTML documents for TALA, Evaluation, and Status Report with privacy redaction', () => {
+    const sampleStudent = {
+      name: 'נועם ישראלי',
+      idNumber: '123456789',
+      schoolYear: 'תשפ"ו',
+      educationalFramework: 'גן שקד',
+      strengthsExisting: 'נועם ילד סקרן וחברותי',
+      evalReportSummary: 'נועם התקדם יפה במפגש',
+      goals: [
+        {
+          id: 'g1',
+          environment: 'מפגש בגן',
+          title: 'ישתתף במפגש',
+          activityParticipation: 'נועם מקשיב לסיפור'
+        }
+      ]
+    };
+
+    const fullHtml = buildWordDocumentHtml(sampleStudent, false);
+    expect(fullHtml).toContain('נועם ישראלי');
+
+    const redactedHtml = buildWordDocumentHtml(sampleStudent, true);
+    expect(redactedHtml).not.toContain('נועם ישראלי');
+    expect(redactedHtml).toContain('נ.י.');
+
+    const evalHtml = buildEvalWordDocumentHtml(sampleStudent, true);
+    expect(evalHtml).toContain('דוח הערכת מחצית / סוף שנה');
+    expect(evalHtml).not.toContain('נועם');
+
+    const statusHtml = buildStatusReportWordDocumentHtml(sampleStudent, true);
+    expect(statusHtml).toContain('דו"ח מצב חינוכי-תפקודי עדכני');
+    expect(getSafeReportFilename(sampleStudent, true, 'doc', 'status')).toContain('דוח_מצב');
+  });
 });
+
 
