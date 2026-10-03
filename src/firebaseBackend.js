@@ -402,6 +402,19 @@ export function subscribeToTalaBackend({
 
 // === Direct Read/Write Helpers to Cloud Firestore ===
 
+/**
+ * Recursively strips `undefined` properties before writing to Firestore
+ * (Firestore throws `Unsupported field value: undefined` if any object contains `undefined`).
+ */
+export function sanitizeForFirestore(value) {
+  if (value === undefined) return null;
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch (_) {
+    return value;
+  }
+}
+
 export async function fetchAllowedUsersFromCloud() {
   const db = getFirestoreDb();
   if (!db) return null;
@@ -424,8 +437,9 @@ export async function saveAllowedUsersToCloud(usersList) {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
+    const cleanUsers = sanitizeForFirestore(usersList || []);
     await setDoc(doc(db, 'tala_config', 'allowed_users'), {
-      users: usersList,
+      users: cleanUsers,
       updatedAt: new Date().toISOString()
     });
     return true;
@@ -439,8 +453,9 @@ export async function saveAdminRequestsToCloud(requestsList) {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
+    const cleanRequests = sanitizeForFirestore(requestsList || []);
     await setDoc(doc(db, 'tala_config', 'admin_requests'), {
-      requests: requestsList,
+      requests: cleanRequests,
       updatedAt: new Date().toISOString()
     });
     return true;
@@ -454,8 +469,9 @@ export async function saveGoalBankToCloud(goalsList) {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
+    const cleanGoals = sanitizeForFirestore(goalsList || []);
     await setDoc(doc(db, 'tala_config', 'goal_bank'), {
-      goals: goalsList,
+      goals: cleanGoals,
       updatedAt: new Date().toISOString()
     });
     return true;
@@ -469,10 +485,11 @@ export async function saveSettingsToCloud(settingsObj) {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
+    const cleanSettings = sanitizeForFirestore(settingsObj || {});
     await setDoc(
       doc(db, 'tala_config', 'settings'),
       {
-        ...settingsObj,
+        ...cleanSettings,
         updatedAt: new Date().toISOString()
       },
       { merge: true }
@@ -488,8 +505,9 @@ export async function saveStudentToCloud(studentObj) {
   const db = getFirestoreDb();
   if (!db || !studentObj || !studentObj.id) return false;
   try {
+    const cleanStudent = sanitizeForFirestore(studentObj);
     await setDoc(doc(db, 'tala_students', studentObj.id), {
-      ...studentObj,
+      ...cleanStudent,
       updatedAt: new Date().toISOString()
     });
     return true;

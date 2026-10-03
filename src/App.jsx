@@ -280,6 +280,7 @@ export default function App() {
 
   // Real-time Cloud Firestore Backend Subscription
   useEffect(() => {
+    let didInitialUsersMerge = false;
     const unsubscribe = subscribeToTalaBackend({
       getInitialAllowedUsers: () => loadAllowedUsers(),
       getInitialGoalBank: () => loadGoalBank(),
@@ -305,6 +306,28 @@ export default function App() {
           }
           return cu;
         });
+
+        // On initial cloud sync, heal any custom user that was saved to localStorage when a cloud write failed
+        if (!didInitialUsersMerge) {
+          didInitialUsersMerge = true;
+          const cloudEmails = new Set(
+            mergedUsers.map((u) => (u.email || '').trim().toLowerCase())
+          );
+          localUsers.forEach((lu) => {
+            const emailKey = (lu.email || '').trim().toLowerCase();
+            const isLegacySeedDemo =
+              lu.id === 'u_teacher_1' ||
+              lu.id === 'u_teacher_2' ||
+              emailKey === 'teacher@tala.edu.il' ||
+              emailKey === 'gan@tala.edu.il';
+            if (emailKey && !cloudEmails.has(emailKey) && !isLegacySeedDemo) {
+              mergedUsers.push(lu);
+              cloudEmails.add(emailKey);
+              needsCloudHeal = true;
+            }
+          });
+        }
+
         if (needsCloudHeal) {
           saveAllowedUsersToCloud(mergedUsers);
         }

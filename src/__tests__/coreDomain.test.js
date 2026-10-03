@@ -27,7 +27,7 @@ import {
   getNextSchoolYear,
   buildRolloverStudentForNextYear
 } from '../goalBankData';
-import { deriveFirebaseAuthPassword } from '../firebaseBackend';
+import { deriveFirebaseAuthPassword, sanitizeForFirestore } from '../firebaseBackend';
 import { safeGetStorageJson } from '../services/storage';
 import {
   buildWordDocumentHtml,
@@ -446,6 +446,21 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(surveyHtml).toContain('בהחלט כן – אמליץ בחום לקולגות ולמנהל/ת לרכוש גישה להמשך שימוש');
     expect(surveyHtml).toContain('מערכת נהדרת שחוסכת שעות של כתיבה.');
     expect(surveyHtml).toContain('להוסיף עוד תבניות למפגש בוקר.');
+
+    // Verify sanitizeForFirestore strips undefined values so Firestore setDoc never rejects non-trial users
+    const rawUsers = [
+      {
+        id: 'u_moti',
+        email: 'moti.reshef@gmail.com',
+        name: 'מוטי רשף',
+        isTrialUser: false,
+        trialDays: undefined,
+        trialStartedAt: undefined
+      }
+    ];
+    const sanitized = sanitizeForFirestore(rawUsers);
+    expect(sanitized[0].email).toBe('moti.reshef@gmail.com');
+    expect('trialDays' in sanitized[0]).toBe(false);
   });
 });
 
