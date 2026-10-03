@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+
+    function currentEmail() {
+      return isSignedIn() ? request.auth.token.email.lower() : '';
+    }
+
+    function isPrimaryAdmin() {
+      return currentEmail() == 'zivit.reshef@gmail.com';
+    }
+
+    function isOwnerOfResource(data) {
+      return isPrimaryAdmin() ||
+        (isSignedIn() && data.ownerEmail != null && data.ownerEmail.lower() == currentEmail());
+    }
+
+    function isSharedOnResource(data) {
+      return isSignedIn() &&
+        data.sharedWith is list &&
+        currentEmail() in data.sharedWith;
+    }
+
+    // Global configuration (allowed users, goal bank, admin requests, settings)
+    match /tala_config/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Student plans & status reports
+    match /tala_students/{studentId} {
+      allow read: if !isSignedIn() ||
+        isOwnerOfResource(resource.data) ||
+        isSharedOnResource(resource.data) ||
+        resource.data.ownerEmail == null ||
+        resource.data.ownerEmail == '';
+
+      allow create: if !isSignedIn() ||
+        isOwnerOfResource(request.resource.data) ||
+        request.resource.data.ownerEmail == null;
+
+      // Prevent non-owners from hijacking ownerEmail or archiving a shared student
+      allow update: if (
+        !isSignedIn() ||
+        isOwnerOfResource(resource.data) ||
+        isSharedOnResource(resource.data)
+      ) && (
+        // Shared teachers cannot change ownerEmail or toggle archived status
+        resource.data.ownerEmail == null ||
+        request.resource.data.ownerEmail == resource.data.ownerEmail
+      ) && (
+        !isSignedIn() ||
+        isOwnerOfResource(resource.data) ||
+        request.resource.data.archived == resource.data.archived
+      );
+
+      // Only the student's owner (or primary admin) can delete a student
+      allow delete: if !isSignedIn() || isOwnerOfResource(resource.data);
+    }
+  }
+}

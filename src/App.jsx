@@ -52,7 +52,9 @@ import {
   saveGoalBankToCloud,
   saveSettingsToCloud,
   saveStudentToCloud,
-  deleteStudentFromCloud
+  deleteStudentFromCloud,
+  ensureFirebaseAuthSession,
+  signOutFirebaseAuthSession
 } from './firebaseBackend';
 import {
   loadEmailEngineConfig,
@@ -64,6 +66,14 @@ import {
   getStudentsForUser,
   getArchivedStudentsForUser
 } from './domain/permissions';
+import {
+  safeGetStorageItem,
+  safeSetStorageItem,
+  safeRemoveStorageItem,
+  safeGetStorageJson,
+  safeSetStorageJson
+} from './services/storage';
+import ErrorBoundary from './components/ErrorBoundary';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
 
@@ -354,6 +364,12 @@ export default function App() {
     saveAllowedUsersToCloud(updatedList);
   };
 
+  useEffect(() => {
+    if (currentUser?.email) {
+      ensureFirebaseAuthSession(currentUser.email, currentUser.accessCode);
+    }
+  }, [currentUser?.email]);
+
   const handleChangeOwnPassword = (newAccessCode) => {
     if (!currentUser) return;
     const updatedList = allowedUsers.map((u) =>
@@ -368,12 +384,13 @@ export default function App() {
       mustChangePassword: false
     };
     setCurrentUser(updatedCurrent);
-    localStorage.setItem(SESSION_USER_KEY, JSON.stringify(updatedCurrent));
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
   };
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    localStorage.setItem(SESSION_USER_KEY, JSON.stringify(user));
+    safeSetStorageJson(SESSION_USER_KEY, user);
+    ensureFirebaseAuthSession(user.email, user.accessCode);
     setSelectedStudentId(null);
     setStudentSearch('');
     setInsideLandingSearch('');
@@ -384,7 +401,8 @@ export default function App() {
     setUnsavedDraftState({ isDirty: false, draftData: null });
     setCurrentUser(null);
     setSelectedStudentId(null);
-    localStorage.removeItem(SESSION_USER_KEY);
+    safeRemoveStorageItem(SESSION_USER_KEY);
+    signOutFirebaseAuthSession();
   };
 
   const handleLogout = () => {
@@ -1072,20 +1090,22 @@ export default function App() {
         {/* Main Form Area */}
         <main className="tala-main-form-area">
           {selectedStudent ? (
-            <EcologicalWorkPlanForm
-              student={selectedStudent}
-              goalBank={goalBank}
-              geminiApiKey={geminiApiKey}
-              isAdmin={currentUser.role === 'admin'}
-              currentUser={currentUser}
-              allowedUsers={allowedUsers}
-              onOpenGoalBankManager={() => setShowGoalBankOverview(true)}
-              onSaveStudentPlan={handleSaveStudentPlan}
-              onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
-              onDraftStateChange={setUnsavedDraftState}
-              emailEngineConfig={emailEngineConfig}
-              onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
-            />
+            <ErrorBoundary key={selectedStudent.id}>
+              <EcologicalWorkPlanForm
+                student={selectedStudent}
+                goalBank={goalBank}
+                geminiApiKey={geminiApiKey}
+                isAdmin={currentUser.role === 'admin'}
+                currentUser={currentUser}
+                allowedUsers={allowedUsers}
+                onOpenGoalBankManager={() => setShowGoalBankOverview(true)}
+                onSaveStudentPlan={handleSaveStudentPlan}
+                onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
+                onDraftStateChange={setUnsavedDraftState}
+                emailEngineConfig={emailEngineConfig}
+                onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
+              />
+            </ErrorBoundary>
           ) : (
             <div className="inside-landing-page">
               <div className="inside-landing-hero">

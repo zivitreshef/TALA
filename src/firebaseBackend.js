@@ -1,5 +1,11 @@
 import { initializeApp, getApps } from 'firebase/app';
 import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
+import {
   getFirestore,
   doc,
   collection,
@@ -90,21 +96,96 @@ export function parseFirebaseConfigInput(rawText) {
 }
 
 let dbInstance = null;
+let authInstance = null;
 
-export function getFirestoreDb() {
-  if (dbInstance) return dbInstance;
+function getFirebaseAppInstance() {
   const config = getActiveFirebaseConfig();
   if (!config || !config.apiKey || !config.projectId) {
     return null;
   }
+  const existingApps = getApps();
+  return existingApps.length > 0 ? existingApps[0] : initializeApp(config);
+}
+
+export function getFirestoreDb() {
+  if (dbInstance) return dbInstance;
   try {
-    const existingApps = getApps();
-    const app = existingApps.length > 0 ? existingApps[0] : initializeApp(config);
+    const app = getFirebaseAppInstance();
+    if (!app) return null;
     dbInstance = getFirestore(app);
     return dbInstance;
   } catch (err) {
     console.error('Error initializing Firebase Firestore:', err);
     return null;
+  }
+}
+
+export function getFirebaseAuth() {
+  if (authInstance) return authInstance;
+  try {
+    const app = getFirebaseAppInstance();
+    if (!app) return null;
+    authInstance = getAuth(app);
+    return authInstance;
+  } catch (err) {
+    console.warn('Error initializing Firebase Auth:', err);
+    return null;
+  }
+}
+
+/**
+ * Ensures any teacher access code meets Firebase Auth's 6-character minimum
+ * deterministically without altering the teacher's login UX.
+ */
+export function deriveFirebaseAuthPassword(accessCode = '') {
+  const raw = String(accessCode || '').trim();
+  if (!raw) return 'Tala#DefaultAuth2026';
+  return raw.length >= 6 ? raw : `Tala#${raw}#2026`;
+}
+
+/**
+ * Seamlessly signs the teacher into Firebase Auth (or auto-provisions their account
+ * on first login) so Firestore Security Rules receive a verified `request.auth.token.email`.
+ * Never blocks login if Email/Password provider is not yet enabled in Firebase Console.
+ */
+export async function ensureFirebaseAuthSession(email, accessCode) {
+  const auth = getFirebaseAuth();
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!auth || !normalizedEmail) return null;
+
+  const password = deriveFirebaseAuthPassword(accessCode);
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+    return cred.user;
+  } catch (signInErr) {
+    const code = signInErr?.code || '';
+    if (
+      code === 'auth/user-not-found' ||
+      code === 'auth/invalid-credential' ||
+      code === 'auth/invalid-login-credentials'
+    ) {
+      try {
+        const created = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+        return created.user;
+      } catch (createErr) {
+        // Graceful fallback if Email/Password provider is not enabled yet or password changed
+        console.info('[FirebaseAuth] Auto-provision skipped:', createErr?.code || createErr?.message);
+        return null;
+      }
+    }
+    console.info('[FirebaseAuth] Sign-in skipped:', code || signInErr?.message);
+    return null;
+  }
+}
+
+export async function signOutFirebaseAuthSession() {
+  const auth = getFirebaseAuth();
+  if (!auth) return;
+  try {
+    await signOut(auth);
+  } catch (err) {
+    console.warn('[FirebaseAuth] Sign-out warning:', err);
   }
 }
 
