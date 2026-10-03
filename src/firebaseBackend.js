@@ -148,7 +148,10 @@ export function deriveFirebaseAuthPassword(accessCode = '') {
  * on first login) so Firestore Security Rules receive a verified `request.auth.token.email`.
  * Never blocks login if Email/Password provider is not yet enabled in Firebase Console.
  */
+let firebaseAuthConfigNotFound = false;
+
 export async function ensureFirebaseAuthSession(email, accessCode) {
+  if (firebaseAuthConfigNotFound) return null;
   const auth = getFirebaseAuth();
   const normalizedEmail = String(email || '').trim().toLowerCase();
   if (!auth || !normalizedEmail) return null;
@@ -160,6 +163,10 @@ export async function ensureFirebaseAuthSession(email, accessCode) {
     return cred.user;
   } catch (signInErr) {
     const code = signInErr?.code || '';
+    if (code === 'auth/configuration-not-found') {
+      firebaseAuthConfigNotFound = true;
+      return null;
+    }
     if (
       code === 'auth/user-not-found' ||
       code === 'auth/invalid-credential' ||
@@ -169,12 +176,12 @@ export async function ensureFirebaseAuthSession(email, accessCode) {
         const created = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
         return created.user;
       } catch (createErr) {
-        // Graceful fallback if Email/Password provider is not enabled yet or password changed
-        console.info('[FirebaseAuth] Auto-provision skipped:', createErr?.code || createErr?.message);
+        if (createErr?.code === 'auth/configuration-not-found') {
+          firebaseAuthConfigNotFound = true;
+        }
         return null;
       }
     }
-    console.info('[FirebaseAuth] Sign-in skipped:', code || signInErr?.message);
     return null;
   }
 }

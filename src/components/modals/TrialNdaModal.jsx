@@ -4,6 +4,7 @@ import { ShieldCheck, Check, RotateCcw, LogOut, Loader2, FileCheck2 } from 'luci
 export default function TrialNdaModal({
   isOpen,
   currentUser,
+  onCompleteNda,
   onSignNdaComplete,
   onLogout
 }) {
@@ -138,18 +139,28 @@ export default function TrialNdaModal({
       timeStyle: 'short'
     });
 
+    const submitCallback = onCompleteNda || onSignNdaComplete;
+    if (typeof submitCallback !== 'function') {
+      setErrorMsg('שגיאה פנימית בשמירת ההסכם. נא לרענן את העמוד ולנסות שנית.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await onSignNdaComplete({
+      await submitCallback({
         signerName: cleanName,
         signerEmail: currentUser.email,
         signerIdNumber: cleanId,
         signerDate: formattedDateHe,
+        signedDate: formattedDateHe,
         signatureText: cleanSigText || cleanName,
         signatureDataUrl,
         trialDays,
         signedAtTimestamp
       });
+    } catch (err) {
+      console.error('Error submitting NDA:', err);
+      setErrorMsg('אירעה שגיאה בשמירת ההסכם. נא לנסות שנית.');
     } finally {
       setIsSubmitting(false);
     }
