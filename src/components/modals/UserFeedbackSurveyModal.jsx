@@ -149,7 +149,7 @@ export default function UserFeedbackSurveyModal({
             <h4 style={{ margin: 0, fontSize: '19px', color: '#1e3a5f' }}>
               תודה רבה על המשוב שלך, {currentUser.name}!
             </h4>
-            <p style={{ margin: 0, fontSize: '14px', color: '#475569' }}>
+            <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)' }}>
               המשוב נשלח ישירות למנהלת המערכת ויעזור לנו להמשיך לשפר ולייעל את מערכת TALA עבורך ועבור הצוותים החינוכיים.
             </p>
           </div>
@@ -199,7 +199,7 @@ export default function UserFeedbackSurveyModal({
                     <div
                       key={cat.key}
                       style={{
-                        background: '#f8fafc',
+                        background: 'var(--bg-warm-subtle)',
                         border: '1px solid #cbd5e1',
                         borderRadius: '10px',
                         padding: '10px 14px',
@@ -214,7 +214,7 @@ export default function UserFeedbackSurveyModal({
                         <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#1e3a5f' }}>
                           {cat.title}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>{cat.subtitle}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{cat.subtitle}</div>
                       </div>
 
                       <div
@@ -298,7 +298,7 @@ export default function UserFeedbackSurveyModal({
                         gap: '8px',
                         cursor: 'pointer',
                         fontSize: '13px',
-                        color: '#1e293b',
+                        color: 'var(--text-main)',
                         background:
                           recommendToColleaguesAndManager === optionText ? '#ffffff' : 'transparent',
                         padding: '6px 10px',
@@ -414,7 +414,7 @@ export default function UserFeedbackSurveyModal({
                     alignItems: 'center',
                     gap: '5px',
                     fontSize: '12px',
-                    color: '#64748b'
+                    color: 'var(--text-muted)'
                   }}
                 >
                   <EyeOff size={14} />

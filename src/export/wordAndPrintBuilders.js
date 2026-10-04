@@ -823,7 +823,7 @@ export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = f
       return `
         <div style="border:1px solid #cbd5e1; border-right:4px solid #3b6ea5; background-color:#ffffff; padding:8pt 12pt; margin-bottom:10pt;">
           <div style="font-weight:bold; font-size:11.5pt; color:#1e3a5f; margin-bottom:4pt;">
-            ${sec.sectionNumber}. ${sec.title}
+            • ${sec.title}
           </div>
           <div style="font-size:10.5pt; color:#243b47; line-height:1.55;">
             ${redactedContent}
@@ -909,7 +909,7 @@ export function buildStatusReportPrintHtml(formData = {}, hideDetails = false, l
       const redactedContent = getRedactedText(sec.content, formData, hideDetails);
       return `
         <div class="status-section-box">
-          <div class="status-section-title">${sec.sectionNumber}. ${sec.title}</div>
+          <div class="status-section-title">• ${sec.title}</div>
           <div class="status-section-body">${redactedContent || ''}</div>
         </div>
       `;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users, X } from 'lucide-react';
+import { getUserGroups, shareCommonGroup } from '../../domain/permissions';
 
 export default function ShareTeamModal({
   isOpen,
@@ -17,17 +18,23 @@ export default function ShareTeamModal({
   const myUserRecord = (allowedUsers || []).find(
     (u) => (u.email || '').trim().toLowerCase() === myEmail
   );
-  const myGroup = (myUserRecord?.group || currentUser?.group || '').trim();
+  
+  const myGroups = getUserGroups(myUserRecord || currentUser);
+  const myGroupsLabel = myGroups.length > 0 ? myGroups.join(', ') : '';
+  
   const otherUsers = (allowedUsers || []).filter(
     (u) => u.active !== false && (u.email || '').trim().toLowerCase() !== myEmail
   );
-  const sameGroupUsers = myGroup
-    ? otherUsers.filter((u) => (u.group || '').trim() === myGroup)
+  
+  const sameGroupUsers = myGroups.length > 0
+    ? otherUsers.filter((u) => shareCommonGroup(u, myUserRecord || currentUser))
     : [];
+    
   const visibleUsers =
-    myGroup && sameGroupUsers.length > 0 && !showAllShareUsers
+    myGroups.length > 0 && sameGroupUsers.length > 0 && !showAllShareUsers
       ? sameGroupUsers
       : otherUsers;
+      
   const currentShared = (formData.sharedWith || []).map((e) =>
     String(e || '').trim().toLowerCase()
   );
@@ -72,12 +79,12 @@ export default function ShareTeamModal({
               gap: '8px'
             }}
           >
-            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
-              {myGroup && sameGroupUsers.length > 0 && !showAllShareUsers
-                ? `חברי צוות: ${myGroup}`
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>
+              {myGroups.length > 0 && sameGroupUsers.length > 0 && !showAllShareUsers
+                ? `חברי צוות: ${myGroupsLabel}`
                 : 'כל אנשי הצוות במערכת'}
             </span>
-            {myGroup &&
+            {myGroups.length > 0 &&
               sameGroupUsers.length > 0 &&
               otherUsers.length > sameGroupUsers.length && (
                 <button
@@ -93,7 +100,7 @@ export default function ShareTeamModal({
                     padding: 0
                   }}
                 >
-                  {showAllShareUsers ? `הצג רק את ${myGroup}` : 'הצג את כל הצוותים'}
+                  {showAllShareUsers ? `הצג רק את ${myGroupsLabel}` : 'הצג את כל הצוותים'}
                 </button>
               )}
           </div>
@@ -102,7 +109,7 @@ export default function ShareTeamModal({
             <p
               style={{
                 fontSize: '13.5px',
-                color: '#64748b',
+                color: 'var(--text-muted)',
                 textAlign: 'center',
                 padding: '16px 0'
               }}
@@ -123,6 +130,7 @@ export default function ShareTeamModal({
               {visibleUsers.map((colleague) => {
                 const colEmail = (colleague.email || '').trim().toLowerCase();
                 const isShared = currentShared.includes(colEmail);
+                const colGroups = getUserGroups(colleague);
                 return (
                   <label
                     key={colEmail}
@@ -144,12 +152,12 @@ export default function ShareTeamModal({
                         onChange={() => onToggleShareColleague(colEmail)}
                       />
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
+                        <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--text-main)' }}>
                           {colleague.name || colleague.email}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                           {colleague.role || 'איש/אשת צוות'}
-                          {colleague.group ? ` • ${colleague.group}` : ''}
+                          {colGroups.length > 0 ? ` • ${colGroups.join(', ')}` : ''}
                         </div>
                       </div>
                     </div>

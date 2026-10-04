@@ -76,6 +76,7 @@ import {
   buildStatusReportWordDocumentHtml as renderStatusReportWordDocumentHtml
 } from './export/wordAndPrintBuilders';
 import { canLockReport } from './domain/permissions';
+import { callAiJson } from './services/aiService';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 
@@ -128,7 +129,7 @@ export default function EcologicalWorkPlanForm({
   student,
   externalRevision = 0,
   goalBank,
-  geminiApiKey,
+  aiConfig,
   isAdmin,
   currentUser,
   allowedUsers = [],
@@ -465,7 +466,7 @@ export default function EcologicalWorkPlanForm({
       ? currentShared.filter((em) => String(em || '').toLowerCase() !== cleanEmail)
       : [...currentShared, cleanEmail];
 
-    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const activeYear = formData.schoolYear || 'שנת ה׳ (2025-2026)';
     const updated = {
       ...formData,
       sharedWith: nextShared,
@@ -477,6 +478,8 @@ export default function EcologicalWorkPlanForm({
     savedSnapshotRef.current = JSON.stringify(updated);
     setFormData(updated);
     onSaveStudentPlan(updated);
+    setSaveBanner(true);
+    setTimeout(() => setSaveBanner(false), 2500);
   };
 
   // Switch school year: snapshot current year's report and load (or create) the selected year's report
@@ -808,7 +811,7 @@ export default function EcologicalWorkPlanForm({
       existingBankItem?.facilitatingQuestions?.slice(0, 3) ||
       generateDefaultQuestionsForCustomGoal(goalTitle, goalRow.environment, formData);
 
-    if (!geminiApiKey) {
+    if (!aiConfig?.apiKey) {
       setAiQuestionsMap((prev) => ({
         ...prev,
         [goalRow.id]: fallbackQuestions
@@ -818,7 +821,6 @@ export default function EcologicalWorkPlanForm({
     }
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
       const genderLabel = currentGender === 'girl' ? 'בת (לשון נקבה)' : 'בן (לשון זכר)';
       const prompt = `אתה מדריך פדגוגי מומחה לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית" ותח"י.
 המורה הגדירה את המטרה העליונה הבאה עבור תלמיד/ה (${genderLabel}, גיל: ${dateInfo.ageDescription}):
@@ -840,26 +842,15 @@ export default function EcologicalWorkPlanForm({
   { "q": "3. טקסט השאלה השלישית?", "suggestions": ["תשובה מומלצת א", "תשובה מומלצת ב"] }
 ]`;
 
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      });
-
-      if (!res.ok) throw new Error('Gemini API request failed');
-      const data = await res.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setAiQuestionsMap((prev) => ({
-            ...prev,
-            [goalRow.id]: parsed.slice(0, 3)
-          }));
-          setLoadingAiForGoalId(null);
-          return;
-        }
+      const parsed = await callAiJson(prompt, aiConfig);
+      
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setAiQuestionsMap((prev) => ({
+          ...prev,
+          [goalRow.id]: parsed.slice(0, 3)
+        }));
+        setLoadingAiForGoalId(null);
+        return;
       }
       setAiQuestionsMap((prev) => ({
         ...prev,
@@ -894,9 +885,8 @@ export default function EcologicalWorkPlanForm({
 
     setLoadingAiForGoalId(goalRow.id);
 
-    if (geminiApiKey && (ans1 || ans2 || ans3)) {
+    if (aiConfig?.apiKey && (ans1 || ans2 || ans3)) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
         const prompt = `אתה מומחה לכתיבת תכנית עבודה אקולוגית ותח"י בעברית.
 שם הילד/ה: ${firstName}
 מין הילד/ה: ${genderLabel}
@@ -927,46 +917,35 @@ export default function EcologicalWorkPlanForm({
   "evaluationCriteria": "אמות מידה להערכה..."
 }`;
 
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const enriched = JSON.parse(jsonMatch[0]);
-            setFormData((prev) => ({
-              ...prev,
-              goals: (prev.goals || []).map((g) => {
-                if (g.id !== goalRow.id) return g;
-                const mergedGoal = {
-                  ...g,
-                  activityParticipation:
-                    enriched.activityParticipation || g.activityParticipation,
-                  objectives: enriched.objectives || g.objectives,
-                  opportunities: enriched.opportunities || g.opportunities,
-                  partners: enriched.partners || g.partners,
-                  tShirtSize: enriched.tShirtSize || g.tShirtSize,
-                  duration: enriched.duration || g.duration,
-                  evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria,
-                  isTeacherModified: true
-                };
-                mergedGoal.duration = normalizeAndSizeGoalDuration(
-                  mergedGoal,
-                  prev.teacherFreeText || '',
-                  prev,
-                  dateInfo
-                );
-                return adaptGoalToGender(mergedGoal, genderToUse);
-              })
-            }));
-            setLoadingAiForGoalId(null);
-            return;
-          }
+        const enriched = await callAiJson(prompt, aiConfig);
+        if (enriched) {
+          setFormData((prev) => ({
+            ...prev,
+            goals: (prev.goals || []).map((g) => {
+              if (g.id !== goalRow.id) return g;
+              const mergedGoal = {
+                ...g,
+                activityParticipation:
+                  enriched.activityParticipation || g.activityParticipation,
+                objectives: enriched.objectives || g.objectives,
+                opportunities: enriched.opportunities || g.opportunities,
+                partners: enriched.partners || g.partners,
+                tShirtSize: enriched.tShirtSize || g.tShirtSize,
+                duration: enriched.duration || g.duration,
+                evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria,
+                isTeacherModified: true
+              };
+              mergedGoal.duration = normalizeAndSizeGoalDuration(
+                mergedGoal,
+                prev.teacherFreeText || '',
+                prev,
+                dateInfo
+              );
+              return adaptGoalToGender(mergedGoal, genderToUse);
+            })
+          }));
+          setLoadingAiForGoalId(null);
+          return;
         }
       } catch (err) {
         console.warn('Fallback to local synthesis for facilitating answers', err);
@@ -1031,35 +1010,9 @@ export default function EcologicalWorkPlanForm({
     }));
   };
 
-  // Helper to call Gemini API across available Flash models with JSON mode
+  // Helper to call AI service (supports multi-vendor through aiConfig)
   const callGeminiJson = async (promptText) => {
-    const cleanKey = (geminiApiKey || '').trim();
-    if (!cleanKey) return null;
-
-    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-    for (const modelName of models) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanKey}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
-            generationConfig: { responseMimeType: 'application/json' }
-          })
-        });
-        if (!res.ok) continue;
-        const data = await res.json();
-        const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const jsonMatch = textOut.match(/[\{\[][\s\S]*[\}\]]/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
-        }
-      } catch (err) {
-        console.warn(`Model ${modelName} call failed, trying next`, err);
-      }
-    }
-    return null;
+    return await callAiJson(promptText, aiConfig);
   };
 
   // === SUBMIT BUTTON: Generate Top Summary Table (and Goals if empty) from Teacher's Free Text + All Goals ===
@@ -1076,7 +1029,7 @@ export default function EcologicalWorkPlanForm({
 
     setIsGeneratingSummary(true);
 
-    if (geminiApiKey && freeText) {
+    if (aiConfig?.apiKey && freeText) {
       const goalsSummary = goalsList
         .map(
           (g, idx) =>
@@ -1176,7 +1129,7 @@ ${goalsSummary}
     const removedGoals = Array.isArray(formData.removedAiGoals) ? formData.removedAiGoals : [];
 
     // 1. Try Live Gemini AI if API key is provided
-    if (geminiApiKey && geminiApiKey.trim()) {
+    if (aiConfig?.apiKey && aiConfig?.apiKey.trim()) {
       const bankReference = sortedGoals
         .slice(0, 20)
         .map(
@@ -1499,7 +1452,7 @@ ${bankReference}
     const isEndYear = fieldName === 'endYearEvaluation';
     const periodTitle = isEndYear ? 'הערכת סוף שנה' : 'הערכת מחצית השנה';
 
-    if (geminiApiKey && geminiApiKey.trim()) {
+    if (aiConfig?.apiKey && aiConfig?.apiKey.trim()) {
       const prompt = `אתה מומחה פדגוגי לכתיבת דוח "${periodTitle}" (הערכה תקופתית לתל"א / תח"י) במשרד החינוך.
 המורה הזינה הערות גולמיות על התקדמות הילד/ה ביחס למטרה ספציפית.
 מין הילד/ה: ${genderToUse === 'girl' ? 'בת (נקבה – נסח בלשון נקבה בלבד)' : 'בן (זכר – נסח בלשון זכר בלבד)'}
@@ -1580,7 +1533,7 @@ ${rawText}
     const genderToUse = formData.gender || 'boy';
     const goalsList = formData.goals || [];
 
-    if (geminiApiKey && geminiApiKey.trim()) {
+    if (aiConfig?.apiKey && aiConfig?.apiKey.trim()) {
       const goalsContext = goalsList
         .map(
           (g, idx) =>
@@ -1706,7 +1659,7 @@ ${goalsContext}
         )
     );
 
-    if (geminiApiKey && geminiApiKey.trim()) {
+    if (aiConfig?.apiKey && aiConfig?.apiKey.trim()) {
       const studentCardPayload = {
         name: formData.name && formData.name !== 'תלמיד/ה חדש/ה' ? formData.name : '',
         gender: isGirl ? 'נקבה (בת)' : 'זכר (בן)',
@@ -2278,7 +2231,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   : formData.reportsByYear?.[yr];
                 const hasData = hasContentInYearReport(rep);
                 return (
-                  <option key={yr} value={yr} style={{ color: '#24344d', background: '#ffffff' }}>
+                  <option key={yr} value={yr} style={{ color: 'var(--text-main)', background: 'var(--bg-card)' }}>
                     {yr}{hasData ? ' • קיים דו"ח' : ''}
                   </option>
                 );
@@ -2372,7 +2325,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               </div>
               <span style={{ fontSize: '12.5px' }}><strong>שנת לימודים:</strong> {formData.schoolYear}</span>
             </div>
-            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#eef3fb', border: '1.5px solid #5b9bd5', borderRight: '4px solid #8b6fc0', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
+            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', backgroundColor: 'var(--bg-warm-subtle)', border: '1.5px solid #5b9bd5', borderRight: '4px solid #8b6fc0', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
               <span><strong>שם הילד/ה:</strong> {getDisplayStudentName()}</span>
               <span><strong>מין:</strong> {currentGender === 'girl' ? 'בת' : 'בן'}</span>
               <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
@@ -2401,7 +2354,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             {(formData.goals || []).map((g) => (
               <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
                 <tbody>
-                  <tr style={{ background: '#eef3fb' }}>
+                  <tr style={{ backgroundColor: 'var(--bg-warm-subtle)' }}>
                     <td colSpan={6}>
                       <strong>סביבה: {g.environment}</strong> | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
                     </td>
@@ -2743,7 +2696,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '5px',
-                  background: '#ffffff',
+                  background: 'var(--bg-card)',
                   color: '#4c1d95',
                   border: '1px solid #c4b5fd',
                   borderRadius: '6px',
@@ -3535,7 +3488,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       style={{
                         marginTop: '10px',
                         padding: '12px 14px',
-                        background: '#f8fafc',
+                        background: 'var(--bg-warm-subtle)',
                         border: '1px solid #e2e8f0',
                         borderRadius: '8px',
                         display: 'flex',
@@ -3544,7 +3497,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>
                           סטטוס השגת המטרה:
                         </span>
                         {['הושגה במלואה', 'הושגה חלקית', 'בתהליך', 'טרם הושגה'].map((statusOpt) => {
@@ -3592,7 +3545,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                               handleGoalChange(goalRow.id, 'midYearEvaluation', e.target.value)
                             }
                             placeholder="תיאור התקדמות התלמיד/ה במחצית השנה..."
-                            style={{ background: '#ffffff' }}
+                            style={{ background: 'var(--bg-card)' }}
                           />
                           {(goalRow.midYearEvaluation || '').trim() && (
                             <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -3632,7 +3585,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                               handleGoalChange(goalRow.id, 'endYearEvaluation', e.target.value)
                             }
                             placeholder="סיכום השגת המטרה בסוף שנת הלימודים..."
-                            style={{ background: '#ffffff' }}
+                            style={{ background: 'var(--bg-card)' }}
                           />
                           {(goalRow.endYearEvaluation || '').trim() && (
                             <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -3918,7 +3871,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <div
                 key={goalRow.id}
                 style={{
-                  background: '#ffffff',
+                  background: 'var(--bg-card)',
                   border: '1.5px solid #cbd5e1',
                   borderRadius: '10px',
                   padding: '14px 16px'
@@ -3933,14 +3886,14 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       {goalRow.environment}
                     </strong>
                     {goalRow.title && (
-                      <span style={{ color: '#334155', fontSize: '13.5px', marginRight: '8px' }}>
+                      <span style={{ color: 'var(--text-main)', fontSize: '13.5px', marginRight: '8px' }}>
                         – {goalRow.title}
                       </span>
                     )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>סטטוס:</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-muted)' }}>סטטוס:</span>
                     {['הושגה במלואה', 'הושגה חלקית', 'בתהליך', 'טרם הושגה'].map((statusOpt) => {
                       const isSelected = goalRow.achievementStatus === statusOpt;
                       return (
@@ -4291,3 +4244,4 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     </div>
   );
 }
+

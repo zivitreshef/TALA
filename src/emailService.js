@@ -843,3 +843,72 @@ export async function sendUserSurveyEmailToAdmin({
 
 
 
+
+
+export async function sendWelcomeEmailToUser({
+  config,
+  userEmail,
+  userName,
+  userRoleName,
+  tempPassword,
+  loginUrl
+}) {
+  const safeName = String(userName || 'משתמש/ת יקר/ה');
+  
+  const htmlBody = `
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+    </head>
+    <body dir="rtl" style="margin:0; padding:20px; background:#f8fafc; font-family:Arial, sans-serif; color:#1e293b; text-align:right; direction:rtl;">
+      <div style="max-width:600px; margin:0 auto; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+        <div style="background:#4f46e5; color:#ffffff; padding:20px; text-align:center;">
+          <h1 style="margin:0; font-size:24px;">ברוכים הבאים למערכת TALA!</h1>
+        </div>
+        <div style="padding:24px; line-height:1.6; font-size:16px;">
+          <p>שלום <strong>${safeName}</strong>,</p>
+          <p>נוצר עבורך חשבון חדש במערכת TALA בתפקיד: <strong>${userRoleName}</strong>.</p>
+          
+          <div style="background:#f1f5f9; padding:16px; border-radius:8px; margin:20px 0; border:1px solid #cbd5e1;">
+            <h3 style="margin:0 0 10px 0; color:#334155;">פרטי ההתחברות שלך:</h3>
+            <p style="margin:4px 0;"><strong>שם משתמש:</strong> <span dir="ltr">${userEmail}</span></p>
+            <p style="margin:4px 0;"><strong>סיסמה זמנית:</strong> <span dir="ltr" style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-family:monospace; font-weight:bold;">${tempPassword}</span></p>
+          </div>
+          
+          <p>בכניסתך הראשונה למערכת תידרש להחליף את הסיסמה הזמנית בסיסמה קבועה ומאובטחת.</p>
+          
+          <div style="text-align:center; margin:30px 0;">
+            <a href="${loginUrl}" style="background:#059669; color:#ffffff; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px; display:inline-block;">
+              התחברות למערכת
+            </a>
+          </div>
+          
+          <p style="font-size:14px; color:#64748b;">
+            בברכה,<br/>
+            צוות מערכת TALA
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const textBody = `
+שלום ${safeName},
+נוצר עבורך חשבון במערכת TALA.
+שם משתמש: ${userEmail}
+סיסמה זמנית: ${tempPassword}
+
+להתחברות: ${loginUrl}
+  `.trim();
+
+  return sendReportEmailInBackground({
+    config,
+    toEmail: userEmail,
+    subject: 'ברוכים הבאים למערכת TALA - פרטי התחברות',
+    htmlBody,
+    textBody,
+    senderName: 'מערכת TALA'
+  });
+}

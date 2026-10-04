@@ -211,7 +211,7 @@ export function subscribeToTalaBackend({
   getInitialAllowedUsers,
   getInitialGoalBank,
   getInitialStudents,
-  getInitialGeminiKey,
+  getInitialAiConfig,
   onAllowedUsersChange,
   onGoalBankChange,
   onStudentsChange,
@@ -303,13 +303,8 @@ export function subscribeToTalaBackend({
           onSettingsChange?.(data);
         }
       } else {
-        const initialKey = getInitialGeminiKey?.();
-        if (initialKey) {
-          try {
-            await setDoc(settingsDocRef, {
-              geminiApiKey: initialKey,
-              updatedAt: new Date().toISOString()
-            });
+        const initialConfig = getInitialAiConfig?.();
+        if (initialConfig) { try { await setDoc(settingsDocRef, { aiConfig: initialConfig, updatedAt: new Date().toISOString() });
           } catch (e) {
             console.warn('Could not seed settings to Firestore:', e);
           }
@@ -535,4 +530,5 @@ export async function deleteStudentFromCloud(studentId) {
     return false;
   }
 }
+
 

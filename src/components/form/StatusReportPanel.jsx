@@ -4,6 +4,7 @@ import {
   Loader2,
   X,
   CheckCircle2,
+  ChevronLeft,
   Trash2,
   Printer,
   Download,
@@ -116,12 +117,12 @@ export default function StatusReportPanel({
       {currentSections.length === 0 && !isGeneratingStatusReport ? (
         <div
           style={{
-            background: '#f8fafc',
+            background: 'var(--bg-warm-subtle)',
             border: '1px dashed #94a3b8',
             borderRadius: '10px',
             padding: '20px',
             textAlign: 'center',
-            color: '#475569',
+            color: 'var(--text-muted)',
             marginBottom: '16px'
           }}
         >
@@ -144,7 +145,7 @@ export default function StatusReportPanel({
             <div
               key={sec.id || `status_sec_${sec.sectionNumber}`}
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-card)',
                 border: '1.5px solid #cbd5e1',
                 borderRadius: '10px',
                 padding: '14px 16px'
@@ -160,7 +161,7 @@ export default function StatusReportPanel({
                 }}
               >
                 <strong style={{ color: '#1e3a5f', fontSize: '14.5px' }}>
-                  {sec.sectionNumber}. {sec.title}
+                  <ChevronLeft size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} /> {sec.title}
                 </strong>
                 <button
                   type="button"
@@ -209,13 +210,13 @@ export default function StatusReportPanel({
             alignItems: 'center',
             gap: '8px',
             flexWrap: 'wrap',
-            background: '#f8fafc',
+            background: 'var(--bg-warm-subtle)',
             padding: '10px 14px',
             borderRadius: '8px',
             border: '1px solid #e2e8f0'
           }}
         >
-          <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>
+          <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-muted)' }}>
             הוספת סעיף מהמבנה המוגדר (רק אם קיים מידע רלוונטי להזנה ידנית):
           </span>
           <select
@@ -232,13 +233,13 @@ export default function StatusReportPanel({
               borderRadius: '6px',
               border: '1px solid #cbd5e1',
               fontSize: '13px',
-              background: '#ffffff'
+              background: 'var(--bg-card)'
             }}
           >
             <option value="">+ בחר סעיף להוספה...</option>
             {availableToAdd.map((schemaSec) => (
               <option key={schemaSec.sectionNumber} value={schemaSec.sectionNumber}>
-                {schemaSec.sectionNumber}. {schemaSec.title}
+                • {schemaSec.title}
               </option>
             ))}
           </select>

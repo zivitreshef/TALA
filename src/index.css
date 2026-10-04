@@ -78,7 +78,7 @@ input, textarea, select, button {
 .auth-landing-shell {
   position: relative;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--bg-card);
   width: 100%;
   max-width: 960px;
   border-radius: 26px;
@@ -221,7 +221,7 @@ input, textarea, select, button {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: #ffffff;
+  background: var(--bg-card);
   text-align: right;
 }
 
@@ -293,7 +293,7 @@ input, textarea, select, button {
 .form-field input:focus,
 .form-field textarea:focus,
 .form-field select:focus {
-  background: #ffffff;
+  background: var(--bg-card);
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(74, 136, 199, 0.16);
 }
@@ -323,7 +323,7 @@ input, textarea, select, button {
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -626,7 +626,7 @@ input, textarea, select, button {
 }
 
 .tala-students-sidebar {
-  background: #f8faff;
+  background: var(--bg-warm-subtle);
   border-left: 1.5px solid var(--border);
   padding: 18px 16px;
   display: flex;
@@ -740,7 +740,7 @@ input, textarea, select, button {
 }
 
 .sidebar-sort-pill.active {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--primary-deep);
   font-weight: 700;
   box-shadow: 0 1px 4px rgba(43, 76, 115, 0.12);
@@ -758,7 +758,7 @@ input, textarea, select, button {
   flex-direction: column;
   border-radius: 12px;
   border: 1.5px solid var(--border);
-  background: #ffffff;
+  background: var(--bg-card);
   overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -813,7 +813,7 @@ input, textarea, select, button {
 }
 
 .framework-student-count {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--accent-gold-dark);
   border: 1px solid var(--accent-gold);
   font-size: 11.5px;
@@ -828,7 +828,7 @@ input, textarea, select, button {
   flex-direction: column;
   gap: 7px;
   padding: 8px;
-  background: #f8faff;
+  background: var(--bg-warm-subtle);
 }
 
 .sidebar-student-card {
@@ -995,7 +995,7 @@ input, textarea, select, button {
 
 .privacy-checkbox-label.unchecked {
   border-color: var(--border);
-  background: #f4f7fc;
+  background: var(--bg-page);
   color: var(--text-muted);
 }
 
@@ -1007,7 +1007,7 @@ input, textarea, select, button {
 }
 
 .btn-preview-doc {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--primary-deep);
   border: 1.5px solid var(--border);
   border-radius: 8px;
@@ -1106,7 +1106,7 @@ input, textarea, select, button {
 
 /* Form Section Cards */
 .form-section-card {
-  background: #ffffff;
+  background: var(--bg-card);
   border: 1.5px solid var(--border);
   border-radius: 14px;
   padding: 20px 22px;
@@ -1178,7 +1178,7 @@ input, textarea, select, button {
   padding: 8px 16px;
   border-radius: 8px;
   border: 1.5px solid var(--border);
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text-main);
   font-size: 13.5px;
   font-weight: 600;
@@ -1218,7 +1218,7 @@ input, textarea, select, button {
   padding: 9px 14px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-card);
   min-height: 41px;
 }
 
@@ -1269,7 +1269,7 @@ input, textarea, select, button {
   padding: 10px 12px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-card);
   font-size: 13.5px;
   line-height: 1.5;
   resize: vertical;
@@ -1331,7 +1331,7 @@ input, textarea, select, button {
   border: 1.5px solid #b5c7e3;
   padding: 8px;
   width: 50%;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .interactive-summary-table textarea {
@@ -1346,7 +1346,7 @@ input, textarea, select, button {
 
 .interactive-summary-table textarea:focus {
   border-color: var(--primary);
-  background: #f4f7fc;
+  background: var(--bg-page);
   border-radius: 6px;
 }
 
@@ -1377,7 +1377,7 @@ input, textarea, select, button {
   border: 2px solid #c5d5eb;
   border-top: 5px solid var(--primary);
   border-radius: 13px;
-  background: #ffffff;
+  background: var(--bg-card);
   overflow: hidden;
   box-shadow: 0 4px 14px rgba(59, 110, 165, 0.06);
 }
@@ -1415,7 +1415,7 @@ input, textarea, select, button {
   border: 1.5px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .env-text-input {
@@ -1454,7 +1454,7 @@ input, textarea, select, button {
   padding: 10px 12px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-card);
   font-size: 14.5px;
   line-height: 1.6;
   min-height: 84px;
@@ -1489,7 +1489,7 @@ input, textarea, select, button {
 }
 
 .btn-open-bank {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--primary);
   border: 1.5px solid var(--primary);
   border-radius: 8px;
@@ -1546,7 +1546,7 @@ input, textarea, select, button {
   border-radius: 8px;
   font-size: 14.5px;
   font-weight: 600;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .btn-save-new-goal-to-bank {
@@ -1566,7 +1566,7 @@ input, textarea, select, button {
 /* Dynamic Goal Bank Dropdown */
 .goal-bank-dropdown-panel {
   margin-top: 10px;
-  background: #ffffff;
+  background: var(--bg-card);
   border: 2px solid var(--primary);
   border-radius: 10px;
   padding: 12px;
@@ -1584,7 +1584,7 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f4f7fc;
+  background: var(--bg-page);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 7px 10px;
@@ -1715,7 +1715,7 @@ input, textarea, select, button {
 }
 
 .btn-use-title-only {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text-main);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1773,7 +1773,7 @@ input, textarea, select, button {
 }
 
 .btn-refresh-ai-q {
-  background: #ffffff;
+  background: var(--bg-card);
   color: #5e4394;
   border: 1px solid #bfa8e8;
   border-radius: 6px;
@@ -1805,7 +1805,7 @@ input, textarea, select, button {
 }
 
 .ai-question-box {
-  background: #ffffff;
+  background: var(--bg-card);
   border: 1px solid #d2c4ed;
   border-radius: 8px;
   padding: 10px;
@@ -1901,7 +1901,7 @@ input, textarea, select, button {
   border: 1px solid var(--border);
   padding: 8px;
   vertical-align: top;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .ecological-6col-table textarea {
@@ -1921,7 +1921,7 @@ input, textarea, select, button {
 
 .ecological-6col-table textarea:focus {
   border-color: var(--primary);
-  background: #f4f7fc;
+  background: var(--bg-page);
 }
 
 .quick-objectives-bank {
@@ -2012,7 +2012,7 @@ input, textarea, select, button {
   border: 1.5px solid #5b9bd5;
   padding: 18px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .preview-doc-table {
@@ -2062,7 +2062,7 @@ input, textarea, select, button {
 }
 
 .modal-container {
-  background: #ffffff;
+  background: var(--bg-card);
   width: 100%;
   border-radius: 16px;
   overflow: hidden;
@@ -2107,11 +2107,11 @@ input, textarea, select, button {
 .modal-footer {
   padding: 12px 20px;
   border-top: 1px solid var(--border-soft);
-  background: #f4f7fc;
+  background: var(--bg-page);
 }
 
 .add-allowed-user-box {
-  background: #f4f7fc;
+  background: var(--bg-page);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;
@@ -2193,7 +2193,7 @@ input, textarea, select, button {
 }
 
 .btn-secondary-sm {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text-main);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -2298,7 +2298,7 @@ input, textarea, select, button {
 }
 
 .admin-bank-goal-editor {
-  background: #f4f7fc;
+  background: var(--bg-page);
   border: 2px solid var(--primary);
   border-right: 5px solid #8b6fc0;
   border-radius: 11px;
@@ -2322,7 +2322,7 @@ input, textarea, select, button {
 }
 
 .btn-cancel-bank-edit {
-  background: #ffffff;
+  background: var(--bg-card);
   color: var(--text-muted);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -2362,7 +2362,7 @@ input, textarea, select, button {
   padding: 7px 10px;
   border: 1.5px solid var(--border);
   border-radius: 7px;
-  background: #ffffff;
+  background: var(--bg-card);
   font-size: 13px;
   font-family: inherit;
 }
@@ -2880,7 +2880,7 @@ body {
     border: none;
     border-bottom: 1.5px solid var(--border);
     padding: 12px;
-    background: #ffffff;
+    background: var(--bg-card);
   }
 
   .ecological-6col-table td:last-child {
@@ -3034,7 +3034,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: #ffffff;
+  background: var(--bg-card);
 }
 
 .email-modal-field {
@@ -3063,7 +3063,7 @@ body {
 .email-recipient-input:focus {
   outline: none;
   border-color: #6b46c1;
-  background: #ffffff;
+  background: var(--bg-card);
   box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.15);
 }
 
@@ -3080,7 +3080,7 @@ body {
   padding: 12px;
   border: 2px solid #cbd5e1;
   border-radius: 11px;
-  background: #f8fafc;
+  background: var(--bg-warm-subtle);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -3125,7 +3125,7 @@ body {
 
 .email-format-info span {
   font-size: 11.5px;
-  color: #475569;
+  color: var(--text-muted);
   line-height: 1.35;
 }
 
@@ -3140,8 +3140,8 @@ body {
   padding: 8px 12px;
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
-  background: #f8fafc;
-  color: #334155;
+  background: var(--bg-warm-subtle);
+  color: var(--text-main);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
@@ -3200,7 +3200,7 @@ body {
 }
 
 .btn-download-only {
-  background: #f1f5f9;
+  background: var(--bg-warm-subtle);
   color: #1e3a5f;
   border: 1.5px solid #94a3b8;
   border-radius: 8px;
@@ -3247,7 +3247,7 @@ body {
 }
 
 .email-engine-status-box {
-  background: #f8fafc;
+  background: var(--bg-warm-subtle);
   border: 1.5px solid #cbd5e1;
   border-radius: 10px;
   padding: 10px 12px;
@@ -3280,7 +3280,7 @@ body {
 }
 
 .btn-toggle-engine-setup {
-  background: #ffffff;
+  background: var(--bg-card);
   color: #4c1d95;
   border: 1px solid #c4b5fd;
   border-radius: 6px;
@@ -3391,7 +3391,7 @@ body {
 }
 
 .inside-landing-card {
-  background: #ffffff;
+  background: var(--bg-card);
   border: 1.5px solid var(--border);
   border-radius: 18px;
   padding: 26px 24px;
@@ -3553,7 +3553,7 @@ body {
 }
 
 .inside-landing-empty-list {
-  background: #f8fafc;
+  background: var(--bg-warm-subtle);
   border: 1px dashed #cbd5e1;
   border-radius: 10px;
   padding: 18px 14px;
@@ -3738,8 +3738,8 @@ body {
 .report-is-locked input:disabled,
 .report-is-locked select:disabled,
 .report-is-locked textarea:disabled {
-  background-color: #f8fafc !important;
-  color: #334155 !important;
+  background-color: var(--bg-warm-subtle) !important;;
+  color: var(--text-main) !important;;
   cursor: not-allowed;
   opacity: 0.92;
 }
@@ -3763,3 +3763,212 @@ body {
 
 
 
+
+[data-theme="dark"] {
+  --bg-page: #121212;
+  --bg-card: #1e1e1e;
+  --bg-warm-subtle: #252525;
+  --primary: #5c9fd6;
+  --primary-hover: #7ebbf0;
+  --primary-light: #2c3a4a;
+  --primary-deep: #a0c4e4;
+  --border: #333333;
+  --border-soft: #2a2a2a;
+  --text-main: #e0e0e0;
+  --text-muted: #a0a0a0;
+  --accent-gold-light: #302645;
+  --accent-gold-dark: #d4c5f9;
+  --accent-purple-light: #2c2140;
+}
+
+
+/* Enhanced Dark Mode Overrides */
+[data-theme="dark"] body, [data-theme="dark"] .tala-app-root {
+  background-color: var(--bg-page) !important;
+  color: var(--text-main) !important;
+}
+[data-theme="dark"] .tala-students-sidebar,
+[data-theme="dark"] .inside-landing-card,
+[data-theme="dark"] .tala-header,
+[data-theme="dark"] .student-list-item,
+[data-theme="dark"] .modal-container,
+[data-theme="dark"] .student-card-preview,
+[data-theme="dark"] .input-base,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+[data-theme="dark"] input,
+[data-theme="dark"] .form-section {
+  background-color: var(--bg-card) !important;
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border) !important;
+}
+[data-theme="dark"] .tala-students-sidebar { background: var(--bg-warm-subtle) !important; }
+[data-theme="dark"] .inside-landing-card h3, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4 {
+  color: var(--primary-deep) !important;
+}
+[data-theme="dark"] .inside-landing-card p,
+[data-theme="dark"] .student-list-item-meta,
+[data-theme="dark"] .user-chip-text small,
+[data-theme="dark"] .student-subtitle {
+  color: var(--text-muted) !important;
+}
+[data-theme="dark"] .student-list-item:hover {
+  background-color: var(--bg-warm-subtle) !important;
+}
+[data-theme="dark"] .student-list-item.active {
+  background-color: var(--primary-light) !important;
+}
+[data-theme="dark"] div[style*="background: var(--bg-warm-subtle);"], [data-theme="dark"] div[style*="background: var(--bg-warm-subtle);"], [data-theme="dark"] div[style*="background: var(--bg-warm-subtle);"] {
+  background: var(--bg-warm-subtle) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+
+[data-theme="dark"] .modal-container, 
+[data-theme="dark"] .email-modal-body, 
+[data-theme="dark"] .email-report-modal, 
+[data-theme="dark"] .modal-card, 
+[data-theme="dark"] .modal-backdrop > div {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+}
+
+[data-theme="dark"] select, [data-theme="dark"] option {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+}
+
+/* --- COMPREHENSIVE DARK MODE OVERRIDES --- */
+[data-theme="dark"] .sidebar-student-card {
+  background: var(--bg-card) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-main) !important;
+}
+[data-theme="dark"] .sidebar-student-card:hover {
+  background: var(--bg-warm-subtle) !important;
+}
+[data-theme="dark"] .sidebar-student-card.selected {
+  background: var(--primary-light) !important;
+  border-color: var(--primary) !important;
+}
+[data-theme="dark"] .sidebar-student-card strong,
+[data-theme="dark"] .sidebar-student-card small,
+[data-theme="dark"] .sidebar-student-card span {
+  color: inherit !important;
+}
+[data-theme="dark"] .st-card-info small {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .bank-goal-card,
+[data-theme="dark"] .bank-goal-card-header,
+[data-theme="dark"] .bank-goal-card-body {
+  background: var(--bg-card) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-main) !important;
+}
+[data-theme="dark"] .bank-goal-card p,
+[data-theme="dark"] .bank-goal-card span,
+[data-theme="dark"] .bank-goal-card strong {
+  color: var(--text-main) !important;
+}
+[data-theme="dark"] .bank-goal-card .goal-domain-badge {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .ecological-6col-table th,
+[data-theme="dark"] .preview-doc-table th,
+[data-theme="dark"] .interactive-summary-table th {
+  background: var(--bg-warm-subtle) !important;
+  color: var(--primary-deep) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .ecological-6col-table td,
+[data-theme="dark"] .preview-doc-table td,
+[data-theme="dark"] .interactive-summary-table td {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border) !important;
+}
+
+/* Fix inline styles that force light backgrounds but receive light text */
+[data-theme="dark"] tr[style*="background: #eef3fb"],
+[data-theme="dark"] tr[style*="background: rgb(238, 243, 251)"],
+[data-theme="dark"] tr[style*="#eef3fb"],
+[data-theme="dark"] div[style*="background: #eef3fb"],
+[data-theme="dark"] div[style*="background: #f8fafc"],
+[data-theme="dark"] div[style*="background: #ffffff"],
+[data-theme="dark"] div[style*="background: #f3f6fc"],
+[data-theme="dark"] tr[style*="background-color: #f8fafc"] {
+  background: var(--bg-warm-subtle) !important;
+  color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .preview-doc-table tr[style*="background"] td,
+[data-theme="dark"] .preview-doc-table tr[style*="background"] th {
+  background: transparent !important;
+}
+
+[data-theme="dark"] .sidebar-student-card .st-goals-badge {
+  background: var(--bg-warm-subtle) !important;
+  color: var(--text-main) !important;
+}
+
+/* --- SECOND WAVE OF DARK MODE OVERRIDES --- */
+
+/* Fix black textareas */
+[data-theme="dark"] textarea,
+[data-theme="dark"] .ecological-6col-table textarea,
+[data-theme="dark"] .ecological-6col-table textarea:focus {
+  background: #252525 !important;
+  color: #e0e0e0 !important;
+  border-color: #444 !important;
+}
+
+[data-theme="dark"] textarea::placeholder {
+  color: #888 !important;
+}
+
+/* Fix sticky action bar (top toolbar) */
+[data-theme="dark"] .sticky-action-bar {
+  background: #1e1e1e !important;
+  border-color: #333 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+}
+
+/* Fix table specific white patches */
+[data-theme="dark"] .preview-doc-table tr[style*="background: #eaf3fc"],
+[data-theme="dark"] .preview-doc-table tr[style*="background-color: #eaf3fc"],
+[data-theme="dark"] .preview-doc-table tr[style*="background: rgb(234, 243, 252)"] {
+  background: #2a3441 !important;
+  color: #7ebbf0 !important;
+}
+
+/* Goal Bank Option Row */
+[data-theme="dark"] .goal-bank-option-row {
+  background: #1e1e1e !important;
+  border-color: #333 !important;
+  color: #e0e0e0 !important;
+}
+[data-theme="dark"] .goal-bank-option-row:hover {
+  background: #2c3a4a !important;
+}
+
+/* Modal cards */
+[data-theme="dark"] .modal-body div[style*="background: white"],
+[data-theme="dark"] .modal-body div[style*="background: 'white'"],
+[data-theme="dark"] .modal-container div[style*="background: white"] {
+  background: #1e1e1e !important;
+  border-color: #333 !important;
+}
+
+/* Make sure text in preview tables is absolutely readable */
+[data-theme="dark"] .preview-doc-table td,
+[data-theme="dark"] .preview-doc-table th,
+[data-theme="dark"] .preview-doc-table span,
+[data-theme="dark"] .preview-doc-table strong {
+  color: #e0e0e0 !important;
+}

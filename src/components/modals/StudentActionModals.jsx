@@ -32,7 +32,7 @@ export function DeleteStudentModal({
               margin: '0 0 12px 0',
               fontSize: '14.5px',
               lineHeight: 1.5,
-              color: '#24344d'
+              color: 'var(--text-main)'
             }}
           >
             האם את/ה בטוח/ה שברצונך למחוק את תכנית העבודה של{' '}
@@ -170,7 +170,7 @@ export function ArchiveStudentModal({
               margin: '0 0 12px 0',
               fontSize: '14.5px',
               lineHeight: 1.5,
-              color: '#24344d'
+              color: 'var(--text-main)'
             }}
           >
             האם להעביר את <strong>"{studentToArchive.name || 'ללא שם'}"</strong> לארכיון?
@@ -264,7 +264,7 @@ export function LogoutUnsavedModal({
               margin: '0 0 12px 0',
               fontSize: '14.5px',
               lineHeight: 1.5,
-              color: '#24344d'
+              color: 'var(--text-main)'
             }}
           >
             קיימים שינויים שלא נשמרו בתכנית העבודה של{' '}

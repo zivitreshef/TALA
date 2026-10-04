@@ -396,7 +396,7 @@ export default function TrialNdaModal({
             {/* Legal NDA Scroll Box */}
             <div
               style={{
-                background: '#f8fafc',
+                background: 'var(--bg-warm-subtle)',
                 border: '1.5px solid #cbd5e1',
                 borderRadius: '10px',
                 padding: '14px 16px',
@@ -404,7 +404,7 @@ export default function TrialNdaModal({
                 overflowY: 'auto',
                 fontSize: '13px',
                 lineHeight: 1.65,
-                color: '#1e293b'
+                color: 'var(--text-main)'
               }}
             >
               <h4 style={{ margin: '0 0 8px 0', color: '#1e3a5f', fontSize: '14.5px' }}>
@@ -527,7 +527,7 @@ export default function TrialNdaModal({
             {/* Signature Area: Drawn Canvas + Typed Signature */}
             <div
               style={{
-                background: '#ffffff',
+                background: 'var(--bg-card)',
                 border: '1.5px solid #94a3b8',
                 borderRadius: '10px',
                 padding: '12px 14px'
@@ -578,7 +578,7 @@ export default function TrialNdaModal({
               />
 
               <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
                   חתימה בהקלדת שם מלא (אופציונלי אם חתמתם בתיבה למעלה):
                 </span>
                 <input
@@ -609,7 +609,7 @@ export default function TrialNdaModal({
                 fontSize: '13px',
                 fontWeight: 700,
                 color: '#1e3a5f',
-                background: '#f1f5f9',
+                background: 'var(--bg-warm-subtle)',
                 padding: '9px 12px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1'
@@ -640,7 +640,7 @@ export default function TrialNdaModal({
               flexWrap: 'wrap'
             }}
           >
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
               עותק חתום יישלח אוטומטית אל מנהלת המערכת (zivit.reshef@gmail.com)
             </span>
             <button type="submit" className="btn-primary-sm" disabled={isSubmitting}>

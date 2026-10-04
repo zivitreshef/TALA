@@ -26,7 +26,10 @@ import {
   Lock,
   Unlock,
   GraduationCap,
-  UserPlus
+  UserPlus,
+  Moon,
+  Sun,
+  Bell
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -38,11 +41,8 @@ import {
   ensureUsersListPasswordsHashed,
   verifyUserPassword
 } from './allowedUsers';
-import {
-  AllowlistAuthGate,
-  AdminAllowlistModal,
-  UserSelfPasswordModal
-} from './AllowlistAuthGate';
+import { AllowlistAuthGate, UserSelfPasswordModal } from './AllowlistAuthGate';
+import AdminAllowlistModal from './components/modals/AdminAllowlistModal';
 import {
   INITIAL_STUDENTS_DATA,
   ENVIRONMENTS_LIST,
@@ -111,6 +111,14 @@ export default function App() {
   // Allowed users list
   const [allowedUsers, setAllowedUsers] = useState(() => loadAllowedUsers());
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [darkTheme, setDarkTheme] = useState(() => {
+    return localStorage.getItem('tala_theme') === 'dark';
+  });
+  useEffect(() => {
+    if (darkTheme) document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+  }, [darkTheme]);
   const [showSelfPasswordModal, setShowSelfPasswordModal] = useState(false);
   const [showFeedbackSurveyModal, setShowFeedbackSurveyModal] = useState(false);
   const [surveySnoozedInSession, setSurveySnoozedInSession] = useState(false);
@@ -138,6 +146,17 @@ export default function App() {
     }
   });
 
+  const [sessionTimeout, setSessionTimeout] = useState(() => {
+    return localStorage.getItem('tala_session_timeout') || '1d';
+  });
+  const [dataRetention, setDataRetention] = useState(() => {
+    return localStorage.getItem('tala_data_retention') || '7y';
+  });
+  const [enforceTrialNda, setEnforceTrialNda] = useState(() => {
+    const val = localStorage.getItem('tala_enforce_trial_nda');
+    return val === null ? true : val === 'true';
+  });
+
   // Direct Background Email Engine configuration (synced across cloud for all users)
   const [emailEngineConfig, setEmailEngineConfig] = useState(() => loadEmailEngineConfig());
 
@@ -152,6 +171,23 @@ export default function App() {
     setEnforcePasswordPolicy(nextVal);
     localStorage.setItem(PASSWORD_POLICY_STORAGE_KEY, String(nextVal));
     saveSettingsToCloud({ enforcePasswordPolicy: nextVal });
+  };
+
+  const handleChangeSessionTimeout = (val) => {
+    setSessionTimeout(val);
+    localStorage.setItem('tala_session_timeout', val);
+    saveSettingsToCloud({ sessionTimeout: val });
+  };
+  const handleChangeDataRetention = (val) => {
+    setDataRetention(val);
+    localStorage.setItem('tala_data_retention', val);
+    saveSettingsToCloud({ dataRetention: val });
+  };
+  const handleChangeEnforceTrialNda = (val) => {
+    const nextVal = Boolean(val);
+    setEnforceTrialNda(nextVal);
+    localStorage.setItem('tala_enforce_trial_nda', String(nextVal));
+    saveSettingsToCloud({ enforceTrialNda: nextVal });
   };
 
   const handleSubmitAdminRequest = (newReq) => {
@@ -414,6 +450,18 @@ export default function App() {
             String(settings.enforcePasswordPolicy)
           );
         }
+        if (settings?.sessionTimeout) {
+          setSessionTimeout(settings.sessionTimeout);
+          localStorage.setItem('tala_session_timeout', settings.sessionTimeout);
+        }
+        if (settings?.dataRetention) {
+          setDataRetention(settings.dataRetention);
+          localStorage.setItem('tala_data_retention', settings.dataRetention);
+        }
+        if (typeof settings?.enforceTrialNda === 'boolean') {
+          setEnforceTrialNda(settings.enforceTrialNda);
+          localStorage.setItem('tala_enforce_trial_nda', String(settings.enforceTrialNda));
+        }
         if (Array.isArray(settings?.adminRequests)) {
           setAdminRequests(settings.adminRequests);
           localStorage.setItem(
@@ -475,6 +523,7 @@ export default function App() {
 
   // If the currently selected student no longer belongs to the logged-in user (or was deleted/archived), return to the inside landing page (null)
   useEffect(() => {
+
     if (!currentUser) {
       setSelectedStudentId(null);
       return;
@@ -951,9 +1000,40 @@ export default function App() {
   };
 
   const handleSaveStudentPlan = (updatedStudent) => {
-    setStudents((prev) =>
-      prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
-    );
+    setStudents((prev) => {
+      const oldStudent = prev.find(s => s.id === updatedStudent.id);
+      if (oldStudent && currentUser) {
+        const oldShared = Array.isArray(oldStudent.sharedWith) ? oldStudent.sharedWith : [];
+        const newShared = Array.isArray(updatedStudent.sharedWith) ? updatedStudent.sharedWith : [];
+        const addedColleagues = newShared.filter(em => !oldShared.includes(em));
+        
+        if (addedColleagues.length > 0) {
+          // Add notification to those users
+          setAllowedUsers(prevUsers => {
+            const nextUsers = prevUsers.map(u => {
+              if (addedColleagues.includes(u.email)) {
+                return {
+                  ...u,
+                  notifications: [
+                    ...(u.notifications || []),
+                    {
+                      id: Date.now() + Math.random().toString(36).substr(2, 5),
+                      message: `תיק התלמיד/ה ${updatedStudent.firstName} שותף איתך על ידי ${currentUser.name}`,
+                      read: false,
+                      createdAt: new Date().toISOString()
+                    }
+                  ]
+                };
+              }
+              return u;
+            });
+            saveAllowedUsersToCloud(nextUsers);
+            return nextUsers;
+          });
+        }
+      }
+      return prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s));
+    });
     saveStudentToCloud(updatedStudent);
   };
 
@@ -1197,6 +1277,9 @@ export default function App() {
     }
   };
 
+  const currentUserLive = allowedUsers.find(u => u.email === currentUser?.email) || currentUser;
+  const unreadNotificationsCount = (currentUserLive?.notifications || []).filter(n => !n.read).length;
+
   // Gate the entire app if user is not authenticated in the Allowed Users List
   if (!currentUser) {
     return (
@@ -1393,7 +1476,7 @@ export default function App() {
               style={{ position: 'relative' }}
             >
               <ShieldCheck size={16} />
-              <span>ניהול משתמשים מורשים ({allowedUsers.filter((u) => u.active).length})</span>
+              <span>הגדרות מערכת</span>
               {totalAdminAlerts > 0 && (
                 <span
                   style={{
@@ -1412,18 +1495,87 @@ export default function App() {
             </button>
           )}
 
-          <div
-            className="current-user-chip"
-            onClick={() => setShowSelfPasswordModal(true)}
-            title="לחץ לשינוי הסיסמה האישית שלך"
-            style={{ cursor: 'pointer' }}
-          >
-            <UserCheck size={16} />
-            <div className="user-chip-text">
-              <strong>{currentUser.name}</strong>
-              <small>{currentUser.title}</small>
+          <div style={{ position: 'relative' }}>
+            <div
+              className="current-user-chip"
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              title="תפריט משתמש"
+              style={{ cursor: 'pointer', position: 'relative' }}
+            >
+              <UserCheck size={16} />
+              <div className="user-chip-text">
+                <strong>{currentUser.name}</strong>
+                <small>{currentUser.title}</small>
+              </div>
+              <KeyRound size={14} style={{ opacity: 0.75, marginRight: '4px' }} />
+              {unreadNotificationsCount > 0 && (
+                <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}>{unreadNotificationsCount}</span>
+              )}
             </div>
-            <KeyRound size={14} style={{ opacity: 0.75, marginRight: '4px' }} />
+            {showUserMenu && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 1000, minWidth: '280px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: '16px', borderBottom: '1px solid var(--border-soft)', background: 'var(--bg-page)' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: 'var(--text-main)' }}>{currentUser.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{currentUser.email}</div>
+                </div>
+
+                <div style={{ padding: '8px 0', borderBottom: '1px solid var(--border-soft)' }}>
+                  <button style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'right', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-main)', fontSize: '13.5px' }} onClick={() => { setShowSelfPasswordModal(true); setShowUserMenu(false); }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-warm-subtle)'} onMouseOut={(e) => e.currentTarget.style.background = 'none'}>
+                    <KeyRound size={16} color="var(--primary)" /> החלפת סיסמה
+                  </button>
+                  <button style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', textAlign: 'right', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)', fontSize: '13.5px' }} onClick={() => { 
+                      const nTheme = !darkTheme;
+                      setDarkTheme(nTheme);
+                      localStorage.setItem('tala_theme', nTheme ? 'dark' : 'light');
+                    }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-warm-subtle)'} onMouseOut={(e) => e.currentTarget.style.background = 'none'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {darkTheme ? <Moon size={16} color="var(--accent-purple)" /> : <Sun size={16} color="#f59e0b" />}
+                      מצב לילה
+                    </div>
+                    <div style={{ width: '36px', height: '20px', borderRadius: '20px', background: darkTheme ? 'var(--primary)' : '#cbd5e1', position: 'relative', transition: '0.3s' }}>
+                      <div style={{ position: 'absolute', top: '3px', left: darkTheme ? '4px' : '18px', width: '14px', height: '14px', borderRadius: '50%', background: 'white', transition: '0.3s' }} />
+                    </div>
+                  </button>
+                </div>
+
+                <div style={{ padding: '12px 16px 8px', background: 'var(--bg-page)', color: 'var(--text-muted)', fontSize: '12px', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>התראות שלי</span>
+                  {unreadNotificationsCount > 0 && <span style={{ background: 'var(--primary)', color: 'white', borderRadius: '12px', padding: '2px 8px', fontSize: '10px' }}>{unreadNotificationsCount} חדשות</span>}
+                </div>
+                
+                <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                  {(currentUserLive?.notifications || []).length === 0 ? (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)' }}>
+                      <Bell size={24} style={{ opacity: 0.2, margin: '0 auto 8px' }} />
+                      אין התראות
+                    </div>
+                  ) : (
+                    (currentUserLive?.notifications || []).slice().reverse().map(n => (
+                      <div key={n.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-soft)', fontSize: '13px', color: 'var(--text-main)', background: 'none', cursor: 'pointer', transition: 'background 0.2s', display: 'flex', gap: '12px', alignItems: 'flex-start' }} 
+                        onClick={() => {
+                          const nextUsers = allowedUsers.map(u => u.email === currentUser.email ? { ...u, notifications: u.notifications.filter(x => x.id !== n.id) } : u);
+                          setAllowedUsers(nextUsers);
+                          saveAllowedUsersToCloud(nextUsers);
+                          
+                          if (n.studentId) {
+                            setSelectedStudentId(n.studentId);
+                            setShowUserMenu(false);
+                          }
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-warm-subtle)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                      >
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)', marginTop: '6px', flexShrink: 0 }} />
+                        <div>
+                          <div style={{ lineHeight: '1.4' }}>{n.message}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>{new Date(n.createdAt).toLocaleDateString('he-IL', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <button
@@ -1977,6 +2129,7 @@ export default function App() {
       {/* Admin Allowlist Management Modal (Only accessible to Admin) */}
       {currentUser.role === 'admin' && (
         <AdminAllowlistModal
+          currentUser={currentUser}
           isOpen={showAdminModal}
           onClose={() => setShowAdminModal(false)}
           allowedUsers={allowedUsers}
@@ -1985,6 +2138,12 @@ export default function App() {
           onChangeGeminiApiKey={handleChangeGeminiApiKey}
           enforcePasswordPolicy={enforcePasswordPolicy}
           onChangeEnforcePasswordPolicy={handleChangeEnforcePasswordPolicy}
+          sessionTimeout={sessionTimeout}
+          onChangeSessionTimeout={handleChangeSessionTimeout}
+          dataRetention={dataRetention}
+          onChangeDataRetention={handleChangeDataRetention}
+          enforceTrialNda={enforceTrialNda}
+          onChangeEnforceTrialNda={handleChangeEnforceTrialNda}
           adminRequests={adminRequests}
           onDismissAdminRequest={handleDismissAdminRequest}
           cloudSyncState={cloudSyncState}
@@ -2026,14 +2185,14 @@ export default function App() {
 
             <div className="modal-body">
               <div className="goal-bank-modal-top-bar">
-                <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
                   כל מטרה חדשה שהמנהלת או כל מורה מוסיפה משותפת לכלל המשתמשים במאגר זה. המטרות מוצגות לפי מידת השכיחות שלהן.
                   {currentUser.role === 'admin' ? (
                     <strong style={{ color: '#4c1d95', display: 'block', marginTop: '4px' }}>
                       👑 הרשאת מנהל מערכת: באפשרותך להוסיף, לערוך או להסיר מטרות ויעדים במאגר.
                     </strong>
                   ) : (
-                    <span style={{ color: '#64748b', display: 'block', marginTop: '4px' }}>
+                    <span style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
                       באפשרותך להוסיף מטרות חדשות למאגר המשותף.
                     </span>
                   )}
@@ -2237,7 +2396,7 @@ export default function App() {
               {/* Target Student Bar for Direct Goal Injection from the Bank */}
               <div
                 style={{
-                  background: 'linear-gradient(135deg, #f3eefc 0%, #eef6ff 100%)',
+                  background: 'var(--bg-warm-subtle)',
                   border: '1.5px solid #d6c6f7',
                   borderRadius: '12px',
                   padding: '10px 14px',
@@ -2262,10 +2421,10 @@ export default function App() {
                           padding: '5px 10px',
                           borderRadius: '8px',
                           border: '1.5px solid #b39ddb',
-                          background: '#ffffff',
+                          background: 'var(--bg-card)',
                           fontSize: '13px',
                           fontWeight: 700,
-                          color: '#24344d',
+                          color: 'var(--text-main)',
                           cursor: 'pointer'
                         }}
                       >
@@ -2294,7 +2453,7 @@ export default function App() {
                       )}
                   </>
                 ) : (
-                  <span style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', fontWeight: 600 }}>
                     💡 צרי כרטיס תלמיד/ה כדי להוסיף אליו מטרות בלחיצה אחת מתוך המאגר.
                   </span>
                 )}
@@ -2609,7 +2768,7 @@ export default function App() {
                   {/* Right Column: Archived Students List */}
                   <div
                     style={{
-                      background: '#f8faff',
+                      background: 'var(--bg-warm-subtle)',
                       border: '1px solid #d3dff0',
                       borderRadius: '12px',
                       padding: '12px',
@@ -2669,7 +2828,7 @@ export default function App() {
                   {activeArchivedStudent && (
                     <div
                       style={{
-                        background: '#ffffff',
+                        background: 'var(--bg-card)',
                         border: '1.5px solid #d3dff0',
                         borderRadius: '12px',
                         padding: '18px',
@@ -2838,7 +2997,7 @@ export default function App() {
                           display: 'grid',
                           gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))',
                           gap: '10px',
-                          background: '#f4f7fc',
+                          background: 'var(--bg-page)',
                           border: '1px solid #d3dff0',
                           borderRadius: '10px',
                           padding: '12px 14px',
@@ -2886,7 +3045,7 @@ export default function App() {
                           {activeArchiveReport.teacherFreeText && (
                             <div
                               style={{
-                                background: '#f8faff',
+                                background: 'var(--bg-warm-subtle)',
                                 border: '1px solid #e4ecf7',
                                 borderRadius: '8px',
                                 padding: '10px 12px',
@@ -2905,7 +3064,7 @@ export default function App() {
                           {activeArchiveReport.strengthsExisting && (
                             <div
                               style={{
-                                background: '#f8faff',
+                                background: 'var(--bg-warm-subtle)',
                                 border: '1px solid #e4ecf7',
                                 borderRadius: '8px',
                                 padding: '10px 12px',
@@ -2924,7 +3083,7 @@ export default function App() {
                           {activeArchiveReport.strengthsToEmpower && (
                             <div
                               style={{
-                                background: '#f8faff',
+                                background: 'var(--bg-warm-subtle)',
                                 border: '1px solid #e4ecf7',
                                 borderRadius: '8px',
                                 padding: '10px 12px',
@@ -2943,7 +3102,7 @@ export default function App() {
                           {activeArchiveReport.recommendations && (
                             <div
                               style={{
-                                background: '#f8faff',
+                                background: 'var(--bg-warm-subtle)',
                                 border: '1px solid #e4ecf7',
                                 borderRadius: '8px',
                                 padding: '10px 12px',
@@ -3071,4 +3230,3 @@ export default function App() {
     </div>
   );
 }
-
