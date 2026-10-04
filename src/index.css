@@ -696,6 +696,56 @@ input, textarea, select, button {
   outline: none;
 }
 
+.sidebar-sort-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sidebar-sort-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.sidebar-sort-pills {
+  display: flex;
+  flex: 1;
+  background: var(--bg-warm-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 3px;
+}
+
+.sidebar-sort-pill {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.sidebar-sort-pill:hover:not(.active) {
+  color: var(--primary-deep);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.sidebar-sort-pill.active {
+  background: #ffffff;
+  color: var(--primary-deep);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(43, 76, 115, 0.12);
+}
+
 .sidebar-students-list {
   display: flex;
   flex-direction: column;
