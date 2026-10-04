@@ -2216,7 +2216,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             onClick={() => setShowFullDocPreview(!showFullDocPreview)}
           >
             <FileText size={16} />
-            <span>{showFullDocPreview ? 'הסתר תצוגת טבלה מלאה' : 'תצוגת מסמך מלאה'}</span>
+            <span>{showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}</span>
           </button>
 
           <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
@@ -2311,12 +2311,39 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       </div>
 
-      {/* Optional Live Full Document Table Preview (Right at Top when toggled or when report is locked) */}
-      {showFullDocPreview && (
+      {/* Full Document View (Replaces Editable Form Sections 1-4 when toggled or when report is locked) */}
+      {showFullDocPreview ? (
         <section className="form-section-card live-print-preview-card">
           <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <h3>📄 תצוגת מסמך מלאה</h3>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                disabled={isReportLocked && !userCanLockReport}
+                onClick={() => setShowShareModal(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#ede9fe' : '#f1f5f9',
+                  color: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#5b21b6' : '#334155',
+                  border: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: isReportLocked && !userCanLockReport ? 'not-allowed' : 'pointer',
+                  opacity: isReportLocked && !userCanLockReport ? 0.5 : 1
+                }}
+              >
+                <Users size={15} />
+                <span>
+                  שיתוף צוות
+                  {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
+                    ? ` • ${formData.sharedWith.length}`
+                    : ''}
+                </span>
+              </button>
               <button
                 type="button"
                 className="btn-print-doc"
@@ -2414,11 +2441,98 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               </table>
             )}
           </div>
-        </section>
-      )}
 
-      {/* Section 1: Student Personal Details & Plan Type Radio Selector */}
-      <section className="form-section-card">
+          <div className="bottom-final-actions" style={{ marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
+              <Printer size={18} />
+              <span>הדפס מסמך</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
+                handleSaveProgress();
+                downloadWordFile('tala');
+              }}
+              title="הורד ישירות כקובץ Word ניתן לעריכה"
+            >
+              <Download size={18} />
+              <span>הורד קובץ Word</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
+                setShowEvalReportSection((prev) => {
+                  const next = !prev;
+                  if (next) {
+                    setTimeout(() => {
+                      evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                  }
+                  return next;
+                });
+              }}
+              style={
+                showEvalReportSection
+                  ? {
+                      background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)',
+                      color: '#ffffff',
+                      borderColor: '#6d28d9',
+                      fontWeight: 700
+                    }
+                  : undefined
+              }
+            >
+              <FileText size={18} />
+              <span>הערכת מחצית / סוף שנה</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
+                const next = !showStatusReportSection;
+                setShowStatusReportSection(next);
+                if (next) {
+                  const currentSections = Array.isArray(formData.statusReportSections)
+                    ? formData.statusReportSections.filter((s) => (s.content || '').trim())
+                    : [];
+                  if (currentSections.length === 0 && !isGeneratingStatusReport) {
+                    handleGenerateStatusReport();
+                  } else {
+                    setTimeout(() => {
+                      statusReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                  }
+                }
+              }}
+              style={{
+                background: showStatusReportSection
+                  ? 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)'
+                  : 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                color: showStatusReportSection ? '#ffffff' : '#1e40af',
+                borderColor: showStatusReportSection ? '#1d4ed8' : '#93c5fd',
+                fontWeight: 700
+              }}
+              title="הפקת דו״ח מצב חינוכי-תפקודי עדכני ומקצועי מבוסס על נתוני הכרטיס, המטרות והערכת מחצית/סוף שנה"
+            >
+              <FileText size={18} />
+              <span>דו"ח מצב</span>
+            </button>
+
+            <button type="button" className="btn-send-email-doc" onClick={() => handleOpenEmailModal('tala')}>
+              <Mail size={18} />
+              <span>שלח למייל</span>
+            </button>
+          </div>
+        </section>
+      ) : (
+        <>
+          {/* Section 1: Student Personal Details & Plan Type Radio Selector */}
+          <section className="form-section-card">
         <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
           <button
@@ -3697,6 +3811,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </button>
         </div>
       </section>
+        </>
+      )}
 
       {/* Separate Report Section: דוח הערכת מחצית / סוף שנה */}
       {showEvalReportSection && (

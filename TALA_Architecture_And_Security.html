@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>מערכת TALA – ארכיטקטורת מערכת ואבטחת מידע (Architecture &amp; Security Whitepaper)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&display=swap');
+
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Rubik', Arial, sans-serif;
+      direction: rtl;
+      text-align: right;
+      background: #eef2f9;
+      color: #1e293b;
+    }
+
+    .slide {
+      width: 297mm;
+      height: 210mm;
+      position: relative;
+      overflow: hidden;
+      background: #ffffff;
+      page-break-after: always;
+      break-after: page;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .slide:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    .stained-strip {
+      height: 7px;
+      width: 100%;
+      background: linear-gradient(90deg, #0ea5e9 0%, #3b6ea5 25%, #6b46c1 55%, #10b981 80%, #a98eda 100%);
+      flex-shrink: 0;
+    }
+
+    .slide-header {
+      background: linear-gradient(135deg, #172b4d 0%, #2b4c7e 50%, #5b3fa6 100%);
+      color: #ffffff;
+      padding: 13px 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3.5px solid #a98eda;
+      flex-shrink: 0;
+    }
+
+    .slide-header-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .slide-header-brand img {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 2px solid #e9d8fd;
+      object-fit: cover;
+      background: #ffffff;
+    }
+
+    .slide-header-title h2 {
+      margin: 0;
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .slide-header-title p {
+      margin: 2px 0 0 0;
+      font-size: 12.5px;
+      color: #e2e8f0;
+      font-weight: 400;
+    }
+
+    .slide-badge {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      color: #ffffff;
+      padding: 5px 13px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .slide-body {
+      flex: 1;
+      padding: 18px 34px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+      background: radial-gradient(circle at top left, #f5f3ff 0%, #f8fafc 45%, #ffffff 100%);
+      overflow: hidden;
+    }
+
+    .slide-footer {
+      padding: 9px 34px;
+      background: #f1f5f9;
+      border-top: 1px solid #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      color: #475569;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    /* Cover Slide Specific */
+    .cover-body {
+      flex: 1;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 48%, #4c1d95 100%);
+      color: #ffffff;
+      padding: 36px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .cover-hero {
+      display: flex;
+      align-items: center;
+      gap: 26px;
+      margin-top: 6px;
+    }
+
+    .cover-logo {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      border: 4px solid #38bdf8;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+      object-fit: cover;
+      background: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .cover-titles h1 {
+      margin: 0;
+      font-size: 35px;
+      font-weight: 800;
+      line-height: 1.18;
+      color: #ffffff;
+    }
+
+    .cover-titles h3 {
+      margin: 8px 0 0 0;
+      font-size: 18px;
+      font-weight: 400;
+      color: #bae6fd;
+      line-height: 1.45;
+    }
+
+    .cover-pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 13px;
+      margin: 14px 0;
+    }
+
+    .pillar-card {
+      background: rgba(255, 255, 255, 0.09);
+      border: 1.5px solid rgba(255, 255, 255, 0.24);
+      border-top: 4px solid #38bdf8;
+      border-radius: 12px;
+      padding: 15px 13px;
+      text-align: right;
+    }
+
+    .pillar-card.p-purple { border-top-color: #c084fc; }
+    .pillar-card.p-emerald { border-top-color: #34d399; }
+    .pillar-card.p-amber { border-top-color: #fbbf24; }
+    .pillar-card.p-rose { border-top-color: #f472b6; }
+
+    .pillar-icon {
+      font-size: 24px;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .pillar-card h4 {
+      margin: 0 0 6px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .pillar-card p {
+      margin: 0;
+      font-size: 12px;
+      color: #e2e8f0;
+      line-height: 1.45;
+    }
+
+    /* Grids & Cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .feature-card {
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-right: 5px solid #2563eb;
+      border-radius: 12px;
+      padding: 13px 16px;
+      box-shadow: 0 3px 10px rgba(30, 58, 95, 0.05);
+    }
+
+    .feature-card.purple { border-right-color: #7c3aed; }
+    .feature-card.emerald { border-right-color: #059669; }
+    .feature-card.amber { border-right-color: #d97706; }
+    .feature-card.navy { border-right-color: #0f172a; }
+
+    .feature-card h3 {
+      margin: 0 0 6px 0;
+      font-size: 15.5px;
+      font-weight: 700;
+      color: #1e3a5f;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .feature-card p {
+      margin: 0;
+      font-size: 12.5px;
+      line-height: 1.48;
+      color: #334155;
+    }
+
+    .feature-list {
+      margin: 6px 0 0 0;
+      padding-right: 16px;
+      font-size: 12.3px;
+      line-height: 1.52;
+      color: #334155;
+    }
+
+    .feature-list li {
+      margin-bottom: 4px;
+    }
+
+    .code-tag {
+      display: inline-block;
+      font-family: Consolas, Monaco, 'Courier New', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      border-radius: 5px;
+      padding: 1px 6px;
+      direction: ltr;
+    }
+
+    .code-tag.purple {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border-color: #ddd6fe;
+    }
+
+    .code-tag.emerald {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #a7f3d0;
+    }
+
+    .highlight-banner {
+      background: linear-gradient(135deg, #eef4fc 0%, #f3eefc 100%);
+      border: 1.5px solid #c4b5fd;
+      border-radius: 10px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      font-size: 12.8px;
+    }
+
+    .highlight-banner strong {
+      color: #3b0764;
+      font-size: 13.5px;
+    }
+
+    .diagram-box {
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Security Table */
+    .sec-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 3px 10px rgba(30, 58, 95, 0.05);
+      font-size: 12px;
+    }
+
+    .sec-table th, .sec-table td {
+      border: 1px solid #cbd5e1;
+      padding: 7px 11px;
+      text-align: right;
+      vertical-align: middle;
+    }
+
+    .sec-table thead th {
+      background: #172b4d;
+      color: #ffffff;
+      font-size: 12.5px;
+      font-weight: 700;
+    }
+
+    .sec-table td.layer-col {
+      font-weight: 700;
+      background: #f8fafc;
+      color: #1e3a5f;
+      width: 18%;
+    }
+
+    .sec-table td.threat-col {
+      color: #991b1b;
+      background: #fef2f2;
+      font-weight: 600;
+      width: 22%;
+    }
+
+    .sec-table td.control-col {
+      color: #0f172a;
+      width: 38%;
+    }
+
+    .sec-table td.code-col {
+      width: 22%;
+      background: #f8fafc;
+      font-size: 11.5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================================================================== -->
+  <!-- SLIDE 1: COVER & SECURITY POSTURE OVERVIEW                            -->
+  <!-- ===================================================================== -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="cover-body">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="slide-badge">מסמך ארכיטקטורה ואבטחת מידע • System Architecture &amp; Security Whitepaper</span>
+        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;" dir="ltr">TALA v3.0 • Security-First Design • 2026</span>
+      </div>
+
+      <div class="cover-hero">
+        <img src="./public/tala-logo.png" alt="TALA Logo" class="cover-logo" />
+        <div class="cover-titles">
+          <h1>מערכת TALA – ארכיטקטורת מערכת ואבטחת מידע</h1>
+          <h3>סקירה טכנולוגית מקיפה: תשתית ענן מאובטחת (GitHub SSL/TLS &amp; Firebase), הצפנת סיסמאות, בקרת הרשאות, הגנת פרטיות (PII) ופיתוח קוד מאובטח (Secured Code Attitude)</h3>
+        </div>
+      </div>
+
+      <div class="cover-pillars-grid">
+        <div class="pillar-card">
+          <span class="pillar-icon">🌐</span>
+          <h4>GitHub SSL/TLS &amp; CDN</h4>
+          <p>תעודת SSL/TLS אוטומטית (HTTPS בלבד), רשת הפצה גלובלית מוגנת DDoS, ופריסת CI/CD מאובטחת ב-OIDC עם הרשאות מינימליות.</p>
+        </div>
+        <div class="pillar-card p-purple">
+          <span class="pillar-icon">🔐</span>
+          <h4>הצפנת סיסמאות ואימות</h4>
+          <p>רשימת מורשים סגורה (Allowlist), גיבוב חד-כיווני <span dir="ltr">SHA-256 (256 rounds + 128-bit Salt)</span>, מדיניות סיסמה קשיחה וחסימת Brute-Force.</p>
+        </div>
+        <div class="pillar-card p-emerald">
+          <span class="pillar-icon">🛡️</span>
+          <h4>בקרת גישה ובידוד נתונים</h4>
+          <p>אימות דו-שכבתי ב-Firebase Auth ובחוקי שרת (<span dir="ltr">firestore.rules</span>), בידוד תיקי תלמידים לפי <span dir="ltr">ownerEmail</span> ושיתוף צוותי מבוקר.</p>
+        </div>
+        <div class="pillar-card p-amber">
+          <span class="pillar-icon">🕵️‍♀️</span>
+          <h4>הגנת פרטיות הקטין (PII)</h4>
+          <p>המרה אוטומטית לראשי תיבות (<span dir="ltr">נ.י.</span>) בכל הטקסטים והשחרת ת.ז/טלפון/כתובת (<span dir="ltr">████████</span>) בהדפסה, ב-Word, ב-PDF ובמייל.</p>
+        </div>
+        <div class="pillar-card p-rose">
+          <span class="pillar-icon">💻</span>
+          <h4>Secured Code Attitude</h4>
+          <p>קוד מודולרי מבוסס Domain, סניטציית קלטים, אחסון מוגן שגיאות, הפקת מסמכים מקומית בדפדפן, ובדיקות אוטומטיות ב-CI.</p>
+        </div>
+      </div>
+
+      <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-size: 13px; color: #e2e8f0; line-height: 1.5;">
+          <strong style="color: #38bdf8;">עקרון מנחה – הגנה רב-שכבתית (Defense-in-Depth):</strong>
+          אבטחת המערכת אינה נשענת על שכבה בודדת, אלא משלבת הצפנת תשתית ותקשורת (<span dir="ltr">TLS 1.3</span>), הצפנה קריפטוגרפית בצד הלקוח, אכיפת חוקים בצד השרת (<span dir="ltr">Firestore Rules</span>), והנדסת קוד הגנתית השומרת על פרטיות הקטין בכל שלב.
+        </div>
+        <span class="slide-badge" style="background: #0284c7; border-color: #7dd3fc;">עמוד 1 מתוך 6</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SLIDE 2: SYSTEM ARCHITECTURE DIAGRAM (SVG)                            -->
+  <!-- ===================================================================== -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="slide-header">
+      <div class="slide-header-brand">
+        <img src="./public/tala-logo.png" alt="TALA Logo" />
+        <div class="slide-header-title">
+          <h2>1. ארכיטקטורת המערכת מקצה לקצה (High-Level System Architecture Diagram)</h2>
+          <p>ארכיטקטורת Serverless SPA מודרנית המפרידה בין שכבת התצוגה הסטטית, שכבת הענן המאובטחת ושירותי ה-AI והדיוור</p>
+        </div>
+      </div>
+      <span class="slide-badge">System Architecture Diagram</span>
+    </div>
+
+    <div class="slide-body">
+      <!-- Vector Architecture Diagram -->
+      <div class="diagram-box" style="padding: 8px 12px;">
+        <svg viewBox="0 0 1020 305" width="100%" height="295" xmlns="http://www.w3.org/2000/svg" style="font-family: 'Rubik', Arial, sans-serif;">
+          <defs>
+            <linearGradient id="gradClient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#eff6ff" />
+              <stop offset="100%" stop-color="#dbeafe" />
+            </linearGradient>
+            <linearGradient id="gradGithub" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f0fdf4" />
+              <stop offset="100%" stop-color="#dcfce7" />
+            </linearGradient>
+            <linearGradient id="gradFirebase" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#faf5ff" />
+              <stop offset="100%" stop-color="#f3e8ff" />
+            </linearGradient>
+            <linearGradient id="gradExternal" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#fffbeb" />
+              <stop offset="100%" stop-color="#fef3c7" />
+            </linearGradient>
+            <marker id="arrowBlue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#1d4ed8" />
+            </marker>
+            <marker id="arrowGreen" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#047857" />
+            </marker>
+            <marker id="arrowPurple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#6d28d9" />
+            </marker>
+            <marker id="arrowAmber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#b45309" />
+            </marker>
+          </defs>
+
+          <!-- ZONE 1: GITHUB CI/CD & SSL CDN (RIGHT) -->
+          <rect x="765" y="8" width="245" height="288" rx="12" fill="url(#gradGithub)" stroke="#16a34a" stroke-width="2" />
+          <rect x="765" y="8" width="245" height="32" rx="12" fill="#15803d" />
+          <text x="887" y="29" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">1. GitHub Cloud &amp; SSL Edge CDN</text>
+
+          <rect x="780" y="52" width="215" height="68" rx="8" fill="#ffffff" stroke="#86efac" stroke-width="1.5" />
+          <text x="887" y="72" fill="#14532d" font-size="12" font-weight="700" text-anchor="middle">GitHub Actions CI/CD Pipeline</text>
+          <text x="887" y="89" fill="#334155" font-size="10.5" text-anchor="middle">• בדיקות אוטומטיות (Vitest Gate)</text>
+          <text x="887" y="105" fill="#334155" font-size="10.5" text-anchor="middle">• אימות OIDC ללא מפתחות קבועים</text>
+
+          <line x1="887" y1="120" x2="887" y2="142" stroke="#047857" stroke-width="2" marker-end="url(#arrowGreen)" />
+
+          <rect x="780" y="145" width="215" height="72" rx="8" fill="#ffffff" stroke="#86efac" stroke-width="1.5" />
+          <text x="887" y="165" fill="#14532d" font-size="12" font-weight="700" text-anchor="middle">GitHub Pages + Fastly CDN</text>
+          <text x="887" y="182" fill="#334155" font-size="10.5" text-anchor="middle">• קבצים סטטיים חתומים (Immutable)</text>
+          <text x="887" y="198" fill="#334155" font-size="10.5" text-anchor="middle">• הגנת DDoS ובידוד מוחלט משרת</text>
+
+          <rect x="780" y="228" width="215" height="56" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" />
+          <text x="887" y="248" fill="#14532d" font-size="11.5" font-weight="800" text-anchor="middle">🔒 GitHub Managed SSL/TLS Cert</text>
+          <text x="887" y="264" fill="#166534" font-size="10" text-anchor="middle">Enforced HTTPS (TLS 1.3) + HSTS</text>
+          <text x="887" y="278" fill="#166534" font-size="9.5" text-anchor="middle">Auto-Renewed CA Certificate</text>
+
+          <!-- ZONE 2: CLIENT APPLICATION TIER (CENTER-RIGHT) -->
+          <rect x="385" y="8" width="315" height="288" rx="12" fill="url(#gradClient)" stroke="#2563eb" stroke-width="2" />
+          <rect x="385" y="8" width="315" height="32" rx="12" fill="#1d4ed8" />
+          <text x="542" y="29" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">2. שכבת לקוח – TALA Client SPA (React 19)</text>
+
+          <!-- Arrow from GitHub CDN to Client -->
+          <line x1="765" y1="180" x2="703" y2="180" stroke="#047857" stroke-width="2.2" marker-end="url(#arrowGreen)" />
+          <rect x="708" y="152" width="52" height="22" rx="4" fill="#ecfdf5" stroke="#10b981" />
+          <text x="734" y="166" fill="#065f46" font-size="9.5" font-weight="700" text-anchor="middle">HTTPS</text>
+
+          <rect x="400" y="50" width="285" height="54" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5" />
+          <text x="542" y="69" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">שער אימות ואבטחה (AllowlistAuthGate)</text>
+          <text x="542" y="85" fill="#334155" font-size="10" text-anchor="middle">PBKDF SHA-256 (256 rounds + Salt) • Lockout (5 tries)</text>
+          <text x="542" y="98" fill="#334155" font-size="10" text-anchor="middle">חובת החלפת סיסמה זמנית • חתימת NDA דיגיטלית</text>
+
+          <rect x="400" y="112" width="285" height="54" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5" />
+          <text x="542" y="131" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">ליבת Domain ובקרת הרשאות (RBAC Engine)</text>
+          <text x="542" y="147" fill="#334155" font-size="10" text-anchor="middle">permissions.js • בדיקת ownerEmail מול sharedWith</text>
+          <text x="542" y="160" fill="#334155" font-size="10" text-anchor="middle">איפוס חיבור יומי אוטומטי (Daily Session Reset)</text>
+
+          <rect x="400" y="174" width="285" height="54" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5" />
+          <text x="542" y="193" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">מנוע פרטיות והפקת דוחות מקומית (PII Redactor)</text>
+          <text x="542" y="209" fill="#334155" font-size="10" text-anchor="middle">ראשי תיבות אוטומטיים (נ.י.) + השחרת שדות (████████)</text>
+          <text x="542" y="222" fill="#334155" font-size="10" text-anchor="middle">הפקת PDF/Word בזיכרון הדפדפן (html2pdf.js)</text>
+
+          <rect x="400" y="236" width="285" height="48" rx="8" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" />
+          <text x="542" y="255" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">מעטפת הגנת קוד (ErrorBoundary &amp; safeStorage)</text>
+          <text x="542" y="272" fill="#1e40af" font-size="10" text-anchor="middle">Cache מקומי מוגן + sanitizeForFirestore לפני שידור</text>
+
+          <!-- ZONE 3: FIREBASE CLOUD BACKEND (TOP-LEFT) -->
+          <rect x="10" y="8" width="300" height="168" rx="12" fill="url(#gradFirebase)" stroke="#7c3aed" stroke-width="2" />
+          <rect x="10" y="8" width="300" height="32" rx="12" fill="#6d28d9" />
+          <text x="160" y="29" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">3. ענן Google Firebase Backend</text>
+
+          <rect x="24" y="48" width="272" height="48" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.5" />
+          <text x="160" y="67" fill="#4c1d95" font-size="11.5" font-weight="700" text-anchor="middle">Firebase Authentication + Security Rules</text>
+          <text x="160" y="84" fill="#334155" font-size="10" text-anchor="middle">JWT אימות • אכיפת בעלות ומניעת מחיקה בשרת</text>
+
+          <rect x="24" y="104" width="272" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.5" />
+          <text x="160" y="122" fill="#4c1d95" font-size="11.5" font-weight="700" text-anchor="middle">Cloud Firestore (NoSQL Real-Time DB)</text>
+          <text x="160" y="138" fill="#334155" font-size="10" text-anchor="middle">• tala_students/{id} (מופרד לפי ownerEmail)</text>
+          <text x="160" y="152" fill="#334155" font-size="10" text-anchor="middle">• tala_config (Hashed Users, Goal Bank, Settings)</text>
+
+          <!-- Bi-directional arrow Client <-> Firebase -->
+          <line x1="385" y1="95" x2="313" y2="95" stroke="#6d28d9" stroke-width="2.2" marker-end="url(#arrowPurple)" marker-start="url(#arrowPurple)" />
+          <rect x="318" y="66" width="60" height="22" rx="4" fill="#f5f3ff" stroke="#8b5cf6" />
+          <text x="348" y="80" fill="#4c1d95" font-size="9" font-weight="700" text-anchor="middle">WSS / TLS</text>
+
+          <!-- ZONE 4: EXTERNAL SERVICES (BOTTOM-LEFT) -->
+          <rect x="10" y="188" width="300" height="108" rx="12" fill="url(#gradExternal)" stroke="#d97706" stroke-width="2" />
+          <rect x="10" y="188" width="300" height="30" rx="12" fill="#b45309" />
+          <text x="160" y="208" fill="#ffffff" font-size="12.5" font-weight="700" text-anchor="middle">4. שירותי AI ודיוור ישיר (Encrypted APIs)</text>
+
+          <rect x="22" y="226" width="134" height="58" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.5" />
+          <text x="89" y="244" fill="#78350f" font-size="11" font-weight="700" text-anchor="middle">Google Gemini AI</text>
+          <text x="89" y="259" fill="#334155" font-size="9.5" text-anchor="middle">עיבוד פדגוגי ב-HTTPS</text>
+          <text x="89" y="273" fill="#334155" font-size="9.5" text-anchor="middle">ללא שמירת PII חיצונית</text>
+
+          <rect x="164" y="226" width="134" height="58" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.5" />
+          <text x="231" y="244" fill="#78350f" font-size="11" font-weight="700" text-anchor="middle">Apps Script Relay</text>
+          <text x="231" y="259" fill="#334155" font-size="9.5" text-anchor="middle">שליחת דוחות ו-NDA</text>
+          <text x="231" y="273" fill="#334155" font-size="9.5" text-anchor="middle">במייל מוצפן (HTTPS POST)</text>
+
+          <!-- Arrow Client -> External APIs -->
+          <line x1="385" y1="242" x2="313" y2="242" stroke="#b45309" stroke-width="2.2" marker-end="url(#arrowAmber)" />
+          <rect x="318" y="214" width="60" height="22" rx="4" fill="#fffbeb" stroke="#f59e0b" />
+          <text x="348" y="228" fill="#78350f" font-size="9" font-weight="700" text-anchor="middle">HTTPS TLS</text>
+        </svg>
+      </div>
+
+      <!-- 4 Compact Architecture Layer Cards -->
+      <div class="grid-4">
+        <div class="feature-card emerald" style="padding: 10px 12px;">
+          <h3 style="font-size: 13.5px;">1. שכבת GitHub &amp; SSL Edge</h3>
+          <p style="font-size: 11.5px;">אירוח סטטי על גבי <strong>GitHub Pages CDN</strong>. כל תעבורה מוצפנת ב-<strong>SSL/TLS 1.3</strong>. פריסה אוטומטית דרך GitHub Actions רק לאחר מעבר בדיקות יחידה.</p>
+        </div>
+        <div class="feature-card" style="padding: 10px 12px;">
+          <h3 style="font-size: 13.5px;">2. שכבת לקוח (React SPA)</h3>
+          <p style="font-size: 11.5px;">מבצעת גיבוב סיסמאות מקומי, אכיפת הרשאות, השחרת פרטים מזהים והפקת קבצי PDF/Word בזיכרון הדפדפן ללא שרת צד-שלישי.</p>
+        </div>
+        <div class="feature-card purple" style="padding: 10px 12px;">
+          <h3 style="font-size: 13.5px;">3. שכבת ענן (Firebase)</h3>
+          <p style="font-size: 11.5px;">סנכרון בזמן אמת מול <strong>Cloud Firestore</strong> על גבי WebSockets מוצפנים, מוגן ע"י <strong>Firebase Auth</strong> וחוקי <code>firestore.rules</code>.</p>
+        </div>
+        <div class="feature-card amber" style="padding: 10px 12px;">
+          <h3 style="font-size: 13.5px;">4. שירותי AI ודיוור מבוקרים</h3>
+          <p style="font-size: 11.5px;">קריאות HTTPS יוצאות בלבד אל <strong>Gemini API</strong> (לניסוח מטרות ומוקדי כוח) ואל <strong>Google Apps Script</strong> (למשלוח דוחות ו-NDA במייל).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>מערכת TALA – מסמך ארכיטקטורה ואבטחת מידע (Architecture &amp; Security Whitepaper)</span>
+      <span>עמוד 2 מתוך 6</span>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SLIDE 3: SECURITY & AUTHENTICATION FLOWCHART (SVG)                    -->
+  <!-- ===================================================================== -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="slide-header">
+      <div class="slide-header-brand">
+        <img src="./public/tala-logo.png" alt="TALA Logo" />
+        <div class="slide-header-title">
+          <h2>2. תרשים זרימה אבטחתי: אימות, הצפנה, NDA וניהול סשן (Security Flowchart)</h2>
+          <p>תהליך בקרת הכניסה הרב-שלבי החל מהזנת פרטי המשתמש ועד לסנכרון הענן והתנתקות יומית אוטומטית</p>
+        </div>
+      </div>
+      <span class="slide-badge">Authentication &amp; Session Flowchart</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="diagram-box" style="padding: 8px 12px;">
+        <svg viewBox="0 0 1020 295" width="100%" height="285" xmlns="http://www.w3.org/2000/svg" style="font-family: 'Rubik', Arial, sans-serif;">
+          <defs>
+            <marker id="fcArrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#1e3a5f" />
+            </marker>
+            <marker id="fcArrowRed" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#dc2626" />
+            </marker>
+            <marker id="fcArrowGreen" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#059669" />
+            </marker>
+          </defs>
+
+          <!-- STEP 1: START LOGIN -->
+          <rect x="855" y="18" width="150" height="58" rx="28" fill="#1e3a5f" stroke="#0f172a" stroke-width="2" />
+          <text x="930" y="43" fill="#ffffff" font-size="12" font-weight="700" text-anchor="middle">1. ניסיון כניסה (HTTPS)</text>
+          <text x="930" y="60" fill="#bae6fd" font-size="10" text-anchor="middle">אימייל + קוד גישה אישי</text>
+
+          <line x1="855" y1="47" x2="812" y2="47" stroke="#1e3a5f" stroke-width="2" marker-end="url(#fcArrow)" />
+
+          <!-- STEP 2: ALLOWLIST & TRIAL CHECK -->
+          <rect x="635" y="14" width="175" height="66" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" />
+          <text x="722" y="34" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">2. בדיקת Allowlist ותוקף</text>
+          <text x="722" y="50" fill="#334155" font-size="10" text-anchor="middle">• קיים ברשימת המורשים בענן?</text>
+          <text x="722" y="65" fill="#334155" font-size="10" text-anchor="middle">• חשבון פעיל וניסיון בתוקף?</text>
+
+          <!-- Reject from Step 2 -->
+          <line x1="722" y1="80" x2="722" y2="122" stroke="#dc2626" stroke-width="2" marker-end="url(#fcArrowRed)" />
+          <text x="748" y="105" fill="#dc2626" font-size="10" font-weight="700">לא מורשה / פג</text>
+
+          <rect x="640" y="125" width="165" height="50" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5" />
+          <text x="722" y="146" fill="#991b1b" font-size="11" font-weight="700" text-anchor="middle">⛔ דחיית גישה מיידית</text>
+          <text x="722" y="162" fill="#7f1d1d" font-size="9.5" text-anchor="middle">אפשרות פנייה למנהל/ת המערכת</text>
+
+          <!-- Pass Step 2 -> Step 3 -->
+          <line x1="635" y1="47" x2="588" y2="47" stroke="#059669" stroke-width="2" marker-end="url(#fcArrowGreen)" />
+          <text x="612" y="39" fill="#059669" font-size="10" font-weight="700" text-anchor="middle">תקין</text>
+
+          <!-- STEP 3: SALTED SHA-256 VERIFICATION -->
+          <rect x="390" y="14" width="195" height="66" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2" />
+          <text x="487" y="34" fill="#4c1d95" font-size="11.5" font-weight="700" text-anchor="middle">3. אימות סיסמה קריפטוגרפי</text>
+          <text x="487" y="50" fill="#334155" font-size="10" text-anchor="middle">SHA-256 (256 סבבים + Salt אישי)</text>
+          <text x="487" y="65" fill="#4c1d95" font-size="9.5" font-weight="600" text-anchor="middle">השוואת passwordHash ללא טקסט גלוי</text>
+
+          <!-- Wrong password branch (Down from Step 3) -->
+          <line x1="487" y1="80" x2="487" y2="122" stroke="#dc2626" stroke-width="2" marker-end="url(#fcArrowRed)" />
+          <text x="524" y="105" fill="#dc2626" font-size="10" font-weight="700">סיסמה שגויה</text>
+
+          <rect x="390" y="125" width="195" height="64" rx="8" fill="#fff1f2" stroke="#e11d48" stroke-width="1.8" />
+          <text x="487" y="144" fill="#9f1239" font-size="11" font-weight="700" text-anchor="middle">🔒 מנגנון Anti-Brute-Force</text>
+          <text x="487" y="160" fill="#881337" font-size="9.8" text-anchor="middle">העלאת מונה failedLoginAttempts</text>
+          <text x="487" y="175" fill="#9f1239" font-size="9.8" font-weight="700" text-anchor="middle">בניסיון ה-5: חסימת חשבון אוטומטית!</text>
+
+          <!-- Pass Step 3 -> Step 4 (First Login / NDA Checks) -->
+          <line x1="390" y1="47" x2="342" y2="47" stroke="#059669" stroke-width="2" marker-end="url(#fcArrowGreen)" />
+          <text x="366" y="39" fill="#059669" font-size="10" font-weight="700" text-anchor="middle">התאמה</text>
+
+          <!-- STEP 4: MANDATORY ONBOARDING GATES -->
+          <rect x="145" y="14" width="195" height="66" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" />
+          <text x="242" y="34" fill="#78350f" font-size="11.5" font-weight="700" text-anchor="middle">4. שערי קליטה חובה (Onboarding)</text>
+          <text x="242" y="50" fill="#334155" font-size="10" text-anchor="middle">א. סיסמה זמנית? ⬅ חובת החלפה</text>
+          <text x="242" y="65" fill="#334155" font-size="10" text-anchor="middle">ב. משתמש ניסיון? ⬅ חובת חתימת NDA</text>
+
+          <!-- Sub-box below Step 4 explaining policy & NDA -->
+          <line x1="242" y1="80" x2="242" y2="122" stroke="#d97706" stroke-width="1.8" stroke-dasharray="4 3" marker-end="url(#fcArrow)" />
+          <rect x="145" y="125" width="195" height="64" rx="8" fill="#fefce8" stroke="#ca8a04" stroke-width="1.5" />
+          <text x="242" y="144" fill="#713f12" font-size="10.5" font-weight="700" text-anchor="middle">אכיפת מדיניות סיסמה + NDA</text>
+          <text x="242" y="160" fill="#334155" font-size="9.5" text-anchor="middle">• 8+ תווים, A-Z, a-z, ספרה ותו מיוחד</text>
+          <text x="242" y="175" fill="#334155" font-size="9.5" text-anchor="middle">• שליחת PDF הסכם סודיות חתום למנהלת</text>
+
+          <!-- Step 4 -> Step 5 (Bottom Pipeline) -->
+          <path d="M 145 47 L 75 47 L 75 215 L 145 215" fill="none" stroke="#059669" stroke-width="2.2" marker-end="url(#fcArrowGreen)" />
+          <text x="48" y="135" fill="#059669" font-size="10.5" font-weight="700" text-anchor="middle">אושר</text>
+
+          <!-- STEP 5: SESSION STAMP & FIREBASE AUTH -->
+          <rect x="148" y="200" width="245" height="76" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2" />
+          <text x="270" y="222" fill="#065f46" font-size="11.5" font-weight="700" text-anchor="middle">5. פתיחת סשן ואימות Firebase Auth</text>
+          <text x="270" y="239" fill="#334155" font-size="10" text-anchor="middle">• חותמת תאריך יומית: sessionDate (YYYY-MM-DD)</text>
+          <text x="270" y="254" fill="#334155" font-size="10" text-anchor="middle">• חיבור שקט ל-Firebase Auth (JWT Token)</text>
+          <text x="270" y="268" fill="#047857" font-size="9.5" font-weight="600" text-anchor="middle">• מחיקת accessCode גלוי והותרת Hash+Salt בלבד</text>
+
+          <line x1="393" y1="238" x2="445" y2="238" stroke="#1e3a5f" stroke-width="2" marker-end="url(#fcArrow)" />
+
+          <!-- STEP 6: ISOLATED WORKSPACE -->
+          <rect x="448" y="200" width="255" height="76" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" />
+          <text x="575" y="222" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">6. סביבת עבודה מבודדת (Scoped Workspace)</text>
+          <text x="575" y="239" fill="#334155" font-size="10" text-anchor="middle">• טעינת תלמידים שבהם ownerEmail == user</text>
+          <text x="575" y="254" fill="#334155" font-size="10" text-anchor="middle">• או תלמידים ששותפו במפורש ב-sharedWith</text>
+          <text x="575" y="268" fill="#1d4ed8" font-size="9.5" font-weight="600" text-anchor="middle">• נחיתה בדף בית פנימי (ללא חשיפת תיק קודם)</text>
+
+          <line x1="703" y1="238" x2="755" y2="238" stroke="#1e3a5f" stroke-width="2" marker-end="url(#fcArrow)" />
+
+          <!-- STEP 7: DAILY AUTO-LOGOUT & UNSAVED GUARD -->
+          <rect x="758" y="200" width="245" height="76" rx="10" fill="#f8fafc" stroke="#475569" stroke-width="2" />
+          <text x="880" y="222" fill="#0f172a" font-size="11.5" font-weight="700" text-anchor="middle">7. ניטור רציף והתנתקות יומית אוטומטית</text>
+          <text x="880" y="239" fill="#334155" font-size="10" text-anchor="middle">• בדיקה כל 60 שניות ובחזרה לחלון (Focus)</text>
+          <text x="880" y="254" fill="#334155" font-size="10" text-anchor="middle">• שמירה אוטומטית של טיוטה פתוחה בחצות</text>
+          <text x="880" y="268" fill="#b91c1c" font-size="9.5" font-weight="700" text-anchor="middle">• ניתוק אוטומטי מ-localStorage ומ-Firebase Auth</text>
+        </svg>
+      </div>
+
+      <div class="grid-3">
+        <div class="feature-card purple" style="padding: 10px 14px;">
+          <h3 style="font-size: 14px;">🔑 גיבוב קריפטוגרפי רב-סבבי (PBKDF)</h3>
+          <p style="font-size: 11.8px;">במקום לשמור סיסמאות גלויות, הפונקציה <span class="code-tag purple">hashPasswordWithSalt</span> מייצרת <span dir="ltr">128-bit Salt</span> אקראי לכל משתמש ומבצעת <strong>256 סבבי SHA-256</strong> עם הפרדת דומיין (<span class="code-tag">TALA_PBKDF_V1</span>).</p>
+        </div>
+        <div class="feature-card amber" style="padding: 10px 14px;">
+          <h3 style="font-size: 14px;">✍️ חתימה דיגיטלית על NDA למשתמשי ניסיון</h3>
+          <p style="font-size: 11.8px;">משתמש ניסיון (<span class="code-tag">isTrialUser</span>) מחויב לחתום על גבי משטח חתימה דיגיטלי. החתימה מוטמעת כקובץ PDF רשמי וכטבלת פיקסלים חסינת חסימות ונשלחת אוטומטית למנהלת המערכת.</p>
+        </div>
+        <div class="feature-card emerald" style="padding: 10px 14px;">
+          <h3 style="font-size: 14px;">🛡️ הגנה על מחשבים משותפים בגן ובבית הספר</h3>
+          <p style="font-size: 11.8px;">מנגנון <span class="code-tag emerald">isSessionUserValidForToday</span> מוודא כי חיבור שנשאר פתוח במחשב הגן או חדר המורים מתנתק אוטומטית עם התחלפות יום הלוח (תוך שמירת טיוטות לא שמורות).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>מערכת TALA – מסמך ארכיטקטורה ואבטחת מידע (Architecture &amp; Security Whitepaper)</span>
+      <span>עמוד 3 מתוך 6</span>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SLIDE 4: INFRASTRUCTURE SECURITY: GITHUB SSL, CI/CD & FIRESTORE RULES -->
+  <!-- ===================================================================== -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="slide-header">
+      <div class="slide-header-brand">
+        <img src="./public/tala-logo.png" alt="TALA Logo" />
+        <div class="slide-header-title">
+          <h2>3. אבטחת תשתית: תעודת SSL ב-GitHub, צינור CI/CD וחוקי Firestore</h2>
+          <p>הגנה מלאה על התעבורה ברשת (Data in Transit), תהליך הבנייה והפריסה (DevSecOps), ואכיפת הרשאות בענן (Data at Rest)</p>
+        </div>
+      </div>
+      <span class="slide-badge">GitHub SSL • OIDC CI/CD • Firestore Rules</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="grid-3">
+        <!-- Card 1: GitHub SSL Certificate & HTTPS -->
+        <div class="feature-card emerald">
+          <h3>
+            <span>🌐 תעודת SSL/TLS רשמית של GitHub</span>
+            <span class="code-tag emerald">TLS 1.3</span>
+          </h3>
+          <p>
+            האפליקציה מתארחת על תשתית <strong>GitHub Pages</strong> המוגנת באמצעות רשת ה-CDN העולמית של Fastly ותעודת SSL מנוהלת:
+          </p>
+          <ul class="feature-list">
+            <li><strong>תעודת X.509 SSL מנוהלת ומתחדשת אוטומטית:</strong> מונפקת ע"י רשות אישורים מוסמכת (Let's Encrypt / DigiCert) ומותקנת אוטומטית על הדומיין <span class="code-tag">zivitreshef.github.io</span>.</li>
+            <li><strong>כפיית HTTPS מוחלטת (Enforce HTTPS):</strong> כל פנייה ב-HTTP מופנית אוטומטית (<span dir="ltr">301 Redirect</span>) לערוץ מוצפן ב-<strong>TLS 1.2 / TLS 1.3</strong>, כולל כותרות <strong>HSTS</strong> למניעת מתקפות SSL Stripping ו-MITM.</li>
+            <li><strong>אפס משטח תקיפה צד-שרת:</strong> מכיוון שהאתר מוגש כנכסים סטטיים חתומים בלבד (Immutable Static Bundle), לא קיים שרת אפליקטיבי החשוף ל-SQL Injection או הרצת קוד מרחוק (RCE).</li>
+          </ul>
+        </div>
+
+        <!-- Card 2: GitHub Actions CI/CD Security -->
+        <div class="feature-card">
+          <h3>
+            <span>⚙️ אבטחת תהליך הבנייה (GitHub Actions)</span>
+            <span class="code-tag">deploy.yml</span>
+          </h3>
+          <p>
+            תהליך הפריסה מוגדר בקובץ <span class="code-tag">.github/workflows/deploy.yml</span> ופועל לפי עקרונות <strong>Zero-Trust CI/CD</strong>:
+          </p>
+          <ul class="feature-list">
+            <li><strong>הרשאות מינימליות (Least Privilege Token):</strong> ה-Workflow מצהיר במפורש על <span class="code-tag">contents: read</span>, <span class="code-tag">pages: write</span> ו-<span class="code-tag">id-token: write</span> בלבד – ללא יכולת שינוי קוד המקור.</li>
+            <li><strong>אימות OIDC ללא סודות קבועים:</strong> הפריסה מתבצעת באמצעות טוקן זמני (OpenID Connect) מול סביבת <span class="code-tag">github-pages</span> מוגנת, ללא שמירת מפתחות SSH או טוקנים ארוכי-טווח.</li>
+            <li><strong>שער איכות ובדיקות אוטומטי (Quality Gate):</strong> הפקודה <span class="code-tag">npm run test:run</span> מריצה את מערך הבדיקות (<span dir="ltr">Vitest</span>) לפני בניית האתר; כישלון בבדיקת אבטחה או הרשאות עוצר את הפריסה מיידית.</li>
+          </ul>
+        </div>
+
+        <!-- Card 3: Cloud Firestore Security Rules -->
+        <div class="feature-card purple">
+          <h3>
+            <span>☁️ אכיפת הרשאות בענן (Firestore Rules)</span>
+            <span class="code-tag purple">firestore.rules</span>
+          </h3>
+          <p>
+            בסיס הנתונים בענן של Google מוגן בשתי שכבות: הצפנת <strong>AES-256 במנוחה</strong> (Encryption at Rest) וחוקי גישה בשרת:
+          </p>
+          <ul class="feature-list">
+            <li><strong>אימות זהות בשרת:</strong> בעת הכניסה, <span class="code-tag purple">ensureFirebaseAuthSession</span> רושם/מחבר את המורה ל-Firebase Auth כך שהשרת מקבל טוקן חתום (<span class="code-tag">request.auth.token.email</span>).</li>
+            <li><strong>בידוד בעלות (<span dir="ltr">isOwnerOfResource</span>):</strong> גישה לקריאה ועריכה של כרטיס תלמיד ב-<span class="code-tag">tala_students/{id}</span> מותרת רק לבעל הכרטיס (<span class="code-tag">ownerEmail</span>), לשותפי צוות ב-<span class="code-tag">sharedWith</span> או למנהלת המערכת.</li>
+            <li><strong>הגנה מפני חטיפת בעלות ומחיקה:</strong> חוקי השרת אוסרים על שותפים (<span class="code-tag">sharedWith</span>) לשנות את שדה <span class="code-tag">ownerEmail</span>, לארכב תלמיד או למחוק אותו (<span class="code-tag">allow delete: if isOwnerOfResource</span>).</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight-banner">
+        <div>
+          <strong>🔒 הצפנה מקצה לקצה בכל ערוצי התקשורת (End-to-End Encrypted Channels):</strong>
+          <span>בין דפדפן המורה ל-GitHub Pages (<strong>HTTPS TLS 1.3</strong>) • בין הדפדפן ל-Cloud Firestore (<strong>Encrypted gRPC/WebSockets over TLS</strong>) • בין הדפדפן ל-Gemini AI ול-Google Apps Script (<strong>HTTPS TLS</strong>).</span>
+        </div>
+        <span class="code-tag emerald" style="font-size: 12px; padding: 4px 10px;">100% HTTPS / TLS Enforced</span>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>מערכת TALA – מסמך ארכיטקטורה ואבטחת מידע (Architecture &amp; Security Whitepaper)</span>
+      <span>עמוד 4 מתוך 6</span>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SLIDE 5: SECURED CODE ATTITUDE & PRIVACY ENGINEERING                  -->
+  <!-- ===================================================================== -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="slide-header">
+      <div class="slide-header-brand">
+        <img src="./public/tala-logo.png" alt="TALA Logo" />
+        <div class="slide-header-title">
+          <h2>4. גישת פיתוח קוד מאובטח והנדסת פרטיות (Secured Code Attitude)</h2>
+          <p>עקרונות כתיבת קוד הגנתי (Defensive Programming), הפרדת אחריות, הגנה מפני דליפת מידע והשחרת PII אוטומטית</p>
+        </div>
+      </div>
+      <span class="slide-badge">Secured Code Attitude &amp; Privacy by Design</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="grid-2">
+        <!-- Card 1: Cryptographic & Credential Hygiene -->
+        <div class="feature-card purple">
+          <h3>
+            <span>1. היגיינת סיסמאות והסרת טקסט גלוי אוטומטית</span>
+            <span class="code-tag purple">src/allowedUsers.js</span>
+          </h3>
+          <ul class="feature-list">
+            <li><strong>מימוש קריפטוגרפי עצמאי ללא תלות בספריות חיצוניות פגיעות:</strong> מימוש תקן <span dir="ltr">FIPS 180-4 SHA-256</span> טהור (<span class="code-tag">sha256Hex</span>) כדי למנוע מתקפות שרשרת אספקה (Supply-Chain Attacks) מחבילות צד-שלישי.</li>
+            <li><strong>הגירה ושדרוג אוטומטי (Self-Healing Credential Migration):</strong> הפונקציה <span class="code-tag">ensureUsersListPasswordsHashed</span> סורקת כל רשימת משתמשים (מקומית או מהענן), ממירה כל קוד גישה ל-<span class="code-tag">{ passwordSalt, passwordHash }</span> ומוחקת פיזית את המאפיין <span class="code-tag">accessCode</span> מהאובייקט לפני השמירה.</li>
+            <li><strong>הגנה על מפתחות API מפני סורקים:</strong> קבצי <span class="code-tag">.env.local</span> מוחרגים ב-<span class="code-tag">.gitignore</span>, ומפתחות ברירת מחדל מורכבים בזמן ריצה ממערך בתים (<span class="code-tag">String.fromCharCode</span>) למניעת חשיפה בסריקות טקסט סטטיות.</li>
+          </ul>
+        </div>
+
+        <!-- Card 2: Privacy by Design & PII Masking -->
+        <div class="feature-card emerald">
+          <h3>
+            <span>2. הנדסת פרטיות והשחרת פרטים מזהים (PII Redaction)</span>
+            <span class="code-tag emerald">src/domain/privacyAndAcronyms.js</span>
+          </h3>
+          <ul class="feature-list">
+            <li><strong>ברירת מחדל מחמירה (Secure by Default):</strong> הדגל <span class="code-tag emerald">hideDetailsInPrint = true</span> מופעל אוטומטית בכל שלושת הדוחות (תל"א/תח"י, דוח הערכה, ודו"ח מצב חינוכי-תפקודי).</li>
+            <li><strong>סריקה והחלפה חכמה בתוך טקסט חופשי:</strong> הפונקציה <span class="code-tag">redactStudentNameInText</span> מזהה את שמו המלא ושמו הפרטי של התלמיד בתוך תיאור התפקוד, המטרות ודו"ח המצב ומחליפה אותם אוטומטית בראשי תיבות (<span class="code-tag">toHebrewAcronym</span>, למשל: <em>"נועם ישראלי" ⬅ "נ.י."</em>).</li>
+            <li><strong>השחרת שדות רגישים והפקה מקומית:</strong> הפונקציה <span class="code-tag">maskSensitiveValue</span> משחירה ת.ז, תאריך לידה, טלפון, כתובת ומסגרת (<span dir="ltr">████████</span>). קבצי ה-PDF וה-Word נוצרים בזיכרון הדפדפן בלבד ללא העלאה לשרת המרה חיצוני.</li>
+          </ul>
+        </div>
+
+        <!-- Card 3: Defensive Storage, Sanitization & Error Boundaries -->
+        <div class="feature-card">
+          <h3>
+            <span>3. תכנות הגנתי, סניטציה ועמידות בפני כשלים</span>
+            <span class="code-tag">src/services/storage.js</span>
+          </h3>
+          <ul class="feature-list">
+            <li><strong>עטיפות אחסון מוגנות (<span dir="ltr">Safe Storage Wrappers</span>):</strong> קריאות וכתיבות ל-<span class="code-tag">localStorage</span> עוברות דרך <span class="code-tag">safeGetStorageJson</span> ו-<span class="code-tag">safeSetStorageJson</span> המגנות מפני <span class="code-tag">QuotaExceededError</span>, גלישה בסתר או הזרקת JSON פגום.</li>
+            <li><strong>סניטציה לפני כתיבה לענן:</strong> הפונקציה <span class="code-tag">sanitizeForFirestore</span> מנקה ערכי <span class="code-tag">undefined</span> ומבנים לא תקינים לפני כל שמירה ב-Firestore.</li>
+            <li><strong>מניעת דליפת מידע בשגיאות (<span dir="ltr">ErrorBoundary</span>):</strong> הרכיב <span class="code-tag">src/components/ErrorBoundary.jsx</span> לוכד שגיאות ריצה ומציג מסך שחזור מבוקר בעברית מבלי לחשוף פרטי קוד או נתוני תלמיד על המסך.</li>
+          </ul>
+        </div>
+
+        <!-- Card 4: Domain Isolation, Factual AI & Automated Verification -->
+        <div class="feature-card amber">
+          <h3>
+            <span>4. אכיפת הרשאות ב-Domain, בקרת AI ובדיקות אוטומטיות</span>
+            <span class="code-tag">src/domain/permissions.js</span>
+          </h3>
+          <ul class="feature-list">
+            <li><strong>הפרדת הרשאות קשיחה בקוד (<span dir="ltr">Single Source of Truth</span>):</strong> פונקציות הבקרה <span class="code-tag">canViewStudent</span>, <span class="code-tag">canDeleteStudent</span>, <span class="code-tag">canArchiveStudent</span> ו-<span class="code-tag">canLockReport</span> מוודאות שרק היוצר המקורי (<span class="code-tag">ownerEmail</span>) רשאי לנעול, לארכב, לשתף או למחוק.</li>
+            <li><strong>מניעת הזיות AI ודריסת עריכות (Hallucination &amp; Overwrite Guards):</strong> דו"ח המצב מופק אך ורק מנתונים קיימים בכרטיס (סעיפים ריקים מושמטים), ומטרות שהמורה ערכה ידנית מסומנות ומוגנות מפני דריסה בעיבוד AI חוזר.</li>
+            <li><strong>כיסוי בדיקות אוטומטי (<span dir="ltr">coreDomain.test.js</span>):</strong> בדיקות יחידה מוודאות אוטומטית את תקינות הגיבוב, ההרשאות, השחרת ה-PII וגלגול השנים בכל שינוי קוד.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>מערכת TALA – מסמך ארכיטקטורה ואבטחת מידע (Architecture &amp; Security Whitepaper)</span>
+      <span>עמוד 5 מתוך 6</span>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- SLIDE 6: DEFENSE-IN-DEPTH SECURITY MATRIX & DATA FLOW                 -->
+  <!-- ===================================================================== -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="slide-header">
+      <div class="slide-header-brand">
+        <img src="./public/tala-logo.png" alt="TALA Logo" />
+        <div class="slide-header-title">
+          <h2>5. מטריצת אבטחה רב-שכבתית וסיכום בקרות (Defense-in-Depth Security Matrix)</h2>
+          <p>מיפוי מלא של איומי אבטחה ופרטיות אל מול מענה הארכיטקטורה והקוד במערכת TALA</p>
+        </div>
+      </div>
+      <span class="slide-badge">Security Controls Matrix</span>
+    </div>
+
+    <div class="slide-body">
+      <table class="sec-table">
+        <thead>
+          <tr>
+            <th>שכבה בארכיטקטורה</th>
+            <th>איום / סיכון אבטחתי (Threat Vector)</th>
+            <th>בקרת האבטחה במערכת TALA (Security Control &amp; Mitigation)</th>
+            <th>מימוש בקוד / תשתית (Code Reference)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="layer-col">1. רשת ואירוח<br/><span style="font-size:10.5px; color:#64748b;">Network &amp; Hosting</span></td>
+            <td class="threat-col">האזנת סתר ברשת (MITM), זיוף אתר או תקיפת שרת</td>
+            <td class="control-col">תעודת <strong>GitHub SSL/TLS</strong> רשמית ומתחדשת אוטומטית, כפיית <strong>HTTPS (TLS 1.3)</strong> + HSTS, הפצה דרך Fastly CDN כקבצים סטטיים בלבד ללא שרת חשוף.</td>
+            <td class="code-col"><span class="code-tag emerald">GitHub Pages SSL</span><br/><span class="code-tag">.github/workflows/deploy.yml</span></td>
+          </tr>
+          <tr>
+            <td class="layer-col">2. אימות וסיסמאות<br/><span style="font-size:10.5px; color:#64748b;">Authentication</span></td>
+            <td class="threat-col">חשיפת סיסמאות במאגר או מתקפת ניחוש (Brute-Force)</td>
+            <td class="control-col">גיבוב חד-כיווני <strong>SHA-256 (256 סבבים) + 128-bit Random Salt</strong> אישי; מחיקת סיסמה גלויה; חסימת חשבון אוטומטית לאחר 5 ניסיונות כושלים; חובת החלפת סיסמה זמנית.</td>
+            <td class="code-col"><span class="code-tag purple">allowedUsers.js</span><br/><span class="code-tag">hashPasswordWithSalt()</span></td>
+          </tr>
+          <tr>
+            <td class="layer-col">3. ניהול סשן ומחשבים משותפים<br/><span style="font-size:10.5px; color:#64748b;">Session Security</span></td>
+            <td class="threat-col">מחשב שהושאר פתוח בגן / בכיתה או פקיעת תקופת ניסיון</td>
+            <td class="control-col">חותמת תאריך יומית (<span dir="ltr">YYYY-MM-DD</span>) ובדיקה רציפה כל 60 שניות: <strong>התנתקות אוטומטית בחצות</strong> (תוך שמירת טיוטה פתוחה), וחסימה אוטומטית בתום ימי הניסיון.</td>
+            <td class="code-col"><span class="code-tag">App.jsx</span><br/><span class="code-tag">isSessionUserValidForToday()</span></td>
+          </tr>
+          <tr>
+            <td class="layer-col">4. הרשאות וענן<br/><span style="font-size:10.5px; color:#64748b;">Cloud &amp; RBAC</span></td>
+            <td class="threat-col">צפייה בתיקי תלמידים של מורה אחרת או מחיקה ע"י שותף</td>
+            <td class="control-col">אימות מול <strong>Firebase Auth</strong> ואכיפת חוקים בשרת ובקוד: בידוד מלא לפי <span class="code-tag">ownerEmail</span>; שותפים ב-<span class="code-tag">sharedWith</span> מנועים מלמחוק, לארכב, לנעול או לשנות בעלות.</td>
+            <td class="code-col"><span class="code-tag purple">firestore.rules</span><br/><span class="code-tag">domain/permissions.js</span></td>
+          </tr>
+          <tr>
+            <td class="layer-col">5. פרטיות הקטין<br/><span style="font-size:10.5px; color:#64748b;">Student PII Privacy</span></td>
+            <td class="threat-col">חשיפת שם תלמיד, ת.ז או כתובת בהדפסה או בשליחה במייל</td>
+            <td class="control-col">מצב <strong>"הסתר פרטים מזהים" מופעל כברירת מחדל</strong>: המרת שם התלמיד לראשי תיבות (<span dir="ltr">נ.י.</span>) בכותרת ובכל הטקסטים החופשיים, והשחרת ת.ז/טלפון/כתובת (<span dir="ltr">████████</span>).</td>
+            <td class="code-col"><span class="code-tag emerald">privacyAndAcronyms.js</span><br/><span class="code-tag">redactStudentNameInText()</span></td>
+          </tr>
+          <tr>
+            <td class="layer-col">6. קניין רוחני ואיכות קוד<br/><span style="font-size:10.5px; color:#64748b;">IP &amp; Code Integrity</span></td>
+            <td class="threat-col">הפצה לא מורשית בגרסת ניסיון או באגים/קריסות בדפדפן</td>
+            <td class="control-col">שער <strong>חתימה דיגיטלית על NDA</strong> למשתמשי ניסיון עם משלוח PDF חתום למנהלת; סניטציית נתונים (<span class="code-tag">sanitizeForFirestore</span>); <span class="code-tag">ErrorBoundary</span>; ובדיקות יחידה ב-CI.</td>
+            <td class="code-col"><span class="code-tag">TrialNdaModal.jsx</span><br/><span class="code-tag">coreDomain.test.js</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="highlight-banner" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #4c1d95 100%); color: #ffffff; border: none; padding: 14px 22px;">
+        <div>
+          <strong style="color: #38bdf8; font-size: 15.5px;">סיכום אבטחתי (Executive Security Summary):</strong>
+          <div style="color: #f1f5f9; font-size: 13px; margin-top: 4px; line-height: 1.5;">
+            מערכת TALA משלבת תשתית ענן תקנית ומוצפנת (<strong style="color: #7dd3fc;">GitHub Pages SSL/TLS + Google Cloud Firestore</strong>) עם ארכיטקטורת קוד מוקפדת (<strong style="color: #c4b5fd;">Secured Code Attitude</strong>) המעניקה לצוותי החינוך והמתי"א סביבת עבודה בטוחה, ממודרת ושומרת פרטיות מקצה לקצה.
+          </div>
+        </div>
+        <span class="slide-badge" style="background: #ffffff; color: #0f172a; font-weight: 800;">
+          TALA • Security &amp; Architecture Verified
+        </span>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>מערכת TALA – מסמך ארכיטקטורה ואבטחת מידע (Architecture &amp; Security Whitepaper)</span>
+      <span>עמוד 6 מתוך 6</span>
+    </div>
+  </section>
+
+</body>
+</html>

@@ -1289,7 +1289,7 @@ export default function App() {
     {};
 
   const siteVersion =
-    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.31';
+    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.32';
 
   return (
     <div className="tala-app-root" dir="rtl">
