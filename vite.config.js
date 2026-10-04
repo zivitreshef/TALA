@@ -22,7 +22,7 @@ function resolveSiteVersionFromGit() {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore']
     });
-    let maxPr = 29;
+    let maxPr = 30;
     const rx = /Merge pull request #(\d+)|\(#(\d+)\)/gi;
     let m;
     while ((m = rx.exec(logText)) !== null) {
@@ -31,7 +31,7 @@ function resolveSiteVersionFromGit() {
     }
     return `1.0.${maxPr + 1}`;
   } catch (_) {
-    return '1.0.30';
+    return '1.0.31';
   }
 }
 

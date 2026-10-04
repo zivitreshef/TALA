@@ -203,7 +203,9 @@ export default function EcologicalWorkPlanForm({
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerStepIdx, setReverseEngineerStepIdx] = useState(0);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
-  const [showFullDocPreview, setShowFullDocPreview] = useState(false);
+  const [showFullDocPreview, setShowFullDocPreview] = useState(() =>
+    Boolean(student?.isLocked)
+  );
   const [isFreeTextCollapsed, setIsFreeTextCollapsed] = useState(() =>
     isRawFreeTextAlreadyAnalyzed(student)
   );
@@ -294,6 +296,7 @@ export default function EcologicalWorkPlanForm({
     const normalized = buildNormalizedStudentData(student);
     savedSnapshotRef.current = JSON.stringify(normalized);
     setFormData(normalized);
+    setShowFullDocPreview(Boolean(normalized.isLocked));
     setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(normalized));
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
@@ -410,6 +413,9 @@ export default function EcologicalWorkPlanForm({
     if (nextLocked) {
       setOpenPickerGoalId(null);
       setActiveAiGoalId(null);
+      setShowFullDocPreview(true);
+    } else {
+      setShowFullDocPreview(false);
     }
 
     savedSnapshotRef.current = JSON.stringify(updated);
@@ -443,6 +449,7 @@ export default function EcologicalWorkPlanForm({
     const rolled = buildRolloverStudentForNextYear(syncedCurrent, currentYear, nextYear);
     savedSnapshotRef.current = JSON.stringify(rolled);
     setFormData(rolled);
+    setShowFullDocPreview(Boolean(rolled.isLocked));
     onSaveStudentPlan(rolled);
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 2500);
@@ -515,6 +522,7 @@ export default function EcologicalWorkPlanForm({
           ),
           reportsByYear: updatedReportsByYear
         };
+        setShowFullDocPreview(Boolean(existingTargetReport.isLocked));
         setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
         return nextData;
       }
@@ -551,6 +559,7 @@ export default function EcologicalWorkPlanForm({
         goals: [freshGoal]
       };
 
+      setShowFullDocPreview(false);
       setIsFreeTextCollapsed(false);
       return {
         ...prev,
@@ -2302,6 +2311,112 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       </div>
 
+      {/* Optional Live Full Document Table Preview (Right at Top when toggled or when report is locked) */}
+      {showFullDocPreview && (
+        <section className="form-section-card live-print-preview-card">
+          <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <h3>📄 תצוגת מסמך מלאה</h3>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn-print-doc"
+                onClick={() => downloadWordFile('tala')}
+                title="הורד כקובץ Word ניתן לעריכה"
+              >
+                <Download size={16} />
+                <span>הורד קובץ Word</span>
+              </button>
+              <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
+                <Printer size={16} />
+                <span>שלח להדפסה כעת</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="preview-paper-sheet">
+            <div className="stained-glass-top-strip" style={{ borderRadius: '6px 6px 0 0' }} />
+            <div style={{ background: 'linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 50%, #8e7cc3 100%)', color: '#fff', padding: '12px 18px', borderBottom: '3px solid #c5aef2', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12.5px' }}><strong>תאריך:</strong> {formData.date}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img src="./tala-logo.png" alt="TALA Logo" style={{ width: '46px', height: '46px', borderRadius: '50%', border: '2px solid #d6c6f7', objectFit: 'cover' }} />
+                <h4 style={{ margin: 0, fontSize: '17px', color: '#ffffff' }}>
+                  {getFullDocTitle()}
+                </h4>
+              </div>
+              <span style={{ fontSize: '12.5px' }}><strong>שנת לימודים:</strong> {formData.schoolYear}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#eef3fb', border: '1.5px solid #5b9bd5', borderRight: '4px solid #8b6fc0', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
+              <span><strong>שם הילד/ה:</strong> {getDisplayStudentName()}</span>
+              <span><strong>מין:</strong> {currentGender === 'girl' ? 'בת' : 'בן'}</span>
+              <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
+              <span><strong>ת.ל:</strong> {getDisplayMaskedField(formData.birthDate)}</span>
+              <span><strong>מסגרת חינוכית:</strong> {hideStudentDetailsOnPrint ? maskSensitiveValue(formData.educationalFramework) : formData.educationalFramework}</span>
+              {formData.planType && <span><strong>סוג תוכנית:</strong> {formData.planType}</span>}
+              {formData.address && <span><strong>כתובת:</strong> {getDisplayMaskedField(formData.address)}</span>}
+              {formData.phone && <span><strong>טלפון:</strong> {getDisplayMaskedField(formData.phone)}</span>}
+            </div>
+
+            <table className="preview-doc-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '50%', background: '#5b9bd5', color: '#fff', textAlign: 'center' }}>מוקדי כוח: כוחות קיימים</th>
+                  <th style={{ width: '50%', background: '#8b6fc0', color: '#fff', textAlign: 'center' }}>כוחות להעצמה וחיזוק</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{getRedactedText(formData.strengthsExisting)}</td>
+                  <td>{getRedactedText(formData.strengthsToEmpower)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            {(formData.goals || []).map((g) => (
+              <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
+                <tbody>
+                  <tr style={{ background: '#eef3fb' }}>
+                    <td colSpan={6}>
+                      <strong>סביבה: {g.environment}</strong> | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
+                    </td>
+                  </tr>
+                  <tr style={{ background: '#eaf3fc', color: '#2b4c73', fontWeight: 'bold' }}>
+                    <td>מטרה</td>
+                    <td>יעדים, ציוני דרך</td>
+                    <td>הזדמנויות, אמצעים</td>
+                    <td>שותפים</td>
+                    <td>משך</td>
+                    <td>אמות מידה להערכה</td>
+                  </tr>
+                  <tr>
+                    <td><strong>{getRedactedText(g.title)}</strong></td>
+                    <td>{getRedactedText(g.objectives)}</td>
+                    <td>{getRedactedText(g.opportunities)}</td>
+                    <td>{getRedactedText(g.partners)}</td>
+                    <td>{getRedactedText(g.duration)}</td>
+                    <td>{getRedactedText(g.evaluationCriteria)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            ))}
+
+            {(formData.recommendations || '').trim() && (
+              <table className="preview-doc-table" style={{ marginTop: '12px' }}>
+                <thead>
+                  <tr>
+                    <th style={{ background: '#5b9bd5', color: '#fff', textAlign: 'right' }}>המלצות להמשך</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ whiteSpace: 'pre-line' }}>{getRedactedText(formData.recommendations)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Section 1: Student Personal Details & Plan Type Radio Selector */}
       <section className="form-section-card">
         <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -2629,97 +2744,6 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </table>
         </div>
       </section>
-
-      {/* Optional Live Full Document Table Preview (Right at Top when toggled) */}
-      {showFullDocPreview && (
-        <section className="form-section-card live-print-preview-card">
-          <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-            <h3>📄 תצוגה מקדימה של המסמך המלא להדפסה</h3>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn-print-doc"
-                onClick={() => downloadWordFile('tala')}
-                title="הורד כקובץ Word ניתן לעריכה"
-              >
-                <Download size={16} />
-                <span>הורד קובץ Word</span>
-              </button>
-              <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
-                <Printer size={16} />
-                <span>שלח להדפסה כעת</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="preview-paper-sheet">
-            <div className="stained-glass-top-strip" style={{ borderRadius: '6px 6px 0 0' }} />
-            <div style={{ background: 'linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 50%, #8e7cc3 100%)', color: '#fff', padding: '12px 18px', borderBottom: '3px solid #c5aef2', borderRadius: '0 0 8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span style={{ fontSize: '12.5px' }}><strong>תאריך:</strong> {formData.date}</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <img src="./tala-logo.png" alt="TALA Logo" style={{ width: '46px', height: '46px', borderRadius: '50%', border: '2px solid #d6c6f7', objectFit: 'cover' }} />
-                <h4 style={{ margin: 0, fontSize: '17px', color: '#ffffff' }}>
-                  {getFullDocTitle()}
-                </h4>
-              </div>
-              <span style={{ fontSize: '12.5px' }}><strong>שנת לימודים:</strong> {formData.schoolYear}</span>
-            </div>
-            <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', padding: '8px 12px', background: '#eef3fb', border: '1.5px solid #5b9bd5', borderRight: '4px solid #8b6fc0', borderRadius: '6px', marginBottom: '12px', fontSize: '13px' }}>
-              <span><strong>שם הילד/ה:</strong> {getDisplayStudentName()}</span>
-              <span><strong>מין:</strong> {currentGender === 'girl' ? 'בת' : 'בן'}</span>
-              <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
-              <span><strong>ת.ל:</strong> {getDisplayMaskedField(formData.birthDate)}</span>
-              <span><strong>מסגרת חינוכית:</strong> {hideStudentDetailsOnPrint ? maskSensitiveValue(formData.educationalFramework) : formData.educationalFramework}</span>
-              {formData.planType && <span><strong>סוג תוכנית:</strong> {formData.planType}</span>}
-              {formData.address && <span><strong>כתובת:</strong> {getDisplayMaskedField(formData.address)}</span>}
-              {formData.phone && <span><strong>טלפון:</strong> {getDisplayMaskedField(formData.phone)}</span>}
-            </div>
-
-            <table className="preview-doc-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '50%', background: '#5b9bd5', color: '#fff', textAlign: 'center' }}>מוקדי כוח: כוחות קיימים</th>
-                  <th style={{ width: '50%', background: '#8b6fc0', color: '#fff', textAlign: 'center' }}>כוחות להעצמה וחיזוק</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>{getRedactedText(formData.strengthsExisting)}</td>
-                  <td>{getRedactedText(formData.strengthsToEmpower)}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {(formData.goals || []).map((g) => (
-              <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
-                <tbody>
-                  <tr style={{ background: '#eef3fb' }}>
-                    <td colSpan={6}>
-                      <strong>סביבה: {g.environment}</strong> | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
-                    </td>
-                  </tr>
-                  <tr style={{ background: '#eaf3fc', color: '#2b4c73', fontWeight: 'bold' }}>
-                    <td>מטרה</td>
-                    <td>יעדים, ציוני דרך</td>
-                    <td>הזדמנויות, אמצעים</td>
-                    <td>שותפים</td>
-                    <td>משך</td>
-                    <td>אמות מידה להערכה</td>
-                  </tr>
-                  <tr>
-                    <td><strong>{getRedactedText(g.title)}</strong></td>
-                    <td>{getRedactedText(g.objectives)}</td>
-                    <td>{getRedactedText(g.opportunities)}</td>
-                    <td>{getRedactedText(g.partners)}</td>
-                    <td>{getRedactedText(g.duration)}</td>
-                    <td>{getRedactedText(g.evaluationCriteria)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Section 3: Ecological Goals & Environments Interactive Builder */}
       <section className="form-section-card">

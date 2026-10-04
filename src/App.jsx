@@ -24,7 +24,9 @@ import {
   KeyRound,
   MessageSquareHeart,
   Lock,
-  Unlock
+  Unlock,
+  GraduationCap,
+  UserPlus
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -229,6 +231,23 @@ export default function App() {
   const [insideLandingSearch, setInsideLandingSearch] = useState('');
   // Clustered by educationalFramework — collapsed by default
   const [expandedFrameworks, setExpandedFrameworks] = useState({});
+  // Sort mode for student roster: 'framework' (by educationalFramework) | 'name' (alphabetical by student name)
+  const [studentSortBy, setStudentSortBy] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tala_student_sort_by');
+      return saved === 'name' || saved === 'framework' ? saved : 'framework';
+    } catch {
+      return 'framework';
+    }
+  });
+  const handleChangeStudentSortBy = (mode) => {
+    setStudentSortBy(mode);
+    try {
+      localStorage.setItem('tala_student_sort_by', mode);
+    } catch {
+      // ignore storage errors
+    }
+  };
   // Student deletion & archive confirmation modal states
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [studentToArchive, setStudentToArchive] = useState(null);
@@ -1201,6 +1220,16 @@ export default function App() {
       (s.name || '').includes(studentSearch) ||
       (s.educationalFramework || '').includes(studentSearch)
   );
+  const sortedStudentsByName = [...filteredStudents].sort((a, b) =>
+    (a.name || '').trim().localeCompare((b.name || '').trim(), 'he')
+  );
+  const sortedStudentsByFramework = [...filteredStudents].sort((a, b) => {
+    const fwA = (a.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
+    const fwB = (b.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
+    const fwCmp = fwA.localeCompare(fwB, 'he');
+    if (fwCmp !== 0) return fwCmp;
+    return (a.name || '').trim().localeCompare((b.name || '').trim(), 'he');
+  });
   const studentsByFramework = filteredStudents.reduce((acc, st) => {
     const fwKey = (st.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
     if (!acc[fwKey]) {
@@ -1260,7 +1289,7 @@ export default function App() {
     {};
 
   const siteVersion =
-    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.30';
+    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.31';
 
   return (
     <div className="tala-app-root" dir="rtl">
@@ -1484,144 +1513,262 @@ export default function App() {
             />
           </div>
 
+          <div className="sidebar-sort-bar" role="group" aria-label="מיון רשימת תלמידים">
+            <span className="sidebar-sort-label">מיון לפי:</span>
+            <div className="sidebar-sort-pills">
+              <button
+                type="button"
+                className={`sidebar-sort-pill ${studentSortBy === 'framework' ? 'active' : ''}`}
+                onClick={() => handleChangeStudentSortBy('framework')}
+              >
+                מסגרת חינוכית
+              </button>
+              <button
+                type="button"
+                className={`sidebar-sort-pill ${studentSortBy === 'name' ? 'active' : ''}`}
+                onClick={() => handleChangeStudentSortBy('name')}
+              >
+                שם תלמיד/ה
+              </button>
+            </div>
+          </div>
+
           <div className="sidebar-students-list">
-            {frameworkClusters.map(([frameworkName, clusterStudents]) => {
-              const isExpanded =
-                Boolean(expandedFrameworks[frameworkName]) ||
-                Boolean(studentSearch.trim());
-              const hasSelectedStudent = clusterStudents.some(
-                (st) => st.id === selectedStudentId
-              );
-
-              return (
-                <div
-                  key={frameworkName}
-                  className={`sidebar-framework-cluster ${
-                    hasSelectedStudent ? 'has-selected' : ''
-                  }`}
-                >
-                  <button
-                    type="button"
-                    className={`sidebar-framework-header ${
-                      isExpanded ? 'expanded' : ''
+            {studentSortBy === 'name' ? (
+              sortedStudentsByName.map((st) => {
+                const isStLocked = Boolean(
+                  unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === st.id
+                    ? unsavedDraftState.draftData.isLocked
+                    : st.isLocked
+                );
+                return (
+                  <div
+                    key={st.id}
+                    className={`sidebar-student-card ${
+                      selectedStudentId === st.id ? 'selected' : ''
                     }`}
-                    onClick={() => toggleFrameworkCluster(frameworkName)}
+                    onClick={() => setSelectedStudentId(st.id)}
                   >
-                    <div className="framework-header-title">
-                      {isExpanded ? (
-                        <ChevronDown size={16} className="framework-chevron" />
-                      ) : (
-                        <ChevronLeft size={16} className="framework-chevron" />
-                      )}
-                      <strong>{frameworkName}</strong>
-                    </div>
-                    <span className="framework-student-count">
-                      {clusterStudents.length}
-                    </span>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="sidebar-framework-students">
-                      {clusterStudents.map((st) => {
-                        const isStLocked = Boolean(
-                          unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === st.id
-                            ? unsavedDraftState.draftData.isLocked
-                            : st.isLocked
-                        );
-                        return (
-                        <div
-                          key={st.id}
-                          className={`sidebar-student-card ${
-                            selectedStudentId === st.id ? 'selected' : ''
-                          }`}
-                          onClick={() => setSelectedStudentId(st.id)}
+                    <div className="st-card-info">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <strong>{st.name || 'ללא שם'}</strong>
+                        <span
+                          className={`st-lock-indicator ${isStLocked ? 'locked' : 'unlocked'}`}
+                          title={
+                            isStLocked
+                              ? 'הדו"ח נעול לעריכה (ניתן לעדכן הערכת מחצית / סוף שנה)'
+                              : 'הדו"ח פתוח לעריכה ולשיתוף'
+                          }
                         >
-                          <div className="st-card-info">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <strong>{st.name || 'ללא שם'}</strong>
-                              <span
-                                className={`st-lock-indicator ${isStLocked ? 'locked' : 'unlocked'}`}
-                                title={
-                                  isStLocked
-                                    ? 'הדו"ח נעול לעריכה (ניתן לעדכן הערכת מחצית / סוף שנה)'
-                                    : 'הדו"ח פתוח לעריכה ולשיתוף'
-                                }
-                              >
-                                {isStLocked ? <Lock size={13} /> : <Unlock size={13} />}
-                              </span>
-                            </div>
-                            <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
-                            <div className="st-card-meta">
-                              <span className="st-goals-badge">
-                                {(st.goals || []).filter((g) => g.title).length} מטרות
-                              </span>
-                              {(st.ownerEmail || '').toLowerCase() !==
-                              currentUser.email.toLowerCase() ? (
+                          {isStLocked ? <Lock size={13} /> : <Unlock size={13} />}
+                        </span>
+                      </div>
+                      <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
+                      <div className="st-card-meta">
+                        <span className="st-goals-badge">
+                          {(st.goals || []).filter((g) => g.title).length} מטרות
+                        </span>
+                        {(st.ownerEmail || '').toLowerCase() !==
+                        currentUser.email.toLowerCase() ? (
+                          <span
+                            style={{
+                              fontSize: '10.5px',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                              borderRadius: '999px',
+                              padding: '1px 6px',
+                              fontWeight: 700
+                            }}
+                          >
+                            שותף עמך
+                          </span>
+                        ) : (
+                          Array.isArray(st.sharedWith) &&
+                          st.sharedWith.length > 0 && (
+                            <span
+                              style={{
+                                fontSize: '10.5px',
+                                background: '#f3eefc',
+                                color: '#5b21b6',
+                                border: '1px solid #ddd6fe',
+                                borderRadius: '999px',
+                                padding: '1px 6px',
+                                fontWeight: 700
+                              }}
+                            >
+                              משותף ({st.sharedWith.length})
+                            </span>
+                          )
+                        )}
+                        {st.lastSavedAt && (
+                          <span className="st-saved-time">עודכן: {st.lastSavedAt}</span>
+                        )}
+                      </div>
+                    </div>
+                    {isStudentOwnedByUser(st, currentUser) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        <button
+                          type="button"
+                          className="btn-delete-st"
+                          onClick={(e) => handleRequestArchiveStudent(st, e)}
+                          title="העבר תלמיד/ה לארכיון"
+                          style={{ color: '#6b5b95' }}
+                        >
+                          <Archive size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-delete-st"
+                          onClick={(e) => handleDeleteStudent(st, e)}
+                          title="מחק תלמיד"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              frameworkClusters.map(([frameworkName, clusterStudents]) => {
+                const isExpanded =
+                  Boolean(expandedFrameworks[frameworkName]) ||
+                  Boolean(studentSearch.trim());
+                const hasSelectedStudent = clusterStudents.some(
+                  (st) => st.id === selectedStudentId
+                );
+
+                return (
+                  <div
+                    key={frameworkName}
+                    className={`sidebar-framework-cluster ${
+                      hasSelectedStudent ? 'has-selected' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className={`sidebar-framework-header ${
+                        isExpanded ? 'expanded' : ''
+                      }`}
+                      onClick={() => toggleFrameworkCluster(frameworkName)}
+                    >
+                      <div className="framework-header-title">
+                        {isExpanded ? (
+                          <ChevronDown size={16} className="framework-chevron" />
+                        ) : (
+                          <ChevronLeft size={16} className="framework-chevron" />
+                        )}
+                        <strong>{frameworkName}</strong>
+                      </div>
+                      <span className="framework-student-count">
+                        {clusterStudents.length}
+                      </span>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="sidebar-framework-students">
+                        {clusterStudents.map((st) => {
+                          const isStLocked = Boolean(
+                            unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === st.id
+                              ? unsavedDraftState.draftData.isLocked
+                              : st.isLocked
+                          );
+                          return (
+                          <div
+                            key={st.id}
+                            className={`sidebar-student-card ${
+                              selectedStudentId === st.id ? 'selected' : ''
+                            }`}
+                            onClick={() => setSelectedStudentId(st.id)}
+                          >
+                            <div className="st-card-info">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <strong>{st.name || 'ללא שם'}</strong>
                                 <span
-                                  style={{
-                                    fontSize: '10.5px',
-                                    background: '#eff6ff',
-                                    color: '#1d4ed8',
-                                    border: '1px solid #bfdbfe',
-                                    borderRadius: '999px',
-                                    padding: '1px 6px',
-                                    fontWeight: 700
-                                  }}
+                                  className={`st-lock-indicator ${isStLocked ? 'locked' : 'unlocked'}`}
+                                  title={
+                                    isStLocked
+                                      ? 'הדו"ח נעול לעריכה (ניתן לעדכן הערכת מחצית / סוף שנה)'
+                                      : 'הדו"ח פתוח לעריכה ולשיתוף'
+                                  }
                                 >
-                                  שותף עמך
+                                  {isStLocked ? <Lock size={13} /> : <Unlock size={13} />}
                                 </span>
-                              ) : (
-                                Array.isArray(st.sharedWith) &&
-                                st.sharedWith.length > 0 && (
+                              </div>
+                              <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
+                              <div className="st-card-meta">
+                                <span className="st-goals-badge">
+                                  {(st.goals || []).filter((g) => g.title).length} מטרות
+                                </span>
+                                {(st.ownerEmail || '').toLowerCase() !==
+                                currentUser.email.toLowerCase() ? (
                                   <span
                                     style={{
                                       fontSize: '10.5px',
-                                      background: '#f3eefc',
-                                      color: '#5b21b6',
-                                      border: '1px solid #ddd6fe',
+                                      background: '#eff6ff',
+                                      color: '#1d4ed8',
+                                      border: '1px solid #bfdbfe',
                                       borderRadius: '999px',
                                       padding: '1px 6px',
                                       fontWeight: 700
                                     }}
                                   >
-                                    משותף ({st.sharedWith.length})
+                                    שותף עמך
                                   </span>
-                                )
-                              )}
-                              {st.lastSavedAt && (
-                                <span className="st-saved-time">עודכן: {st.lastSavedAt}</span>
-                              )}
+                                ) : (
+                                  Array.isArray(st.sharedWith) &&
+                                  st.sharedWith.length > 0 && (
+                                    <span
+                                      style={{
+                                        fontSize: '10.5px',
+                                        background: '#f3eefc',
+                                        color: '#5b21b6',
+                                        border: '1px solid #ddd6fe',
+                                        borderRadius: '999px',
+                                        padding: '1px 6px',
+                                        fontWeight: 700
+                                      }}
+                                    >
+                                      משותף ({st.sharedWith.length})
+                                    </span>
+                                  )
+                                )}
+                                {st.lastSavedAt && (
+                                  <span className="st-saved-time">עודכן: {st.lastSavedAt}</span>
+                                )}
+                              </div>
                             </div>
+                            {isStudentOwnedByUser(st, currentUser) && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <button
+                                  type="button"
+                                  className="btn-delete-st"
+                                  onClick={(e) => handleRequestArchiveStudent(st, e)}
+                                  title="העבר תלמיד/ה לארכיון"
+                                  style={{ color: '#6b5b95' }}
+                                >
+                                  <Archive size={15} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-delete-st"
+                                  onClick={(e) => handleDeleteStudent(st, e)}
+                                  title="מחק תלמיד"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          {isStudentOwnedByUser(st, currentUser) && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                              <button
-                                type="button"
-                                className="btn-delete-st"
-                                onClick={(e) => handleRequestArchiveStudent(st, e)}
-                                title="העבר תלמיד/ה לארכיון"
-                                style={{ color: '#6b5b95' }}
-                              >
-                                <Archive size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-delete-st"
-                                onClick={(e) => handleDeleteStudent(st, e)}
-                                title="מחק תלמיד"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </aside>
 
@@ -1665,7 +1812,7 @@ export default function App() {
                 {/* Card 1: Create New Student */}
                 <div className="inside-landing-card create-card">
                   <div className="inside-card-icon create-icon">
-                    <Plus size={28} />
+                    <GraduationCap size={26} />
                   </div>
                   <h3>יצירת תוכנית לתלמיד/ה חדש/ה</h3>
                   <p>
@@ -1676,7 +1823,7 @@ export default function App() {
                     className="btn-inside-landing-primary"
                     onClick={handleAddNewStudent}
                   >
-                    <Plus size={18} />
+                    <UserPlus size={18} />
                     <span>צור תוכנית עבודה לתלמיד/ה חדש/ה</span>
                   </button>
                 </div>
@@ -1701,6 +1848,26 @@ export default function App() {
                     />
                   </div>
 
+                  <div className="sidebar-sort-bar" role="group" aria-label="מיון רשימת תלמידים">
+                    <span className="sidebar-sort-label">מיון לפי:</span>
+                    <div className="sidebar-sort-pills">
+                      <button
+                        type="button"
+                        className={`sidebar-sort-pill ${studentSortBy === 'framework' ? 'active' : ''}`}
+                        onClick={() => handleChangeStudentSortBy('framework')}
+                      >
+                        מסגרת חינוכית
+                      </button>
+                      <button
+                        type="button"
+                        className={`sidebar-sort-pill ${studentSortBy === 'name' ? 'active' : ''}`}
+                        onClick={() => handleChangeStudentSortBy('name')}
+                      >
+                        שם תלמיד/ה
+                      </button>
+                    </div>
+                  </div>
+
                   {filteredStudents.length === 0 ? (
                     <div className="inside-landing-empty-list">
                       {userStudents.length === 0
@@ -1709,7 +1876,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="inside-landing-student-list">
-                      {filteredStudents.map((st) => (
+                      {(studentSortBy === 'name' ? sortedStudentsByName : sortedStudentsByFramework).map((st) => (
                         <button
                           key={st.id}
                           type="button"
