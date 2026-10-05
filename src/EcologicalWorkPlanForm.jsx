@@ -31,9 +31,9 @@ import {
 import {
   ENVIRONMENTS_LIST,
   SCHOOL_YEARS_LIST,
-  TALA_CLASS_DOMAINS,
-  TALA_GOAL_COLOR_STATUSES,
-  buildDefaultTalaClassGoals,
+  TALA_PROFILE_DOMAINS,
+  TALA_FOCUS_DOMAINS,
+  buildDefaultTalaProfileRows,
   isTalaPlanType,
   getSortedGoalBank,
   generateDefaultQuestionsForCustomGoal,
@@ -71,10 +71,10 @@ import {
   getRedactedText as buildRedactedText,
   getSafeReportFilename as buildSafeReportFilename,
   getActiveStatusReportSections as buildActiveStatusReportSections,
-  getGoalStatusMeta,
   getAdditionalMetadataItems,
   getEffectiveStudentProfileForTala,
-  hasPopulatedClassSection,
+  getEffectiveTalaProfileRows,
+  hasPopulatedTalaProfile,
   openHtmlPrintWindow,
   buildWorkPlanPrintHtml,
   buildEvalReportPrintHtml,
@@ -103,10 +103,12 @@ const buildFreshReportForPlanType = (planType) => {
     title: '',
     objectives: '',
     opportunities: '',
-    partners: isTala ? 'מחנכת, תומכת למידה, צוות רב-מקצועי' : 'צוות הגן, סייעת אישית',
+    opportunitiesIntegration: '',
+    opportunitiesTherapist: '',
+    learningAccommodations: '',
+    partners: isTala ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות הגן, סייעת אישית',
     duration: '',
-    evaluationCriteria: '',
-    goalColorStatus: 'new_goal'
+    evaluationCriteria: ''
   };
 
   return {
@@ -118,21 +120,24 @@ const buildFreshReportForPlanType = (planType) => {
     schoolName: '',
     gradeClass: '',
     homeroomTeacher: '',
+    integrationTeacher: '',
+    additionalPartners: '',
     learningSupportAssistant: '',
     counselorName: '',
     psychologistName: '',
     matyaCoordinator: '',
     emotionalTherapist: '',
     paraMedicalTeam: '',
-    classBackground: '',
-    classGoals: buildDefaultTalaClassGoals(),
     teacherFreeText: '',
     freeTextAnalyzed: false,
     removedAiGoals: [],
     strengthsExisting: '',
     strengthsToEmpower: '',
     studentGeneralBackground: '',
+    studentSupportReceived: '',
     studentMainGoal: '',
+    talaProfileRows: buildDefaultTalaProfileRows(),
+    talaFocusDomains: [],
     recommendations: '',
     evalReportFreeText: '',
     evalReportSummary: '',
@@ -152,24 +157,24 @@ const extractYearReportFromFormData = (data) => ({
   schoolName: data?.schoolName || '',
   gradeClass: data?.gradeClass || '',
   homeroomTeacher: data?.homeroomTeacher || '',
+  integrationTeacher: data?.integrationTeacher || '',
+  additionalPartners: data?.additionalPartners || '',
   learningSupportAssistant: data?.learningSupportAssistant || '',
   counselorName: data?.counselorName || '',
   psychologistName: data?.psychologistName || '',
   matyaCoordinator: data?.matyaCoordinator || '',
   emotionalTherapist: data?.emotionalTherapist || '',
   paraMedicalTeam: data?.paraMedicalTeam || '',
-  classBackground: data?.classBackground || '',
-  classGoals:
-    Array.isArray(data?.classGoals) && data.classGoals.length > 0
-      ? data.classGoals
-      : buildDefaultTalaClassGoals(),
   teacherFreeText: data?.teacherFreeText || '',
   freeTextAnalyzed: Boolean(data?.freeTextAnalyzed),
   removedAiGoals: Array.isArray(data?.removedAiGoals) ? data.removedAiGoals : [],
   strengthsExisting: data?.strengthsExisting || '',
   strengthsToEmpower: data?.strengthsToEmpower || '',
   studentGeneralBackground: data?.studentGeneralBackground || '',
+  studentSupportReceived: data?.studentSupportReceived || '',
   studentMainGoal: data?.studentMainGoal || '',
+  talaProfileRows: buildDefaultTalaProfileRows(data?.talaProfileRows),
+  talaFocusDomains: Array.isArray(data?.talaFocusDomains) ? data.talaFocusDomains : [],
   recommendations: data?.recommendations || '',
   evalReportFreeText: data?.evalReportFreeText || '',
   evalReportSummary: data?.evalReportSummary || '',
@@ -186,7 +191,9 @@ const isRawFreeTextAlreadyAnalyzed = (data) =>
         ((data?.strengthsExisting || '').trim() ||
           (data?.strengthsToEmpower || '').trim() ||
           (data?.studentGeneralBackground || '').trim() ||
+          (data?.studentSupportReceived || '').trim() ||
           (data?.studentMainGoal || '').trim() ||
+          hasPopulatedTalaProfile(data) ||
           (data?.goals || []).some((g) => (g?.title || '').trim())))
   );
 
@@ -197,8 +204,9 @@ const hasContentInYearReport = (rep) => {
       (rep.strengthsExisting && rep.strengthsExisting.trim()) ||
       (rep.strengthsToEmpower && rep.strengthsToEmpower.trim()) ||
       (rep.studentGeneralBackground && rep.studentGeneralBackground.trim()) ||
+      (rep.studentSupportReceived && rep.studentSupportReceived.trim()) ||
       (rep.studentMainGoal && rep.studentMainGoal.trim()) ||
-      hasPopulatedClassSection(rep) ||
+      hasPopulatedTalaProfile(rep) ||
       (rep.recommendations && rep.recommendations.trim()) ||
       (rep.evalReportFreeText && rep.evalReportFreeText.trim()) ||
       (rep.evalReportSummary && rep.evalReportSummary.trim()) ||
@@ -236,10 +244,10 @@ export default function EcologicalWorkPlanForm({
     const normalizedGoals = (st?.goals || []).map((g) =>
       adaptGoalToGender(g, initialGender)
     );
-    const normalizedClassGoals =
-      Array.isArray(st?.classGoals) && st.classGoals.length > 0
-        ? st.classGoals
-        : buildDefaultTalaClassGoals();
+    const normalizedTalaProfileRows = buildDefaultTalaProfileRows(st?.talaProfileRows);
+    const normalizedTalaFocusDomains = Array.isArray(st?.talaFocusDomains)
+      ? st.talaFocusDomains
+      : [];
     const existingReports = { ...(st?.reportsByYear || {}) };
     const existingReportsByPlanType = { ...(st?.reportsByPlanType || {}) };
     const initialRemovedAiGoals = Array.isArray(st?.removedAiGoals) ? st.removedAiGoals : [];
@@ -253,8 +261,9 @@ export default function EcologicalWorkPlanForm({
       !st?.reportsByPlanType &&
       Boolean((st?.strengthsExisting || '').trim() || (st?.strengthsToEmpower || '').trim()) &&
       !(st?.studentGeneralBackground || '').trim() &&
+      !(st?.studentSupportReceived || '').trim() &&
       !(st?.studentMainGoal || '').trim() &&
-      !hasPopulatedClassSection(st);
+      !hasPopulatedTalaProfile(st);
 
     const baseSnapshot = {
       date: st?.date || new Date().toLocaleDateString('he-IL'),
@@ -265,21 +274,24 @@ export default function EcologicalWorkPlanForm({
       schoolName: st?.schoolName || '',
       gradeClass: st?.gradeClass || '',
       homeroomTeacher: st?.homeroomTeacher || '',
+      integrationTeacher: st?.integrationTeacher || '',
+      additionalPartners: st?.additionalPartners || '',
       learningSupportAssistant: st?.learningSupportAssistant || '',
       counselorName: st?.counselorName || '',
       psychologistName: st?.psychologistName || '',
       matyaCoordinator: st?.matyaCoordinator || '',
       emotionalTherapist: st?.emotionalTherapist || '',
       paraMedicalTeam: st?.paraMedicalTeam || '',
-      classBackground: st?.classBackground || '',
-      classGoals: normalizedClassGoals,
       teacherFreeText: st?.teacherFreeText || '',
       freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
       removedAiGoals: initialRemovedAiGoals,
       strengthsExisting: st?.strengthsExisting || '',
       strengthsToEmpower: st?.strengthsToEmpower || '',
       studentGeneralBackground: st?.studentGeneralBackground || '',
+      studentSupportReceived: st?.studentSupportReceived || '',
       studentMainGoal: st?.studentMainGoal || '',
+      talaProfileRows: normalizedTalaProfileRows,
+      talaFocusDomains: normalizedTalaFocusDomains,
       recommendations: st?.recommendations || '',
       evalReportFreeText: st?.evalReportFreeText || '',
       evalReportSummary: st?.evalReportSummary || '',
@@ -344,7 +356,6 @@ export default function EcologicalWorkPlanForm({
     isRawFreeTextAlreadyAnalyzed(student)
   );
   const [isAdditionalInfoOpen, setIsAdditionalInfoOpen] = useState(false); // Collapsed by default ("מידע נוסף")
-  const [isClassSectionOpen, setIsClassSectionOpen] = useState(false); // Collapsible class-level section for תל"א
 
   const AI_BUSY_STEPS = [
     'שלב 1/3: מנתח את התיאור החופשי ומזהה מוקדי כוח, תחומי תפקוד ואתגרים של הילד/ה...',
@@ -523,7 +534,7 @@ export default function EcologicalWorkPlanForm({
       clearTimeout(timer);
       window.removeEventListener('resize', resizeAllTextareas);
     };
-  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection, showStatusReportSection, isFreeTextCollapsed, isAdditionalInfoOpen, isClassSectionOpen]);
+  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection, showStatusReportSection, isFreeTextCollapsed, isAdditionalInfoOpen]);
 
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
@@ -687,11 +698,10 @@ export default function EcologicalWorkPlanForm({
           ? {
               ...existingTargetPlanReport,
               planType: newPlanType,
-              classGoals:
-                Array.isArray(existingTargetPlanReport.classGoals) &&
-                existingTargetPlanReport.classGoals.length > 0
-                  ? existingTargetPlanReport.classGoals
-                  : buildDefaultTalaClassGoals(),
+              talaProfileRows: buildDefaultTalaProfileRows(existingTargetPlanReport.talaProfileRows),
+              talaFocusDomains: Array.isArray(existingTargetPlanReport.talaFocusDomains)
+                ? existingTargetPlanReport.talaFocusDomains
+                : [],
               goals: (existingTargetPlanReport.goals || []).map((g) =>
                 adaptGoalToGender(g, genderToUse)
               )
@@ -756,6 +766,8 @@ export default function EcologicalWorkPlanForm({
           schoolName: existingTargetReport.schoolName ?? prev.schoolName ?? '',
           gradeClass: existingTargetReport.gradeClass ?? prev.gradeClass ?? '',
           homeroomTeacher: existingTargetReport.homeroomTeacher ?? prev.homeroomTeacher ?? '',
+          integrationTeacher: existingTargetReport.integrationTeacher ?? prev.integrationTeacher ?? '',
+          additionalPartners: existingTargetReport.additionalPartners ?? prev.additionalPartners ?? '',
           learningSupportAssistant:
             existingTargetReport.learningSupportAssistant ?? prev.learningSupportAssistant ?? '',
           counselorName: existingTargetReport.counselorName ?? prev.counselorName ?? '',
@@ -764,11 +776,6 @@ export default function EcologicalWorkPlanForm({
           emotionalTherapist:
             existingTargetReport.emotionalTherapist ?? prev.emotionalTherapist ?? '',
           paraMedicalTeam: existingTargetReport.paraMedicalTeam ?? prev.paraMedicalTeam ?? '',
-          classBackground: existingTargetReport.classBackground || '',
-          classGoals:
-            Array.isArray(existingTargetReport.classGoals) && existingTargetReport.classGoals.length > 0
-              ? existingTargetReport.classGoals
-              : buildDefaultTalaClassGoals(),
           teacherFreeText: existingTargetReport.teacherFreeText || '',
           freeTextAnalyzed: Boolean(existingTargetReport.freeTextAnalyzed),
           removedAiGoals: Array.isArray(existingTargetReport.removedAiGoals)
@@ -777,7 +784,12 @@ export default function EcologicalWorkPlanForm({
           strengthsExisting: existingTargetReport.strengthsExisting || '',
           strengthsToEmpower: existingTargetReport.strengthsToEmpower || '',
           studentGeneralBackground: existingTargetReport.studentGeneralBackground || '',
+          studentSupportReceived: existingTargetReport.studentSupportReceived || '',
           studentMainGoal: existingTargetReport.studentMainGoal || '',
+          talaProfileRows: buildDefaultTalaProfileRows(existingTargetReport.talaProfileRows),
+          talaFocusDomains: Array.isArray(existingTargetReport.talaFocusDomains)
+            ? existingTargetReport.talaFocusDomains
+            : [],
           recommendations: existingTargetReport.recommendations || '',
           evalReportFreeText: existingTargetReport.evalReportFreeText || '',
           evalReportSummary: existingTargetReport.evalReportSummary || '',
@@ -836,19 +848,36 @@ export default function EcologicalWorkPlanForm({
     }));
   };
 
-  // Update a row in the class-level goals table (for תל"א)
-  const handleClassGoalChange = (classGoalId, field, value) => {
+  // Update a row in the 8-row functional profile table (for תל"א)
+  const handleTalaProfileRowChange = (rowIdOrDomain, field, value) => {
     if (formData.isLocked) return;
     setFormData((prev) => {
-      const currentClassGoals =
-        Array.isArray(prev.classGoals) && prev.classGoals.length > 0
-          ? prev.classGoals
-          : buildDefaultTalaClassGoals();
+      const currentRows = buildDefaultTalaProfileRows(prev.talaProfileRows);
+      const isStrengthField = field === 'strengths' || field === 'strengthsAndFacilitators';
       return {
         ...prev,
-        classGoals: currentClassGoals.map((cg) =>
-          cg.id === classGoalId ? { ...cg, [field]: value } : cg
+        talaProfileRows: currentRows.map((r) =>
+          r.id === rowIdOrDomain || r.domain === rowIdOrDomain || r.subDomain === rowIdOrDomain
+            ? isStrengthField
+              ? { ...r, strengths: value, strengthsAndFacilitators: value }
+              : { ...r, toStrengthen: value, areasToStrengthenAndBarriers: value }
+            : r
         )
+      };
+    });
+  };
+
+  // Toggle selection of a focus domain for the תל"א work plan
+  const handleToggleTalaFocusDomain = (domain) => {
+    if (formData.isLocked) return;
+    setFormData((prev) => {
+      const current = Array.isArray(prev.talaFocusDomains) ? prev.talaFocusDomains : [];
+      const next = current.includes(domain)
+        ? current.filter((d) => d !== domain)
+        : [...current, domain];
+      return {
+        ...prev,
+        talaFocusDomains: next
       };
     });
   };
@@ -912,7 +941,10 @@ export default function EcologicalWorkPlanForm({
       title: '',
       objectives: '',
       opportunities: '',
-      partners: 'צוות הגן, סייעת אישית',
+      opportunitiesIntegration: '',
+      opportunitiesTherapist: '',
+      learningAccommodations: '',
+      partners: isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות הגן, סייעת אישית',
       duration: `3 חודשים (עד ${dateInfo.plus3Months})`,
       evaluationCriteria: '',
       isTeacherAdded: true,
@@ -991,7 +1023,10 @@ export default function EcologicalWorkPlanForm({
           activityParticipation: g.activityParticipation || genderActivity || '',
           objectives: g.objectives || genderObjectives,
           opportunities: g.opportunities || personalizedOpportunities || '',
-          partners: g.partners || bankItem.defaultPartners || 'צוות חינוכי, הורים',
+          opportunitiesIntegration: g.opportunitiesIntegration || '',
+          opportunitiesTherapist: g.opportunitiesTherapist || '',
+          learningAccommodations: g.learningAccommodations || '',
+          partners: g.partners || bankItem.defaultPartners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות חינוכי, הורים'),
           duration: g.duration || '',
           evaluationCriteria: g.evaluationCriteria || genderEval || '',
           isTeacherModified: true
@@ -1083,7 +1118,7 @@ export default function EcologicalWorkPlanForm({
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
       const genderLabel = currentGender === 'girl' ? 'בת (לשון נקבה)' : 'בן (לשון זכר)';
-      const prompt = `אתה מדריך פדגוגי מומחה לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית" ותח"י.
+      const prompt = `אתה מדריך פדגוגי מומחה לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית" ותל"א / תח"י.
 המורה הגדירה את המטרה העליונה הבאה עבור תלמיד/ה (${genderLabel}, גיל: ${dateInfo.ageDescription}):
 מטרה: "${goalTitle}"
 סביבה / תחום: "${goalRow.environment || 'מרחב הגן / הכיתה'}"
@@ -1092,8 +1127,8 @@ export default function EcologicalWorkPlanForm({
 
 נסח בדיוק 3 שאלות מנחות (Facilitating Questions) קצרות, מכוונות ומעשיות בעברית (מותאמות ל${genderLabel}) שיסייעו למורה לדייק את מילוי השדות של מטרה זו בטבלה:
 - שאלה 1: על התפקוד הנוכחי של הילד/ה והגורמים המאפשרים/המגבילים בסביבה (עבור שדה "פעילות והשתתפות").
-- שאלה 2: על צעדים אופרטיביים הדרגתיים ואמצעי תיווך של הצוות בהתאם לגיל הילד/ה ורמתו/ה (עבור שדות "יעדים וציוני דרך" ו-"הזדמנויות ואמצעים").
-- שאלה 3: על השותפים לתהליך, תיחום הזמן המשוער לפי גודל המטרה (T-Shirt Size: למשל חודש עד ${dateInfo.plus1Month}, 3 חודשים עד ${dateInfo.plus3Months}, או חצי שנה עד ${dateInfo.plus6Months}) ואמות המידה להערכה.
+- שאלה 2: על צעדים אופרטיביים הדרגתיים ואמצעי תיווך של הצוות (מחנכת, מורת שילוב, מטפלת) בהתאם לגיל הילד/ה ורמתו/ה (עבור שדות "יעדים ולו"ז" ו-"האמצעים לביצוע").
+- שאלה 3: על התאמות ללמידה ובדרכי ההיבחנות, תיחום הזמן המשוער לפי גודל המטרה (T-Shirt Size: למשל חודש עד ${dateInfo.plus1Month}, 3 חודשים עד ${dateInfo.plus3Months}, או חצי שנה עד ${dateInfo.plus6Months}) ואמות המידה להערכה.
 
 עבור כל שאלה הצע גם 2-3 תשובות קצרות לדוגמה שהמורה יכולה לבחור בלחיצה.
 החזר תשובה בפורמט JSON בלבד במבנה הבא:
@@ -1138,7 +1173,7 @@ export default function EcologicalWorkPlanForm({
     }
   };
 
-  // Apply teacher's answers to the 3 Facilitating Questions to auto-fill/enrich the 6 columns of the goal!
+  // Apply teacher's answers to the 3 Facilitating Questions to auto-fill/enrich the goal columns!
   const handleApplyFacilitatingAnswers = async (goalRow) => {
     if (formData.isLocked) return;
     const answers = aiAnswersMap[goalRow.id] || {};
@@ -1160,7 +1195,7 @@ export default function EcologicalWorkPlanForm({
     if (geminiApiKey && (ans1 || ans2 || ans3)) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-        const prompt = `אתה מומחה לכתיבת תכנית עבודה אקולוגית ותח"י בעברית.
+        const prompt = `אתה מומחה לכתיבת תכנית עבודה שנתית (תל"א / תח"י) בעברית.
 שם הילד/ה: ${firstName}
 מין הילד/ה: ${genderLabel}
 גיל הילד/ה: ${dateInfo.ageDescription}
@@ -1183,8 +1218,11 @@ export default function EcologicalWorkPlanForm({
 {
   "activityParticipation": "תיאור פעילות והשתתפות בסביבה...",
   "objectives": "• יעד 1\\n• יעד 2\\n• יעד 3",
-  "opportunities": "• הזדמנות ותיווך 1\\n• הזדמנות ותיווך 2",
-  "partners": "שותפים לתהליך...",
+  "opportunities": "• אמצעי תיווך של המחנכת...",
+  "opportunitiesIntegration": "• אמצעי תיווך של מורת שילוב...",
+  "opportunitiesTherapist": "• אמצעי תיווך של מטפלת באומנויות...",
+  "learningAccommodations": "• התאמות ללמידה ובדרכי ההיבחנות...",
+  "partners": "מחנכת, מורת שילוב, מטפלת באומנויות",
   "tShirtSize": "S",
   "duration": "חודש (עד ${dateInfo.plus1Month})",
   "evaluationCriteria": "אמות מידה להערכה..."
@@ -1212,6 +1250,12 @@ export default function EcologicalWorkPlanForm({
                     enriched.activityParticipation || g.activityParticipation,
                   objectives: enriched.objectives || g.objectives,
                   opportunities: enriched.opportunities || g.opportunities,
+                  opportunitiesIntegration:
+                    enriched.opportunitiesIntegration || g.opportunitiesIntegration,
+                  opportunitiesTherapist:
+                    enriched.opportunitiesTherapist || g.opportunitiesTherapist,
+                  learningAccommodations:
+                    enriched.learningAccommodations || g.learningAccommodations,
                   partners: enriched.partners || g.partners,
                   tShirtSize: enriched.tShirtSize || g.tShirtSize,
                   duration: enriched.duration || g.duration,
@@ -1251,9 +1295,12 @@ export default function EcologicalWorkPlanForm({
             ? `${g.objectives ? g.objectives + '\n' : ''}• ${ans2}`
             : g.objectives || `• יתקדם בהדרגה לעבר המטרה: ${g.title}.`,
           opportunities: ans2
-            ? `${g.opportunities ? g.opportunities + '\n' : ''}• הצוות יתווך ל${firstName} באמצעות: ${ans2}.`
+            ? `${g.opportunities ? g.opportunities + '\n' : ''}• המחנכת תתווך ל${firstName} באמצעות: ${ans2}.`
             : g.opportunities || `• המבוגר יזמין ויתווך ל${firstName} באופן יומיומי ומדורג.`,
-          partners: ans3 ? ans3 : g.partners || 'צוות הגן / הכיתה, סייעת אישית, הורים',
+          opportunitiesIntegration: g.opportunitiesIntegration || `• מורת השילוב תחזק מיומנויות תומכות בקבוצה קטנה.`,
+          opportunitiesTherapist: g.opportunitiesTherapist || `• עיבוד חווית ההצלחה וחיזוק הוויסות בחדר הטיפולים.`,
+          learningAccommodations: g.learningAccommodations || `• תיווך מילאי, חלוקת משימות לצעדים קטנים והארכת זמן.`,
+          partners: ans3 ? ans3 : g.partners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות הגן / הכיתה, סייעת אישית, הורים'),
           duration: ans3 && /\d|חודש|שבוע|שנה/.test(ans3) ? ans3 : g.duration || '',
           evaluationCriteria:
             ans3 && ans3.length > 15
@@ -1348,16 +1395,13 @@ export default function EcologicalWorkPlanForm({
         .join('\n');
 
       const prompt = `אתה מומחה פדגוגי לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י).
-בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל המטרות שהוגדרו, הפק תקציר מנהלים (Executive Summary) תמציתי, קוהרנטי ומזוקק עבור טבלת מוקדי הכוח בראש המסמך.
-הנחיות קריטיות:
-- לעולם אל תעתיק משפטים גולמיים כמו שהם (As-Is) מתוך הטקסט של המורה!
-- תקן אוטומטית כל שגיאת כתיב, הקלדה או ניסוח יומיומי על פי ההקשר, ונסח מחדש בעברית פדגוגית תקנית ורהוטה.
-- בכל עמודה כתוב תקציר מנהלים קצר של 3 עד 4 נקודות בלבד (כל נקודה בשורה אחת קצרה וממוקדת לפי נושא/תחום: "• [שם התחום]: [תמצית מקצועית קצרה]"). אל תעמיס מלל!
-
-1. "strengthsExisting": תקציר מנהלים של מוקדי כוח וכוחות קיימים לפי תחומים (3-4 נקודות קצרות).
-2. "strengthsToEmpower": תקציר מנהלים של כוחות להעצמה וחיזוק לפי תחומים (3-4 נקודות קצרות).
-3. "studentGeneralBackground": רקע כללי תמציתי ומקצועי על התלמיד/ה (לשקופית פרופיל תלמיד בתל"א – שילוב של תפקוד נוכחי, חוזקות ומוקדי התערבות).
-4. "studentMainGoal": מטרת העל המרכזית של התלמיד/ה לשנת הלימודים הנוכחית (1-2 משפטים ממוקדים).
+בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל המטרות שהוגדרו, הפק תקציר מנהלים תמציתי ומזוקק:
+- עבור תח"י: "strengthsExisting" (מוקדי כוח: כוחות קיימים) ו-"strengthsToEmpower" (כוחות להעצמה וחיזוק) — 3-4 נקודות קצרות בכל עמודה.
+- עבור תל"א: 
+  1. "studentGeneralBackground": רקע על התלמיד (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי) — 2-3 פסקאות קצרות ותמציתיות.
+  2. "studentSupportReceived": התמיכה שמקבל התלמיד (לימודי, רגשי, חברתי).
+  3. "studentMainGoal": מטרות של התלמיד (לאחר שיח אישי) — 1-2 משפטים.
+  4. "talaFocusDomains": מערך של תחומים נבחרים מתוך: ["לימודי", "התנהגותי", "רגשי", "חברתי", "חושי- מוטורי", "תקשורתי", "כישורי חיים"].
 
 טקסט חופשי של המורה:
 "${freeText}"
@@ -1369,12 +1413,14 @@ ${goalsSummary}
 {
   "strengthsExisting": "• תחום אישיותי-רגשי: תמצית קצרה\\n• תחום קוגניטיבי ושפתי: תמצית קצרה",
   "strengthsToEmpower": "• משחקי שולחן וקופסא: תמצית קצרה\\n• מפגש ושיח: תמצית קצרה",
-  "studentGeneralBackground": "תמצית רקע כללי על התלמיד/ה...",
-  "studentMainGoal": "מטרת התלמיד/ה המרכזית..."
+  "studentGeneralBackground": "רקע על התלמיד...",
+  "studentSupportReceived": "התמיכה שמקבל התלמיד...",
+  "studentMainGoal": "מטרות התלמיד...",
+  "talaFocusDomains": ["לימודי", "חברתי"]
 }`;
 
       const parsed = await callGeminiJson(prompt);
-      if (parsed && (parsed.strengthsExisting || parsed.strengthsToEmpower || parsed.studentGeneralBackground)) {
+      if (parsed) {
         const nextExisting = parsed.strengthsExisting || formData.strengthsExisting;
         const nextEmpower = parsed.strengthsToEmpower || formData.strengthsToEmpower;
         const updated = {
@@ -1383,11 +1429,14 @@ ${goalsSummary}
           strengthsExisting: nextExisting,
           strengthsToEmpower: nextEmpower,
           studentGeneralBackground:
-            parsed.studentGeneralBackground ||
-            formData.studentGeneralBackground ||
-            [nextExisting, nextEmpower].filter(Boolean).join('\n\n'),
+            parsed.studentGeneralBackground || formData.studentGeneralBackground,
+          studentSupportReceived:
+            parsed.studentSupportReceived || formData.studentSupportReceived,
           studentMainGoal:
-            parsed.studentMainGoal || formData.studentMainGoal || nextEmpower,
+            parsed.studentMainGoal || formData.studentMainGoal,
+          talaFocusDomains: Array.isArray(parsed.talaFocusDomains) && parsed.talaFocusDomains.length > 0
+            ? parsed.talaFocusDomains
+            : formData.talaFocusDomains,
           status: 'מוכן להדפסה',
           lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
         };
@@ -1414,7 +1463,11 @@ ${goalsSummary}
       strengthsToEmpower: engineered?.strengthsToEmpower || formData.strengthsToEmpower,
       studentGeneralBackground:
         engineered?.studentGeneralBackground || formData.studentGeneralBackground,
+      studentSupportReceived:
+        engineered?.studentSupportReceived || formData.studentSupportReceived,
       studentMainGoal: engineered?.studentMainGoal || formData.studentMainGoal,
+      talaProfileRows: engineered?.talaProfileRows || formData.talaProfileRows,
+      talaFocusDomains: engineered?.talaFocusDomains || formData.talaFocusDomains,
       status: 'מוכן להדפסה',
       lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
     };
@@ -1499,75 +1552,62 @@ ${unprotectedGoals
           : '';
 
       const prompt = `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
-המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות (העלול להכיל שגיאות כתיב, שגיאות הקלדה או ניסוח יומיומי).
+המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות.
 מין הילד/ה שהוגדר בטופס: ${genderInstruction}
 גיל הילד/ה: ${dateInfo.ageDescription}
 מסגרת חינוכית: ${formData.educationalFramework || 'לא צוין'}
 תאריך הזנת המטרות (תאריך ייחוס לחישוב משך הזמן): ${dateInfo.entryDateFormatted}
 
 הנחיות קריטיות לעיבוד המידע:
-1. אל תעתיק משפטים גולמיים מהטקסט "As-Is"! עליך לפרש את המשמעות מתוך ההקשר, לתקן כל שגיאת כתיב או דקדוק, ולנסח מחדש בעברית פדגוגית מקצועית, רהוטה ותקנית המותאמת למין הילד/ה (${genderToUse === 'girl' ? 'לשון נקבה' : 'לשון זכר'}).
-2. עבור "strengthsExisting" (מוקדי כוח: כוחות קיימים) ו-"strengthsToEmpower" (כוחות להעצמה וחיזוק) כתוב **תקציר מנהלים (Executive Summary) תמציתי ומזוקק לפי נושאים** – לכל היותר 3 עד 4 נקודות קצרות בכל עמודה (במבנה: "• [נושא/תחום]: [תמצית קצרה של 5-9 מילים]"). אל תעמיס מלל ואל תחזור על משפטים ארוכים!
-3. כמו כן הפק "studentGeneralBackground" (רקע כללי על התלמיד/ה עבור פרופיל תל"א) ו-"studentMainGoal" (מטרת התלמיד/ה המרכזית לשנת הלימודים עבור פרופיל תל"א).
-4. **סיווג מטרות לפי גודל (T-Shirt Size: SMALL / MEDIUM / LARGE) וקביעת משך הזמן ("duration") לפי תאריך יחסי מתאריך הזנת המטרות (${dateInfo.entryDateFormatted}):**
-   - נתח כל מטרה בהתאם ל**גיל הילד/ה (${dateInfo.ageDescription}), רמת התפקוד שלו/ה, האתגרים והקשיים** והפרטים שכתבה המורה.
-   - **אסור להגדיר את כל המטרות כברירת מחדל לכל השנה ("עד סוף השנה")!** עליך להעריך את גודל המטרה (T-Shirt Size) ולהגביל את משך הזמן שלה ("duration") לתאריך יחסי מתאריך הזנת המטרות (${dateInfo.entryDateFormatted}):
-     * **SMALL ("S")** – מטרה ממוקדת, הרגל קונקרטי או מיומנות נקודתית שנראית ברת-השגה בטווח קצר (כחודש עד חודשיים) בהתאם לגיל הילד/ה, רמתו/ה והקושי:
-       - אם ניתנת להשגה תוך חודש: הגדר \`"tShirtSize": "S"\` ו-\`"duration": "חודש (עד ${dateInfo.plus1Month})"\`
-       - אם ניתנת להשגה תוך חודשיים: הגדר \`"tShirtSize": "S"\` ו-\`"duration": "חודשיים (עד ${dateInfo.plus2Months})"\`
-     * **MEDIUM ("M")** – מטרה בינונית הדורשת תרגול הדרגתי ותיווך עקבי לאורך 3 עד 4 חודשים:
-       - הגדר \`"tShirtSize": "M"\` ו-\`"duration": "3 חודשים (עד ${dateInfo.plus3Months})"\` (או \`"4 חודשים (עד ${dateInfo.plus4Months})"\`)
-     * **LARGE ("L")** – מטרה התפתחותית/רגשית-חברתית רחבה ומורכבת הדורשת תהליך עומק ממושך:
-       - הגדר \`"tShirtSize": "L"\` ו-\`"duration": "חצי שנה (עד ${dateInfo.plus6Months})"\` או \`"עד סוף השנה (עד ${dateInfo.endOfYear})"\`
-   - התאם גם את היקף היעדים האופרטיביים ("objectives") לגיל הילד/ה, לרמתו/ה ולגודל המטרה (מטרת SMALL תכלול 2-3 צעדים קונקרטיים ומהירים להשגה; מטרת MEDIUM/LARGE תכלול 3-5 צעדים מדורגים).
+1. אל תעתיק משפטים גולמיים מהטקסט "As-Is"! פרש את המשמעות מתוך ההקשר, תקן כל שגיאת כתיב או דקדוק, ונסח מחדש בעברית פדגוגית מקצועית, רהוטה ותקנית המותאמת למין הילד/ה (${genderToUse === 'girl' ? 'לשון נקבה' : 'לשון זכר'}).
+2. עבור תל"א הפק את השדות הבאים מתוך הטקסט:
+   - "studentGeneralBackground": רקע על התלמיד (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי).
+   - "studentSupportReceived": התמיכה שמקבל התלמיד (לימודי, רגשי, חברתי).
+   - "studentMainGoal": מטרות של התלמיד (לאחר שיח אישי).
+   - "talaFocusDomains": מערך של תחומים נבחרים מתוך: ["לימודי", "התנהגותי", "רגשי", "חברתי", "חושי- מוטורי", "תקשורתי", "כישורי חיים"].
+   - "talaProfileRows": מערך של 8 אובייקטים לפי 8 התחומים (3 תחת התנהגותי-רגשי-חברתי: "ניהול עצמי", "תקשורת ויחסים בינאישיים", "ניידות וטיפול עצמי"; 5 תחת לימודי: "האזנה ודיבור", "כתיבה", "קריאה והפקת משמעות", "ידע לשוני", "מתמטיקה"), לכל אחד:
+     { "subDomain": "...", "strengthsAndFacilitators": "מוקדי כוח וגורמים מסייעים...", "areasToStrengthenAndBarriers": "מוקדים לחיזוק וגורמים מגבילים..." }
+3. עבור תח"י: "strengthsExisting" (3-4 נקודות) ו-"strengthsToEmpower" (3-4 נקודות).
+4. מטרות ויעדים (T-Shirt Size: S / M / L ומשך יחסי מתאריך ${dateInfo.entryDateFormatted}):
+   לכל מטרה כלול גם:
+   - "opportunities": אמצעי ביצוע של המחנכת
+   - "opportunitiesIntegration": אמצעי ביצוע של מורת שילוב
+   - "opportunitiesTherapist": אמצעי ביצוע של מטפלת באומנויות
+   - "learningAccommodations": התאמות ללמידה ובדרכי ההיבחנות
 ${protectedGoalsPromptBlock}${removedGoalsPromptBlock}${unprotectedGoalsPromptBlock}
-הדוח הרשמי ב-JSON חייב לכלול:
-1. "name": שם הילד/ה אם הוזכר בטקסט (או השאר ריק אם לא הוזכר).
-2. "educationalFramework": מסגרת חינוכית/גן אם הוזכרו בטקסט (או השאר ריק).
-3. "strengthsExisting": תקציר מנהלים תמציתי (3-4 נקודות קצרות לפי נושאים) של מוקדי הכוח הקיימים.
-4. "strengthsToEmpower": תקציר מנהלים תמציתי (2-4 נקודות קצרות לפי נושאים) של הכוחות להעצמה וחיזוק.
-5. "studentGeneralBackground": רקע כללי תמציתי ומקצועי על התלמיד/ה (לשקופית פרופיל התלמיד בתל"א).
-6. "studentMainGoal": מטרת העל של התלמיד/ה (1-2 משפטים ממוקדים לשקופית פרופיל התלמיד בתל"א).
-7. "goals": מערך המטרות (עבור שאר המטרות שאינן נעולות ושלא הוסרו על ידי המורה):
-   - תחילה בדוק אם קיימות מטרות מתאימות במאגר המטרות הקיים שלהלן.
-   - **חשוב מאוד – יצירת מטרה חדשה במידת הצורך:** אם הטקסט הגולמי של המורה מתאר קושי, צורך או תחום תפקוד שאף אחת מהמטרות הקיימות במאגר אינה מתאימה לו, **חובה ליצור ולנסח מטרה חדשה ומקורית המותאמת אישית לתלמיד/ה זה/זו** (וכן לנסח עבורה יעדים אופרטיביים חדשים, הזדמנויות ואמצעים ואמות מידה להערכה)!
-   לכל מטרה מלא את השדות בניסוח מקצועי וללא שגיאות כתיב (בלשון ${genderToUse === 'girl' ? 'נקבה' : 'זכר'}):
-   - "environment": סביבת השתתפות מתאימה (מתוך הרשימה: ${ENVIRONMENTS_LIST.join(', ')} – או סביבה מותאמת אם נדרש)
-   - "activityParticipation": סינתזה פדגוגית מקצועית ותמציתית של תפקוד הילד/ה בסביבה זו (ללא העתקת הטקסט הגולמי כפי שהוא!)
-   - "title": מטרה מתאימה מהמאגר, או **מטרה חדשה ומותאמת אישית** שנוסחה במיוחד עבור התלמיד/ה
-   - "objectives": יעדים אופרטיביים ומדורגים המותאמים לגיל הילד/ה, רמתו/ה וגודל המטרה (בנקודות • מופרדות בשורות חדשות)
-   - "opportunities": הזדמנויות, אמצעים ודרכי תיווך מעשיות של הצוות עבור הילד/ה (נקודות • מופרדות בשורות חדשות)
-   - "partners": שותפים לתהליך
-   - "tShirtSize": "S" | "M" | "L"
-   - "duration": משך הזמן מתוחם בתאריך יחסי מתאריך הזנת המטרות (למשל: "חודש (עד ${dateInfo.plus1Month})" למטרת S, "3 חודשים (עד ${dateInfo.plus3Months})" למטרת M, וכו')
-   - "evaluationCriteria": אמות מידה ברורות להערכה
-8. "recommendations": 3 המלצות מערכתיות קצרות וממוקדות לצוות הגן ולהורים.
 
-שם הילד/ה הנוכחי בטופס: "${formData.name || ''}"
-הטקסט הגולמי של המורה:
+מאגר סביבות ומטרות:
+${bankReference}
+
+טקסט גולמי של המורה:
 """
 ${rawText}
 """
-
-מאגר סביבות ההשתתפות, המטרות והיעדים הקיימים (לבחירה או כהשראה לניסוח מטרה חדשה כאשר אין התאמה):
-${bankReference}
 
 החזר JSON תקין בלבד:
 {
   "name": "",
   "educationalFramework": "",
-  "strengthsExisting": "• תחום אישיותי-רגשי: תמצית קצרה\\n• תחום קוגניטיבי: תמצית קצרה",
-  "strengthsToEmpower": "• משחקי שולחן וקופסא: תמצית קצרה\\n• מפגש ושיח: תמצית קצרה",
-  "studentGeneralBackground": "תמצית רקע כללי על התלמיד/ה...",
-  "studentMainGoal": "מטרת התלמיד/ה המרכזית...",
+  "strengthsExisting": "• ...",
+  "strengthsToEmpower": "• ...",
+  "studentGeneralBackground": "רקע על התלמיד...",
+  "studentSupportReceived": "התמיכה שמקבל התלמיד...",
+  "studentMainGoal": "מטרות התלמיד...",
+  "talaFocusDomains": ["לימודי", "חברתי"],
+  "talaProfileRows": [
+    { "subDomain": "ניהול עצמי", "strengthsAndFacilitators": "...", "areasToStrengthenAndBarriers": "..." }
+  ],
   "goals": [
     {
       "environment": "...",
       "activityParticipation": "...",
       "title": "...",
-      "objectives": "• יעד 1\\n• יעד 2\\n• יעד 3",
-      "opportunities": "• אמצעי תיווך 1\\n• אמצעי תיווך 2",
-      "partners": "...",
+      "objectives": "• ...",
+      "opportunities": "אמצעי מחנכת...",
+      "opportunitiesIntegration": "אמצעי מורת שילוב...",
+      "opportunitiesTherapist": "אמצעי מטפלת באומנויות...",
+      "learningAccommodations": "התאמות ללמידה...",
+      "partners": "מחנכת, מורת שילוב, מטפלת באומנויות",
       "tShirtSize": "S",
       "duration": "חודש (עד ${dateInfo.plus1Month})",
       "evaluationCriteria": "..."
@@ -1593,7 +1633,10 @@ ${bankReference}
             title: g.title || '',
             objectives: g.objectives || '',
             opportunities: g.opportunities || '',
-            partners: g.partners || 'צוות הגן, הורים',
+            opportunitiesIntegration: g.opportunitiesIntegration || '',
+            opportunitiesTherapist: g.opportunitiesTherapist || '',
+            learningAccommodations: g.learningAccommodations || '',
+            partners: g.partners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות הגן, הורים'),
             tShirtSize: g.tShirtSize || '',
             duration: g.duration || '',
             evaluationCriteria: g.evaluationCriteria || ''
@@ -1633,13 +1676,20 @@ ${bankReference}
           strengthsExisting: isTalaMode ? '' : nextExisting,
           strengthsToEmpower: isTalaMode ? '' : nextEmpower,
           studentGeneralBackground: isTalaMode
-            ? parsed.studentGeneralBackground ||
-              formData.studentGeneralBackground ||
-              [nextExisting, nextEmpower].filter(Boolean).join('\n\n')
+            ? parsed.studentGeneralBackground || formData.studentGeneralBackground
+            : '',
+          studentSupportReceived: isTalaMode
+            ? parsed.studentSupportReceived || formData.studentSupportReceived
             : '',
           studentMainGoal: isTalaMode
-            ? parsed.studentMainGoal || formData.studentMainGoal || nextEmpower
+            ? parsed.studentMainGoal || formData.studentMainGoal
             : '',
+          talaProfileRows: isTalaMode
+            ? buildDefaultTalaProfileRows(parsed.talaProfileRows || formData.talaProfileRows)
+            : formData.talaProfileRows,
+          talaFocusDomains: isTalaMode && Array.isArray(parsed.talaFocusDomains) && parsed.talaFocusDomains.length > 0
+            ? parsed.talaFocusDomains
+            : formData.talaFocusDomains,
           goals: mergedGoals,
           recommendations: parsed.recommendations || formData.recommendations,
           status: 'מוכן להדפסה',
@@ -1696,7 +1746,10 @@ ${bankReference}
         strengthsExisting: isTalaMode ? '' : engineered.strengthsExisting,
         strengthsToEmpower: isTalaMode ? '' : engineered.strengthsToEmpower,
         studentGeneralBackground: isTalaMode ? engineered.studentGeneralBackground : '',
+        studentSupportReceived: isTalaMode ? engineered.studentSupportReceived : '',
         studentMainGoal: isTalaMode ? engineered.studentMainGoal : '',
+        talaProfileRows: isTalaMode ? engineered.talaProfileRows : formData.talaProfileRows,
+        talaFocusDomains: isTalaMode ? engineered.talaFocusDomains : formData.talaFocusDomains,
         goals: engineered.goals,
         recommendations: engineered.recommendations,
         status: 'מוכן להדפסה',
@@ -2750,195 +2803,257 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
             {isTalaMode ? (
               <>
-                {hasPopulatedClassSection(formData) && (
-                  <div style={{ marginBottom: '14px' }}>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#1e3a5f', fontSize: '14px' }}>
-                      רקע כללי על הכיתה ומטרות כיתתיות
-                    </h4>
-                    {(formData.classBackground || '').trim() && (
-                      <div
-                        style={{
-                          background: '#eef3fb',
-                          border: '1px solid #5b9bd5',
-                          borderRadius: '6px',
-                          padding: '8px 12px',
-                          marginBottom: '10px',
-                          whiteSpace: 'pre-line',
-                          fontSize: '13px'
-                        }}
-                      >
-                        <strong>רקע כללי על הכיתה:</strong>
-                        <br />
-                        {getRedactedText(formData.classBackground)}
-                      </div>
-                    )}
-                    {Array.isArray(formData.classGoals) &&
-                      formData.classGoals.some(
-                        (cg) =>
-                          (cg?.currentFunctioning || '').trim() ||
-                          (cg?.goalsAndObjectives || '').trim() ||
-                          (cg?.actionsAndPartners || '').trim() ||
-                          (cg?.successCriteria || '').trim()
-                      ) && (
-                        <table className="preview-doc-table" style={{ marginBottom: '12px' }}>
-                          <thead>
-                            <tr style={{ background: '#eaf3fc', color: '#2b4c73' }}>
-                              <th style={{ width: '15%' }}>תחום המטרות</th>
-                              <th style={{ width: '21%' }}>תפקוד נוכחי</th>
-                              <th style={{ width: '22%' }}>יעדים ומטרות</th>
-                              <th style={{ width: '22%' }}>פעולות להשגת היעדים + שותפים</th>
-                              <th style={{ width: '20%' }}>אמות מידה להצלחה</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {formData.classGoals.map((cg) => {
-                              const stMeta = getGoalStatusMeta(cg.status);
-                              return (
-                                <tr key={cg.id}>
-                                  <td style={{ fontWeight: 700, background: '#f8faff' }}>
-                                    <div>{cg.domain}</div>
-                                    <span
-                                      style={{
-                                        display: 'inline-block',
-                                        marginTop: '4px',
-                                        padding: '2px 6px',
-                                        borderRadius: '4px',
-                                        fontSize: '11px',
-                                        background: stMeta.bg,
-                                        border: `1px solid ${stMeta.border}`,
-                                        color: stMeta.text
-                                      }}
-                                    >
-                                      {stMeta.label}
-                                    </span>
-                                  </td>
-                                  <td>{getRedactedText(cg.currentFunctioning)}</td>
-                                  <td>{getRedactedText(cg.goalsAndObjectives)}</td>
-                                  <td>{getRedactedText(cg.actionsAndPartners)}</td>
-                                  <td>{getRedactedText(cg.successCriteria)}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      )}
-                  </div>
-                )}
-
                 {(() => {
                   const talaProfile = getEffectiveStudentProfileForTala(
                     formData,
                     hideStudentDetailsOnPrint
                   );
+                  const profileRows = getEffectiveTalaProfileRows(formData);
+                  const behavioralRows = profileRows.slice(0, 3);
+                  const academicRows = profileRows.slice(3);
+                  const selectedFocus = Array.isArray(formData.talaFocusDomains)
+                    ? formData.talaFocusDomains
+                    : [];
+
                   return (
-                    <table className="preview-doc-table">
-                      <thead>
-                        <tr>
-                          <th style={{ width: '55%', background: '#5b9bd5', color: '#fff', textAlign: 'center' }}>
-                            רקע כללי על התלמיד/ה
-                          </th>
-                          <th style={{ width: '45%', background: '#8b6fc0', color: '#fff', textAlign: 'center' }}>
-                            מטרת התלמיד/ה
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{ whiteSpace: 'pre-line' }}>{talaProfile.generalBackground}</td>
-                          <td style={{ whiteSpace: 'pre-line' }}>{talaProfile.studentMainGoal}</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <>
+                      {/* 3 Narrative Blocks above the Profile Table */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          marginBottom: '14px'
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRight: '4px solid #2b4c73',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            fontSize: '13px',
+                            whiteSpace: 'pre-line'
+                          }}
+                        >
+                          <strong style={{ color: '#1e3a5f' }}>
+                            רקע על התלמיד (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי):
+                          </strong>
+                          <div>{talaProfile.generalBackground}</div>
+                        </div>
+
+                        <div
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRight: '4px solid #2b4c73',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            fontSize: '13px',
+                            whiteSpace: 'pre-line'
+                          }}
+                        >
+                          <strong style={{ color: '#1e3a5f' }}>
+                            התמיכה שמקבל התלמיד (לימודי, רגשי, חברתי):
+                          </strong>
+                          <div>{talaProfile.supportReceived}</div>
+                        </div>
+
+                        <div
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRight: '4px solid #2b4c73',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            fontSize: '13px',
+                            whiteSpace: 'pre-line'
+                          }}
+                        >
+                          <strong style={{ color: '#1e3a5f' }}>
+                            מטרות של התלמיד (לאחר שיח אישי):
+                          </strong>
+                          <div>{talaProfile.studentMainGoal}</div>
+                        </div>
+                      </div>
+
+                      {/* 8-Row Functional Profile Table */}
+                      <h4 style={{ margin: '12px 0 6px 0', color: '#1e3a5f', fontSize: '14px' }}>
+                        פרופיל - תיאור תפקוד של התלמיד *
+                      </h4>
+                      <table className="preview-doc-table" style={{ marginBottom: '6px' }}>
+                        <thead>
+                          <tr style={{ background: '#eaf3fc', color: '#2b4c73' }}>
+                            <th style={{ width: '16%' }}>אשכול</th>
+                            <th style={{ width: '20%' }}>תחומי תפקוד</th>
+                            <th style={{ width: '32%' }}>מוקדים של כח</th>
+                            <th style={{ width: '32%' }}>מוקדים לחיזוק</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {behavioralRows.map((row, idx) => (
+                            <tr key={row.id || `beh_${idx}`}>
+                              {idx === 0 && (
+                                <td
+                                  rowSpan={behavioralRows.length}
+                                  style={{
+                                    fontWeight: 700,
+                                    background: '#f0f5fb',
+                                    textAlign: 'center',
+                                    verticalAlign: 'middle'
+                                  }}
+                                >
+                                  התנהגותי - רגשי - חברתי
+                                </td>
+                              )}
+                              <td style={{ fontWeight: 700, background: '#f8faff' }}>
+                                {row.domain}
+                              </td>
+                              <td style={{ whiteSpace: 'pre-line' }}>
+                                {getRedactedText(row.strengths)}
+                              </td>
+                              <td style={{ whiteSpace: 'pre-line' }}>
+                                {getRedactedText(row.toStrengthen)}
+                              </td>
+                            </tr>
+                          ))}
+                          {academicRows.map((row, idx) => (
+                            <tr key={row.id || `acad_${idx}`}>
+                              {idx === 0 && (
+                                <td
+                                  rowSpan={academicRows.length}
+                                  style={{
+                                    fontWeight: 700,
+                                    background: '#f0f5fb',
+                                    textAlign: 'center',
+                                    verticalAlign: 'middle'
+                                  }}
+                                >
+                                  לימודי
+                                </td>
+                              )}
+                              <td style={{ fontWeight: 700, background: '#f8faff' }}>
+                                {row.domain}
+                              </td>
+                              <td style={{ whiteSpace: 'pre-line' }}>
+                                {getRedactedText(row.strengths)}
+                              </td>
+                              <td style={{ whiteSpace: 'pre-line' }}>
+                                {getRedactedText(row.toStrengthen)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div style={{ fontSize: '11.5px', color: '#475569', marginBottom: '14px' }}>
+                        * תוך התייחסות לסביבות למידה שונות: שיעורים מקצועיים, פעילויות חוץ בית ספריות, טיולים, הפסקות ועוד.
+                      </div>
+
+                      {/* Focus Domains Bar */}
+                      <div
+                        style={{
+                          background: '#eef3fb',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '8px 12px',
+                          marginBottom: '10px',
+                          fontSize: '13px'
+                        }}
+                      >
+                        <strong style={{ color: '#1e3a5f', marginLeft: '10px' }}>
+                          תכנית עבודה — סמן את התחומים הנבחרים בהם מתמקדת התכנית האישית:
+                        </strong>
+                        <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '12px' }}>
+                          {TALA_FOCUS_DOMAINS.map((dom) => {
+                            const isChecked = selectedFocus.includes(dom);
+                            return (
+                              <span
+                                key={dom}
+                                style={{
+                                  fontWeight: isChecked ? 700 : 500,
+                                  color: isChecked ? '#1e3a5f' : '#475569'
+                                }}
+                              >
+                                {isChecked ? '☑' : '☐'} {dom}
+                              </span>
+                            );
+                          })}
+                        </span>
+                      </div>
+
+                      {/* 2-Row Header Work Plan Table */}
+                      <table className="preview-doc-table" style={{ marginTop: '8px' }}>
+                        <thead>
+                          <tr style={{ background: '#eaf3fc', color: '#2b4c73', fontWeight: 'bold' }}>
+                            <th rowSpan={2} style={{ width: '16%', textAlign: 'center', verticalAlign: 'middle' }}>
+                              מטרה
+                            </th>
+                            <th rowSpan={2} style={{ width: '20%', textAlign: 'center', verticalAlign: 'middle' }}>
+                              יעדים ולו"ז
+                            </th>
+                            <th colSpan={3} style={{ width: '36%', textAlign: 'center' }}>
+                              האמצעים לביצוע תוכנית הפעולה על-ידי :
+                            </th>
+                            <th rowSpan={2} style={{ width: '14%', textAlign: 'center', verticalAlign: 'middle' }}>
+                              אמות מידה להערכה
+                            </th>
+                            <th rowSpan={2} style={{ width: '14%', textAlign: 'center', verticalAlign: 'middle' }}>
+                              התאמות ללמידה ובדרכי ההיבחנות
+                            </th>
+                          </tr>
+                          <tr style={{ background: '#f2f7fd', color: '#2b4c73', fontWeight: 'bold' }}>
+                            <th style={{ width: '12%', textAlign: 'center' }}>מחנכת</th>
+                            <th style={{ width: '12%', textAlign: 'center' }}>מורת שילוב</th>
+                            <th style={{ width: '12%', textAlign: 'center' }}>מטפלת באומנויות</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(formData.goals || []).map((g) => {
+                            const objectivesWithDuration = [
+                              getRedactedText(g.objectives),
+                              (g.duration || '').trim()
+                                ? `לו"ז: ${getRedactedText(g.duration)}`
+                                : ''
+                            ]
+                              .filter(Boolean)
+                              .join('\n\n');
+                            return (
+                              <tr key={g.id}>
+                                <td style={{ whiteSpace: 'pre-line' }}>
+                                  {(g.environment || '').trim() && (
+                                    <div style={{ fontSize: '11.5px', color: '#475569', marginBottom: '3px' }}>
+                                      [{g.environment}]
+                                    </div>
+                                  )}
+                                  <div style={{ fontWeight: 700, color: '#0d2b56' }}>
+                                    {getRedactedText(g.title)}
+                                  </div>
+                                </td>
+                                <td style={{ whiteSpace: 'pre-line' }}>{objectivesWithDuration}</td>
+                                <td style={{ whiteSpace: 'pre-line' }}>
+                                  {getRedactedText(g.opportunities)}
+                                </td>
+                                <td style={{ whiteSpace: 'pre-line' }}>
+                                  {getRedactedText(g.opportunitiesIntegration)}
+                                </td>
+                                <td style={{ whiteSpace: 'pre-line' }}>
+                                  {getRedactedText(g.opportunitiesTherapist)}
+                                </td>
+                                <td style={{ whiteSpace: 'pre-line' }}>
+                                  {getRedactedText(g.evaluationCriteria)}
+                                </td>
+                                <td style={{ whiteSpace: 'pre-line' }}>
+                                  {getRedactedText(g.learningAccommodations)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </>
                   );
                 })()}
-
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginTop: '12px',
-                    marginBottom: '8px',
-                    fontSize: '12px'
-                  }}
-                >
-                  <strong>מקרא סטטוס מטרות:</strong>
-                  {TALA_GOAL_COLOR_STATUSES.map((st) => (
-                    <span
-                      key={st.value}
-                      style={{
-                        padding: '3px 10px',
-                        borderRadius: '6px',
-                        background: st.bg,
-                        border: `1.5px solid ${st.border}`,
-                        color: st.text,
-                        fontWeight: 700
-                      }}
-                    >
-                      {st.label}
-                    </span>
-                  ))}
-                </div>
-
-                <table className="preview-doc-table" style={{ marginTop: '8px' }}>
-                  <thead>
-                    <tr style={{ background: '#eaf3fc', color: '#2b4c73', fontWeight: 'bold' }}>
-                      <th style={{ width: '24%' }}>תפקוד נוכחי</th>
-                      <th style={{ width: '28%' }}>מטרות ויעדים</th>
-                      <th style={{ width: '26%' }}>פעולות ואמצעים להשגת היעדים + שותפים ספציפיים</th>
-                      <th style={{ width: '22%' }}>אמות מידה להערכה</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(formData.goals || []).map((g) => {
-                      const stMeta = getGoalStatusMeta(g.achievementStatus);
-                      const combinedActionsPartners = [
-                        getRedactedText(g.opportunities),
-                        (g.partners || '').trim()
-                          ? `שותפים ספציפיים: ${getRedactedText(g.partners)}`
-                          : ''
-                      ]
-                        .filter(Boolean)
-                        .join('\n\n');
-                      return (
-                        <tr key={g.id}>
-                          <td style={{ whiteSpace: 'pre-line' }}>
-                            <div style={{ fontWeight: 700, color: '#1e3a5f', marginBottom: '4px' }}>
-                              תחום / סביבה: {g.environment}
-                            </div>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '2px 8px',
-                                borderRadius: '5px',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                marginBottom: '6px',
-                                background: stMeta.bg,
-                                border: `1px solid ${stMeta.border}`,
-                                color: stMeta.text
-                              }}
-                            >
-                              {stMeta.label}
-                            </span>
-                            <div>{getRedactedText(g.activityParticipation)}</div>
-                          </td>
-                          <td style={{ whiteSpace: 'pre-line' }}>
-                            <div style={{ fontWeight: 700, color: '#0d2b56', marginBottom: '4px' }}>
-                              {getRedactedText(g.title)}
-                            </div>
-                            <div>{getRedactedText(g.objectives)}</div>
-                          </td>
-                          <td style={{ whiteSpace: 'pre-line' }}>{combinedActionsPartners}</td>
-                          <td style={{ whiteSpace: 'pre-line' }}>
-                            {getRedactedText(g.evaluationCriteria)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
               </>
             ) : (
               <>
@@ -3341,6 +3456,16 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   />
                 </div>
                 <div className="form-field">
+                  <label>מורת שילוב:</label>
+                  <input
+                    type="text"
+                    disabled={isReportLocked}
+                    value={formData.integrationTeacher || ''}
+                    onChange={(e) => handleFieldChange('integrationTeacher', e.target.value)}
+                    placeholder="שם מורת השילוב"
+                  />
+                </div>
+                <div className="form-field">
                   <label>תומכת למידה:</label>
                   <input
                     type="text"
@@ -3381,13 +3506,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   />
                 </div>
                 <div className="form-field">
-                  <label>מטפלת רגשית:</label>
+                  <label>מטפלת רגשית / באומנויות:</label>
                   <input
                     type="text"
                     disabled={isReportLocked}
                     value={formData.emotionalTherapist || ''}
                     onChange={(e) => handleFieldChange('emotionalTherapist', e.target.value)}
-                    placeholder="שם המטפל/ת הרגשי/ת"
+                    placeholder="שם המטפל/ת הרגשי/ת או באומנויות"
                   />
                 </div>
                 <div className="form-field">
@@ -3400,230 +3525,28 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     placeholder="קלינאית תקשורת, מרפאה בעיסוק..."
                   />
                 </div>
+                <div className="form-field">
+                  <label>שותפים נוספים לכתיבת התוכנית:</label>
+                  <input
+                    type="text"
+                    disabled={isReportLocked}
+                    value={formData.additionalPartners || ''}
+                    onChange={(e) => handleFieldChange('additionalPartners', e.target.value)}
+                    placeholder="מורים מקצועיים, הורים, גורמי חוץ..."
+                  />
+                </div>
               </div>
             </div>
           )}
         </div>
       </section>
 
-      {/* Class-Level Section for תל"א (Slide 4: רקע כללי על הכיתה + מטרות כיתתיות; Slide 2 מערכת שעות intentionally omitted) */}
-      {isTalaMode && (
-        <section className="form-section-card">
-          <div
-            className="section-header-line"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '8px',
-              marginBottom: isClassSectionOpen ? '12px' : 0
-            }}
-          >
-            <div>
-              <h3 style={{ margin: 0 }}>
-                🏫 מבוא כיתתי לישיבת תל"א: רקע כללי על הכיתה ומטרות כיתתיות (אופציונלי)
-              </h3>
-              <p className="section-sub-desc" style={{ margin: '4px 0 0 0' }}>
-                תיאור הרקע הכיתתי וטבלת מטרות כיתתיות ב-4 תחומי התפקוד (קוגניטיבי-לימודי, חברתי-רגשי, התנהגותי, תפקודי לומד).
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsClassSectionOpen((prev) => !prev)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: isClassSectionOpen ? '#ede9fe' : '#f8fafc',
-                color: isClassSectionOpen ? '#5b21b6' : '#334155',
-                border: isClassSectionOpen ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 14px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              {isClassSectionOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-              <span>
-                {isClassSectionOpen
-                  ? 'הסתר רקע ומטרות כיתתיות'
-                  : 'הצג / ערוך רקע ומטרות כיתתיות'}
-              </span>
-            </button>
-          </div>
-
-          {isClassSectionOpen && (
-            <div style={{ marginTop: '12px' }}>
-              <div className="form-field" style={{ marginBottom: '14px' }}>
-                <label style={{ fontWeight: 700, color: '#1e3a5f' }}>רקע כללי על הכיתה:</label>
-                <textarea
-                  rows={3}
-                  disabled={isReportLocked}
-                  value={formData.classBackground || ''}
-                  onInput={handleTextareaAutoResize}
-                  onChange={(e) => handleFieldChange('classBackground', e.target.value)}
-                  placeholder="תארי בקצרה את מאפייני הכיתה, האקלים החינוכי והדגשים הכיתתיים לשנת הלימודים..."
-                />
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '10px',
-                  fontSize: '12px'
-                }}
-              >
-                <strong>מקרא סטטוס מטרות:</strong>
-                {TALA_GOAL_COLOR_STATUSES.map((st) => (
-                  <span
-                    key={st.value}
-                    style={{
-                      padding: '3px 10px',
-                      borderRadius: '6px',
-                      background: st.bg,
-                      border: `1.5px solid ${st.border}`,
-                      color: st.text,
-                      fontWeight: 700
-                    }}
-                  >
-                    {st.label}
-                  </span>
-                ))}
-              </div>
-
-              <div className="ecological-6col-table-wrapper">
-                <table className="ecological-6col-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '16%' }}>תחום המטרות</th>
-                      <th style={{ width: '21%' }}>תפקוד נוכחי</th>
-                      <th style={{ width: '22%' }}>יעדים ומטרות</th>
-                      <th style={{ width: '21%' }}>פעולות להשגת היעדים + שותפים</th>
-                      <th style={{ width: '20%' }}>אמות מידה להצלחה</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(Array.isArray(formData.classGoals) && formData.classGoals.length > 0
-                      ? formData.classGoals
-                      : buildDefaultTalaClassGoals()
-                    ).map((cg) => {
-                      const stMeta = getGoalStatusMeta(cg.status);
-                      return (
-                        <tr key={cg.id}>
-                          <td
-                            data-label="תחום המטרות"
-                            style={{ background: '#f8fafc', padding: '10px' }}
-                          >
-                            <div style={{ fontWeight: 700, color: '#1e3a5f', marginBottom: '8px' }}>
-                              {cg.domain}
-                            </div>
-                            <select
-                              disabled={isReportLocked}
-                              value={cg.status || 'מטרה חדשה'}
-                              onChange={(e) =>
-                                handleClassGoalChange(cg.id, 'status', e.target.value)
-                              }
-                              style={{
-                                width: '100%',
-                                padding: '5px 8px',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                background: stMeta.bg,
-                                border: `1.5px solid ${stMeta.border}`,
-                                color: stMeta.text,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              {TALA_GOAL_COLOR_STATUSES.map((st) => (
-                                <option key={st.value} value={st.value}>
-                                  {st.label}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td data-label="תפקוד נוכחי">
-                            <textarea
-                              rows={4}
-                              disabled={isReportLocked}
-                              value={cg.currentFunctioning || ''}
-                              onInput={handleTextareaAutoResize}
-                              onChange={(e) =>
-                                handleClassGoalChange(
-                                  cg.id,
-                                  'currentFunctioning',
-                                  e.target.value
-                                )
-                              }
-                              placeholder={`תפקוד נוכחי של הכיתה בתחום ${cg.domain}...`}
-                            />
-                          </td>
-                          <td data-label="יעדים ומטרות">
-                            <textarea
-                              rows={4}
-                              disabled={isReportLocked}
-                              value={cg.goalsAndObjectives || ''}
-                              onInput={handleTextareaAutoResize}
-                              onChange={(e) =>
-                                handleClassGoalChange(
-                                  cg.id,
-                                  'goalsAndObjectives',
-                                  e.target.value
-                                )
-                              }
-                              placeholder="יעדים ומטרות כיתתיות..."
-                            />
-                          </td>
-                          <td data-label="פעולות להשגת היעדים + שותפים">
-                            <textarea
-                              rows={4}
-                              disabled={isReportLocked}
-                              value={cg.actionsAndPartners || ''}
-                              onInput={handleTextareaAutoResize}
-                              onChange={(e) =>
-                                handleClassGoalChange(
-                                  cg.id,
-                                  'actionsAndPartners',
-                                  e.target.value
-                                )
-                              }
-                              placeholder="פעולות להשגת היעדים ושותפים..."
-                            />
-                          </td>
-                          <td data-label="אמות מידה להצלחה">
-                            <textarea
-                              rows={4}
-                              disabled={isReportLocked}
-                              value={cg.successCriteria || ''}
-                              onInput={handleTextareaAutoResize}
-                              onChange={(e) =>
-                                handleClassGoalChange(cg.id, 'successCriteria', e.target.value)
-                              }
-                              placeholder="אמות מידה להצלחה..."
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </section>
-      )}
-
       {/* Section 2: Teacher Free Text + עיבוד המידע Button + Student Profile (תל"א) or Strengths Table (תח"י) */}
       <section className="form-section-card highlight-summary-section">
         <div className="section-header-line">
           <h3>
             {isTalaMode
-              ? '2. תיאור חופשי של המורה ופרופיל תלמיד/ה (רקע כללי ומטרת התלמיד/ה)'
+              ? '2. תיאור חופשי של המורה ופרופיל - תיאור תפקוד של התלמיד/ה'
               : '2. תיאור חופשי של המורה וטבלת מוקדי כוח מסכמת'}
           </h3>
         </div>
@@ -3699,7 +3622,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <div className="submit-summary-action-row">
                 <span className="submit-helper-text">
                   {isTalaMode
-                    ? 'לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את הרקע הכללי על התלמיד/ה, מטרת התלמיד/ה, טבלת המטרות והיעדים ופרק ההמלצות:'
+                    ? 'לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את הרקע והתמיכה, מטרות התלמיד/ה, טבלת הפרופיל התפקודי, תחומי המיקוד וטבלת תוכנית העבודה:'
                     : 'לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את טבלת מוקדי הכוח, המטרות והיעדים ושאר סעיפי הטופס:'}
                 </span>
                 <button
@@ -3747,43 +3670,228 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           )}
         </div>
 
-        {/* Top Summary Table: In תל"א mode shows Student Profile (Slide 5); in תח"י mode shows Ecological Strengths Table */}
+        {/* Top Summary Table: In תל"א mode shows the 3 narrative blocks + 8-row Functional Profile Table; in תח"י mode shows Ecological Strengths Table */}
         <div className="top-summary-table-wrapper">
           {isTalaMode ? (
-            <table className="interactive-summary-table">
-              <thead>
-                <tr>
-                  <th>👤 רקע כללי על התלמיד/ה</th>
-                  <th>🎯 מטרת התלמיד/ה</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td data-label="👤 רקע כללי על התלמיד/ה">
-                    <textarea
-                      rows={5}
-                      disabled={isReportLocked}
-                      value={formData.studentGeneralBackground || ''}
-                      onInput={handleTextareaAutoResize}
-                      onChange={(e) =>
-                        handleFieldChange('studentGeneralBackground', e.target.value)
-                      }
-                      placeholder="רקע כללי על התלמיד/ה, תפקוד נוכחי, מוקדי כוח ותחומי עניין..."
-                    />
-                  </td>
-                  <td data-label="🎯 מטרת התלמיד/ה">
-                    <textarea
-                      rows={5}
-                      disabled={isReportLocked}
-                      value={formData.studentMainGoal || ''}
-                      onInput={handleTextareaAutoResize}
-                      onChange={(e) => handleFieldChange('studentMainGoal', e.target.value)}
-                      placeholder="מטרת התלמיד/ה המרכזית לשנת הלימודים..."
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* 3 Narrative Blocks from the Google Doc Template */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                  gap: '12px'
+                }}
+              >
+                <div className="form-field">
+                  <label style={{ fontWeight: 700, color: '#1e3a5f' }}>
+                    👤 רקע על התלמיד (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי):
+                  </label>
+                  <textarea
+                    rows={4}
+                    disabled={isReportLocked}
+                    value={formData.studentGeneralBackground || ''}
+                    onInput={handleTextareaAutoResize}
+                    onChange={(e) =>
+                      handleFieldChange('studentGeneralBackground', e.target.value)
+                    }
+                    placeholder="רקע על התלמיד/ה (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי)..."
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label style={{ fontWeight: 700, color: '#1e3a5f' }}>
+                    🤝 התמיכה שמקבל התלמיד (לימודי, רגשי, חברתי):
+                  </label>
+                  <textarea
+                    rows={4}
+                    disabled={isReportLocked}
+                    value={formData.studentSupportReceived || ''}
+                    onInput={handleTextareaAutoResize}
+                    onChange={(e) =>
+                      handleFieldChange('studentSupportReceived', e.target.value)
+                    }
+                    placeholder="פירוט התמיכות והמענים שמקבל/ת התלמיד/ה בבית הספר ומחוצה לו (לימודי, רגשי, חברתי)..."
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label style={{ fontWeight: 700, color: '#1e3a5f' }}>
+                    🎯 מטרות של התלמיד (לאחר שיח אישי):
+                  </label>
+                  <textarea
+                    rows={4}
+                    disabled={isReportLocked}
+                    value={formData.studentMainGoal || ''}
+                    onInput={handleTextareaAutoResize}
+                    onChange={(e) => handleFieldChange('studentMainGoal', e.target.value)}
+                    placeholder="מטרות של התלמיד/ה במילותיו/ה או לאחר שיח אישי..."
+                  />
+                </div>
+              </div>
+
+              {/* 8-Row Functional Profile Table: פרופיל - תיאור תפקוד של התלמיד * */}
+              <div>
+                <h4 style={{ margin: '4px 0 8px 0', color: '#1e3a5f', fontSize: '15px' }}>
+                  📊 פרופיל - תיאור תפקוד של התלמיד *
+                </h4>
+                <div className="ecological-6col-table-wrapper">
+                  <table className="ecological-6col-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '16%' }}>אשכול</th>
+                        <th style={{ width: '20%' }}>תחומי תפקוד</th>
+                        <th style={{ width: '32%' }}>מוקדים של כח</th>
+                        <th style={{ width: '32%' }}>מוקדים לחיזוק</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const profileRows = getEffectiveTalaProfileRows(formData);
+                        const behavioralRows = profileRows.slice(0, 3);
+                        const academicRows = profileRows.slice(3);
+
+                        return (
+                          <>
+                            {behavioralRows.map((row, idx) => (
+                              <tr key={row.id}>
+                                {idx === 0 && (
+                                  <td
+                                    rowSpan={behavioralRows.length}
+                                    data-label="אשכול"
+                                    style={{
+                                      fontWeight: 700,
+                                      color: '#1e3a5f',
+                                      background: '#f0f5fb',
+                                      textAlign: 'center',
+                                      verticalAlign: 'middle',
+                                      padding: '10px'
+                                    }}
+                                  >
+                                    התנהגותי - רגשי - חברתי
+                                  </td>
+                                )}
+                                <td
+                                  data-label="תחומי תפקוד"
+                                  style={{
+                                    fontWeight: 700,
+                                    color: '#1e3a5f',
+                                    background: '#f8fafc',
+                                    padding: '10px',
+                                    verticalAlign: 'middle'
+                                  }}
+                                >
+                                  {row.domain}
+                                </td>
+                                <td data-label={`מוקדים של כח (${row.domain})`}>
+                                  <textarea
+                                    rows={3}
+                                    disabled={isReportLocked}
+                                    value={row.strengths || ''}
+                                    onInput={handleTextareaAutoResize}
+                                    onChange={(e) =>
+                                      handleTalaProfileRowChange(
+                                        row.id,
+                                        'strengths',
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={`מוקדים של כח בתחום ${row.domain}...`}
+                                  />
+                                </td>
+                                <td data-label={`מוקדים לחיזוק (${row.domain})`}>
+                                  <textarea
+                                    rows={3}
+                                    disabled={isReportLocked}
+                                    value={row.toStrengthen || ''}
+                                    onInput={handleTextareaAutoResize}
+                                    onChange={(e) =>
+                                      handleTalaProfileRowChange(
+                                        row.id,
+                                        'toStrengthen',
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={`מוקדים לחיזוק בתחום ${row.domain}...`}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+
+                            {academicRows.map((row, idx) => (
+                              <tr key={row.id}>
+                                {idx === 0 && (
+                                  <td
+                                    rowSpan={academicRows.length}
+                                    data-label="אשכול"
+                                    style={{
+                                      fontWeight: 700,
+                                      color: '#1e3a5f',
+                                      background: '#f0f5fb',
+                                      textAlign: 'center',
+                                      verticalAlign: 'middle',
+                                      padding: '10px'
+                                    }}
+                                  >
+                                    לימודי
+                                  </td>
+                                )}
+                                <td
+                                  data-label="תחומי תפקוד"
+                                  style={{
+                                    fontWeight: 700,
+                                    color: '#1e3a5f',
+                                    background: '#f8fafc',
+                                    padding: '10px',
+                                    verticalAlign: 'middle'
+                                  }}
+                                >
+                                  {row.domain}
+                                </td>
+                                <td data-label={`מוקדים של כח (${row.domain})`}>
+                                  <textarea
+                                    rows={3}
+                                    disabled={isReportLocked}
+                                    value={row.strengths || ''}
+                                    onInput={handleTextareaAutoResize}
+                                    onChange={(e) =>
+                                      handleTalaProfileRowChange(
+                                        row.id,
+                                        'strengths',
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={`מוקדים של כח בתחום ${row.domain}...`}
+                                  />
+                                </td>
+                                <td data-label={`מוקדים לחיזוק (${row.domain})`}>
+                                  <textarea
+                                    rows={3}
+                                    disabled={isReportLocked}
+                                    value={row.toStrengthen || ''}
+                                    onInput={handleTextareaAutoResize}
+                                    onChange={(e) =>
+                                      handleTalaProfileRowChange(
+                                        row.id,
+                                        'toStrengthen',
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder={`מוקדים לחיזוק בתחום ${row.domain}...`}
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ fontSize: '12px', color: '#475569', marginTop: '6px' }}>
+                  * תוך התייחסות לסביבות למידה שונות: שיעורים מקצועיים, פעילויות חוץ בית ספריות, טיולים, הפסקות ועוד.
+                </div>
+              </div>
+            </div>
           ) : (
             <table className="interactive-summary-table">
               <thead>
@@ -3827,7 +3935,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           <div>
             <h3>
               {isTalaMode
-                ? '3. מטרות ויעדים אישיים לתלמיד/ה (תל"א)'
+                ? '3. תכנית עבודה – תכנית לימודית יחידנית (תל"א)'
                 : '3. הגדרת מטרות ויעדים לפי סביבות פעילות ותחומי תפקוד (תח"י)'}
             </h3>
             <p className="section-sub-desc">
@@ -3845,37 +3953,59 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </button>
         </div>
 
+        {/* In תל"א mode, render Focus Domains Checkboxes from the Google Doc Template */}
         {isTalaMode && (
           <div
             style={{
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
-              gap: '8px',
-              marginBottom: '14px',
-              padding: '8px 12px',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '12.5px'
+              gap: '10px',
+              marginBottom: '16px',
+              padding: '10px 14px',
+              background: '#f0f5fb',
+              border: '1px solid #cbd5e1',
+              borderRadius: '10px',
+              fontSize: '13px'
             }}
           >
-            <strong>מקרא צבעי מטרות בתל"א:</strong>
-            {TALA_GOAL_COLOR_STATUSES.map((st) => (
-              <span
-                key={st.value}
-                style={{
-                  padding: '3px 10px',
-                  borderRadius: '6px',
-                  background: st.bg,
-                  border: `1.5px solid ${st.border}`,
-                  color: st.text,
-                  fontWeight: 700
-                }}
-              >
-                {st.label}
-              </span>
-            ))}
+            <strong style={{ color: '#1e3a5f' }}>
+              סמן את התחומים הנבחרים בהם מתמקדת התכנית האישית:
+            </strong>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {TALA_FOCUS_DOMAINS.map((domain) => {
+                const isSelected =
+                  Array.isArray(formData.talaFocusDomains) &&
+                  formData.talaFocusDomains.includes(domain);
+                return (
+                  <label
+                    key={domain}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 12px',
+                      borderRadius: '999px',
+                      background: isSelected ? '#1e3a5f' : '#ffffff',
+                      color: isSelected ? '#ffffff' : '#334155',
+                      border: isSelected ? '1px solid #1e3a5f' : '1px solid #cbd5e1',
+                      fontWeight: isSelected ? 700 : 500,
+                      cursor: isReportLocked ? 'not-allowed' : 'pointer',
+                      userSelect: 'none'
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={isReportLocked}
+                      checked={isSelected}
+                      onChange={() => handleToggleTalaFocusDomain(domain)}
+                      style={{ margin: 0, cursor: isReportLocked ? 'not-allowed' : 'pointer' }}
+                    />
+                    <span>{domain}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -3912,11 +4042,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               return matchesEnv && matchesQuery;
             });
 
-            const goalStatusMeta = getGoalStatusMeta(goalRow.achievementStatus);
-
             return (
               <div key={goalRow.id} className="ecological-goal-card">
-                {/* Goal Block Top Bar: Environment + Status Color Badge (in תל"א) + Delete */}
+                {/* Goal Block Top Bar: Environment + Delete */}
                 <div className="goal-card-top-bar">
                   <div className="goal-index-And-env">
                     <span className="goal-number-badge">מטרה #{index + 1}</span>
@@ -3952,31 +4080,6 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       placeholder="הקלד סביבה..."
                       className="env-text-input"
                     />
-                    {isTalaMode && (
-                      <select
-                        aria-label="סטטוס מטרה בתל״א"
-                        value={goalStatusMeta.value}
-                        onChange={(e) =>
-                          handleGoalChange(goalRow.id, 'achievementStatus', e.target.value)
-                        }
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          background: goalStatusMeta.bg,
-                          border: `1.5px solid ${goalStatusMeta.border}`,
-                          color: goalStatusMeta.text,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {TALA_GOAL_COLOR_STATUSES.map((st) => (
-                          <option key={st.value} value={st.value}>
-                            {st.label}
-                          </option>
-                        ))}
-                      </select>
-                    )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -4350,7 +4453,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                             {loadingAiForGoalId === goalRow.id
                               ? 'מעבד ומנסח את עמודות הטבלה...'
                               : isTalaMode
-                              ? '✨ שלב את התשובות ומלא אוטומטית את 4 עמודות המטרה בטבלת התל"א'
+                              ? '✨ שלב את התשובות ומלא אוטומטית את עמודות המטרה בטבלת התל"א'
                               : '✨ שלב את התשובות ומלא אוטומטית את 6 עמודות המטרה בטבלה'}
                           </span>
                         </button>
@@ -4359,56 +4462,42 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   )}
                 </div>
 
-                {/* Goal Table: 4-Column תל"א Table (Slide 6) OR 6-Column תח"י Ecological Table */}
+                {/* Goal Table: 2-Row Header תל"א Work Plan Table OR 6-Column תח"י Ecological Table */}
                 <div className="ecological-6col-table-wrapper">
                   {isTalaMode ? (
                     <table className="ecological-6col-table">
                       <thead>
                         <tr>
-                          <th style={{ width: '24%' }}>
-                            תפקוד נוכחי
-                            <span className="col-sub">תיאור תפקוד הילד/ה בתחום זה</span>
+                          <th rowSpan={2} style={{ width: '16%', verticalAlign: 'middle' }}>
+                            מטרה
+                            <span className="col-sub">המטרה העליונה</span>
                           </th>
-                          <th style={{ width: '28%' }}>
-                            מטרות ויעדים
-                            <span className="col-sub">מטרה ופירוט צעדים אופרטיביים</span>
+                          <th rowSpan={2} style={{ width: '22%', verticalAlign: 'middle' }}>
+                            יעדים ולו"ז
+                            <span className="col-sub">צעדים אופרטיביים ומשך</span>
                           </th>
-                          <th style={{ width: '26%' }}>
-                            פעולות ואמצעים להשגת היעדים + שותפים ספציפיים
-                            <span className="col-sub">דרכי תיווך, אמצעים ושותפים</span>
+                          <th colSpan={3} style={{ width: '34%', textAlign: 'center' }}>
+                            האמצעים לביצוע תוכנית הפעולה על-ידי :
                           </th>
-                          <th style={{ width: '22%' }}>
+                          <th rowSpan={2} style={{ width: '14%', verticalAlign: 'middle' }}>
                             אמות מידה להערכה
-                            <span className="col-sub">מדדי הצלחה להשגת המטרה</span>
+                            <span className="col-sub">מדדי הצלחה</span>
                           </th>
+                          <th rowSpan={2} style={{ width: '14%', verticalAlign: 'middle' }}>
+                            התאמות ללמידה ובדרכי ההיבחנות
+                          </th>
+                        </tr>
+                        <tr>
+                          <th style={{ width: '12%' }}>מחנכת</th>
+                          <th style={{ width: '11%' }}>מורת שילוב</th>
+                          <th style={{ width: '11%' }}>מטפלת באומנויות</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td data-label="תפקוד נוכחי">
+                          <td data-label="מטרה">
                             <textarea
                               rows={6}
-                              disabled={isReportLocked}
-                              value={goalRow.activityParticipation || ''}
-                              onInput={handleTextareaAutoResize}
-                              onChange={(e) =>
-                                handleGoalChange(
-                                  goalRow.id,
-                                  'activityParticipation',
-                                  e.target.value
-                                )
-                              }
-                              placeholder="תארי את התפקוד הנוכחי של התלמיד/ה בתחום/סביבה זו..."
-                            />
-                          </td>
-                          <td data-label="מטרות ויעדים">
-                            <div style={{ padding: '6px 8px 0 8px' }}>
-                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#1e3a5f' }}>
-                                מטרה:
-                              </label>
-                            </div>
-                            <textarea
-                              rows={2}
                               disabled={isReportLocked}
                               value={goalRow.title || ''}
                               onInput={handleTextareaAutoResize}
@@ -4416,19 +4505,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                 handleGoalChange(goalRow.id, 'title', e.target.value)
                               }
                               placeholder="המטרה..."
-                              style={{
-                                fontWeight: 700,
-                                minHeight: '64px',
-                                borderBottom: '1px dashed #cbd5e1'
-                              }}
+                              style={{ fontWeight: 700 }}
                             />
-                            <div style={{ padding: '6px 8px 0 8px' }}>
-                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#1e3a5f' }}>
-                                יעדים אופרטיביים:
-                              </label>
-                            </div>
+                          </td>
+                          <td data-label='יעדים ולו"ז'>
                             <textarea
-                              rows={4}
+                              rows={5}
                               disabled={isReportLocked}
                               value={goalRow.objectives || ''}
                               onInput={handleTextareaAutoResize}
@@ -4484,39 +4566,114 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                 )}
                               </div>
                             )}
-                          </td>
-                          <td data-label="פעולות ואמצעים להשגת היעדים + שותפים ספציפיים">
-                            <div style={{ padding: '6px 8px 0 8px' }}>
-                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#1e3a5f' }}>
-                                פעולות ואמצעים:
+                            <div
+                              style={{
+                                padding: '6px 8px',
+                                borderTop: '1px dashed #cbd5e1',
+                                background: '#f8fafc'
+                              }}
+                            >
+                              <label
+                                style={{
+                                  display: 'block',
+                                  fontSize: '11px',
+                                  fontWeight: 700,
+                                  color: '#1e3a5f',
+                                  marginBottom: '4px'
+                                }}
+                              >
+                                לו"ז / משך:
                               </label>
+                              <select
+                                disabled={isReportLocked}
+                                value={
+                                  DURATION_TSHIRT_OPTIONS.some(
+                                    (opt) => opt.value === (goalRow.duration || '').trim()
+                                  )
+                                    ? (goalRow.duration || '').trim()
+                                    : '__custom__'
+                                }
+                                onChange={(e) => {
+                                  if (e.target.value !== '__custom__') {
+                                    handleGoalChange(goalRow.id, 'duration', e.target.value);
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '4px 6px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '12px',
+                                  marginBottom: '4px'
+                                }}
+                              >
+                                <option value="__custom__">בחרי לו"ז מובנה או הקלידי...</option>
+                                {DURATION_TSHIRT_OPTIONS.map((opt) => (
+                                  <option key={opt.size} value={opt.value}>
+                                    [{opt.size}] {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                type="text"
+                                disabled={isReportLocked}
+                                value={goalRow.duration || ''}
+                                onChange={(e) =>
+                                  handleGoalChange(goalRow.id, 'duration', e.target.value)
+                                }
+                                placeholder="למשל: לאורך השנה / מחצית א׳..."
+                                style={{
+                                  width: '100%',
+                                  padding: '4px 6px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '12px'
+                                }}
+                              />
                             </div>
+                          </td>
+                          <td data-label="אמצעים – מחנכת">
                             <textarea
-                              rows={4}
+                              rows={6}
                               disabled={isReportLocked}
                               value={goalRow.opportunities || ''}
                               onInput={handleTextareaAutoResize}
                               onChange={(e) =>
                                 handleGoalChange(goalRow.id, 'opportunities', e.target.value)
                               }
-                              placeholder="פעולות, אמצעים ודרכי תיווך להשגת היעדים..."
-                              style={{ borderBottom: '1px dashed #cbd5e1' }}
+                              placeholder="אמצעים ופעולות על-ידי המחנכת..."
                             />
-                            <div style={{ padding: '6px 8px 0 8px' }}>
-                              <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#1e3a5f' }}>
-                                שותפים ספציפיים:
-                              </label>
-                            </div>
+                          </td>
+                          <td data-label="אמצעים – מורת שילוב">
                             <textarea
-                              rows={2}
+                              rows={6}
                               disabled={isReportLocked}
-                              value={goalRow.partners || ''}
+                              value={goalRow.opportunitiesIntegration || ''}
                               onInput={handleTextareaAutoResize}
                               onChange={(e) =>
-                                handleGoalChange(goalRow.id, 'partners', e.target.value)
+                                handleGoalChange(
+                                  goalRow.id,
+                                  'opportunitiesIntegration',
+                                  e.target.value
+                                )
                               }
-                              placeholder="מחנכת, תומכת למידה, מרפאה בעיסוק, הורים..."
-                              style={{ minHeight: '60px' }}
+                              placeholder="אמצעים ופעולות על-ידי מורת השילוב..."
+                            />
+                          </td>
+                          <td data-label="אמצעים – מטפלת באומנויות">
+                            <textarea
+                              rows={6}
+                              disabled={isReportLocked}
+                              value={goalRow.opportunitiesTherapist || ''}
+                              onInput={handleTextareaAutoResize}
+                              onChange={(e) =>
+                                handleGoalChange(
+                                  goalRow.id,
+                                  'opportunitiesTherapist',
+                                  e.target.value
+                                )
+                              }
+                              placeholder="אמצעים ופעולות על-ידי מטפלת באומנויות / רגשית..."
                             />
                           </td>
                           <td data-label="אמות מידה להערכה">
@@ -4529,6 +4686,22 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                 handleGoalChange(goalRow.id, 'evaluationCriteria', e.target.value)
                               }
                               placeholder="כיצד נדע שהמטרה הושגה?"
+                            />
+                          </td>
+                          <td data-label="התאמות ללמידה ובדרכי ההיבחנות">
+                            <textarea
+                              rows={6}
+                              disabled={isReportLocked}
+                              value={goalRow.learningAccommodations || ''}
+                              onInput={handleTextareaAutoResize}
+                              onChange={(e) =>
+                                handleGoalChange(
+                                  goalRow.id,
+                                  'learningAccommodations',
+                                  e.target.value
+                                )
+                              }
+                              placeholder="התאמות בדרכי הלמידה וההיבחנות..."
                             />
                           </td>
                         </tr>
