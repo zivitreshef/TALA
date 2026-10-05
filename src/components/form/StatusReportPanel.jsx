@@ -159,8 +159,30 @@ export default function StatusReportPanel({
                   marginBottom: '8px'
                 }}
               >
-                <strong style={{ color: '#1e3a5f', fontSize: '14.5px' }}>
-                  {sec.sectionNumber}. {sec.title}
+                <strong
+                  style={{
+                    color: '#1e3a5f',
+                    fontSize: '14.5px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <span
+                    style={{
+                      color: '#2563eb',
+                      fontSize: '15px',
+                      lineHeight: 1
+                    }}
+                    aria-hidden="true"
+                  >
+                    ◆
+                  </span>
+                  <span>
+                    {String(sec.title || '')
+                      .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪\-]\s*)/, '')
+                      .trim()}
+                  </span>
                 </strong>
                 <button
                   type="button"
@@ -238,7 +260,7 @@ export default function StatusReportPanel({
             <option value="">+ בחר סעיף להוספה...</option>
             {availableToAdd.map((schemaSec) => (
               <option key={schemaSec.sectionNumber} value={schemaSec.sectionNumber}>
-                {schemaSec.sectionNumber}. {schemaSec.title}
+                • {schemaSec.title}
               </option>
             ))}
           </select>

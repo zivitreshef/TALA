@@ -26,7 +26,8 @@ import {
   Lock,
   Unlock,
   GraduationCap,
-  UserPlus
+  UserPlus,
+  Bell
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -81,7 +82,9 @@ import {
   PRIMARY_ADMIN_EMAIL,
   isStudentOwnedByUser,
   getStudentsForUser,
-  getArchivedStudentsForUser
+  getArchivedStudentsForUser,
+  getUnreadSharedReportsForUser,
+  markSharedReportAsRead
 } from './domain/permissions';
 import {
   safeGetStorageItem,
@@ -106,6 +109,7 @@ const SESSION_USER_KEY = 'tala_current_session_user_v1';
 const PASSWORD_POLICY_STORAGE_KEY = 'tala_enforce_password_policy_v1';
 const ADMIN_REQUESTS_STORAGE_KEY = 'tala_admin_requests_v1';
 const USER_USAGE_TRACKER_KEY = 'tala_user_usage_tracker_v1';
+const DISMISSED_SHARED_REPORTS_KEY = 'tala_dismissed_shared_reports_v1';
 
 export default function App() {
   // Allowed users list
@@ -436,26 +440,80 @@ export default function App() {
     };
   }, []);
 
-  // Ensure logged-in user is still active, not trial-expired, and sync mustChangePassword / trial / NDA fields when allowedUsers changes in real time
+  // Local dismissed shared report IDs per teacher email
+  const [dismissedSharedByEmail, setDismissedSharedByEmail] = useState(() =>
+    safeGetStorageJson(DISMISSED_SHARED_REPORTS_KEY, {})
+  );
+  const [autoShownSharedAlertIds, setAutoShownSharedAlertIds] = useState([]);
+
+  const currentUserEmailLower = (currentUser?.email || '').trim().toLowerCase();
+  const localDismissedForCurrentUser = currentUserEmailLower
+    ? dismissedSharedByEmail[currentUserEmailLower] || []
+    : [];
+  const unreadSharedReports = getUnreadSharedReportsForUser(
+    students,
+    currentUser,
+    localDismissedForCurrentUser
+  );
+
+  // Auto-open the user notification modal once when a new shared report is detected for the teacher
+  useEffect(() => {
+    if (!currentUser || currentUser.mustChangePassword) return;
+    if (currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned)) return;
+    if (currentUser.notifyOnSharedReport === false) return;
+    if (!Array.isArray(unreadSharedReports) || unreadSharedReports.length === 0) return;
+
+    const unseenNewReports = unreadSharedReports.filter(
+      (st) => st?.id && !autoShownSharedAlertIds.includes(st.id)
+    );
+    if (unseenNewReports.length > 0) {
+      setAutoShownSharedAlertIds((prev) => [
+        ...new Set([...prev, ...unseenNewReports.map((s) => s.id)])
+      ]);
+      setShowSelfPasswordModal(true);
+    }
+  }, [
+    currentUser?.email,
+    currentUser?.mustChangePassword,
+    currentUser?.isTrialUser,
+    currentUser?.mustSignNda,
+    currentUser?.ndaSigned,
+    currentUser?.notifyOnSharedReport,
+    unreadSharedReports.length
+  ]);
+
+  // Ensure logged-in user is still active, not trial-expired, and sync profile / mustChangePassword / trial / NDA fields when allowedUsers changes in real time
   useEffect(() => {
     if (!currentUser) return;
     const matchingUser = allowedUsers.find(
-      (u) => u.email.toLowerCase() === currentUser.email?.toLowerCase()
+      (u) =>
+        u.id === currentUser.id ||
+        u.email.toLowerCase() === currentUser.email?.toLowerCase()
     );
     if (matchingUser) {
       if (!matchingUser.active || isTrialUserExpired(matchingUser)) {
         performLogout();
       } else if (
+        (matchingUser.name || '') !== (currentUser.name || '') ||
+        (matchingUser.email || '').toLowerCase() !== (currentUser.email || '').toLowerCase() ||
+        (matchingUser.title || '') !== (currentUser.title || '') ||
+        (matchingUser.role || 'teacher') !== (currentUser.role || 'teacher') ||
         Boolean(matchingUser.mustChangePassword) !== Boolean(currentUser.mustChangePassword) ||
         (matchingUser.group || '') !== (currentUser.group || '') ||
         Boolean(matchingUser.isTrialUser) !== Boolean(currentUser.isTrialUser) ||
         Boolean(matchingUser.mustSignNda) !== Boolean(currentUser.mustSignNda) ||
         Boolean(matchingUser.ndaSigned) !== Boolean(currentUser.ndaSigned) ||
         (matchingUser.trialExpiresAt || '') !== (currentUser.trialExpiresAt || '') ||
-        (matchingUser.trialDays || 0) !== (currentUser.trialDays || 0)
+        (matchingUser.trialDays || 0) !== (currentUser.trialDays || 0) ||
+        (matchingUser.notifyOnSharedReport !== false) !==
+          (currentUser.notifyOnSharedReport !== false)
       ) {
         const syncedUser = {
           ...currentUser,
+          name: matchingUser.name,
+          email: matchingUser.email,
+          title: matchingUser.title,
+          role: matchingUser.role,
           group: matchingUser.group || '',
           mustChangePassword: Boolean(matchingUser.mustChangePassword),
           isTrialUser: Boolean(matchingUser.isTrialUser),
@@ -465,7 +523,11 @@ export default function App() {
           mustSignNda: Boolean(matchingUser.mustSignNda),
           ndaSigned: Boolean(matchingUser.ndaSigned),
           ndaSignedAt: matchingUser.ndaSignedAt,
-          ndaSignerIdNumber: matchingUser.ndaSignerIdNumber
+          ndaSignerIdNumber: matchingUser.ndaSignerIdNumber,
+          notifyOnSharedReport: matchingUser.notifyOnSharedReport !== false,
+          dismissedSharedReportIds: Array.isArray(matchingUser.dismissedSharedReportIds)
+            ? matchingUser.dismissedSharedReportIds
+            : currentUser.dismissedSharedReportIds || []
         };
         setCurrentUser(syncedUser);
         localStorage.setItem(SESSION_USER_KEY, JSON.stringify(syncedUser));
@@ -486,11 +548,155 @@ export default function App() {
     }
   }, [currentUser?.email, students.length, selectedStudentId]);
 
-  const handleUpdateAllowedUsers = (updatedList) => {
+  const handleUpdateAllowedUsers = (updatedList, editMeta = null) => {
     const { users: hashedList } = ensureUsersListPasswordsHashed(updatedList);
     setAllowedUsers(hashedList);
     saveAllowedUsers(hashedList);
     saveAllowedUsersToCloud(hashedList);
+
+    if (
+      editMeta &&
+      editMeta.oldEmail &&
+      editMeta.newEmail &&
+      editMeta.oldEmail.toLowerCase() !== editMeta.newEmail.toLowerCase()
+    ) {
+      const oldEmailLower = editMeta.oldEmail.trim().toLowerCase();
+      const newEmailLower = editMeta.newEmail.trim().toLowerCase();
+      setStudents((prevStudents) =>
+        prevStudents.map((st) => {
+          let changed = false;
+          let nextSt = { ...st };
+          if ((nextSt.ownerEmail || '').trim().toLowerCase() === oldEmailLower) {
+            nextSt.ownerEmail = newEmailLower;
+            changed = true;
+          }
+          if (Array.isArray(nextSt.sharedWith)) {
+            const hasInShared = nextSt.sharedWith.some(
+              (em) => (em || '').trim().toLowerCase() === oldEmailLower
+            );
+            if (hasInShared) {
+              nextSt.sharedWith = nextSt.sharedWith.map((em) =>
+                (em || '').trim().toLowerCase() === oldEmailLower ? newEmailLower : em
+              );
+              changed = true;
+            }
+          }
+          if (changed) {
+            saveStudentToCloud(nextSt);
+          }
+          return nextSt;
+        })
+      );
+    }
+  };
+
+  const handleOpenSharedReportNotification = (studentObj) => {
+    if (!studentObj?.id || !currentUser?.email) return;
+    const emailLower = currentUser.email.trim().toLowerCase();
+
+    // 1. Mark as read on the student object & persist to cloud so it disappears permanently
+    const updatedStudent = markSharedReportAsRead(studentObj, emailLower);
+    setStudents((prev) =>
+      prev.map((st) => (st.id === studentObj.id ? updatedStudent : st))
+    );
+    saveStudentToCloud(updatedStudent);
+
+    // 2. Record in localStorage dismissed map for immediate disappearance
+    setDismissedSharedByEmail((prev) => {
+      const prevList = Array.isArray(prev[emailLower]) ? prev[emailLower] : [];
+      const nextList = prevList.includes(studentObj.id)
+        ? prevList
+        : [...prevList, studentObj.id];
+      const nextMap = { ...prev, [emailLower]: nextList };
+      safeSetStorageJson(DISMISSED_SHARED_REPORTS_KEY, nextMap);
+      return nextMap;
+    });
+
+    // 3. Also record on the user profile in allowedUsers if present
+    const userDismissed = Array.isArray(currentUser.dismissedSharedReportIds)
+      ? currentUser.dismissedSharedReportIds
+      : [];
+    if (!userDismissed.includes(studentObj.id)) {
+      const nextUserDismissed = [...userDismissed, studentObj.id];
+      const updatedCurrent = {
+        ...currentUser,
+        dismissedSharedReportIds: nextUserDismissed
+      };
+      setCurrentUser(updatedCurrent);
+      safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+
+      if (currentUser.role === 'admin') {
+        const updatedList = allowedUsers.map((u) =>
+          u.email.toLowerCase() === emailLower
+            ? { ...u, dismissedSharedReportIds: nextUserDismissed }
+            : u
+        );
+        handleUpdateAllowedUsers(updatedList);
+      }
+    }
+
+    // 4. Open the shared student report and close the notification modal
+    const fwKey = (studentObj.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
+    setExpandedFrameworks((prev) => ({ ...prev, [fwKey]: true }));
+    setSelectedStudentId(studentObj.id);
+    setShowSelfPasswordModal(false);
+  };
+
+  const handleToggleNotifySharedReport = (enabled) => {
+    if (!currentUser) return;
+    const nextVal = Boolean(enabled);
+    const updatedCurrent = {
+      ...currentUser,
+      notifyOnSharedReport: nextVal
+    };
+    setCurrentUser(updatedCurrent);
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+
+    const updatedList = allowedUsers.map((u) =>
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+        ? { ...u, notifyOnSharedReport: nextVal }
+        : u
+    );
+    handleUpdateAllowedUsers(updatedList);
+  };
+
+  const handleNotifySharedColleague = (studentId, colleagueEmail, isNewlyShared) => {
+    if (!studentId || !colleagueEmail || !isNewlyShared) return;
+    const cleanColleague = colleagueEmail.trim().toLowerCase();
+
+    // Clear from local dismissed cache if testing on same browser
+    setDismissedSharedByEmail((prev) => {
+      const existing = Array.isArray(prev[cleanColleague]) ? prev[cleanColleague] : [];
+      if (!existing.includes(studentId)) return prev;
+      const nextMap = {
+        ...prev,
+        [cleanColleague]: existing.filter((id) => id !== studentId)
+      };
+      safeSetStorageJson(DISMISSED_SHARED_REPORTS_KEY, nextMap);
+      return nextMap;
+    });
+
+    // Clear from colleague's dismissedSharedReportIds in allowedUsers if present
+    const targetColleague = allowedUsers.find(
+      (u) => (u.email || '').trim().toLowerCase() === cleanColleague
+    );
+    if (
+      targetColleague &&
+      Array.isArray(targetColleague.dismissedSharedReportIds) &&
+      targetColleague.dismissedSharedReportIds.includes(studentId)
+    ) {
+      const updatedList = allowedUsers.map((u) =>
+        (u.email || '').trim().toLowerCase() === cleanColleague
+          ? {
+              ...u,
+              dismissedSharedReportIds: (u.dismissedSharedReportIds || []).filter(
+                (id) => id !== studentId
+              )
+            }
+          : u
+      );
+      handleUpdateAllowedUsers(updatedList);
+    }
   };
 
   useEffect(() => {
@@ -1289,7 +1495,7 @@ export default function App() {
     {};
 
   const siteVersion =
-    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.32';
+    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '1.0.33';
 
   return (
     <div className="tala-app-root" dir="rtl">
@@ -1415,15 +1621,40 @@ export default function App() {
           <div
             className="current-user-chip"
             onClick={() => setShowSelfPasswordModal(true)}
-            title="לחץ לשינוי הסיסמה האישית שלך"
-            style={{ cursor: 'pointer' }}
+            title={
+              unreadSharedReports.length > 0
+                ? `יש לך ${unreadSharedReports.length} דו"חות משותפים חדשים – לחץ לצפייה ופתיחה`
+                : 'לחץ לצפייה בהתראות דו"חות משותפים ושינוי סיסמה אישית'
+            }
+            style={{ cursor: 'pointer', position: 'relative' }}
           >
             <UserCheck size={16} />
             <div className="user-chip-text">
               <strong>{currentUser.name}</strong>
               <small>{currentUser.title}</small>
             </div>
-            <KeyRound size={14} style={{ opacity: 0.75, marginRight: '4px' }} />
+            {currentUser.notifyOnSharedReport !== false && unreadSharedReports.length > 0 ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  borderRadius: '999px',
+                  padding: '2px 7px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  marginRight: '4px',
+                  boxShadow: '0 0 0 2px #fecaca'
+                }}
+              >
+                <Bell size={12} />
+                <span>{unreadSharedReports.length}</span>
+              </span>
+            ) : (
+              <KeyRound size={14} style={{ opacity: 0.75, marginRight: '4px' }} />
+            )}
           </div>
 
           <button
@@ -1793,6 +2024,7 @@ export default function App() {
                 onDraftStateChange={setUnsavedDraftState}
                 emailEngineConfig={emailEngineConfig}
                 onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
+                onNotifySharedColleague={handleNotifySharedColleague}
               />
             </ErrorBoundary>
           ) : (
@@ -1944,6 +2176,10 @@ export default function App() {
         enforcePasswordPolicy={enforcePasswordPolicy}
         onChangeOwnPassword={handleChangeOwnPassword}
         isMandatoryFirstLogin={Boolean(currentUser?.mustChangePassword)}
+        unreadSharedReports={unreadSharedReports}
+        allowedUsers={allowedUsers}
+        onOpenSharedReportNotification={handleOpenSharedReportNotification}
+        onToggleNotifySharedReport={handleToggleNotifySharedReport}
       />
 
       {/* Mandatory Hebrew NDA Modal for Trial Users (opens immediately after password change) */}

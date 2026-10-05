@@ -10,7 +10,9 @@ import {
   canShareStudent,
   canLockReport,
   getStudentsForUser,
-  getArchivedStudentsForUser
+  getArchivedStudentsForUser,
+  getUnreadSharedReportsForUser,
+  markSharedReportAsRead
 } from '../domain/permissions';
 import {
   resolveStudentAgeAndDateInfo,
@@ -519,6 +521,79 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
 
     const authFail = verifyAllowedUser('moti.reshef@gmail.com', 'BadPass#1', migratedUsers);
     expect(authFail.allowed).toBe(false);
+  });
+
+  it('tracks unread shared report notifications and removes them once opened/clicked', () => {
+    const sharedColleague = {
+      id: 'u_colleague_1',
+      name: 'רונית הגננת',
+      email: 'ronit@tala.edu.il',
+      notifyOnSharedReport: true
+    };
+    const sharedStudent = {
+      id: 'st_shared_99',
+      name: 'אורי לוי',
+      ownerEmail: 'michal@tala.edu.il',
+      sharedByName: 'מיכל כהן',
+      sharedWith: ['ronit@tala.edu.il'],
+      sharedReadBy: [],
+      archived: false
+    };
+
+    const unreadInitial = getUnreadSharedReportsForUser([sharedStudent], sharedColleague, []);
+    expect(unreadInitial).toHaveLength(1);
+    expect(unreadInitial[0].id).toBe('st_shared_99');
+
+    // When teacher clicks the notification, markSharedReportAsRead adds their email to sharedReadBy
+    const markedReadStudent = markSharedReportAsRead(sharedStudent, sharedColleague.email);
+    expect(markedReadStudent.sharedReadBy).toContain('ronit@tala.edu.il');
+
+    const unreadAfterClick = getUnreadSharedReportsForUser(
+      [markedReadStudent],
+      sharedColleague,
+      []
+    );
+    expect(unreadAfterClick).toHaveLength(0);
+
+    // If user disables notifications (notifyOnSharedReport: false), returns empty list
+    const disabledUser = { ...sharedColleague, notifyOnSharedReport: false };
+    expect(getUnreadSharedReportsForUser([sharedStudent], disabledUser, [])).toHaveLength(0);
+  });
+
+  it('formats Educational-Functional Status Report with professional bullets and strips all numbers', () => {
+    const rawSections = [
+      {
+        sectionNumber: 1,
+        title: '1. פרטים מזהים ורקע כללי',
+        content: '1. תלמיד בגן חובה\n2. משולב במסגרת חינוכית'
+      },
+      {
+        sectionNumber: 99,
+        title: '14) סעיף מותאם אישית',
+        content: '1) מטרה ראשונה במפגש\n- מטרה שנייה בחצר'
+      }
+    ];
+
+    const sanitized = sanitizeStatusReportSections(rawSections, 'boy');
+    expect(sanitized).toHaveLength(2);
+    expect(sanitized[0].title).toBe('פרטים מזהים ורקע כללי');
+    expect(sanitized[0].content).toBe('• תלמיד בגן חובה\n• משולב במסגרת חינוכית');
+    expect(sanitized[1].title).toBe('סעיף מותאם אישית');
+    expect(sanitized[1].content).toBe('• מטרה ראשונה במפגש\n• מטרה שנייה בחצר');
+
+    const wordHtml = buildStatusReportWordDocumentHtml(
+      {
+        name: 'אורי לוי',
+        gender: 'boy',
+        schoolYear: 'תשפ"ו',
+        educationalFramework: 'גן אורן',
+        statusReportSections: sanitized
+      },
+      false
+    );
+    expect(wordHtml).toContain('<span style="color:#2563eb;">&#9670;</span> פרטים מזהים ורקע כללי');
+    expect(wordHtml).not.toContain('1. פרטים מזהים ורקע כללי');
+    expect(wordHtml).toContain('• תלמיד בגן חובה');
   });
 });
 
