@@ -63,3 +63,42 @@ export function getArchivedStudentsForUser(allStudents, userObj) {
   if (!userObj || !userObj.email) return [];
   return (allStudents || []).filter((s) => canViewStudent(s, userObj) && Boolean(s.archived));
 }
+
+export function getUnreadSharedReportsForUser(
+  allStudents,
+  userObj,
+  localDismissedIds = []
+) {
+  if (!userObj || !userObj.email) return [];
+  if (userObj.notifyOnSharedReport === false) return [];
+  const targetEmail = normalizeEmail(userObj.email);
+  const dismissedSet = new Set([
+    ...(Array.isArray(userObj.dismissedSharedReportIds)
+      ? userObj.dismissedSharedReportIds
+      : []),
+    ...(Array.isArray(localDismissedIds) ? localDismissedIds : [])
+  ]);
+
+  return (allStudents || []).filter((s) => {
+    if (!s || s.archived) return false;
+    if (!isStudentSharedWithUser(s, userObj)) return false;
+    if (dismissedSet.has(s.id)) return false;
+    const readByList = Array.isArray(s.sharedReadBy) ? s.sharedReadBy : [];
+    const alreadyRead = readByList.some((em) => normalizeEmail(em) === targetEmail);
+    return !alreadyRead;
+  });
+}
+
+export function markSharedReportAsRead(studentObj, userEmail) {
+  if (!studentObj || !userEmail) return studentObj;
+  const cleanEmail = normalizeEmail(userEmail);
+  const existingReadBy = Array.isArray(studentObj.sharedReadBy)
+    ? studentObj.sharedReadBy.map((em) => normalizeEmail(em)).filter(Boolean)
+    : [];
+  if (existingReadBy.includes(cleanEmail)) return studentObj;
+  return {
+    ...studentObj,
+    sharedReadBy: [...existingReadBy, cleanEmail]
+  };
+}
+

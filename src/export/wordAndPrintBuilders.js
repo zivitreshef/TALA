@@ -817,13 +817,29 @@ export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = f
   const statusDocTitle = getStatusReportTitle();
   const sectionsToRender = getActiveStatusReportSections(formData);
 
+  const formatBulletLinesForExport = (rawText) =>
+    String(rawText || '')
+      .split('\n')
+      .map((line) =>
+        line
+          .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪▫\-*]\s*)/, '')
+          .trim()
+      )
+      .filter(Boolean)
+      .map((line) => `• ${line}`);
+
   const sectionsHtml = sectionsToRender
     .map((sec) => {
-      const redactedContent = (getRedactedText(sec.content, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+      const cleanTitle = String(sec.title || '')
+        .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪\-]\s*)/, '')
+        .trim();
+      const redactedContent = formatBulletLinesForExport(
+        getRedactedText(sec.content, formData, hideDetails)
+      ).join('<br/>');
       return `
         <div style="border:1px solid #cbd5e1; border-right:4px solid #3b6ea5; background-color:#ffffff; padding:8pt 12pt; margin-bottom:10pt;">
           <div style="font-weight:bold; font-size:11.5pt; color:#1e3a5f; margin-bottom:4pt;">
-            ${sec.sectionNumber}. ${sec.title}
+            <span style="color:#2563eb;">&#9670;</span> ${cleanTitle}
           </div>
           <div style="font-size:10.5pt; color:#243b47; line-height:1.55;">
             ${redactedContent}
@@ -906,10 +922,22 @@ export function buildStatusReportPrintHtml(formData = {}, hideDetails = false, l
 
   const sectionsHtml = sectionsToRender
     .map((sec) => {
-      const redactedContent = getRedactedText(sec.content, formData, hideDetails);
+      const cleanTitle = String(sec.title || '')
+        .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪\-]\s*)/, '')
+        .trim();
+      const redactedContent = String(getRedactedText(sec.content, formData, hideDetails) || '')
+        .split('\n')
+        .map((line) =>
+          line
+            .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪▫\-*]\s*)/, '')
+            .trim()
+        )
+        .filter(Boolean)
+        .map((line) => `• ${line}`)
+        .join('\n');
       return `
         <div class="status-section-box">
-          <div class="status-section-title">${sec.sectionNumber}. ${sec.title}</div>
+          <div class="status-section-title"><span style="color:#2563eb; margin-left:6px;">◆</span>${cleanTitle}</div>
           <div class="status-section-body">${redactedContent || ''}</div>
         </div>
       `;

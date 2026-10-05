@@ -26,6 +26,22 @@ export const STATUS_REPORT_SECTIONS_SCHEMA = [
 const FORBIDDEN_MISSING_INFO_REGEX =
   /^(לא ידוע|לא קיים מידע|לא נמסר|אין מידע|לא צוין מידע|לא דווח)\.?$/;
 
+export function formatStatusReportBulletLines(rawContent = '', gender = 'boy') {
+  const lines = String(rawContent || '')
+    .split('\n')
+    .map((l) =>
+      l
+        .replace(/(?:לא ידוע|לא קיים מידע|לא נמסר מידע|לא נמסר|אין מידע על כך)[^.\n]*\.?/g, '')
+        .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪▪▫\-*]\s*)/, '')
+        .trim()
+    )
+    .filter((l) => l && !FORBIDDEN_MISSING_INFO_REGEX.test(l));
+
+  if (lines.length === 0) return '';
+  const formatted = lines.map((line) => `• ${line}`).join('\n');
+  return adaptTextToGender(formatted.trim(), gender);
+}
+
 export function sanitizeStatusReportSections(rawSections = [], gender = 'boy') {
   if (!Array.isArray(rawSections)) return [];
   const validByNum = new Map(
@@ -36,21 +52,15 @@ export function sanitizeStatusReportSections(rawSections = [], gender = 'boy') {
   rawSections.forEach((sec, idx) => {
     if (!sec) return;
     const num = Number(sec.sectionNumber) || idx + 1;
-    const canonicalTitle = validByNum.get(num) || (sec.title || '').replace(/^\d+\.\s*/, '').trim();
+    const canonicalTitle =
+      validByNum.get(num) ||
+      String(sec.title || '')
+        .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪\-]\s*)/, '')
+        .trim();
     if (!canonicalTitle) return;
 
-    // הסרת משפטים של "לא ידוע" / "לא קיים מידע" / "לא נמסר" אם נפלטו בטעות
-    const lines = String(sec.content || '')
-      .split('\n')
-      .map((l) =>
-        l
-          .replace(/(?:לא ידוע|לא קיים מידע|לא נמסר מידע|לא נמסר|אין מידע על כך)[^.\n]*\.?/g, '')
-          .trim()
-      )
-      .filter((l) => l && !FORBIDDEN_MISSING_INFO_REGEX.test(l));
-
-    const content = adaptTextToGender(lines.join('\n').trim(), gender);
-    if (!content || content.length < 6) return;
+    const content = formatStatusReportBulletLines(sec.content || '', gender);
+    if (!content || content.replace(/^•\s*/, '').length < 6) return;
 
     cleaned.push({
       id: sec.id || `status_sec_${num}`,
@@ -412,7 +422,7 @@ export function generateStatusReportLocally(formData) {
 
   // 14. מטרות להמשך (מבוסס אך ורק על המטרות שהוגדרו ועל הערכת מחצית/סוף שנה, ללא המצאת מטרות או מדדים)
   if (validGoals.length > 0) {
-    const goalsLines = validGoals.map((g, idx) => {
+    const goalsLines = validGoals.map((g) => {
       const objClean = (g.objectives || '')
         .split('\n')
         .map((l) => l.replace(/^[•\-\*\s]+/, '').trim())
@@ -423,13 +433,13 @@ export function generateStatusReportLocally(formData) {
       const dur = (g.duration || '').trim();
 
       const segments = [
-        `${idx + 1}. סביבת "${g.environment || ''}": ${(g.title || '').replace(/\.$/, '')}`
+        `סביבת "${g.environment || ''}": ${(g.title || '').replace(/\.$/, '')}`
       ];
       if (status) segments.push(`(סטטוס: ${status})`);
       if (dur) segments.push(`[טווח יעד: ${dur}]`);
       if (objClean) segments.push(`יעדים אופרטיביים: ${objClean}`);
       if (evalCrit) segments.push(`מדדי הצלחה להערכה: ${evalCrit.replace(/\.$/, '')}`);
-      return segments.join(' | ') + '.';
+      return `• ${segments.join(' | ')}.`;
     });
 
     sections.push({

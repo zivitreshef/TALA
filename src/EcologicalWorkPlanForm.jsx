@@ -136,6 +136,7 @@ export default function EcologicalWorkPlanForm({
   onSaveStudentPlan,
   onUseOrAddGoalToBank,
   onDraftStateChange,
+  onNotifySharedColleague,
   emailEngineConfig,
   onUpdateEmailEngineConfig
 }) {
@@ -465,10 +466,26 @@ export default function EcologicalWorkPlanForm({
       ? currentShared.filter((em) => String(em || '').toLowerCase() !== cleanEmail)
       : [...currentShared, cleanEmail];
 
+    const currentReadBy = Array.isArray(formData.sharedReadBy) ? formData.sharedReadBy : [];
+    const nextReadBy = currentReadBy.filter(
+      (em) => String(em || '').trim().toLowerCase() !== cleanEmail
+    );
+    const nowStamp = new Date().toLocaleString('he-IL', {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+    const nextSharedAtByEmail = {
+      ...(formData.sharedAtByEmail || {}),
+      ...(!exists ? { [cleanEmail]: nowStamp } : {})
+    };
+
     const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
     const updated = {
       ...formData,
       sharedWith: nextShared,
+      sharedReadBy: nextReadBy,
+      sharedByName: currentUser?.name || currentUser?.email || formData.sharedByName || '',
+      sharedAtByEmail: nextSharedAtByEmail,
       reportsByYear: {
         ...(formData.reportsByYear || {}),
         [activeYear]: extractYearReportFromFormData(formData)
@@ -477,6 +494,9 @@ export default function EcologicalWorkPlanForm({
     savedSnapshotRef.current = JSON.stringify(updated);
     setFormData(updated);
     onSaveStudentPlan(updated);
+    if (onNotifySharedColleague) {
+      onNotifySharedColleague(formData.id, cleanEmail, !exists);
+    }
   };
 
   // Switch school year: snapshot current year's report and load (or create) the selected year's report
@@ -1786,19 +1806,22 @@ ${goalsContext}
 - אם קיימת: השתמש במידע שבה כחלק מרכזי מתיאור המצב, זהה מידע המתאר את התפקוד הנוכחי, זהה שינויים או התקדמות ביחס למצב קודם רק כאשר הדבר מתועד, ושלב את המידע בסעיפים המתאימים במקום להעתיק את ההערכה כמות שהיא.
 - אם אינה קיימת: התבסס רק על שאר המידע הזמין (והשמט את סעיף 11 אם אין תיעוד על התקדמות).
 
-### סגנון הכתיבה
-הדו"ח צריך להישמע כאילו נכתב על ידי איש מקצוע שמכיר את התלמיד ואת תפקודו במסגרת. השתמש בפסקאות מקצועיות וקוהרנטיות, ולא ברשימת מילות מפתח. הכלל החשוב ביותר: עדיף להשמיט מידע חסר מאשר להשלים אותו באמצעות הנחה או המצאה.
+### סגנון הכתיבה ועיצוב בולטים מקצועיים (ללא מספור!)
+הדו"ח צריך להישמע כאילו נכתב על ידי איש מקצוע שמכיר את התלמיד ואת תפקודו במסגרת.
+- **אין להשתמש במספור (1., 2., וכו') כלל** — לא בכותרות הסעיפים ("title") ולא בתוך תוכן הסעיפים ("content").
+- הצג את הנקודות בתוך כל סעיף באמצעות **תבליטים (Bullets) מקצועיים וברורים (• )** המופרדים בירידת שורה (\\n), בניסוח מקצועי, קוהרנטי וזורם.
+- הכלל החשוב ביותר: עדיף להשמיט מידע חסר מאשר להשלים אותו באמצעות הנחה או המצאה.
 
 נתוני כרטיס התלמיד/ה, המטרות והערכת מחצית/סוף שנה:
 ${JSON.stringify(studentCardPayload, null, 2)}
 
-החזר JSON תקין בלבד במבנה הבא (ללא סעיפים חסרי מידע!):
+החזר JSON תקין בלבד במבנה הבא (ללא סעיפים חסרי מידע, וללא מספרים בכותרות או בתוכן):
 {
   "sections": [
     {
       "sectionNumber": 1,
       "title": "פרטים מזהים ורקע כללי",
-      "content": "..."
+      "content": "• ..."
     }
   ]
 }`;

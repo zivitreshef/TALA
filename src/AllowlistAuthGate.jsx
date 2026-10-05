@@ -22,7 +22,9 @@ import {
   Unlock,
   Bell,
   Clock,
-  FileSignature
+  FileSignature,
+  Edit2,
+  Users
 } from 'lucide-react';
 import {
   verifyAllowedUser,
@@ -518,7 +520,11 @@ export function UserSelfPasswordModal({
   currentUser,
   enforcePasswordPolicy,
   onChangeOwnPassword,
-  isMandatoryFirstLogin = false
+  isMandatoryFirstLogin = false,
+  unreadSharedReports = [],
+  allowedUsers = [],
+  onOpenSharedReportNotification,
+  onToggleNotifySharedReport
 }) {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -526,6 +532,18 @@ export function UserSelfPasswordModal({
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!isOpen || !currentUser) return null;
+
+  const notificationsEnabled = currentUser.notifyOnSharedReport !== false;
+
+  const resolveOwnerDisplayName = (studentObj) => {
+    if (studentObj?.sharedByName) return studentObj.sharedByName;
+    const ownerEmail = (studentObj?.ownerEmail || '').trim().toLowerCase();
+    if (!ownerEmail) return 'עמית/ה לצוות';
+    const found = (allowedUsers || []).find(
+      (u) => (u.email || '').trim().toLowerCase() === ownerEmail
+    );
+    return found?.name || studentObj.ownerEmail;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -570,17 +588,21 @@ export function UserSelfPasswordModal({
         className="modal-container"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '480px',
-          borderTop: isMandatoryFirstLogin ? '5px solid #6b46c1' : undefined
+          maxWidth: '540px',
+          borderTop: isMandatoryFirstLogin ? '5px solid #6b46c1' : '4px solid #2b6cb0'
         }}
       >
         <div className="modal-header">
           <div className="modal-header-title">
-            <KeyRound size={20} className="text-primary" />
+            {!isMandatoryFirstLogin && unreadSharedReports.length > 0 ? (
+              <Bell size={20} style={{ color: '#2b6cb0' }} />
+            ) : (
+              <KeyRound size={20} className="text-primary" />
+            )}
             <h3>
               {isMandatoryFirstLogin
                 ? `ברוכים הבאים, ${currentUser.name}! הגדרת סיסמה אישית`
-                : `שינוי סיסמה אישית – ${currentUser.name}`}
+                : `אזור אישי והתראות – ${currentUser.name}`}
             </h3>
           </div>
           {!isMandatoryFirstLogin && (
@@ -591,7 +613,170 @@ export function UserSelfPasswordModal({
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {!isMandatoryFirstLogin && (
+              <div
+                style={{
+                  background: unreadSharedReports.length > 0
+                    ? 'linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%)'
+                    : '#f8fafc',
+                  border: unreadSharedReports.length > 0 ? '1.5px solid #93c5fd' : '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <Bell
+                      size={17}
+                      style={{ color: unreadSharedReports.length > 0 ? '#1d4ed8' : '#64748b' }}
+                    />
+                    <strong style={{ fontSize: '13.5px', color: '#1e3a5f' }}>
+                      התראות על דו"חות חדשים ששותפו עמך
+                    </strong>
+                    {unreadSharedReports.length > 0 && (
+                      <span
+                        style={{
+                          background: '#2563eb',
+                          color: '#fff',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          padding: '1px 8px',
+                          borderRadius: '999px'
+                        }}
+                      >
+                        {unreadSharedReports.length} חדשים
+                      </span>
+                    )}
+                  </div>
+
+                  {onToggleNotifySharedReport && (
+                    <label
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#334155',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={notificationsEnabled}
+                        onChange={(e) => onToggleNotifySharedReport(e.target.checked)}
+                        style={{ width: '15px', height: '15px', accentColor: '#2563eb', cursor: 'pointer' }}
+                      />
+                      <span>אפשר התראות על דו"ח משותף חדש</span>
+                    </label>
+                  )}
+                </div>
+
+                {!notificationsEnabled ? (
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>
+                    ההתראות על דו"חות משותפים חדשים כבויות כעת. סמן/י את התיבה למעלה כדי להפעילן.
+                  </div>
+                ) : unreadSharedReports.length === 0 ? (
+                  <div style={{ fontSize: '12.5px', color: '#64748b' }}>
+                    אין כעת התראות חדשות על דו"חות או תוכניות עבודה ששותפו עמך.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#1e40af', fontWeight: 600 }}>
+                      לחץ/י על ההתראה כדי לפתוח מיד את הדו"ח המשותף (ההתראה תוסר אוטומטית לאחר הפתיחה):
+                    </div>
+                    {unreadSharedReports.map((st) => {
+                      const ownerName = resolveOwnerDisplayName(st);
+                      return (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => {
+                            if (onOpenSharedReportNotification) {
+                              onOpenSharedReportNotification(st);
+                            }
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '10px',
+                            width: '100%',
+                            textAlign: 'right',
+                            background: '#ffffff',
+                            border: '1.5px solid #60a5fa',
+                            borderRadius: '10px',
+                            padding: '10px 12px',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <Users size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
+                              <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>
+                                {st.studentName || 'תלמיד/ה ללא שם'}
+                              </strong>
+                              {st.educationalFramework && (
+                                <span
+                                  style={{
+                                    fontSize: '11px',
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe',
+                                    borderRadius: '999px',
+                                    padding: '1px 7px',
+                                    fontWeight: 600
+                                  }}
+                                >
+                                  {st.educationalFramework}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ fontSize: '12px', color: '#475569' }}>
+                              שותף עמך על ידי: <strong>{ownerName}</strong>
+                              {st.schoolYear ? ` • תשפ"ו (${st.schoolYear})` : ''}
+                            </span>
+                          </div>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              background: '#2563eb',
+                              color: '#ffffff',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              padding: '6px 11px',
+                              borderRadius: '8px',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 0
+                            }}
+                          >
+                            <BookOpen size={13} />
+                            <span>פתח דו"ח</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {isMandatoryFirstLogin && (
               <div
                 style={{
@@ -644,13 +829,13 @@ export function UserSelfPasswordModal({
 
             <div>
               <label style={{ display: 'block', fontWeight: 700, fontSize: '13px', marginBottom: '6px' }}>
-                {isMandatoryFirstLogin ? 'בחר/י סיסמה אישית חדשה:' : 'סיסמה חדשה:'}
+                {isMandatoryFirstLogin ? 'בחר/י סיסמה אישית חדשה:' : 'שינוי סיסמה אישית (אופציונלי):'}
               </label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  required
-                  autoFocus
+                  required={isMandatoryFirstLogin}
+                  autoFocus={isMandatoryFirstLogin}
                   placeholder="הזן סיסמה חדשה..."
                   value={newPassword}
                   onChange={(e) => {
@@ -687,19 +872,21 @@ export function UserSelfPasswordModal({
                 </button>
               </div>
 
-              {enforcePasswordPolicy && <PasswordPolicyChecklist password={newPassword} />}
+              {enforcePasswordPolicy && (isMandatoryFirstLogin || newPassword) && (
+                <PasswordPolicyChecklist password={newPassword} />
+              )}
             </div>
           </div>
 
           <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
             {!isMandatoryFirstLogin && (
               <button type="button" className="btn-secondary-sm" onClick={onClose}>
-                ביטול
+                סגור
               </button>
             )}
             <button type="submit" className="btn-primary-sm">
               <Check size={15} />
-              <span>{isMandatoryFirstLogin ? 'שמור סיסמה אישית והמשך למערכת' : 'שמור סיסמה'}</span>
+              <span>{isMandatoryFirstLogin ? 'שמור סיסמה אישית והמשך למערכת' : 'שמור סיסמה חדשה'}</span>
             </button>
           </div>
         </form>
@@ -754,6 +941,19 @@ export function AdminAllowlistModal({
   const [rowPasswordError, setRowPasswordError] = useState('');
   const [passwordSavedToastId, setPasswordSavedToastId] = useState(null);
 
+  const [editingDetailsUserId, setEditingDetailsUserId] = useState(null);
+  const [editUserForm, setEditUserForm] = useState({
+    name: '',
+    email: '',
+    title: '',
+    group: '',
+    role: 'teacher',
+    isTrialUser: false,
+    trialDays: DEFAULT_TRIAL_DAYS
+  });
+  const [editUserError, setEditUserError] = useState('');
+  const [detailsSavedToastId, setDetailsSavedToastId] = useState(null);
+
   if (!isOpen) return null;
 
   const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
@@ -764,6 +964,96 @@ export function AdminAllowlistModal({
         .filter(Boolean)
     )
   );
+
+  const handleStartEditUserDetails = (userObj) => {
+    setEditUserError('');
+    setEditingDetailsUserId(userObj.id);
+    setEditUserForm({
+      name: userObj.name || '',
+      email: userObj.email || '',
+      title: userObj.title || 'גננת / מורה להוראה מותאמת',
+      group: userObj.group || '',
+      role: userObj.role || 'teacher',
+      isTrialUser: Boolean(userObj.isTrialUser),
+      trialDays: userObj.trialDays || DEFAULT_TRIAL_DAYS
+    });
+  };
+
+  const handleCancelEditUserDetails = () => {
+    setEditingDetailsUserId(null);
+    setEditUserError('');
+  };
+
+  const handleSaveEditUserDetails = (userObj) => {
+    setEditUserError('');
+    const isMainAdmin = userObj.email?.toLowerCase() === 'zivit.reshef@gmail.com';
+    const cleanName = (editUserForm.name || '').trim();
+    const cleanEmail = isMainAdmin
+      ? 'zivit.reshef@gmail.com'
+      : (editUserForm.email || '').trim().toLowerCase();
+    const cleanTitle = (editUserForm.title || '').trim() || 'צוות חינוכי';
+    const cleanGroup = (editUserForm.group || '').trim();
+    const nextRole = isMainAdmin ? 'admin' : editUserForm.role === 'admin' ? 'admin' : 'teacher';
+
+    if (!cleanName || !cleanEmail) {
+      setEditUserError('נא להזין שם מלא וכתובת אימייל תקינה.');
+      return;
+    }
+
+    const emailCollision = (allowedUsers || []).some(
+      (other) => other.id !== userObj.id && (other.email || '').trim().toLowerCase() === cleanEmail
+    );
+    if (emailCollision) {
+      setEditUserError('כתובת האימייל הזו כבר משויכת למשתמש אחר במערכת.');
+      return;
+    }
+
+    const isTrial = isMainAdmin ? false : Boolean(editUserForm.isTrialUser);
+    const parsedTrialDays = Math.max(
+      1,
+      Math.min(365, parseInt(editUserForm.trialDays, 10) || DEFAULT_TRIAL_DAYS)
+    );
+
+    let updatedUserRef = null;
+    const updatedList = (allowedUsers || []).map((u) => {
+      if (u.id !== userObj.id) return u;
+      const trialDaysChanged = parsedTrialDays !== (u.trialDays || DEFAULT_TRIAL_DAYS);
+      const nextUser = {
+        ...u,
+        name: cleanName,
+        email: cleanEmail,
+        title: cleanTitle,
+        group: cleanGroup,
+        role: nextRole,
+        isTrialUser: isTrial,
+        trialDays: isTrial ? parsedTrialDays : null,
+        trialStartedAt: isTrial
+          ? trialDaysChanged || !u.trialStartedAt
+            ? new Date().toISOString()
+            : u.trialStartedAt
+          : null,
+        trialExpiresAt: isTrial
+          ? trialDaysChanged || !u.trialExpiresAt
+            ? computeTrialExpirationIso(parsedTrialDays)
+            : u.trialExpiresAt
+          : null,
+        mustSignNda: isTrial ? !u.ndaSigned : false
+      };
+      updatedUserRef = nextUser;
+      return nextUser;
+    });
+
+    onUpdateAllowedUsers(updatedList, {
+      oldEmail: (userObj.email || '').trim().toLowerCase(),
+      newEmail: cleanEmail,
+      updatedUser: updatedUserRef
+    });
+
+    setEditingDetailsUserId(null);
+    setDetailsSavedToastId(userObj.id);
+    setInviteStatusBanner(`✅ פרטי המורה "${cleanName}" (${cleanEmail}) עודכנו ונשמרו בהצלחה!`);
+    setTimeout(() => setDetailsSavedToastId(null), 3000);
+  };
 
   const handleUpdateUserGroup = (userId, nextGroup) => {
     onUpdateAllowedUsers(
@@ -1590,177 +1880,354 @@ export function AdminAllowlistModal({
                   const isMainAdmin = u.email?.toLowerCase() === 'zivit.reshef@gmail.com';
                   const trialExpired = isTrialUserExpired(u);
                   const remainingTrialDays = getTrialRemainingDays(u);
+                  const isEditingThisUser = editingDetailsUserId === u.id;
                   return (
-                    <tr key={u.id} style={{ opacity: u.active && !trialExpired ? 1 : 0.65 }}>
+                    <tr
+                      key={u.id}
+                      style={{
+                        opacity: u.active && !trialExpired ? 1 : 0.65,
+                        background: isEditingThisUser ? '#f0f7ff' : undefined
+                      }}
+                    >
                       <td>
-                        <div>
-                          <strong>{u.name}</strong>
-                          {u.role === 'admin' && <span className="badge-admin">Admin</span>}
-                          {u.mustChangePassword && (
-                            <span
+                        {isEditingThisUser ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <input
+                              type="text"
+                              value={editUserForm.name}
+                              onChange={(e) =>
+                                setEditUserForm((prev) => ({ ...prev, name: e.target.value }))
+                              }
+                              placeholder="שם מלא..."
+                              autoFocus
                               style={{
-                                display: 'inline-block',
-                                marginRight: '6px',
-                                fontSize: '10.5px',
+                                padding: '5px 8px',
+                                borderRadius: '6px',
+                                border: '1.5px solid #2563eb',
+                                fontSize: '12.5px',
                                 fontWeight: 700,
-                                background: '#fef3c7',
-                                color: '#92400e',
-                                border: '1px solid #fde68a',
-                                padding: '1px 6px',
-                                borderRadius: '999px'
+                                width: '100%',
+                                minWidth: '135px'
                               }}
-                              title="המשתמש נדרש להחליף את הסיסמה הזמנית בכניסתו הראשונה"
-                            >
-                              סיסמה זמנית
-                            </span>
-                          )}
-                        </div>
+                            />
+                            {!isMainAdmin && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <select
+                                  value={editUserForm.role}
+                                  onChange={(e) =>
+                                    setEditUserForm((prev) => ({ ...prev, role: e.target.value }))
+                                  }
+                                  style={{
+                                    padding: '3px 6px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #93c5fd',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    background: '#fff'
+                                  }}
+                                >
+                                  <option value="teacher">הרשאת צוות / מורה</option>
+                                  <option value="admin">מנהל מערכת (Admin)</option>
+                                </select>
 
-                        {!isMainAdmin && (
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              flexWrap: 'wrap',
-                              gap: '6px',
-                              marginTop: '5px'
-                            }}
-                          >
-                            <label
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                fontSize: '10.5px',
-                                fontWeight: 700,
-                                color: u.isTrialUser ? '#4c1d95' : '#64748b',
-                                cursor: 'pointer'
-                              }}
-                              title="סמן כמשתמש ניסיון המוגבל בזמן ומחויב בחתימה על הסכם סודיות (NDA)"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={Boolean(u.isTrialUser)}
-                                onChange={(e) => handleToggleUserTrialMode(u, e.target.checked)}
-                                style={{ width: '13px', height: '13px', accentColor: '#6d28d9', cursor: 'pointer' }}
-                              />
-                              <span>ניסיון (Trial)</span>
-                            </label>
-
-                            {u.isTrialUser && (
-                              <>
                                 <label
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '3px',
+                                    gap: '4px',
                                     fontSize: '10.5px',
-                                    background: '#f3eefc',
-                                    color: '#4c1d95',
-                                    border: '1px solid #c4b5fd',
-                                    borderRadius: '6px',
-                                    padding: '1px 5px',
-                                    fontWeight: 700
+                                    fontWeight: 700,
+                                    color: editUserForm.isTrialUser ? '#4c1d95' : '#475569',
+                                    cursor: 'pointer'
                                   }}
-                                  title="שנה או הארך את מספר ימי הניסיון (מתאריך היום)"
                                 >
                                   <input
-                                    type="number"
-                                    min="1"
-                                    max="365"
-                                    value={u.trialDays || DEFAULT_TRIAL_DAYS}
-                                    onChange={(e) => handleUpdateUserTrialDays(u, e.target.value)}
-                                    style={{
-                                      width: '40px',
-                                      padding: '0 3px',
-                                      border: '1px solid #a78bfa',
-                                      borderRadius: '4px',
-                                      fontSize: '10.5px',
-                                      fontWeight: 800,
-                                      textAlign: 'center',
-                                      background: '#fff'
-                                    }}
+                                    type="checkbox"
+                                    checked={Boolean(editUserForm.isTrialUser)}
+                                    onChange={(e) =>
+                                      setEditUserForm((prev) => ({
+                                        ...prev,
+                                        isTrialUser: e.target.checked
+                                      }))
+                                    }
+                                    style={{ width: '13px', height: '13px', accentColor: '#6d28d9' }}
                                   />
-                                  <span>ימים</span>
+                                  <span>ניסיון (Trial)</span>
                                 </label>
 
-                                <span
-                                  style={{
-                                    fontSize: '10.5px',
-                                    fontWeight: 700,
-                                    padding: '1px 6px',
-                                    borderRadius: '999px',
-                                    background: trialExpired ? '#fef2f2' : '#eff6ff',
-                                    color: trialExpired ? '#b91c1c' : '#1d4ed8',
-                                    border: `1px solid ${trialExpired ? '#fecaca' : '#bfdbfe'}`
-                                  }}
-                                >
-                                  {trialExpired
-                                    ? '⏰ פג תוקף הניסיון'
-                                    : remainingTrialDays !== null
-                                    ? `⏳ נותרו ${remainingTrialDays} ימים`
-                                    : ''}
-                                </span>
-
-                                <span
-                                  style={{
-                                    fontSize: '10.5px',
-                                    fontWeight: 700,
-                                    padding: '1px 6px',
-                                    borderRadius: '999px',
-                                    background: u.ndaSigned ? '#ecfdf5' : '#fffbeb',
-                                    color: u.ndaSigned ? '#047857' : '#b45309',
-                                    border: `1px solid ${u.ndaSigned ? '#a7f3d0' : '#fde68a'}`
-                                  }}
-                                  title={
-                                    u.ndaSigned
-                                      ? `נחתם ע"י ת.ז. ${u.ndaSignerIdNumber || '-'} בתאריך ${u.ndaSignedAt || '-'}`
-                                      : 'טרם נחתם הסכם סודיות (NDA) — יוצג אוטומטית בכניסה לאחר החלפת הסיסמה'
-                                  }
-                                >
-                                  {u.ndaSigned ? '✍️ NDA נחתם ✓' : '📄 ממתין ל-NDA'}
-                                </span>
-                              </>
+                                {editUserForm.isTrialUser && (
+                                  <label
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      fontSize: '10.5px',
+                                      background: '#f3eefc',
+                                      color: '#4c1d95',
+                                      border: '1px solid #c4b5fd',
+                                      borderRadius: '6px',
+                                      padding: '1px 5px',
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="365"
+                                      value={editUserForm.trialDays || DEFAULT_TRIAL_DAYS}
+                                      onChange={(e) =>
+                                        setEditUserForm((prev) => ({
+                                          ...prev,
+                                          trialDays: e.target.value
+                                        }))
+                                      }
+                                      style={{
+                                        width: '40px',
+                                        padding: '0 3px',
+                                        border: '1px solid #a78bfa',
+                                        borderRadius: '4px',
+                                        fontSize: '10.5px',
+                                        fontWeight: 800,
+                                        textAlign: 'center',
+                                        background: '#fff'
+                                      }}
+                                    />
+                                    <span>ימים</span>
+                                  </label>
+                                )}
+                              </div>
                             )}
-                            {u.surveyCompleted && (
-                              <span
-                                style={{
-                                  fontSize: '10.5px',
-                                  fontWeight: 700,
-                                  padding: '1px 6px',
-                                  borderRadius: '999px',
-                                  background: '#fef3c7',
-                                  color: '#92400e',
-                                  border: '1px solid #fde68a'
-                                }}
-                                title={
-                                  u.surveyCompletedAt
-                                    ? `מילא/ה משוב חוויית משתמש בתאריך ${u.surveyCompletedAt}`
-                                    : 'מילא/ה משוב חוויית משתמש'
-                                }
-                              >
-                                ⭐ משוב נשלח ✓
+                            {editUserError && (
+                              <span style={{ color: '#dc2626', fontSize: '11px', fontWeight: 700 }}>
+                                {editUserError}
                               </span>
                             )}
                           </div>
+                        ) : (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                              <strong>{u.name}</strong>
+                              {u.role === 'admin' && <span className="badge-admin">Admin</span>}
+                              {u.mustChangePassword && (
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    marginRight: '4px',
+                                    fontSize: '10.5px',
+                                    fontWeight: 700,
+                                    background: '#fef3c7',
+                                    color: '#92400e',
+                                    border: '1px solid #fde68a',
+                                    padding: '1px 6px',
+                                    borderRadius: '999px'
+                                  }}
+                                  title="המשתמש נדרש להחליף את הסיסמה הזמנית בכניסתו הראשונה"
+                                >
+                                  סיסמה זמנית
+                                </span>
+                              )}
+                              {detailsSavedToastId === u.id && (
+                                <span style={{ color: '#059669', fontSize: '11px', fontWeight: 800 }}>
+                                  ✓ הפרטים עודכנו
+                                </span>
+                              )}
+                            </div>
+
+                            {!isMainAdmin && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  flexWrap: 'wrap',
+                                  gap: '6px',
+                                  marginTop: '5px'
+                                }}
+                              >
+                                <label
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontSize: '10.5px',
+                                    fontWeight: 700,
+                                    color: u.isTrialUser ? '#4c1d95' : '#64748b',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="סמן כמשתמש ניסיון המוגבל בזמן ומחויב בחתימה על הסכם סודיות (NDA)"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(u.isTrialUser)}
+                                    onChange={(e) => handleToggleUserTrialMode(u, e.target.checked)}
+                                    style={{ width: '13px', height: '13px', accentColor: '#6d28d9', cursor: 'pointer' }}
+                                  />
+                                  <span>ניסיון (Trial)</span>
+                                </label>
+
+                                {u.isTrialUser && (
+                                  <>
+                                    <label
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        fontSize: '10.5px',
+                                        background: '#f3eefc',
+                                        color: '#4c1d95',
+                                        border: '1px solid #c4b5fd',
+                                        borderRadius: '6px',
+                                        padding: '1px 5px',
+                                        fontWeight: 700
+                                      }}
+                                      title="שנה או הארך את מספר ימי הניסיון (מתאריך היום)"
+                                    >
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max="365"
+                                        value={u.trialDays || DEFAULT_TRIAL_DAYS}
+                                        onChange={(e) => handleUpdateUserTrialDays(u, e.target.value)}
+                                        style={{
+                                          width: '40px',
+                                          padding: '0 3px',
+                                          border: '1px solid #a78bfa',
+                                          borderRadius: '4px',
+                                          fontSize: '10.5px',
+                                          fontWeight: 800,
+                                          textAlign: 'center',
+                                          background: '#fff'
+                                        }}
+                                      />
+                                      <span>ימים</span>
+                                    </label>
+
+                                    <span
+                                      style={{
+                                        fontSize: '10.5px',
+                                        fontWeight: 700,
+                                        padding: '1px 6px',
+                                        borderRadius: '999px',
+                                        background: trialExpired ? '#fef2f2' : '#eff6ff',
+                                        color: trialExpired ? '#b91c1c' : '#1d4ed8',
+                                        border: `1px solid ${trialExpired ? '#fecaca' : '#bfdbfe'}`
+                                      }}
+                                    >
+                                      {trialExpired
+                                        ? '⏰ פג תוקף הניסיון'
+                                        : remainingTrialDays !== null
+                                        ? `⏳ נותרו ${remainingTrialDays} ימים`
+                                        : ''}
+                                    </span>
+
+                                    <span
+                                      style={{
+                                        fontSize: '10.5px',
+                                        fontWeight: 700,
+                                        padding: '1px 6px',
+                                        borderRadius: '999px',
+                                        background: u.ndaSigned ? '#ecfdf5' : '#fffbeb',
+                                        color: u.ndaSigned ? '#047857' : '#b45309',
+                                        border: `1px solid ${u.ndaSigned ? '#a7f3d0' : '#fde68a'}`
+                                      }}
+                                      title={
+                                        u.ndaSigned
+                                          ? `נחתם ע"י ת.ז. ${u.ndaSignerIdNumber || '-'} בתאריך ${u.ndaSignedAt || '-'}`
+                                          : 'טרם נחתם הסכם סודיות (NDA) — יוצג אוטומטית בכניסה לאחר החלפת הסיסמה'
+                                      }
+                                    >
+                                      {u.ndaSigned ? '✍️ NDA נחתם ✓' : '📄 ממתין ל-NDA'}
+                                    </span>
+                                  </>
+                                )}
+                                {u.surveyCompleted && (
+                                  <span
+                                    style={{
+                                      fontSize: '10.5px',
+                                      fontWeight: 700,
+                                      padding: '1px 6px',
+                                      borderRadius: '999px',
+                                      background: '#fef3c7',
+                                      color: '#92400e',
+                                      border: '1px solid #fde68a'
+                                    }}
+                                    title={
+                                      u.surveyCompletedAt
+                                        ? `מילא/ה משוב חוויית משתמש בתאריך ${u.surveyCompletedAt}`
+                                        : 'מילא/ה משוב חוויית משתמש'
+                                    }
+                                  >
+                                    ⭐ משוב נשלח ✓
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </>
                         )}
                       </td>
                       <td dir="ltr" style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: '12px' }}>
-                        {u.email}
+                        {isEditingThisUser && !isMainAdmin ? (
+                          <input
+                            type="email"
+                            dir="ltr"
+                            value={editUserForm.email}
+                            onChange={(e) =>
+                              setEditUserForm((prev) => ({ ...prev, email: e.target.value }))
+                            }
+                            placeholder="teacher@gmail.com"
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: '6px',
+                              border: '1.5px solid #2563eb',
+                              fontSize: '12px',
+                              fontFamily: 'monospace',
+                              width: '100%',
+                              minWidth: '165px'
+                            }}
+                          />
+                        ) : (
+                          u.email
+                        )}
                       </td>
-                      <td>{u.title}</td>
+                      <td>
+                        {isEditingThisUser ? (
+                          <input
+                            type="text"
+                            value={editUserForm.title}
+                            onChange={(e) =>
+                              setEditUserForm((prev) => ({ ...prev, title: e.target.value }))
+                            }
+                            placeholder="תפקיד (גננת / מורת שילוב...)"
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: '6px',
+                              border: '1.5px solid #2563eb',
+                              fontSize: '12px',
+                              width: '100%',
+                              minWidth: '130px'
+                            }}
+                          />
+                        ) : (
+                          u.title
+                        )}
+                      </td>
                       <td>
                         <input
                           type="text"
                           list="tala-admin-groups-datalist"
                           placeholder="ללא שיוך..."
-                          value={u.group || ''}
-                          onChange={(e) => handleUpdateUserGroup(u.id, e.target.value)}
+                          value={isEditingThisUser ? editUserForm.group : u.group || ''}
+                          onChange={(e) => {
+                            if (isEditingThisUser) {
+                              setEditUserForm((prev) => ({ ...prev, group: e.target.value }));
+                            } else {
+                              handleUpdateUserGroup(u.id, e.target.value);
+                            }
+                          }}
                           style={{
                             padding: '4px 7px',
                             borderRadius: '6px',
-                            border: '1px solid #d3dff0',
-                            background: '#f8faff',
+                            border: isEditingThisUser ? '1.5px solid #2563eb' : '1px solid #d3dff0',
+                            background: isEditingThisUser ? '#ffffff' : '#f8faff',
                             fontSize: '12px',
                             width: '115px',
                             color: '#2b4c73',
@@ -1887,76 +2354,120 @@ export function AdminAllowlistModal({
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleResendInvitationEmail(u)}
-                            disabled={sendingInviteForUserId === u.id}
-                            className="btn-secondary-sm"
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: '11.5px',
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
-                              borderColor: '#bfdbfe'
-                            }}
-                            title="שלח מייל הזמנה והדרכה (Onboarding) עם סיסמה זמנית למשתמש זה"
-                          >
-                            <Mail size={13} />
-                            <span>
-                              {sendingInviteForUserId === u.id ? 'שולח...' : 'שלח מייל הזמנה'}
-                            </span>
-                          </button>
+                          {isEditingThisUser ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEditUserDetails(u)}
+                                className="btn-primary-sm"
+                                style={{ padding: '5px 10px', fontSize: '11.5px' }}
+                                title="שמור שינויים בפרטי המורה"
+                              >
+                                <Check size={13} />
+                                <span>שמור פרטים</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEditUserDetails}
+                                className="btn-secondary-sm"
+                                style={{ padding: '5px 10px', fontSize: '11.5px' }}
+                                title="בטל עריכה"
+                              >
+                                <X size={13} />
+                                <span>ביטול</span>
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditUserDetails(u)}
+                                className="btn-secondary-sm"
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '11.5px',
+                                  background: '#f5f3ff',
+                                  color: '#5b21b6',
+                                  borderColor: '#ddd6fe'
+                                }}
+                                title="ערוך את פרטי המורה (שם, אימייל, תפקיד, צוות, הרשאה)"
+                              >
+                                <Edit2 size={13} />
+                                <span>ערוך פרטים</span>
+                              </button>
 
-                          {(!isMainAdmin || u.lockedOut) && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                u.lockedOut ? handleUnlockUser(u.id) : handleToggleActive(u)
-                              }
-                              className="btn-secondary-sm"
-                              style={{
-                                padding: '4px 8px',
-                                fontSize: '11.5px',
-                                background: u.active && !u.lockedOut ? '#fff7ed' : '#ecfdf5',
-                                color: u.active && !u.lockedOut ? '#c2410c' : '#047857',
-                                borderColor: u.active && !u.lockedOut ? '#fed7aa' : '#a7f3d0'
-                              }}
-                              title={
-                                u.lockedOut
-                                  ? 'שחרר חסימה אוטומטית והפעל מחדש'
-                                  : u.active
-                                  ? 'השבת משתמש זמנית (ללא מחיקה)'
-                                  : 'הפעל משתמש מחדש'
-                              }
-                            >
-                              {u.lockedOut ? (
-                                <>
-                                  <Unlock size={13} />
-                                  <span>שחרר חסימה</span>
-                                </>
-                              ) : u.active ? (
-                                <>
-                                  <Ban size={13} />
-                                  <span>השבת</span>
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle2 size={13} />
-                                  <span>הפעל</span>
-                                </>
+                              <button
+                                type="button"
+                                onClick={() => handleResendInvitationEmail(u)}
+                                disabled={sendingInviteForUserId === u.id}
+                                className="btn-secondary-sm"
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '11.5px',
+                                  background: '#eff6ff',
+                                  color: '#1d4ed8',
+                                  borderColor: '#bfdbfe'
+                                }}
+                                title="שלח מייל הזמנה והדרכה (Onboarding) עם סיסמה זמנית למשתמש זה"
+                              >
+                                <Mail size={13} />
+                                <span>
+                                  {sendingInviteForUserId === u.id ? 'שולח...' : 'שלח מייל הזמנה'}
+                                </span>
+                              </button>
+
+                              {(!isMainAdmin || u.lockedOut) && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    u.lockedOut ? handleUnlockUser(u.id) : handleToggleActive(u)
+                                  }
+                                  className="btn-secondary-sm"
+                                  style={{
+                                    padding: '4px 8px',
+                                    fontSize: '11.5px',
+                                    background: u.active && !u.lockedOut ? '#fff7ed' : '#ecfdf5',
+                                    color: u.active && !u.lockedOut ? '#c2410c' : '#047857',
+                                    borderColor: u.active && !u.lockedOut ? '#fed7aa' : '#a7f3d0'
+                                  }}
+                                  title={
+                                    u.lockedOut
+                                      ? 'שחרר חסימה אוטומטית והפעל מחדש'
+                                      : u.active
+                                      ? 'השבת משתמש זמנית (ללא מחיקה)'
+                                      : 'הפעל משתמש מחדש'
+                                  }
+                                >
+                                  {u.lockedOut ? (
+                                    <>
+                                      <Unlock size={13} />
+                                      <span>שחרר חסימה</span>
+                                    </>
+                                  ) : u.active ? (
+                                    <>
+                                      <Ban size={13} />
+                                      <span>השבת</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 size={13} />
+                                      <span>הפעל</span>
+                                    </>
+                                  )}
+                                </button>
                               )}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u.id, u.email)}
+                                className="btn-danger-icon"
+                                title="מחק משתמש לצמיתות מרשימת המורשים"
+                                disabled={isMainAdmin}
+                                style={{ opacity: isMainAdmin ? 0.35 : 1 }}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteUser(u.id, u.email)}
-                            className="btn-danger-icon"
-                            title="מחק משתמש לצמיתות מרשימת המורשים"
-                            disabled={isMainAdmin}
-                            style={{ opacity: isMainAdmin ? 0.35 : 1 }}
-                          >
-                            <Trash2 size={15} />
-                          </button>
                         </div>
                       </td>
                     </tr>
