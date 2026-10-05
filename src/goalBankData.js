@@ -11,6 +11,71 @@ export const ENVIRONMENTS_LIST = [
   'פעילות שאינה בשגרה'
 ];
 
+export const TALA_CLASS_DOMAINS = [
+  'קוגניטיבית- לימודית',
+  'חברתי- רגשי',
+  'התנהגותי',
+  'תפקודי לומד'
+];
+
+export const TALA_GOAL_COLOR_STATUSES = [
+  {
+    value: 'הושגה במלואה',
+    label: 'מטרה הושגה במלואה',
+    bg: '#4ade80',
+    text: '#064e3b',
+    border: '#16a34a'
+  },
+  {
+    value: 'הושגה חלקית',
+    label: 'מטרה הושגה חלקית',
+    bg: '#fde047',
+    text: '#713f12',
+    border: '#ca8a04'
+  },
+  {
+    value: 'טרם הושגה',
+    label: 'מטרה לא הושגה',
+    bg: '#ef4444',
+    text: '#ffffff',
+    border: '#b91c1c'
+  },
+  {
+    value: 'מטרה חדשה',
+    label: 'מטרה חדשה',
+    bg: '#38bdf8',
+    text: '#0c4a6e',
+    border: '#0284c7'
+  }
+];
+
+export function buildDefaultTalaClassGoals(existingList = []) {
+  const byDomain = new Map();
+  if (Array.isArray(existingList)) {
+    existingList.forEach((row) => {
+      if (row && row.domain) {
+        byDomain.set(row.domain.trim(), row);
+      }
+    });
+  }
+  return TALA_CLASS_DOMAINS.map((domain, idx) => {
+    const found = byDomain.get(domain);
+    return {
+      id: found?.id || `cls_dom_${idx + 1}`,
+      domain,
+      currentFunctioning: found?.currentFunctioning || '',
+      goalsAndObjectives: found?.goalsAndObjectives || '',
+      actionsAndPartners: found?.actionsAndPartners || '',
+      evaluationCriteria: found?.evaluationCriteria || '',
+      colorStatus: found?.colorStatus || ''
+    };
+  });
+}
+
+export function isTalaPlanType(planType = '') {
+  return !String(planType || '').includes('תח"י');
+}
+
 import {
   normalizeHebrewTextForContext,
   adaptTextToGender,
@@ -1166,12 +1231,27 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     `2. התאמת הסביבה החינוכית: שימוש בהטרמה, עזרים חזותיים, עבודה בקבוצה קטנה ותיווך מדורג המותאם לקצב של ${firstName}.\n` +
     `3. שמירה על קשר רציף, שיתוף ותיאום ציפיות עם ההורים לחיזוק העקביות בין הגן לבית.`;
 
+  const studentGeneralBackground = [formattedExisting, formattedEmpower]
+    .filter(Boolean)
+    .join('\n');
+
+  const firstGoalTitle = (finalMergedGoals[0]?.title || '').trim();
+  const studentMainGoal = firstGoalTitle
+    ? isFemale
+      ? `${firstName} תתקדם בתפקוד העצמאי, הרגשי-חברתי והלימודי במסגרת, בדגש על: ${firstGoalTitle}`
+      : `${firstName} יתקדם בתפקוד העצמאי, הרגשי-חברתי והלימודי במסגרת, בדגש על: ${firstGoalTitle}`
+    : isFemale
+    ? `קידום תפקודה העצמאי, החברתי והלימודי של ${firstName} בסביבות הפעילות במסגרת.`
+    : `קידום תפקודו העצמאי, החברתי והלימודי של ${firstName} בסביבות הפעילות במסגרת.`;
+
   return {
     name: detectedName || currentFormData.name,
     gender: resolvedGender,
     educationalFramework: detectedFramework || currentFormData.educationalFramework,
     strengthsExisting: formattedExisting,
     strengthsToEmpower: formattedEmpower,
+    studentGeneralBackground,
+    studentMainGoal,
     goals: finalMergedGoals,
     recommendations: formalRecommendations
   };

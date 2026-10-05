@@ -89,6 +89,8 @@ export function generateStatusReportLocally(formData) {
   const freeText = (formData.teacherFreeText || '').trim();
   const strengthsExisting = (formData.strengthsExisting || '').trim();
   const strengthsToEmpower = (formData.strengthsToEmpower || '').trim();
+  const studentGeneralBackground = (formData.studentGeneralBackground || '').trim();
+  const studentMainGoal = (formData.studentMainGoal || '').trim();
   const recommendations = (formData.recommendations || '').trim();
   const evalFreeText = (formData.evalReportFreeText || '').trim();
   const evalSummary = (formData.evalReportSummary || '').trim();
@@ -110,6 +112,7 @@ export function generateStatusReportLocally(formData) {
   const extractMatchingSentences = (regex) => {
     const sentences = [
       ...freeText.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
+      ...studentGeneralBackground.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
       ...evalFreeText.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
       ...evalSummary.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
       ...validGoals.map((g) => g.activityParticipation || ''),
@@ -196,11 +199,16 @@ export function generateStatusReportLocally(formData) {
   if (evalSummary) {
     generalSentences.push(evalSummary.replace(/\.$/, '') + '.');
   }
+  if (studentMainGoal) {
+    generalSentences.push(`מטרת-על לתלמיד/ה: ${studentMainGoal.replace(/\.$/, '')}.`);
+  }
   const routineActivities = validGoals
     .filter((g) => (g.activityParticipation || '').trim())
     .map((g) => `בסביבת "${g.environment}": ${(g.activityParticipation || '').trim().replace(/\.$/, '')}`);
   if (routineActivities.length > 0) {
     generalSentences.push(routineActivities.slice(0, 3).join('. ') + '.');
+  } else if (studentGeneralBackground) {
+    generalSentences.push(studentGeneralBackground.replace(/\.$/, '') + '.');
   } else if (freeText) {
     generalSentences.push(freeText.replace(/\.$/, '') + '.');
   }
