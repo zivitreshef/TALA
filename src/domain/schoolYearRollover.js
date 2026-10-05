@@ -66,6 +66,13 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
     teacherFreeText: sourceReport.teacherFreeText || studentObj.teacherFreeText || '',
     strengthsExisting: sourceReport.strengthsExisting || studentObj.strengthsExisting || '',
     strengthsToEmpower: sourceReport.strengthsToEmpower || studentObj.strengthsToEmpower || '',
+    studentGeneralBackground:
+      sourceReport.studentGeneralBackground || studentObj.studentGeneralBackground || '',
+    studentMainGoal: sourceReport.studentMainGoal || studentObj.studentMainGoal || '',
+    classBackground: sourceReport.classBackground || studentObj.classBackground || '',
+    classGoals: Array.isArray(sourceReport.classGoals || studentObj.classGoals)
+      ? (sourceReport.classGoals || studentObj.classGoals).map((cg) => ({ ...cg }))
+      : [],
     recommendations: sourceReport.recommendations || studentObj.recommendations || '',
     lastSavedAt: nowTime,
     goals:
@@ -106,6 +113,10 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
         teacherFreeText: sourceReport.teacherFreeText || '',
         strengthsExisting: sourceReport.strengthsExisting || '',
         strengthsToEmpower: sourceReport.strengthsToEmpower || '',
+        studentGeneralBackground: sourceReport.studentGeneralBackground || '',
+        studentMainGoal: sourceReport.studentMainGoal || '',
+        classBackground: sourceReport.classBackground || '',
+        classGoals: Array.isArray(sourceReport.classGoals) ? sourceReport.classGoals : [],
         recommendations: sourceReport.recommendations || '',
         lastSavedAt: sourceReport.lastSavedAt || '',
         goals: sourceReport.goals || []

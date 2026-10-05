@@ -28,11 +28,16 @@ import {
   sanitizeStatusReportSections,
   generateStatusReportLocally,
   getNextSchoolYear,
-  buildRolloverStudentForNextYear
+  buildRolloverStudentForNextYear,
+  isTalaPlanType,
+  buildDefaultTalaClassGoals,
+  reverseEngineerRawTextLocally,
+  INITIAL_GOAL_BANK
 } from '../goalBankData';
 import { deriveFirebaseAuthPassword, sanitizeForFirestore } from '../firebaseBackend';
 import { safeGetStorageJson } from '../services/storage';
 import {
+  buildWorkPlanPrintHtml,
   buildWordDocumentHtml,
   buildEvalWordDocumentHtml,
   buildStatusReportWordDocumentHtml,
@@ -594,6 +599,85 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(wordHtml).toContain('<span style="color:#2563eb;">&#9670;</span> פרטים מזהים ורקע כללי');
     expect(wordHtml).not.toContain('1. פרטים מזהים ורקע כללי');
     expect(wordHtml).toContain('• תלמיד בגן חובה');
+  });
+
+  it('differentiates between the new תל"א template (4-col goals + student profile + class goals + מידע נוסף) and תח"י (6-col ecological table)', () => {
+    expect(isTalaPlanType('תל"א (תוכנית לימודים אישית)')).toBe(true);
+    expect(isTalaPlanType('תח"י (תוכנית חינוכית יחידנית)')).toBe(false);
+
+    const defaultClassGoals = buildDefaultTalaClassGoals();
+    expect(defaultClassGoals).toHaveLength(4);
+    expect(defaultClassGoals.map((cg) => cg.domain)).toEqual([
+      'קוגניטיבית- לימודית',
+      'חברתי- רגשי',
+      'התנהגותי',
+      'תפקודי לומד'
+    ]);
+
+    const engineered = reverseEngineerRawTextLocally(
+      'ילד סקרן וחברותי, אוהב משחקי הרכבה, מתקשה במשחק משותף עם חברים בחצר.',
+      { name: 'עומר כהן', gender: 'boy', date: '01/10/2026' },
+      INITIAL_GOAL_BANK
+    );
+    expect(engineered.studentGeneralBackground).toBeTruthy();
+    expect(engineered.studentMainGoal).toBeTruthy();
+
+    const baseStudent = {
+      name: 'עומר כהן',
+      gender: 'boy',
+      schoolYear: 'תשפ"ו',
+      educationalFramework: 'בי"ס אופק',
+      homeroomTeacher: 'רונית לוי',
+      counselorName: 'מיכל שגב',
+      classBackground: 'כיתה מגובשת וסקרנית המונה 8 תלמידים.',
+      classGoals: defaultClassGoals.map((cg, idx) =>
+        idx === 0
+          ? {
+              ...cg,
+              currentFunctioning: 'הכיתה מתקדמת ברכישת הקריאה',
+              goalsAndObjectives: 'ביסוס קריאה שוטפת'
+            }
+          : cg
+      ),
+      studentGeneralBackground: engineered.studentGeneralBackground,
+      studentMainGoal: engineered.studentMainGoal,
+      strengthsExisting: engineered.strengthsExisting,
+      strengthsToEmpower: engineered.strengthsToEmpower,
+      goals: engineered.goals
+    };
+
+    // 1. Test תל"א output
+    const talaStudent = {
+      ...baseStudent,
+      planType: 'תל"א (תוכנית לימודים אישית)'
+    };
+    const talaPrintHtml = buildWorkPlanPrintHtml(talaStudent, false);
+    const talaWordHtml = buildWordDocumentHtml(talaStudent, false);
+
+    expect(talaPrintHtml).toContain('רקע כללי על התלמיד/ה');
+    expect(talaPrintHtml).toContain('מטרת התלמיד/ה');
+    expect(talaPrintHtml).toContain('פעולות ואמצעים להשגת היעדים + שותפים ספציפיים');
+    expect(talaPrintHtml).toContain('מקרא סטטוס מטרות:');
+    expect(talaPrintHtml).toContain('רקע כללי על הכיתה ומטרות כיתתיות');
+    expect(talaPrintHtml).toContain('רונית לוי');
+    expect(talaPrintHtml).toContain('מיכל שגב');
+    expect(talaWordHtml).toContain('רקע כללי על התלמיד/ה');
+    expect(talaWordHtml).toContain('פעולות ואמצעים להשגת היעדים + שותפים ספציפיים');
+
+    // 2. Test תח"י output
+    const tahiStudent = {
+      ...baseStudent,
+      planType: 'תח"י (תוכנית חינוכית יחידנית)'
+    };
+    const tahiPrintHtml = buildWorkPlanPrintHtml(tahiStudent, false);
+    const tahiWordHtml = buildWordDocumentHtml(tahiStudent, false);
+
+    expect(tahiPrintHtml).toContain('מוקדי כוח: כוחות קיימים');
+    expect(tahiPrintHtml).toContain('כוחות להעצמה וחיזוק');
+    expect(tahiPrintHtml).toContain('יעדים, ציוני דרך');
+    expect(tahiPrintHtml).toContain('הזדמנויות, אמצעים');
+    expect(tahiPrintHtml).toContain('<th style="width: 9%;">משך</th>');
+    expect(tahiWordHtml).toContain('מוקדי כוח: כוחות קיימים');
   });
 });
 

@@ -4,6 +4,78 @@ import {
   redactStudentNameInText
 } from '../domain/privacyAndAcronyms';
 import { generateStatusReportLocally } from '../domain/statusReportGenerator';
+import { isTalaPlanType, TALA_GOAL_COLOR_STATUSES } from '../goalBankData';
+
+export function getGoalStatusMeta(statusVal = '') {
+  const clean = String(statusVal || '').trim();
+  const exact = TALA_GOAL_COLOR_STATUSES.find((s) => s.value === clean || s.label === clean);
+  if (exact) return exact;
+  if (clean === 'הושגה במלואה') return TALA_GOAL_COLOR_STATUSES[0];
+  if (clean === 'הושגה חלקית') return TALA_GOAL_COLOR_STATUSES[1];
+  if (clean === 'טרם הושגה' || clean === 'לא הושגה') return TALA_GOAL_COLOR_STATUSES[2];
+  return TALA_GOAL_COLOR_STATUSES[3]; // default: מטרה חדשה
+}
+
+export function getAdditionalMetadataItems(formData = {}, hideDetails = false) {
+  const rawItems = [
+    { label: 'בית הספר', value: formData.schoolName, sensitive: true },
+    { label: 'כיתה', value: formData.gradeClass, sensitive: false },
+    { label: 'מחנכת', value: formData.homeroomTeacher, sensitive: false },
+    { label: 'תומכת למידה', value: formData.learningSupportAssistant, sensitive: false },
+    { label: 'יועצת', value: formData.counselorName, sensitive: false },
+    { label: 'פסיכולוגית', value: formData.psychologistName, sensitive: false },
+    { label: 'מתכללת מתי"א', value: formData.matyaCoordinator, sensitive: false },
+    { label: 'מטפלת רגשית', value: formData.emotionalTherapist, sensitive: false },
+    { label: 'צוות פרא-רפואי', value: formData.paraMedicalTeam, sensitive: false }
+  ];
+  return rawItems
+    .filter((item) => String(item.value || '').trim().length > 0)
+    .map((item) => ({
+      label: item.label,
+      value: item.sensitive && hideDetails ? maskSensitiveValue(item.value) : String(item.value).trim()
+    }));
+}
+
+export function getEffectiveStudentProfileForTala(formData = {}, hideDetails = false) {
+  const explicitBg = getRedactedText(formData.studentGeneralBackground, formData, hideDetails).trim();
+  const explicitGoal = getRedactedText(formData.studentMainGoal, formData, hideDetails).trim();
+  const fallbackExisting = getRedactedText(formData.strengthsExisting, formData, hideDetails).trim();
+  const fallbackEmpower = getRedactedText(formData.strengthsToEmpower, formData, hideDetails).trim();
+
+  const generalBackground =
+    explicitBg ||
+    [
+      fallbackExisting ? `מוקדי כוח ותפקוד קיים:\n${fallbackExisting}` : '',
+      fallbackEmpower ? `מוקדים להעצמה וחיזוק:\n${fallbackEmpower}` : ''
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+  const firstGoalTitle =
+    Array.isArray(formData.goals) && formData.goals[0]?.title
+      ? getRedactedText(formData.goals[0].title, formData, hideDetails).trim()
+      : '';
+
+  const studentMainGoal =
+    explicitGoal ||
+    fallbackEmpower ||
+    firstGoalTitle ||
+    'קידום תפקודי, לימודי, חברתי ורגשי מותאם ליכולות התלמיד/ה בשיתוף הצוות הרב-מקצועי.';
+
+  return { generalBackground, studentMainGoal };
+}
+
+export function hasPopulatedClassSection(formData = {}) {
+  if (String(formData.classBackground || '').trim().length > 0) return true;
+  if (!Array.isArray(formData.classGoals)) return false;
+  return formData.classGoals.some(
+    (cg) =>
+      String(cg?.currentFunctioning || '').trim() ||
+      String(cg?.goalsAndObjectives || '').trim() ||
+      String(cg?.actionsAndPartners || '').trim() ||
+      String(cg?.successCriteria || '').trim()
+  );
+}
 
 export function getFullDocTitle(formData = {}) {
   return formData.planType
@@ -81,51 +153,220 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
   const displayAddress = getDisplayMaskedField(formData.address, hideDetails);
   const displayPhone = getDisplayMaskedField(formData.phone, hideDetails);
   const fullDocTitle = getFullDocTitle(formData);
+  const isTala = isTalaPlanType(formData.planType);
+  const additionalItems = getAdditionalMetadataItems(formData, hideDetails);
 
-  const goalsRowsHtml = (formData.goals || [])
-    .map((g) => {
-      const activityText = getRedactedText(g.activityParticipation, formData, hideDetails);
-      const titleText = getRedactedText(g.title, formData, hideDetails);
-      const objectivesText = getRedactedText(g.objectives, formData, hideDetails);
-      const opportunitiesText = getRedactedText(g.opportunities, formData, hideDetails);
-      const partnersText = getRedactedText(g.partners, formData, hideDetails);
-      const durationText = getRedactedText(g.duration, formData, hideDetails);
-      const evaluationText = getRedactedText(g.evaluationCriteria, formData, hideDetails);
+  const additionalMetadataBarHtml =
+    additionalItems.length > 0
+      ? `
+        <div class="student-details-bar" style="background: #f5f3ff; border-color: #8b6fc0; margin-top: -6px;">
+          <div style="font-weight: 700; color: #4c1d95;">מידע נוסף ושותפים חינוכיים:</div>
+          ${additionalItems.map((it) => `<div><strong>${it.label}:</strong> ${it.value}</div>`).join('')}
+        </div>
+      `
+      : '';
 
-      return `
-        <table class="eco-table goal-block-table">
-          <tbody>
-            <tr class="env-header-row">
-              <td colspan="6">
-                <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
-                <div style="margin-top: 4px;">
-                  <strong>פעילות והשתתפות:</strong>
-                  <span class="sub-instruction">תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות:</span>
-                </div>
-                <div style="margin-top: 6px; white-space: pre-line;">${activityText || ''}</div>
-              </td>
-            </tr>
-            <tr class="columns-header-row">
-              <th style="width: 18%;">מטרה<br/><span class="th-sub">מה אנחנו רוצים שיקרה?</span></th>
-              <th style="width: 22%;">יעדים, ציוני דרך<br/><span class="th-sub">פירוט צעדים אופרטיביים</span></th>
-              <th style="width: 24%;">הזדמנויות, אמצעים<br/><span class="th-sub">ואיך נגרום לזה לקרות?</span></th>
-              <th style="width: 13%;">שותפים<br/><span class="th-sub">מי ובאיזה אופן?</span></th>
-              <th style="width: 9%;">משך</th>
-              <th style="width: 14%;">אמות מידה להערכה</th>
-            </tr>
-            <tr class="columns-content-row">
-              <td style="font-weight: 600; color: #0d2b56;">${titleText || ''}</td>
-              <td>${objectivesText || ''}</td>
-              <td>${opportunitiesText || ''}</td>
-              <td>${partnersText || ''}</td>
-              <td>${durationText || ''}</td>
-              <td>${evaluationText || ''}</td>
-            </tr>
-          </tbody>
-        </table>
-      `;
-    })
-    .join('');
+  const talaLegendHtml = `
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 11.5px;">
+      <strong>מקרא סטטוס מטרות:</strong>
+      ${TALA_GOAL_COLOR_STATUSES.map(
+        (st) =>
+          `<span style="display: inline-block; padding: 3px 10px; border-radius: 6px; background: ${st.bg}; border: 1.5px solid ${st.border}; color: ${st.text}; font-weight: 700;">${st.label}</span>`
+      ).join('')}
+    </div>
+  `;
+
+  const talaClassSectionHtml =
+    isTala && hasPopulatedClassSection(formData)
+      ? `
+        <div style="margin-bottom: 16px; page-break-inside: avoid;">
+          <h3 style="margin: 0 0 8px 0; font-size: 14.5px; color: #1e3a5f; border-bottom: 2px solid #5b9bd5; padding-bottom: 4px;">
+            רקע כללי על הכיתה ומטרות כיתתיות
+          </h3>
+          ${
+            (formData.classBackground || '').trim()
+              ? `<div style="background: #eef3fb; border: 1.5px solid #5b9bd5; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; white-space: pre-line;"><strong>רקע כללי על הכיתה:</strong><br/>${getRedactedText(formData.classBackground, formData, hideDetails)}</div>`
+              : ''
+          }
+          ${
+            Array.isArray(formData.classGoals) &&
+            formData.classGoals.some(
+              (cg) =>
+                (cg?.currentFunctioning || '').trim() ||
+                (cg?.goalsAndObjectives || '').trim() ||
+                (cg?.actionsAndPartners || '').trim() ||
+                (cg?.successCriteria || '').trim()
+            )
+              ? `
+                <table class="eco-table">
+                  <thead>
+                    <tr class="columns-header-row">
+                      <th style="width: 15%;">תחום המטרות</th>
+                      <th style="width: 21%;">תפקוד נוכחי</th>
+                      <th style="width: 22%;">יעדים ומטרות</th>
+                      <th style="width: 22%;">פעולות להשגת היעדים + שותפים</th>
+                      <th style="width: 20%;">אמות מידה להצלחה</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${formData.classGoals
+                      .map((cg) => {
+                        const stMeta = getGoalStatusMeta(cg.status);
+                        return `
+                          <tr>
+                            <td style="font-weight: 700; color: #1e3a5f; background: #f8faff;">
+                              <div>${cg.domain || ''}</div>
+                              <div style="margin-top: 4px; display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10.5px; background: ${stMeta.bg}; border: 1px solid ${stMeta.border}; color: ${stMeta.text};">${stMeta.label}</div>
+                            </td>
+                            <td>${getRedactedText(cg.currentFunctioning, formData, hideDetails)}</td>
+                            <td>${getRedactedText(cg.goalsAndObjectives, formData, hideDetails)}</td>
+                            <td>${getRedactedText(cg.actionsAndPartners, formData, hideDetails)}</td>
+                            <td>${getRedactedText(cg.successCriteria, formData, hideDetails)}</td>
+                          </tr>
+                        `;
+                      })
+                      .join('')}
+                  </tbody>
+                </table>
+              `
+              : ''
+          }
+        </div>
+      `
+      : '';
+
+  const talaProfile = getEffectiveStudentProfileForTala(formData, hideDetails);
+
+  const topSummarySectionHtml = isTala
+    ? `
+      ${talaClassSectionHtml}
+      <table class="eco-table summary-table">
+        <thead>
+          <tr>
+            <th class="th-existing" style="width: 55%;">רקע כללי על התלמיד/ה</th>
+            <th class="th-empower" style="width: 45%;">מטרת התלמיד/ה</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${talaProfile.generalBackground}</td>
+            <td>${talaProfile.studentMainGoal}</td>
+          </tr>
+        </tbody>
+      </table>
+      ${talaLegendHtml}
+    `
+    : `
+      <table class="eco-table summary-table">
+        <thead>
+          <tr>
+            <th class="th-existing" style="width: 50%;">מוקדי כוח: כוחות קיימים</th>
+            <th class="th-empower" style="width: 50%;">כוחות להעצמה וחיזוק</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${getRedactedText(formData.strengthsExisting, formData, hideDetails)}</td>
+            <td>${getRedactedText(formData.strengthsToEmpower, formData, hideDetails)}</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+
+  const goalsRowsHtml = isTala
+    ? `
+      <table class="eco-table">
+        <thead>
+          <tr class="columns-header-row">
+            <th style="width: 24%;">תפקוד נוכחי<br/><span class="th-sub">תחום/סביבה, סטטוס ותיאור התפקוד</span></th>
+            <th style="width: 28%;">מטרות ויעדים<br/><span class="th-sub">מטרה ופירוט צעדים אופרטיביים</span></th>
+            <th style="width: 26%;">פעולות ואמצעים להשגת היעדים + שותפים ספציפיים</th>
+            <th style="width: 22%;">אמות מידה להערכה</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(formData.goals || [])
+            .map((g) => {
+              const activityText = getRedactedText(g.activityParticipation, formData, hideDetails);
+              const titleText = getRedactedText(g.title, formData, hideDetails);
+              const objectivesText = getRedactedText(g.objectives, formData, hideDetails);
+              const opportunitiesText = getRedactedText(g.opportunities, formData, hideDetails);
+              const partnersText = getRedactedText(g.partners, formData, hideDetails);
+              const evaluationText = getRedactedText(g.evaluationCriteria, formData, hideDetails);
+              const stMeta = getGoalStatusMeta(g.achievementStatus);
+              const combinedActionsPartners = [
+                opportunitiesText,
+                partnersText ? `שותפים ספציפיים: ${partnersText}` : ''
+              ]
+                .filter(Boolean)
+                .join('\n\n');
+
+              return `
+                <tr>
+                  <td>
+                    <div style="font-weight: 700; color: #1e3a5f; margin-bottom: 4px;">תחום / סביבה: ${g.environment || '__________'}</div>
+                    <div style="display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; margin-bottom: 6px; background: ${stMeta.bg}; border: 1px solid ${stMeta.border}; color: ${stMeta.text};">
+                      ${stMeta.label}
+                    </div>
+                    <div>${activityText || ''}</div>
+                  </td>
+                  <td>
+                    <div style="font-weight: 700; color: #0d2b56; margin-bottom: 4px;">${titleText || ''}</div>
+                    <div>${objectivesText || ''}</div>
+                  </td>
+                  <td>${combinedActionsPartners || ''}</td>
+                  <td>${evaluationText || ''}</td>
+                </tr>
+              `;
+            })
+            .join('')}
+        </tbody>
+      </table>
+    `
+    : (formData.goals || [])
+        .map((g) => {
+          const activityText = getRedactedText(g.activityParticipation, formData, hideDetails);
+          const titleText = getRedactedText(g.title, formData, hideDetails);
+          const objectivesText = getRedactedText(g.objectives, formData, hideDetails);
+          const opportunitiesText = getRedactedText(g.opportunities, formData, hideDetails);
+          const partnersText = getRedactedText(g.partners, formData, hideDetails);
+          const durationText = getRedactedText(g.duration, formData, hideDetails);
+          const evaluationText = getRedactedText(g.evaluationCriteria, formData, hideDetails);
+
+          return `
+            <table class="eco-table goal-block-table">
+              <tbody>
+                <tr class="env-header-row">
+                  <td colspan="6">
+                    <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
+                    <div style="margin-top: 4px;">
+                      <strong>פעילות והשתתפות:</strong>
+                      <span class="sub-instruction">תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות:</span>
+                    </div>
+                    <div style="margin-top: 6px; white-space: pre-line;">${activityText || ''}</div>
+                  </td>
+                </tr>
+                <tr class="columns-header-row">
+                  <th style="width: 18%;">מטרה<br/><span class="th-sub">מה אנחנו רוצים שיקרה?</span></th>
+                  <th style="width: 22%;">יעדים, ציוני דרך<br/><span class="th-sub">פירוט צעדים אופרטיביים</span></th>
+                  <th style="width: 24%;">הזדמנויות, אמצעים<br/><span class="th-sub">ואיך נגרום לזה לקרות?</span></th>
+                  <th style="width: 13%;">שותפים<br/><span class="th-sub">מי ובאיזה אופן?</span></th>
+                  <th style="width: 9%;">משך</th>
+                  <th style="width: 14%;">אמות מידה להערכה</th>
+                </tr>
+                <tr class="columns-content-row">
+                  <td style="font-weight: 600; color: #0d2b56;">${titleText || ''}</td>
+                  <td>${objectivesText || ''}</td>
+                  <td>${opportunitiesText || ''}</td>
+                  <td>${partnersText || ''}</td>
+                  <td>${durationText || ''}</td>
+                  <td>${evaluationText || ''}</td>
+                </tr>
+              </tbody>
+            </table>
+          `;
+        })
+        .join('');
 
   return `
     <!DOCTYPE html>
@@ -296,24 +537,12 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
           ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
           ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
         </div>
+        ${additionalMetadataBarHtml}
 
-        <!-- Top Summary Table: Strengths -->
-        <table class="eco-table summary-table">
-          <thead>
-            <tr>
-              <th class="th-existing" style="width: 50%;">מוקדי כוח: כוחות קיימים</th>
-              <th class="th-empower" style="width: 50%;">כוחות להעצמה וחיזוק</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>${getRedactedText(formData.strengthsExisting, formData, hideDetails)}</td>
-              <td>${getRedactedText(formData.strengthsToEmpower, formData, hideDetails)}</td>
-            </tr>
-          </tbody>
-        </table>
+        <!-- Top Summary / Profile Section -->
+        ${topSummarySectionHtml}
 
-        <!-- Goal Blocks -->
+        <!-- Goal Blocks / Table -->
         ${goalsRowsHtml}
 
         <!-- Footer: Recommendations & Signatures -->
@@ -342,49 +571,196 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
   const displayAddress = getDisplayMaskedField(formData.address, hideDetails);
   const displayPhone = getDisplayMaskedField(formData.phone, hideDetails);
   const fullDocTitle = getFullDocTitle(formData);
+  const isTala = isTalaPlanType(formData.planType);
+  const additionalItems = getAdditionalMetadataItems(formData, hideDetails);
 
-  const goalsRowsHtml = (formData.goals || [])
-    .map((g) => {
-      const activityText = (getRedactedText(g.activityParticipation, formData, hideDetails) || '').replace(/\n/g, '<br/>');
-      const titleText = (getRedactedText(g.title, formData, hideDetails) || '').replace(/\n/g, '<br/>');
-      const objectivesText = (getRedactedText(g.objectives, formData, hideDetails) || '').replace(/\n/g, '<br/>');
-      const opportunitiesText = (getRedactedText(g.opportunities, formData, hideDetails) || '').replace(/\n/g, '<br/>');
-      const partnersText = (getRedactedText(g.partners, formData, hideDetails) || '').replace(/\n/g, '<br/>');
-      const durationText = (getRedactedText(g.duration, formData, hideDetails) || '').replace(/\n/g, '<br/>');
-      const evaluationText = (getRedactedText(g.evaluationCriteria, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+  const additionalWordBarHtml =
+    additionalItems.length > 0
+      ? `
+        <div style="background-color:#f5f3ff; border:1px solid #8b6fc0; padding:6pt 12pt; margin-bottom:12pt; font-size:10.5pt;">
+          <strong>מידע נוסף ושותפים חינוכיים:</strong>
+          ${additionalItems.map((it) => `<strong>${it.label}:</strong> ${it.value}`).join(' &nbsp;|&nbsp; ')}
+        </div>
+      `
+      : '';
 
-      return `
-        <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family: Arial, sans-serif; font-size: 10.5pt;">
-          <tr style="background-color:#eef3fb;">
-            <td colspan="6" style="border:1px solid #7997be; padding:8pt; text-align:right;">
-              <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
-              <div style="margin-top:4pt;"><strong>פעילות והשתתפות:</strong> ${activityText}</div>
-            </td>
-          </tr>
-          <tr style="background-color:#eaf3fc; color:#2b4c73; font-weight:bold; text-align:center;">
-            <th style="width:18%; border:1px solid #7997be; padding:6pt;">מטרה</th>
-            <th style="width:22%; border:1px solid #7997be; padding:6pt;">יעדים, ציוני דרך</th>
-            <th style="width:24%; border:1px solid #7997be; padding:6pt;">הזדמנויות, אמצעים</th>
-            <th style="width:13%; border:1px solid #7997be; padding:6pt;">שותפים</th>
-            <th style="width:9%; border:1px solid #7997be; padding:6pt;">משך</th>
-            <th style="width:14%; border:1px solid #7997be; padding:6pt;">אמות מידה להערכה</th>
-          </tr>
-          <tr>
-            <td style="border:1px solid #7997be; padding:6pt; font-weight:bold; color:#0d2b56; vertical-align:top; text-align:right;">${titleText}</td>
-            <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${objectivesText}</td>
-            <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${opportunitiesText}</td>
-            <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${partnersText}</td>
-            <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${durationText}</td>
-            <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${evaluationText}</td>
-          </tr>
-        </table>
-      `;
-    })
-    .join('');
+  const talaProfile = getEffectiveStudentProfileForTala(formData, hideDetails);
+  const talaGeneralBgHtml = (talaProfile.generalBackground || '').replace(/\n/g, '<br/>');
+  const talaMainGoalHtml = (talaProfile.studentMainGoal || '').replace(/\n/g, '<br/>');
+
+  const talaClassWordSectionHtml =
+    isTala && hasPopulatedClassSection(formData)
+      ? `
+        <div style="margin-bottom:12pt;">
+          <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:6pt;">רקע כללי על הכיתה ומטרות כיתתיות</div>
+          ${
+            (formData.classBackground || '').trim()
+              ? `<div style="background-color:#eef3fb; border:1px solid #5b9bd5; padding:8pt 10pt; margin-bottom:8pt; font-size:10.5pt;"><strong>רקע כללי על הכיתה:</strong><br/>${(getRedactedText(formData.classBackground, formData, hideDetails) || '').replace(/\n/g, '<br/>')}</div>`
+              : ''
+          }
+          ${
+            Array.isArray(formData.classGoals) &&
+            formData.classGoals.some(
+              (cg) =>
+                (cg?.currentFunctioning || '').trim() ||
+                (cg?.goalsAndObjectives || '').trim() ||
+                (cg?.actionsAndPartners || '').trim() ||
+                (cg?.successCriteria || '').trim()
+            )
+              ? `
+                <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:12pt; font-family: Arial, sans-serif; font-size: 10pt;">
+                  <tr style="background-color:#eaf3fc; color:#2b4c73; font-weight:bold; text-align:center;">
+                    <th style="width:15%; border:1px solid #7997be; padding:6pt;">תחום המטרות</th>
+                    <th style="width:21%; border:1px solid #7997be; padding:6pt;">תפקוד נוכחי</th>
+                    <th style="width:22%; border:1px solid #7997be; padding:6pt;">יעדים ומטרות</th>
+                    <th style="width:22%; border:1px solid #7997be; padding:6pt;">פעולות להשגת היעדים + שותפים</th>
+                    <th style="width:20%; border:1px solid #7997be; padding:6pt;">אמות מידה להצלחה</th>
+                  </tr>
+                  ${formData.classGoals
+                    .map((cg) => {
+                      const stMeta = getGoalStatusMeta(cg.status);
+                      return `
+                        <tr>
+                          <td style="border:1px solid #7997be; padding:6pt; font-weight:bold; background-color:#f8faff; vertical-align:top; text-align:right;">
+                            <div>${cg.domain || ''}</div>
+                            <div style="margin-top:3pt; font-size:9pt; color:${stMeta.text}; background-color:${stMeta.bg}; padding:2pt 4pt;">${stMeta.label}</div>
+                          </td>
+                          <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${(getRedactedText(cg.currentFunctioning, formData, hideDetails) || '').replace(/\n/g, '<br/>')}</td>
+                          <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${(getRedactedText(cg.goalsAndObjectives, formData, hideDetails) || '').replace(/\n/g, '<br/>')}</td>
+                          <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${(getRedactedText(cg.actionsAndPartners, formData, hideDetails) || '').replace(/\n/g, '<br/>')}</td>
+                          <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${(getRedactedText(cg.successCriteria, formData, hideDetails) || '').replace(/\n/g, '<br/>')}</td>
+                        </tr>
+                      `;
+                    })
+                    .join('')}
+                </table>
+              `
+              : ''
+          }
+        </div>
+      `
+      : '';
+
+  const goalsRowsHtml = isTala
+    ? `
+      <div style="margin-bottom:8pt; font-size:10pt;">
+        <strong>מקרא סטטוס מטרות:</strong>
+        ${TALA_GOAL_COLOR_STATUSES.map(
+          (st) =>
+            `<span style="background-color:${st.bg}; color:${st.text}; border:1px solid ${st.border}; padding:2pt 6pt; margin-left:6pt; font-weight:bold;">${st.label}</span>`
+        ).join(' ')}
+      </div>
+      <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family: Arial, sans-serif; font-size: 10.5pt;">
+        <tr style="background-color:#eaf3fc; color:#2b4c73; font-weight:bold; text-align:center;">
+          <th style="width:24%; border:1px solid #7997be; padding:6pt;">תפקוד נוכחי</th>
+          <th style="width:28%; border:1px solid #7997be; padding:6pt;">מטרות ויעדים</th>
+          <th style="width:26%; border:1px solid #7997be; padding:6pt;">פעולות ואמצעים להשגת היעדים + שותפים ספציפיים</th>
+          <th style="width:22%; border:1px solid #7997be; padding:6pt;">אמות מידה להערכה</th>
+        </tr>
+        ${(formData.goals || [])
+          .map((g) => {
+            const activityText = (getRedactedText(g.activityParticipation, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+            const titleText = (getRedactedText(g.title, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+            const objectivesText = (getRedactedText(g.objectives, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+            const opportunitiesText = (getRedactedText(g.opportunities, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+            const partnersText = (getRedactedText(g.partners, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+            const evaluationText = (getRedactedText(g.evaluationCriteria, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+            const stMeta = getGoalStatusMeta(g.achievementStatus);
+            const combinedActionsPartners = [
+              opportunitiesText,
+              partnersText ? `<strong>שותפים ספציפיים:</strong> ${partnersText}` : ''
+            ]
+              .filter(Boolean)
+              .join('<br/><br/>');
+
+            return `
+              <tr>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">
+                  <div style="font-weight:bold; color:#1e3a5f; margin-bottom:3pt;">תחום / סביבה: ${g.environment || '__________'}</div>
+                  <div style="background-color:${stMeta.bg}; color:${stMeta.text}; border:1px solid ${stMeta.border}; padding:2pt 5pt; font-size:9pt; font-weight:bold; margin-bottom:4pt; display:inline-block;">${stMeta.label}</div>
+                  <div>${activityText}</div>
+                </td>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">
+                  <div style="font-weight:bold; color:#0d2b56; margin-bottom:4pt;">${titleText}</div>
+                  <div>${objectivesText}</div>
+                </td>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${combinedActionsPartners}</td>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${evaluationText}</td>
+              </tr>
+            `;
+          })
+          .join('')}
+      </table>
+    `
+    : (formData.goals || [])
+        .map((g) => {
+          const activityText = (getRedactedText(g.activityParticipation, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+          const titleText = (getRedactedText(g.title, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+          const objectivesText = (getRedactedText(g.objectives, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+          const opportunitiesText = (getRedactedText(g.opportunities, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+          const partnersText = (getRedactedText(g.partners, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+          const durationText = (getRedactedText(g.duration, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+          const evaluationText = (getRedactedText(g.evaluationCriteria, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+
+          return `
+            <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family: Arial, sans-serif; font-size: 10.5pt;">
+              <tr style="background-color:#eef3fb;">
+                <td colspan="6" style="border:1px solid #7997be; padding:8pt; text-align:right;">
+                  <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
+                  <div style="margin-top:4pt;"><strong>פעילות והשתתפות:</strong> ${activityText}</div>
+                </td>
+              </tr>
+              <tr style="background-color:#eaf3fc; color:#2b4c73; font-weight:bold; text-align:center;">
+                <th style="width:18%; border:1px solid #7997be; padding:6pt;">מטרה</th>
+                <th style="width:22%; border:1px solid #7997be; padding:6pt;">יעדים, ציוני דרך</th>
+                <th style="width:24%; border:1px solid #7997be; padding:6pt;">הזדמנויות, אמצעים</th>
+                <th style="width:13%; border:1px solid #7997be; padding:6pt;">שותפים</th>
+                <th style="width:9%; border:1px solid #7997be; padding:6pt;">משך</th>
+                <th style="width:14%; border:1px solid #7997be; padding:6pt;">אמות מידה להערכה</th>
+              </tr>
+              <tr>
+                <td style="border:1px solid #7997be; padding:6pt; font-weight:bold; color:#0d2b56; vertical-align:top; text-align:right;">${titleText}</td>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${objectivesText}</td>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${opportunitiesText}</td>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${partnersText}</td>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${durationText}</td>
+                <td style="border:1px solid #7997be; padding:6pt; vertical-align:top; text-align:right;">${evaluationText}</td>
+              </tr>
+            </table>
+          `;
+        })
+        .join('');
 
   const strengthsExistingHtml = (getRedactedText(formData.strengthsExisting, formData, hideDetails) || '').replace(/\n/g, '<br/>');
   const strengthsToEmpowerHtml = (getRedactedText(formData.strengthsToEmpower, formData, hideDetails) || '').replace(/\n/g, '<br/>');
   const recommendationsHtml = (getRedactedText(formData.recommendations, formData, hideDetails) || '').replace(/\n/g, '<br/>');
+
+  const topWordSummaryTableHtml = isTala
+    ? `
+      ${talaClassWordSectionHtml}
+      <table dir="rtl" border="1" cellspacing="0" cellpadding="8" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family:Arial, sans-serif; font-size:10.5pt;">
+        <tr>
+          <th style="width:55%; background-color:#5b9bd5; color:#ffffff; border:1px solid #7997be; padding:6pt; text-align:center;">רקע כללי על התלמיד/ה</th>
+          <th style="width:45%; background-color:#8b6fc0; color:#ffffff; border:1px solid #7997be; padding:6pt; text-align:center;">מטרת התלמיד/ה</th>
+        </tr>
+        <tr>
+          <td style="border:1px solid #7997be; padding:8pt; vertical-align:top; text-align:right;">${talaGeneralBgHtml}</td>
+          <td style="border:1px solid #7997be; padding:8pt; vertical-align:top; text-align:right;">${talaMainGoalHtml}</td>
+        </tr>
+      </table>
+    `
+    : `
+      <table dir="rtl" border="1" cellspacing="0" cellpadding="8" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family:Arial, sans-serif; font-size:10.5pt;">
+        <tr>
+          <th style="width:50%; background-color:#5b9bd5; color:#ffffff; border:1px solid #7997be; padding:6pt; text-align:center;">מוקדי כוח: כוחות קיימים</th>
+          <th style="width:50%; background-color:#8b6fc0; color:#ffffff; border:1px solid #7997be; padding:6pt; text-align:center;">כוחות להעצמה וחיזוק</th>
+        </tr>
+        <tr>
+          <td style="border:1px solid #7997be; padding:8pt; vertical-align:top; text-align:right;">${strengthsExistingHtml}</td>
+          <td style="border:1px solid #7997be; padding:8pt; vertical-align:top; text-align:right;">${strengthsToEmpowerHtml}</td>
+        </tr>
+      </table>
+    `;
 
   return `
     <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -430,17 +806,9 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
           ${formData.address ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
           ${formData.phone ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
         </div>
+        ${additionalWordBarHtml}
 
-        <table dir="rtl" border="1" cellspacing="0" cellpadding="8" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family:Arial, sans-serif; font-size:10.5pt;">
-          <tr>
-            <th style="width:50%; background-color:#5b9bd5; color:#ffffff; border:1px solid #7997be; padding:6pt; text-align:center;">מוקדי כוח: כוחות קיימים</th>
-            <th style="width:50%; background-color:#8b6fc0; color:#ffffff; border:1px solid #7997be; padding:6pt; text-align:center;">כוחות להעצמה וחיזוק</th>
-          </tr>
-          <tr>
-            <td style="border:1px solid #7997be; padding:8pt; vertical-align:top; text-align:right;">${strengthsExistingHtml}</td>
-            <td style="border:1px solid #7997be; padding:8pt; vertical-align:top; text-align:right;">${strengthsToEmpowerHtml}</td>
-          </tr>
-        </table>
+        ${topWordSummaryTableHtml}
 
         ${goalsRowsHtml}
 
