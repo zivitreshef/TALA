@@ -1300,7 +1300,7 @@ export const INITIAL_STUDENTS_DATA = [
     id: 'st_demo_1',
     date: new Date().toLocaleDateString('he-IL'),
     schoolYear: 'תשפ"ו (2025-2026)',
-    planType: 'תל"א (תוכנית לימודים אישית)',
+    planType: 'תח"י (תוכנית חינוכית יחידנית)',
     name: 'נועם ישראלי',
     gender: 'boy',
     idNumber: '345678912',

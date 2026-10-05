@@ -678,6 +678,21 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(tahiPrintHtml).toContain('הזדמנויות, אמצעים');
     expect(tahiPrintHtml).toContain('<th style="width: 9%;">משך</th>');
     expect(tahiWordHtml).toContain('מוקדי כוח: כוחות קיימים');
+
+    // 3. Verify that a תח"י report's strengths are NOT auto-copied into an empty תל"א profile
+    const emptyTalaFromTahi = {
+      name: 'עומר כהן',
+      gender: 'boy',
+      planType: 'תל"א (תוכנית לימודים אישית)',
+      strengthsExisting: 'כוחות קיימים מתוך תח"י בלבד',
+      strengthsToEmpower: 'כוחות להעצמה מתוך תח"י בלבד',
+      studentGeneralBackground: '',
+      studentMainGoal: '',
+      goals: []
+    };
+    const emptyTalaPrint = buildWorkPlanPrintHtml(emptyTalaFromTahi, false);
+    expect(emptyTalaPrint).not.toContain('כוחות קיימים מתוך תח"י בלבד');
+    expect(emptyTalaPrint).not.toContain('כוחות להעצמה מתוך תח"י בלבד');
   });
 });
 
