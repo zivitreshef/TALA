@@ -37,30 +37,16 @@ export function getAdditionalMetadataItems(formData = {}, hideDetails = false) {
 }
 
 export function getEffectiveStudentProfileForTala(formData = {}, hideDetails = false) {
-  const explicitBg = getRedactedText(formData.studentGeneralBackground, formData, hideDetails).trim();
-  const explicitGoal = getRedactedText(formData.studentMainGoal, formData, hideDetails).trim();
-  const fallbackExisting = getRedactedText(formData.strengthsExisting, formData, hideDetails).trim();
-  const fallbackEmpower = getRedactedText(formData.strengthsToEmpower, formData, hideDetails).trim();
-
-  const generalBackground =
-    explicitBg ||
-    [
-      fallbackExisting ? `מוקדי כוח ותפקוד קיים:\n${fallbackExisting}` : '',
-      fallbackEmpower ? `מוקדים להעצמה וחיזוק:\n${fallbackEmpower}` : ''
-    ]
-      .filter(Boolean)
-      .join('\n\n');
-
-  const firstGoalTitle =
-    Array.isArray(formData.goals) && formData.goals[0]?.title
-      ? getRedactedText(formData.goals[0].title, formData, hideDetails).trim()
-      : '';
-
-  const studentMainGoal =
-    explicitGoal ||
-    fallbackEmpower ||
-    firstGoalTitle ||
-    'קידום תפקודי, לימודי, חברתי ורגשי מותאם ליכולות התלמיד/ה בשיתוף הצוות הרב-מקצועי.';
+  const generalBackground = getRedactedText(
+    formData.studentGeneralBackground,
+    formData,
+    hideDetails
+  ).trim();
+  const studentMainGoal = getRedactedText(
+    formData.studentMainGoal,
+    formData,
+    hideDetails
+  ).trim();
 
   return { generalBackground, studentMainGoal };
 }

@@ -87,6 +87,62 @@ import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 
+const getPlanTypeStorageKey = (schoolYear, planType) => {
+  const yr = schoolYear || 'תשפ"ו (2025-2026)';
+  const typeKey = isTalaPlanType(planType) ? 'tala' : 'tachi';
+  return `${yr}__${typeKey}`;
+};
+
+const buildFreshReportForPlanType = (planType) => {
+  const resolvedPlanType = planType || 'תל"א (תוכנית לימודים אישית)';
+  const isTala = isTalaPlanType(resolvedPlanType);
+  const freshGoal = {
+    id: 'g_init_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    environment: ENVIRONMENTS_LIST[0],
+    activityParticipation: '',
+    title: '',
+    objectives: '',
+    opportunities: '',
+    partners: isTala ? 'מחנכת, תומכת למידה, צוות רב-מקצועי' : 'צוות הגן, סייעת אישית',
+    duration: '',
+    evaluationCriteria: '',
+    goalColorStatus: 'new_goal'
+  };
+
+  return {
+    date: new Date().toLocaleDateString('he-IL'),
+    planType: resolvedPlanType,
+    isLocked: false,
+    lockedAt: '',
+    lockedBy: '',
+    schoolName: '',
+    gradeClass: '',
+    homeroomTeacher: '',
+    learningSupportAssistant: '',
+    counselorName: '',
+    psychologistName: '',
+    matyaCoordinator: '',
+    emotionalTherapist: '',
+    paraMedicalTeam: '',
+    classBackground: '',
+    classGoals: buildDefaultTalaClassGoals(),
+    teacherFreeText: '',
+    freeTextAnalyzed: false,
+    removedAiGoals: [],
+    strengthsExisting: '',
+    strengthsToEmpower: '',
+    studentGeneralBackground: '',
+    studentMainGoal: '',
+    recommendations: '',
+    evalReportFreeText: '',
+    evalReportSummary: '',
+    statusReportSections: [],
+    statusReportUpdatedAt: '',
+    lastSavedAt: '',
+    goals: [freshGoal]
+  };
+};
+
 const extractYearReportFromFormData = (data) => ({
   date: data?.date || new Date().toLocaleDateString('he-IL'),
   planType: data?.planType || 'תל"א (תוכנית לימודים אישית)',
@@ -142,6 +198,7 @@ const hasContentInYearReport = (rep) => {
       (rep.strengthsToEmpower && rep.strengthsToEmpower.trim()) ||
       (rep.studentGeneralBackground && rep.studentGeneralBackground.trim()) ||
       (rep.studentMainGoal && rep.studentMainGoal.trim()) ||
+      hasPopulatedClassSection(rep) ||
       (rep.recommendations && rep.recommendations.trim()) ||
       (rep.evalReportFreeText && rep.evalReportFreeText.trim()) ||
       (rep.evalReportSummary && rep.evalReportSummary.trim()) ||
@@ -175,6 +232,7 @@ export default function EcologicalWorkPlanForm({
   const buildNormalizedStudentData = (st) => {
     const initialGender = st?.gender || 'boy';
     const currentYear = st?.schoolYear || 'תשפ"ו (2025-2026)';
+    const currentPlanType = st?.planType || 'תל"א (תוכנית לימודים אישית)';
     const normalizedGoals = (st?.goals || []).map((g) =>
       adaptGoalToGender(g, initialGender)
     );
@@ -183,14 +241,24 @@ export default function EcologicalWorkPlanForm({
         ? st.classGoals
         : buildDefaultTalaClassGoals();
     const existingReports = { ...(st?.reportsByYear || {}) };
+    const existingReportsByPlanType = { ...(st?.reportsByPlanType || {}) };
     const initialRemovedAiGoals = Array.isArray(st?.removedAiGoals) ? st.removedAiGoals : [];
     const initialStatusReportSections = Array.isArray(st?.statusReportSections)
       ? st.statusReportSections
       : [];
     const initialLocked = Boolean(st?.isLocked);
-    existingReports[currentYear] = {
+
+    // Detect if a תח"י report was previously switched to תל"א before per-planType separation existed
+    const hasTachiStrengthsOnly =
+      !st?.reportsByPlanType &&
+      Boolean((st?.strengthsExisting || '').trim() || (st?.strengthsToEmpower || '').trim()) &&
+      !(st?.studentGeneralBackground || '').trim() &&
+      !(st?.studentMainGoal || '').trim() &&
+      !hasPopulatedClassSection(st);
+
+    const baseSnapshot = {
       date: st?.date || new Date().toLocaleDateString('he-IL'),
-      planType: st?.planType || 'תל"א (תוכנית לימודים אישית)',
+      planType: currentPlanType,
       isLocked: initialLocked,
       lockedAt: st?.lockedAt || '',
       lockedBy: st?.lockedBy || '',
@@ -221,35 +289,42 @@ export default function EcologicalWorkPlanForm({
       goals: normalizedGoals
     };
 
+    if (hasTachiStrengthsOnly && isTalaPlanType(currentPlanType)) {
+      const tachiKey = getPlanTypeStorageKey(currentYear, 'תח"י (תוכנית חינוכית יחידנית)');
+      const talaKey = getPlanTypeStorageKey(currentYear, 'תל"א (תוכנית לימודים אישית)');
+      existingReportsByPlanType[tachiKey] = {
+        ...baseSnapshot,
+        planType: 'תח"י (תוכנית חינוכית יחידנית)'
+      };
+      const emptyTalaReport =
+        existingReportsByPlanType[talaKey] ||
+        buildFreshReportForPlanType('תל"א (תוכנית לימודים אישית)');
+      existingReportsByPlanType[talaKey] = emptyTalaReport;
+      existingReports[currentYear] = emptyTalaReport;
+
+      return {
+        ...st,
+        ...emptyTalaReport,
+        schoolYear: currentYear,
+        gender: initialGender,
+        sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
+        reportsByYear: existingReports,
+        reportsByPlanType: existingReportsByPlanType
+      };
+    }
+
+    const activePlanKey = getPlanTypeStorageKey(currentYear, currentPlanType);
+    existingReportsByPlanType[activePlanKey] = baseSnapshot;
+    existingReports[currentYear] = baseSnapshot;
+
     return {
       ...st,
+      ...baseSnapshot,
       schoolYear: currentYear,
       gender: initialGender,
-      isLocked: initialLocked,
-      lockedAt: st?.lockedAt || '',
-      lockedBy: st?.lockedBy || '',
-      schoolName: st?.schoolName || '',
-      gradeClass: st?.gradeClass || '',
-      homeroomTeacher: st?.homeroomTeacher || '',
-      learningSupportAssistant: st?.learningSupportAssistant || '',
-      counselorName: st?.counselorName || '',
-      psychologistName: st?.psychologistName || '',
-      matyaCoordinator: st?.matyaCoordinator || '',
-      emotionalTherapist: st?.emotionalTherapist || '',
-      paraMedicalTeam: st?.paraMedicalTeam || '',
-      classBackground: st?.classBackground || '',
-      classGoals: normalizedClassGoals,
-      studentGeneralBackground: st?.studentGeneralBackground || '',
-      studentMainGoal: st?.studentMainGoal || '',
-      freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
-      removedAiGoals: initialRemovedAiGoals,
-      evalReportFreeText: st?.evalReportFreeText || '',
-      evalReportSummary: st?.evalReportSummary || '',
-      statusReportSections: initialStatusReportSections,
-      statusReportUpdatedAt: st?.statusReportUpdatedAt || '',
       sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
-      goals: normalizedGoals,
-      reportsByYear: existingReports
+      reportsByYear: existingReports,
+      reportsByPlanType: existingReportsByPlanType
     };
   };
 
@@ -371,11 +446,17 @@ export default function EcologicalWorkPlanForm({
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
   useEffect(() => {
     const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
+    const currentSnapshot = extractYearReportFromFormData(formData);
     const syncedDraft = {
       ...formData,
       reportsByYear: {
         ...(formData.reportsByYear || {}),
-        [activeYear]: extractYearReportFromFormData(formData)
+        [activeYear]: currentSnapshot
+      },
+      reportsByPlanType: {
+        ...(formData.reportsByPlanType || {}),
+        [activePlanKey]: currentSnapshot
       }
     };
     const isDirty = JSON.stringify(syncedDraft) !== savedSnapshotRef.current;
@@ -397,11 +478,16 @@ export default function EcologicalWorkPlanForm({
         ...formData,
         lastSavedAt: nowTime
       };
+      const snapshotWithTime = extractYearReportFromFormData(updatedWithTime);
       const updated = {
         ...updatedWithTime,
         reportsByYear: {
           ...(formData.reportsByYear || {}),
-          [activeYear]: extractYearReportFromFormData(updatedWithTime)
+          [activeYear]: snapshotWithTime
+        },
+        reportsByPlanType: {
+          ...(formData.reportsByPlanType || {}),
+          [activePlanKey]: snapshotWithTime
         }
       };
       savedSnapshotRef.current = JSON.stringify(updated);
@@ -456,6 +542,7 @@ export default function EcologicalWorkPlanForm({
     });
     const nowDate = new Date().toLocaleDateString('he-IL');
     const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
 
     const updatedWithLock = {
       ...formData,
@@ -464,11 +551,16 @@ export default function EcologicalWorkPlanForm({
       lockedBy: nextLocked ? (currentUser?.name || currentUser?.email || '') : '',
       lastSavedAt: nowTime
     };
+    const lockSnapshot = extractYearReportFromFormData(updatedWithLock);
     const updated = {
       ...updatedWithLock,
       reportsByYear: {
         ...(formData.reportsByYear || {}),
-        [activeYear]: extractYearReportFromFormData(updatedWithLock)
+        [activeYear]: lockSnapshot
+      },
+      reportsByPlanType: {
+        ...(formData.reportsByPlanType || {}),
+        [activePlanKey]: lockSnapshot
       }
     };
 
@@ -501,11 +593,16 @@ export default function EcologicalWorkPlanForm({
     ) {
       return;
     }
+    const currentSnapshot = extractYearReportFromFormData(formData);
     const syncedCurrent = {
       ...formData,
       reportsByYear: {
         ...(formData.reportsByYear || {}),
-        [currentYear]: extractYearReportFromFormData(formData)
+        [currentYear]: currentSnapshot
+      },
+      reportsByPlanType: {
+        ...(formData.reportsByPlanType || {}),
+        [getPlanTypeStorageKey(currentYear, formData.planType)]: currentSnapshot
       }
     };
     const rolled = buildRolloverStudentForNextYear(syncedCurrent, currentYear, nextYear);
@@ -541,6 +638,7 @@ export default function EcologicalWorkPlanForm({
     };
 
     const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const currentSnapshot = extractYearReportFromFormData(formData);
     const updated = {
       ...formData,
       sharedWith: nextShared,
@@ -549,7 +647,11 @@ export default function EcologicalWorkPlanForm({
       sharedAtByEmail: nextSharedAtByEmail,
       reportsByYear: {
         ...(formData.reportsByYear || {}),
-        [activeYear]: extractYearReportFromFormData(formData)
+        [activeYear]: currentSnapshot
+      },
+      reportsByPlanType: {
+        ...(formData.reportsByPlanType || {}),
+        [getPlanTypeStorageKey(activeYear, formData.planType)]: currentSnapshot
       }
     };
     savedSnapshotRef.current = JSON.stringify(updated);
@@ -560,26 +662,94 @@ export default function EcologicalWorkPlanForm({
     }
   };
 
+  // Switch between תל"א and תח"י: keep each plan type completely separate (empty form if the target plan type hasn't been created yet)
+  const handlePlanTypeChange = (newPlanType) => {
+    if (formData.isLocked) return;
+    setFormData((prev) => {
+      const currentPlanType = prev.planType || 'תל"א (תוכנית לימודים אישית)';
+      if (newPlanType === currentPlanType) return prev;
+
+      const currentYear = prev.schoolYear || 'תשפ"ו (2025-2026)';
+      const prevStorageKey = getPlanTypeStorageKey(currentYear, currentPlanType);
+      const nextStorageKey = getPlanTypeStorageKey(currentYear, newPlanType);
+
+      const currentReportSnapshot = extractYearReportFromFormData(prev);
+      const updatedReportsByPlanType = {
+        ...(prev.reportsByPlanType || {}),
+        [prevStorageKey]: currentReportSnapshot
+      };
+
+      const existingTargetPlanReport = updatedReportsByPlanType[nextStorageKey];
+      const genderToUse = prev.gender || 'boy';
+
+      const targetReportToLoad =
+        existingTargetPlanReport && hasContentInYearReport(existingTargetPlanReport)
+          ? {
+              ...existingTargetPlanReport,
+              planType: newPlanType,
+              classGoals:
+                Array.isArray(existingTargetPlanReport.classGoals) &&
+                existingTargetPlanReport.classGoals.length > 0
+                  ? existingTargetPlanReport.classGoals
+                  : buildDefaultTalaClassGoals(),
+              goals: (existingTargetPlanReport.goals || []).map((g) =>
+                adaptGoalToGender(g, genderToUse)
+              )
+            }
+          : buildFreshReportForPlanType(newPlanType);
+
+      const nextData = {
+        ...prev,
+        ...targetReportToLoad,
+        planType: newPlanType,
+        reportsByPlanType: {
+          ...updatedReportsByPlanType,
+          [nextStorageKey]: targetReportToLoad
+        },
+        reportsByYear: {
+          ...(prev.reportsByYear || {}),
+          [currentYear]: targetReportToLoad
+        }
+      };
+
+      setShowFullDocPreview(Boolean(targetReportToLoad.isLocked));
+      setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
+      return nextData;
+    });
+    setOpenPickerGoalId(null);
+    setActiveAiGoalId(null);
+    setReverseEngineerBanner('');
+    setEvalReportAiBanner('');
+    setStatusReportBanner('');
+  };
+
   // Switch school year: snapshot current year's report and load (or create) the selected year's report
   const handleSchoolYearChange = (newYear) => {
     setFormData((prev) => {
       const currentYear = prev.schoolYear || 'תשפ"ו (2025-2026)';
       if (newYear === currentYear) return prev;
 
+      const currentSnapshot = extractYearReportFromFormData(prev);
       const updatedReportsByYear = {
         ...(prev.reportsByYear || {}),
-        [currentYear]: extractYearReportFromFormData(prev)
+        [currentYear]: currentSnapshot
+      };
+      const updatedReportsByPlanType = {
+        ...(prev.reportsByPlanType || {}),
+        [getPlanTypeStorageKey(currentYear, prev.planType)]: currentSnapshot
       };
 
       const existingTargetReport = updatedReportsByYear[newYear];
       const genderToUse = prev.gender || 'boy';
 
       if (existingTargetReport) {
+        const resolvedPlanType =
+          existingTargetReport.planType || prev.planType || 'תל"א (תוכנית לימודים אישית)';
         const nextData = {
           ...prev,
           schoolYear: newYear,
           date: existingTargetReport.date || new Date().toLocaleDateString('he-IL'),
-          planType: existingTargetReport.planType || prev.planType || 'תל"א (תוכנית לימודים אישית)',
+          planType: resolvedPlanType,
           isLocked: Boolean(existingTargetReport.isLocked),
           lockedAt: existingTargetReport.lockedAt || '',
           lockedBy: existingTargetReport.lockedBy || '',
@@ -619,57 +789,17 @@ export default function EcologicalWorkPlanForm({
           goals: (existingTargetReport.goals || []).map((g) =>
             adaptGoalToGender(g, genderToUse)
           ),
-          reportsByYear: updatedReportsByYear
+          reportsByYear: updatedReportsByYear,
+          reportsByPlanType: updatedReportsByPlanType
         };
         setShowFullDocPreview(Boolean(existingTargetReport.isLocked));
         setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
         return nextData;
       }
 
-      const freshGoal = {
-        id: 'g_init_' + Date.now(),
-        environment: ENVIRONMENTS_LIST[0],
-        activityParticipation: '',
-        title: '',
-        objectives: '',
-        opportunities: '',
-        partners: 'צוות הגן, סייעת אישית',
-        duration: '',
-        evaluationCriteria: ''
-      };
-
-      const freshReport = {
-        date: new Date().toLocaleDateString('he-IL'),
-        planType: prev.planType || 'תל"א (תוכנית לימודים אישית)',
-        isLocked: false,
-        lockedAt: '',
-        lockedBy: '',
-        schoolName: prev.schoolName || '',
-        gradeClass: prev.gradeClass || '',
-        homeroomTeacher: prev.homeroomTeacher || '',
-        learningSupportAssistant: prev.learningSupportAssistant || '',
-        counselorName: prev.counselorName || '',
-        psychologistName: prev.psychologistName || '',
-        matyaCoordinator: prev.matyaCoordinator || '',
-        emotionalTherapist: prev.emotionalTherapist || '',
-        paraMedicalTeam: prev.paraMedicalTeam || '',
-        classBackground: prev.classBackground || '',
-        classGoals: buildDefaultTalaClassGoals(),
-        teacherFreeText: '',
-        freeTextAnalyzed: false,
-        removedAiGoals: [],
-        strengthsExisting: '',
-        strengthsToEmpower: '',
-        studentGeneralBackground: '',
-        studentMainGoal: '',
-        recommendations: '',
-        evalReportFreeText: '',
-        evalReportSummary: '',
-        statusReportSections: [],
-        statusReportUpdatedAt: '',
-        lastSavedAt: '',
-        goals: [freshGoal]
-      };
+      const freshReport = buildFreshReportForPlanType(
+        prev.planType || 'תל"א (תוכנית לימודים אישית)'
+      );
 
       setShowFullDocPreview(false);
       setIsFreeTextCollapsed(false);
@@ -680,6 +810,10 @@ export default function EcologicalWorkPlanForm({
         reportsByYear: {
           ...updatedReportsByYear,
           [newYear]: freshReport
+        },
+        reportsByPlanType: {
+          ...updatedReportsByPlanType,
+          [getPlanTypeStorageKey(newYear, freshReport.planType)]: freshReport
         }
       };
     });
@@ -1482,8 +1616,10 @@ ${bankReference}
 
         const nextExisting = parsed.strengthsExisting || formData.strengthsExisting;
         const nextEmpower = parsed.strengthsToEmpower || formData.strengthsToEmpower;
+        const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+        const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
 
-        const updated = {
+        const updatedBase = {
           ...formData,
           freeTextAnalyzed: true,
           name:
@@ -1494,20 +1630,35 @@ ${bankReference}
             parsed.educationalFramework && !formData.educationalFramework
               ? parsed.educationalFramework
               : formData.educationalFramework,
-          strengthsExisting: nextExisting,
-          strengthsToEmpower: nextEmpower,
-          studentGeneralBackground:
-            parsed.studentGeneralBackground ||
-            formData.studentGeneralBackground ||
-            [nextExisting, nextEmpower].filter(Boolean).join('\n\n'),
-          studentMainGoal:
-            parsed.studentMainGoal || formData.studentMainGoal || nextEmpower,
+          strengthsExisting: isTalaMode ? '' : nextExisting,
+          strengthsToEmpower: isTalaMode ? '' : nextEmpower,
+          studentGeneralBackground: isTalaMode
+            ? parsed.studentGeneralBackground ||
+              formData.studentGeneralBackground ||
+              [nextExisting, nextEmpower].filter(Boolean).join('\n\n')
+            : '',
+          studentMainGoal: isTalaMode
+            ? parsed.studentMainGoal || formData.studentMainGoal || nextEmpower
+            : '',
           goals: mergedGoals,
           recommendations: parsed.recommendations || formData.recommendations,
           status: 'מוכן להדפסה',
           lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
         };
+        const aiSnapshot = extractYearReportFromFormData(updatedBase);
+        const updated = {
+          ...updatedBase,
+          reportsByYear: {
+            ...(formData.reportsByYear || {}),
+            [activeYear]: aiSnapshot
+          },
+          reportsByPlanType: {
+            ...(formData.reportsByPlanType || {}),
+            [activePlanKey]: aiSnapshot
+          }
+        };
 
+        savedSnapshotRef.current = JSON.stringify(updated);
         setFormData(updated);
         onSaveStudentPlan(updated);
         mergedGoals.forEach((g) => {
@@ -1534,22 +1685,37 @@ ${bankReference}
 
     const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
     if (engineered) {
-      const updated = {
+      const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+      const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
+      const updatedBase = {
         ...formData,
         freeTextAnalyzed: true,
         name: engineered.name || formData.name,
         gender: engineered.gender || formData.gender || 'boy',
         educationalFramework: engineered.educationalFramework || formData.educationalFramework,
-        strengthsExisting: engineered.strengthsExisting,
-        strengthsToEmpower: engineered.strengthsToEmpower,
-        studentGeneralBackground: engineered.studentGeneralBackground,
-        studentMainGoal: engineered.studentMainGoal,
+        strengthsExisting: isTalaMode ? '' : engineered.strengthsExisting,
+        strengthsToEmpower: isTalaMode ? '' : engineered.strengthsToEmpower,
+        studentGeneralBackground: isTalaMode ? engineered.studentGeneralBackground : '',
+        studentMainGoal: isTalaMode ? engineered.studentMainGoal : '',
         goals: engineered.goals,
         recommendations: engineered.recommendations,
         status: 'מוכן להדפסה',
         lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
       };
+      const localAiSnapshot = extractYearReportFromFormData(updatedBase);
+      const updated = {
+        ...updatedBase,
+        reportsByYear: {
+          ...(formData.reportsByYear || {}),
+          [activeYear]: localAiSnapshot
+        },
+        reportsByPlanType: {
+          ...(formData.reportsByPlanType || {}),
+          [activePlanKey]: localAiSnapshot
+        }
+      };
 
+      savedSnapshotRef.current = JSON.stringify(updated);
       setFormData(updated);
       onSaveStudentPlan(updated);
       (engineered.goals || []).forEach((g) => {
@@ -1561,7 +1727,7 @@ ${bankReference}
           ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
           : '';
       setReverseEngineerBanner(
-        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו טבלת מוקדי הכוח, ${engineered.goals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות.`
+        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו ${isTalaMode ? 'פרופיל התלמיד/ה' : 'טבלת מוקדי הכוח'}, ${engineered.goals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות.`
       );
       setSaveBanner(true);
       setTimeout(() => setSaveBanner(false), 3500);
@@ -1577,15 +1743,21 @@ ${bankReference}
       minute: '2-digit'
     });
     const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
     const updatedWithTime = {
       ...formData,
       lastSavedAt: nowTime
     };
+    const currentSnapshot = extractYearReportFromFormData(updatedWithTime);
     const updated = {
       ...updatedWithTime,
       reportsByYear: {
         ...(formData.reportsByYear || {}),
-        [activeYear]: extractYearReportFromFormData(updatedWithTime)
+        [activeYear]: currentSnapshot
+      },
+      reportsByPlanType: {
+        ...(formData.reportsByPlanType || {}),
+        [activePlanKey]: currentSnapshot
       }
     };
     savedSnapshotRef.current = JSON.stringify(updated);
@@ -2968,7 +3140,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 value='תל"א (תוכנית לימודים אישית)'
                 disabled={isReportLocked}
                 checked={formData.planType === 'תל"א (תוכנית לימודים אישית)'}
-                onChange={(e) => handleFieldChange('planType', e.target.value)}
+                onChange={(e) => handlePlanTypeChange(e.target.value)}
               />
               <span>תל"א – תוכנית לימודים אישית</span>
             </label>
@@ -2984,7 +3156,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 value='תח"י (תוכנית חינוכית יחידנית)'
                 disabled={isReportLocked}
                 checked={formData.planType === 'תח"י (תוכנית חינוכית יחידנית)'}
-                onChange={(e) => handleFieldChange('planType', e.target.value)}
+                onChange={(e) => handlePlanTypeChange(e.target.value)}
               />
               <span>תח"י – תוכנית חינוכית יחידנית</span>
             </label>
@@ -3591,20 +3763,11 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     <textarea
                       rows={5}
                       disabled={isReportLocked}
-                      value={
-                        formData.studentGeneralBackground ||
-                        [formData.strengthsExisting, formData.strengthsToEmpower]
-                          .filter(Boolean)
-                          .join('\n\n')
-                      }
+                      value={formData.studentGeneralBackground || ''}
                       onInput={handleTextareaAutoResize}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        handleFieldChange('studentGeneralBackground', val);
-                        if (!formData.strengthsExisting) {
-                          handleFieldChange('strengthsExisting', val);
-                        }
-                      }}
+                      onChange={(e) =>
+                        handleFieldChange('studentGeneralBackground', e.target.value)
+                      }
                       placeholder="רקע כללי על התלמיד/ה, תפקוד נוכחי, מוקדי כוח ותחומי עניין..."
                     />
                   </td>
@@ -3612,15 +3775,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     <textarea
                       rows={5}
                       disabled={isReportLocked}
-                      value={formData.studentMainGoal || formData.strengthsToEmpower || ''}
+                      value={formData.studentMainGoal || ''}
                       onInput={handleTextareaAutoResize}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        handleFieldChange('studentMainGoal', val);
-                        if (!formData.strengthsToEmpower) {
-                          handleFieldChange('strengthsToEmpower', val);
-                        }
-                      }}
+                      onChange={(e) => handleFieldChange('studentMainGoal', e.target.value)}
                       placeholder="מטרת התלמיד/ה המרכזית לשנת הלימודים..."
                     />
                   </td>

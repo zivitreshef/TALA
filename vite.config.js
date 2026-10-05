@@ -31,7 +31,7 @@ function resolveSiteVersionFromGit() {
     }
     return `1.0.${maxPr + 1}`;
   } catch (_) {
-    return '1.0.34';
+    return '1.0.35';
   }
 }
 
