@@ -11,63 +11,92 @@ export const ENVIRONMENTS_LIST = [
   'פעילות שאינה בשגרה'
 ];
 
-export const TALA_CLASS_DOMAINS = [
-  'קוגניטיבית- לימודית',
-  'חברתי- רגשי',
-  'התנהגותי',
-  'תפקודי לומד'
-];
-
-export const TALA_GOAL_COLOR_STATUSES = [
+export const TALA_PROFILE_DOMAINS = [
   {
-    value: 'הושגה במלואה',
-    label: 'מטרה הושגה במלואה',
-    bg: '#4ade80',
-    text: '#064e3b',
-    border: '#16a34a'
+    id: 'prof_self_management',
+    category: 'התנהגותי - רגשי - חברתי',
+    domain: 'ניהול עצמי',
+    bg: '#fbe4d5'
   },
   {
-    value: 'הושגה חלקית',
-    label: 'מטרה הושגה חלקית',
-    bg: '#fde047',
-    text: '#713f12',
-    border: '#ca8a04'
+    id: 'prof_communication',
+    category: 'התנהגותי - רגשי - חברתי',
+    domain: 'תקשורת ויחסים בינאישיים',
+    bg: '#fbe4d5'
   },
   {
-    value: 'טרם הושגה',
-    label: 'מטרה לא הושגה',
-    bg: '#ef4444',
-    text: '#ffffff',
-    border: '#b91c1c'
+    id: 'prof_mobility_self_care',
+    category: 'התנהגותי - רגשי - חברתי',
+    domain: 'ניידות וטיפול עצמי',
+    bg: '#fbe4d5'
   },
   {
-    value: 'מטרה חדשה',
-    label: 'מטרה חדשה',
-    bg: '#38bdf8',
-    text: '#0c4a6e',
-    border: '#0284c7'
+    id: 'prof_listening_speaking',
+    category: 'לימודי',
+    domain: 'האזנה ודיבור',
+    bg: '#b6dde8'
+  },
+  {
+    id: 'prof_writing',
+    category: 'לימודי',
+    domain: 'כתיבה',
+    bg: '#b6dde8'
+  },
+  {
+    id: 'prof_reading',
+    category: 'לימודי',
+    domain: 'קריאה והפקת משמעות',
+    bg: '#b6dde8'
+  },
+  {
+    id: 'prof_linguistic',
+    category: 'לימודי',
+    domain: 'ידע לשוני',
+    bg: '#b6dde8'
+  },
+  {
+    id: 'prof_math',
+    category: 'לימודי',
+    domain: 'מתמטיקה',
+    bg: '#deeaf6'
   }
 ];
 
-export function buildDefaultTalaClassGoals(existingList = []) {
+export const TALA_FOCUS_DOMAINS = [
+  'לימודי',
+  'התנהגותי',
+  'רגשי',
+  'חברתי',
+  'חושי- מוטורי',
+  'תקשורתי',
+  'כישורי חיים'
+];
+
+export function buildDefaultTalaProfileRows(existingList = []) {
   const byDomain = new Map();
   if (Array.isArray(existingList)) {
     existingList.forEach((row) => {
-      if (row && row.domain) {
-        byDomain.set(row.domain.trim(), row);
+      if (row && (row.id || row.domain || row.subDomain)) {
+        if (row.id) byDomain.set(row.id, row);
+        if (row.domain) byDomain.set(row.domain.trim(), row);
+        if (row.subDomain) byDomain.set(row.subDomain.trim(), row);
       }
     });
   }
-  return TALA_CLASS_DOMAINS.map((domain, idx) => {
-    const found = byDomain.get(domain);
+  return TALA_PROFILE_DOMAINS.map((spec) => {
+    const found = byDomain.get(spec.id) || byDomain.get(spec.domain);
+    const strengthsVal = found?.strengthsAndFacilitators || found?.strengths || '';
+    const barriersVal = found?.areasToStrengthenAndBarriers || found?.toStrengthen || '';
     return {
-      id: found?.id || `cls_dom_${idx + 1}`,
-      domain,
-      currentFunctioning: found?.currentFunctioning || '',
-      goalsAndObjectives: found?.goalsAndObjectives || '',
-      actionsAndPartners: found?.actionsAndPartners || '',
-      evaluationCriteria: found?.evaluationCriteria || '',
-      colorStatus: found?.colorStatus || ''
+      id: spec.id,
+      category: spec.category,
+      domain: spec.domain,
+      subDomain: spec.domain,
+      bg: spec.bg,
+      strengthsAndFacilitators: strengthsVal,
+      areasToStrengthenAndBarriers: barriersVal,
+      strengths: strengthsVal,
+      toStrengthen: barriersVal
     };
   });
 }
@@ -1235,6 +1264,10 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     .filter(Boolean)
     .join('\n');
 
+  const studentSupportReceived = isFemale
+    ? `תיווך פרטני ובקבוצה קטנה במסגרת הכיתתית, ליווי לימודי ורגשי-חברתי מותאם לצרכיה של ${firstName}, ושיתוף פעולה עם צוות השילוב והטיפול.`
+    : `תיווך פרטני ובקבוצה קטנה במסגרת הכיתתית, ליווי לימודי ורגשי-חברתי מותאם לצרכיו של ${firstName}, ושיתוף פעולה עם צוות השילוב והטיפול.`;
+
   const firstGoalTitle = (finalMergedGoals[0]?.title || '').trim();
   const studentMainGoal = firstGoalTitle
     ? isFemale
@@ -1244,6 +1277,73 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     ? `קידום תפקודה העצמאי, החברתי והלימודי של ${firstName} בסביבות הפעילות במסגרת.`
     : `קידום תפקודו העצמאי, החברתי והלימודי של ${firstName} בסביבות הפעילות במסגרת.`;
 
+  const enrichedGoals = finalMergedGoals.map((goalItem) => ({
+    ...goalItem,
+    opportunitiesIntegration:
+      goalItem.opportunitiesIntegration ||
+      `עבודה פרטנית או בקבוצה קטנה לתרגול ממוקד והטרמה של מיומנויות היעד עם ${firstName}.`,
+    opportunitiesTherapist:
+      goalItem.opportunitiesTherapist ||
+      `עיבוד חווייתי וחיזוק תחושת המסוגלות והוויסות הרגשי-חברתי בסביבה תומכת.`,
+    learningAccommodations:
+      goalItem.learningAccommodations ||
+      `פירוק מטלות לשלבים, הטרמה חזותית ומילולית, הארכת זמן ותיווך פרטני בהתאם לצורך.`
+  }));
+
+  const synthesizedProfileRows = buildDefaultTalaProfileRows(
+    currentFormData?.talaProfileRows || []
+  ).map((row) => {
+    const hasExisting =
+      (row.strengthsAndFacilitators || '').trim() ||
+      (row.areasToStrengthenAndBarriers || '').trim();
+    if (hasExisting) return row;
+
+    if (row.id === 'prof_self_management') {
+      return {
+        ...row,
+        strengthsAndFacilitators:
+          executiveStrengths[0]?.replace(/^•\s*/, '') ||
+          `נעזר/ת בהטרמה, סדר יום מובנה וחיזוקים חיוביים מצד הצוות.`,
+        areasToStrengthenAndBarriers:
+          executiveEmpowerBullets[0]?.replace(/^•\s*/, '') ||
+          `חיזוק התארגנות עצמאית, ויסות והתמדה במטלות.`
+      };
+    }
+    if (row.id === 'prof_communication') {
+      return {
+        ...row,
+        strengthsAndFacilitators:
+          executiveStrengths[1]?.replace(/^•\s*/, '') ||
+          `יוצר/ת קשר חיובי עם מבוגר משמעותי ומגלה עניין באינטראקציה חברתית.`,
+        areasToStrengthenAndBarriers:
+          executiveEmpowerBullets[1]?.replace(/^•\s*/, '') ||
+          `הרחבת יוזמות לתקשורת הדדית, שמירה על כללי שיח ומשחק משותף.`
+      };
+    }
+    if (row.id === 'prof_listening_speaking') {
+      return {
+        ...row,
+        strengthsAndFacilitators: `מגיב/ה היטב לתיווך מילולי ממוקד, שאלות מנחות ועבודה בקבוצה קטנה.`,
+        areasToStrengthenAndBarriers: `שמירה על מיקוד קשב בשיח וארגון מסר מילולי רציף.`
+      };
+    }
+    return row;
+  });
+
+  const inferredFocusDomains = ['לימודי', 'רגשי', 'חברתי'];
+  if (/התנהגות|גבולות|תור|חוקים|ויסות/.test(rawTrimmed)) {
+    inferredFocusDomains.push('התנהגותי');
+  }
+  if (/מוטור|גזירה|יצירה|סדנא|חושי/.test(rawTrimmed)) {
+    inferredFocusDomains.push('חושי- מוטורי');
+  }
+  if (/שיח|תקשורת|שפה|דיבור/.test(rawTrimmed)) {
+    inferredFocusDomains.push('תקשורתי');
+  }
+  if (/שירותים|אוכל|עצמאות|התארגנות/.test(rawTrimmed)) {
+    inferredFocusDomains.push('כישורי חיים');
+  }
+
   return {
     name: detectedName || currentFormData.name,
     gender: resolvedGender,
@@ -1251,8 +1351,11 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     strengthsExisting: formattedExisting,
     strengthsToEmpower: formattedEmpower,
     studentGeneralBackground,
+    studentSupportReceived,
     studentMainGoal,
-    goals: finalMergedGoals,
+    talaProfileRows: synthesizedProfileRows,
+    talaFocusDomains: [...new Set(inferredFocusDomains)],
+    goals: enrichedGoals,
     recommendations: formalRecommendations
   };
 }

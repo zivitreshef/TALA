@@ -90,7 +90,17 @@ export function generateStatusReportLocally(formData) {
   const strengthsExisting = (formData.strengthsExisting || '').trim();
   const strengthsToEmpower = (formData.strengthsToEmpower || '').trim();
   const studentGeneralBackground = (formData.studentGeneralBackground || '').trim();
+  const studentSupportReceived = (formData.studentSupportReceived || '').trim();
   const studentMainGoal = (formData.studentMainGoal || '').trim();
+  const profileTexts = Array.isArray(formData.talaProfileRows)
+    ? formData.talaProfileRows
+        .map((r) =>
+          [r?.strengthsAndFacilitators, r?.areasToStrengthenAndBarriers]
+            .filter((v) => (v || '').trim())
+            .join('. ')
+        )
+        .filter(Boolean)
+    : [];
   const recommendations = (formData.recommendations || '').trim();
   const evalFreeText = (formData.evalReportFreeText || '').trim();
   const evalSummary = (formData.evalReportSummary || '').trim();
@@ -113,6 +123,8 @@ export function generateStatusReportLocally(formData) {
     const sentences = [
       ...freeText.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
       ...studentGeneralBackground.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
+      ...studentSupportReceived.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
+      ...profileTexts.flatMap((t) => t.split(/(?:[\.\!\?\n]+|\s+-\s+)/)),
       ...evalFreeText.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
       ...evalSummary.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
       ...validGoals.map((g) => g.activityParticipation || ''),
@@ -176,11 +188,14 @@ export function generateStatusReportLocally(formData) {
     .map((g) => g.partners || '')
     .join(' ')
     .match(/(מרפאה בעיסוק|קלינאית תקשורת|מטפל[^\s,]*|פסיכולוג[^\s,]*|פיזיותרפ[^\s,]*)/g);
-  if (diagSentences.length > 0 || (therapyPartners && therapyPartners.length > 0)) {
+  if (diagSentences.length > 0 || (therapyPartners && therapyPartners.length > 0) || studentSupportReceived) {
     const uniquePartners = therapyPartners ? [...new Set(therapyPartners)] : [];
     const parts = [];
     if (diagSentences.length > 0) {
       parts.push(`${diagSentences.slice(0, 3).join('. ')}.`);
+    }
+    if (studentSupportReceived) {
+      parts.push(`תמיכות ומענים במסגרת: ${studentSupportReceived.replace(/\.$/, '')}.`);
     }
     if (uniquePartners.length > 0) {
       parts.push(
@@ -200,7 +215,7 @@ export function generateStatusReportLocally(formData) {
     generalSentences.push(evalSummary.replace(/\.$/, '') + '.');
   }
   if (studentMainGoal) {
-    generalSentences.push(`מטרת-על לתלמיד/ה: ${studentMainGoal.replace(/\.$/, '')}.`);
+    generalSentences.push(`מטרות התלמיד/ה: ${studentMainGoal.replace(/\.$/, '')}.`);
   }
   const routineActivities = validGoals
     .filter((g) => (g.activityParticipation || '').trim())

@@ -30,7 +30,9 @@ import {
   getNextSchoolYear,
   buildRolloverStudentForNextYear,
   isTalaPlanType,
-  buildDefaultTalaClassGoals,
+  TALA_PROFILE_DOMAINS,
+  TALA_FOCUS_DOMAINS,
+  buildDefaultTalaProfileRows,
   reverseEngineerRawTextLocally,
   INITIAL_GOAL_BANK
 } from '../goalBankData';
@@ -41,7 +43,8 @@ import {
   buildWordDocumentHtml,
   buildEvalWordDocumentHtml,
   buildStatusReportWordDocumentHtml,
-  getSafeReportFilename
+  getSafeReportFilename,
+  hasPopulatedTalaProfile
 } from '../export/wordAndPrintBuilders';
 import {
   DEFAULT_ALLOWED_USERS,
@@ -601,17 +604,32 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(wordHtml).toContain('• תלמיד בגן חובה');
   });
 
-  it('differentiates between the new תל"א template (4-col goals + student profile + class goals + מידע נוסף) and תח"י (6-col ecological table)', () => {
+  it('differentiates between the new Google Doc תל"א template (3 narrative blocks + 8-row functional profile + focus domains + 2-row header work plan table without color legend) and תח"י (6-col ecological table)', () => {
     expect(isTalaPlanType('תל"א (תוכנית לימודים אישית)')).toBe(true);
     expect(isTalaPlanType('תח"י (תוכנית חינוכית יחידנית)')).toBe(false);
 
-    const defaultClassGoals = buildDefaultTalaClassGoals();
-    expect(defaultClassGoals).toHaveLength(4);
-    expect(defaultClassGoals.map((cg) => cg.domain)).toEqual([
-      'קוגניטיבית- לימודית',
-      'חברתי- רגשי',
+    expect(TALA_PROFILE_DOMAINS).toHaveLength(8);
+    expect(TALA_FOCUS_DOMAINS).toEqual([
+      'לימודי',
       'התנהגותי',
-      'תפקודי לומד'
+      'רגשי',
+      'חברתי',
+      'חושי- מוטורי',
+      'תקשורתי',
+      'כישורי חיים'
+    ]);
+
+    const defaultProfileRows = buildDefaultTalaProfileRows();
+    expect(defaultProfileRows).toHaveLength(8);
+    expect(defaultProfileRows.map((r) => r.domain)).toEqual([
+      'ניהול עצמי',
+      'תקשורת ויחסים בינאישיים',
+      'ניידות וטיפול עצמי',
+      'האזנה ודיבור',
+      'כתיבה',
+      'קריאה והפקת משמעות',
+      'ידע לשוני',
+      'מתמטיקה'
     ]);
 
     const engineered = reverseEngineerRawTextLocally(
@@ -620,7 +638,11 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
       INITIAL_GOAL_BANK
     );
     expect(engineered.studentGeneralBackground).toBeTruthy();
+    expect(engineered.studentSupportReceived).toBeTruthy();
     expect(engineered.studentMainGoal).toBeTruthy();
+    expect(engineered.talaProfileRows).toHaveLength(8);
+    expect(hasPopulatedTalaProfile(engineered)).toBe(true);
+    expect(engineered.talaFocusDomains.length).toBeGreaterThan(0);
 
     const baseStudent = {
       name: 'עומר כהן',
@@ -628,19 +650,13 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
       schoolYear: 'תשפ"ו',
       educationalFramework: 'בי"ס אופק',
       homeroomTeacher: 'רונית לוי',
+      integrationTeacher: 'דנה כהן',
       counselorName: 'מיכל שגב',
-      classBackground: 'כיתה מגובשת וסקרנית המונה 8 תלמידים.',
-      classGoals: defaultClassGoals.map((cg, idx) =>
-        idx === 0
-          ? {
-              ...cg,
-              currentFunctioning: 'הכיתה מתקדמת ברכישת הקריאה',
-              goalsAndObjectives: 'ביסוס קריאה שוטפת'
-            }
-          : cg
-      ),
       studentGeneralBackground: engineered.studentGeneralBackground,
+      studentSupportReceived: engineered.studentSupportReceived,
       studentMainGoal: engineered.studentMainGoal,
+      talaProfileRows: engineered.talaProfileRows,
+      talaFocusDomains: engineered.talaFocusDomains,
       strengthsExisting: engineered.strengthsExisting,
       strengthsToEmpower: engineered.strengthsToEmpower,
       goals: engineered.goals
@@ -654,15 +670,25 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     const talaPrintHtml = buildWorkPlanPrintHtml(talaStudent, false);
     const talaWordHtml = buildWordDocumentHtml(talaStudent, false);
 
-    expect(talaPrintHtml).toContain('רקע כללי על התלמיד/ה');
-    expect(talaPrintHtml).toContain('מטרת התלמיד/ה');
-    expect(talaPrintHtml).toContain('פעולות ואמצעים להשגת היעדים + שותפים ספציפיים');
-    expect(talaPrintHtml).toContain('מקרא סטטוס מטרות:');
-    expect(talaPrintHtml).toContain('רקע כללי על הכיתה ומטרות כיתתיות');
-    expect(talaPrintHtml).toContain('רונית לוי');
-    expect(talaPrintHtml).toContain('מיכל שגב');
-    expect(talaWordHtml).toContain('רקע כללי על התלמיד/ה');
-    expect(talaWordHtml).toContain('פעולות ואמצעים להשגת היעדים + שותפים ספציפיים');
+    expect(talaPrintHtml).toContain('רקע על התלמיד (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי):');
+    expect(talaPrintHtml).toContain('התמיכה שמקבל התלמיד (לימודי, רגשי, חברתי):');
+    expect(talaPrintHtml).toContain('מטרות של התלמיד (לאחר שיח אישי):');
+    expect(talaPrintHtml).toContain('פרופיל - תיאור תפקוד של התלמיד');
+    expect(talaPrintHtml).toContain('התנהגותי - רגשי - חברתי');
+    expect(talaPrintHtml).toContain('קריאה והפקת משמעות');
+    expect(talaPrintHtml).toContain('האמצעים לביצוע תוכנית הפעולה על-ידי :');
+    expect(talaPrintHtml).toContain('התאמות ללמידה ובדרכי ההיבחנות');
+    expect(talaPrintHtml).toContain('דנה כהן');
+    expect(talaPrintHtml).not.toContain('מקרא צבעי מטרות');
+    expect(talaPrintHtml).not.toContain('מקרא סטטוס מטרות');
+
+    expect(talaWordHtml).toContain('רקע על התלמיד (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי):');
+    expect(talaWordHtml).toContain('התמיכה שמקבל התלמיד (לימודי, רגשי, חברתי):');
+    expect(talaWordHtml).toContain('פרופיל - תיאור תפקוד של התלמיד');
+    expect(talaWordHtml).toContain('האמצעים לביצוע תוכנית הפעולה על-ידי :');
+    expect(talaWordHtml).toContain('חתימת מנהלת ביה"ס:');
+    expect(talaWordHtml).not.toContain('מקרא צבעי מטרות');
+    expect(talaWordHtml).not.toContain('מקרא סטטוס מטרות');
 
     // 2. Test תח"י output
     const tahiStudent = {
@@ -687,7 +713,9 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
       strengthsExisting: 'כוחות קיימים מתוך תח"י בלבד',
       strengthsToEmpower: 'כוחות להעצמה מתוך תח"י בלבד',
       studentGeneralBackground: '',
+      studentSupportReceived: '',
       studentMainGoal: '',
+      talaProfileRows: [],
       goals: []
     };
     const emptyTalaPrint = buildWorkPlanPrintHtml(emptyTalaFromTahi, false);
@@ -695,7 +723,3 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(emptyTalaPrint).not.toContain('כוחות להעצמה מתוך תח"י בלבד');
   });
 });
-
-
-
-

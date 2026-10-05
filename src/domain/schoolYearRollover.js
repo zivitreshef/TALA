@@ -48,9 +48,12 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
       title: isFullyAchieved ? '' : g.title || '',
       objectives: isFullyAchieved ? '' : g.objectives || '',
       opportunities: g.opportunities || '',
+      opportunitiesIntegration: g.opportunitiesIntegration || '',
+      opportunitiesTherapist: g.opportunitiesTherapist || '',
       partners: g.partners || 'צוות הגן, הורים',
       duration: 'עד סוף השנה',
       evaluationCriteria: isFullyAchieved ? '' : g.evaluationCriteria || '',
+      learningAccommodations: g.learningAccommodations || '',
       achievementStatus: '',
       midYearEvaluation: '',
       endYearEvaluation: ''
@@ -68,10 +71,14 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
     strengthsToEmpower: sourceReport.strengthsToEmpower || studentObj.strengthsToEmpower || '',
     studentGeneralBackground:
       sourceReport.studentGeneralBackground || studentObj.studentGeneralBackground || '',
+    studentSupportReceived:
+      sourceReport.studentSupportReceived || studentObj.studentSupportReceived || '',
     studentMainGoal: sourceReport.studentMainGoal || studentObj.studentMainGoal || '',
-    classBackground: sourceReport.classBackground || studentObj.classBackground || '',
-    classGoals: Array.isArray(sourceReport.classGoals || studentObj.classGoals)
-      ? (sourceReport.classGoals || studentObj.classGoals).map((cg) => ({ ...cg }))
+    talaProfileRows: Array.isArray(sourceReport.talaProfileRows || studentObj.talaProfileRows)
+      ? (sourceReport.talaProfileRows || studentObj.talaProfileRows).map((r) => ({ ...r }))
+      : [],
+    talaFocusDomains: Array.isArray(sourceReport.talaFocusDomains || studentObj.talaFocusDomains)
+      ? [...(sourceReport.talaFocusDomains || studentObj.talaFocusDomains)]
       : [],
     recommendations: sourceReport.recommendations || studentObj.recommendations || '',
     lastSavedAt: nowTime,
@@ -86,9 +93,12 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
               title: '',
               objectives: '',
               opportunities: '',
+              opportunitiesIntegration: '',
+              opportunitiesTherapist: '',
               partners: 'צוות הגן, סייעת אישית',
               duration: 'עד סוף השנה',
               evaluationCriteria: '',
+              learningAccommodations: '',
               achievementStatus: '',
               midYearEvaluation: '',
               endYearEvaluation: ''
@@ -114,9 +124,14 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
         strengthsExisting: sourceReport.strengthsExisting || '',
         strengthsToEmpower: sourceReport.strengthsToEmpower || '',
         studentGeneralBackground: sourceReport.studentGeneralBackground || '',
+        studentSupportReceived: sourceReport.studentSupportReceived || '',
         studentMainGoal: sourceReport.studentMainGoal || '',
-        classBackground: sourceReport.classBackground || '',
-        classGoals: Array.isArray(sourceReport.classGoals) ? sourceReport.classGoals : [],
+        talaProfileRows: Array.isArray(sourceReport.talaProfileRows)
+          ? sourceReport.talaProfileRows
+          : [],
+        talaFocusDomains: Array.isArray(sourceReport.talaFocusDomains)
+          ? sourceReport.talaFocusDomains
+          : [],
         recommendations: sourceReport.recommendations || '',
         lastSavedAt: sourceReport.lastSavedAt || '',
         goals: sourceReport.goals || []
