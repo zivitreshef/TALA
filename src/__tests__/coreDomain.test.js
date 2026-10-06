@@ -17,6 +17,7 @@ import {
 import {
   resolveStudentAgeAndDateInfo,
   normalizeAndSizeGoalDuration,
+  DURATION_TSHIRT_OPTIONS,
   attachAiBaselineToGoal,
   isGoalProtectedFromAiOverwrite,
   mergeReanalyzedGoals,
@@ -721,5 +722,15 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     const emptyTalaPrint = buildWorkPlanPrintHtml(emptyTalaFromTahi, false);
     expect(emptyTalaPrint).not.toContain('כוחות קיימים מתוך תח"י בלבד');
     expect(emptyTalaPrint).not.toContain('כוחות להעצמה מתוך תח"י בלבד');
+  });
+
+  it('should define DURATION_TSHIRT_OPTIONS with valid size, label, and value properties', () => {
+    expect(Array.isArray(DURATION_TSHIRT_OPTIONS)).toBe(true);
+    expect(DURATION_TSHIRT_OPTIONS.length).toBeGreaterThan(0);
+    DURATION_TSHIRT_OPTIONS.forEach((opt) => {
+      expect(opt).toHaveProperty('size');
+      expect(opt).toHaveProperty('label');
+      expect(opt).toHaveProperty('value');
+    });
   });
 });

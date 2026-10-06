@@ -431,6 +431,15 @@ export function resolveStudentAgeAndDateInfo(formData = {}, rawText = '') {
   };
 }
 
+export const DURATION_TSHIRT_OPTIONS = [
+  { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
+  { size: 'S+', label: 'חודשיים', value: 'חודשיים' },
+  { size: 'M', label: '3 חודשים', value: '3 חודשים' },
+  { size: 'M+', label: '4 חודשים', value: '4 חודשים' },
+  { size: 'L', label: 'חצי שנה (מחצית)', value: 'חצי שנה' },
+  { size: 'XL', label: 'עד סוף השנה (שנתי)', value: 'עד סוף השנה' }
+];
+
 export function normalizeAndSizeGoalDuration(goalObj, rawText = '', formData = {}, dateInfo = null) {
   const info = dateInfo || resolveStudentAgeAndDateInfo(formData, rawText);
   const rawDur = String(goalObj?.duration || '').trim();

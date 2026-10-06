@@ -85,7 +85,14 @@ import {
 } from './export/wordAndPrintBuilders';
 import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
-import ShareTeamModal from './components/form/ShareTeamModal';
+const DURATION_TSHIRT_OPTIONS = [
+  { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
+  { size: 'S+', label: 'חודשיים', value: 'חודשיים' },
+  { size: 'M', label: '3 חודשים', value: '3 חודשים' },
+  { size: 'M+', label: '4 חודשים', value: '4 חודשים' },
+  { size: 'L', label: 'חצי שנה (מחצית)', value: 'חצי שנה' },
+  { size: 'XL', label: 'עד סוף השנה (שנתי)', value: 'עד סוף השנה' }
+];
 
 const getPlanTypeStorageKey = (schoolYear, planType) => {
   const yr = schoolYear || 'תשפ"ו (2025-2026)';
@@ -4587,7 +4594,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                               <select
                                 disabled={isReportLocked}
                                 value={
-                                  DURATION_TSHIRT_OPTIONS.some(
+                                  (typeof DURATION_TSHIRT_OPTIONS !== 'undefined' && Array.isArray(DURATION_TSHIRT_OPTIONS) ? DURATION_TSHIRT_OPTIONS : []).some(
                                     (opt) => opt.value === (goalRow.duration || '').trim()
                                   )
                                     ? (goalRow.duration || '').trim()
@@ -4608,7 +4615,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                 }}
                               >
                                 <option value="__custom__">בחרי לו"ז מובנה או הקלידי...</option>
-                                {DURATION_TSHIRT_OPTIONS.map((opt) => (
+                                {(typeof DURATION_TSHIRT_OPTIONS !== 'undefined' && Array.isArray(DURATION_TSHIRT_OPTIONS) ? DURATION_TSHIRT_OPTIONS : []).map((opt) => (
                                   <option key={opt.size} value={opt.value}>
                                     [{opt.size}] {opt.label}
                                   </option>
