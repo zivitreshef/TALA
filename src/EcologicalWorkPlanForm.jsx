@@ -85,6 +85,8 @@ import {
 } from './export/wordAndPrintBuilders';
 import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
+import ShareTeamModal from './components/form/ShareTeamModal';
+
 const DURATION_TSHIRT_OPTIONS = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
   { size: 'S+', label: 'חודשיים', value: 'חודשיים' },
