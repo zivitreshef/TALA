@@ -359,8 +359,8 @@ export function resolveStudentAgeAndDateInfo(formData = {}, rawText = '') {
       ageYears = +(totalMonths / 12).toFixed(1);
       ageDescription =
         remMos > 0
-          ? `${yrs} שנים ו-${remMos} חודשים (ת.ל: ${formatDateHe(birthDateObj)})`
-          : `${yrs} שנים (ת.ל: ${formatDateHe(birthDateObj)})`;
+          ? `${yrs} שנים ו-${remMos} חודשים`
+          : `${yrs} שנים`;
     }
   }
 

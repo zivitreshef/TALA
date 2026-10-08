@@ -25,6 +25,8 @@ import {
   toHebrewAcronym,
   maskSensitiveValue,
   redactStudentNameInText,
+  maskKnownStudentDetails,
+  maskPromptForAi,
   STATUS_REPORT_SECTIONS_SCHEMA,
   sanitizeStatusReportSections,
   generateStatusReportLocally,
@@ -278,6 +280,131 @@ describe('Privacy Redaction & Gender Adaptation', () => {
     const adapted = adaptTextToGender('ישתתף במפגש בוקר ויקשיב לתוכן', 'girl');
     expect(adapted).toContain('תשתתף');
     expect(adapted).toContain('תקשיב');
+  });
+});
+
+describe('Mask Section 1 details before AI (maskKnownStudentDetails)', () => {
+  const baseFormData = {
+    name: 'דניאל כהן',
+    gender: 'girl',
+    idNumber: '345678912',
+    birthDate: '14/05/2021',
+    educationalFramework: 'גן שקד',
+    address: 'רחוב הרצל 24, רמת גן',
+    phone: '050-1234567',
+    schoolName: 'גן שקד',
+    gradeClass: 'גן חובה',
+    homeroomTeacher: 'רחל לוי',
+    integrationTeacher: 'מירה כהן',
+    learningSupportAssistant: 'שרה דוד',
+    counselorName: 'יעל גרין',
+    psychologistName: 'ד״ר אבי רון',
+    matyaCoordinator: 'נועה שרון',
+    emotionalTherapist: 'מיכל בר',
+    paraMedicalTeam: 'קלינאית תקשורת',
+    additionalPartners: 'הורים'
+  };
+
+  it('masks full name and name parts with gendered label', () => {
+    const text = 'דניאל כהן לומדת בגן שקד. דניאל חברותית.';
+    const masked = maskKnownStudentDetails(text, baseFormData);
+    expect(masked).not.toContain('דניאל');
+    expect(masked).not.toContain('כהן');
+    expect(masked).toContain('הילדה');
+    expect(masked).toContain('הילדה חברותית');
+  });
+
+  it('masks sensitive identifiers with block character', () => {
+    const text = 'ת.ז 345678912, תאריך לידה 14/05/2021, כתובת רחוב הרצל 24, רמת גן, טלפון 050-1234567';
+    const masked = maskKnownStudentDetails(text, baseFormData);
+    expect(masked).not.toContain('345678912');
+    expect(masked).not.toContain('14/05/2021');
+    expect(masked).not.toContain('רחוב הרצל 24, רמת גן');
+    expect(masked).not.toContain('050-1234567');
+    expect(masked).toContain('████');
+  });
+
+  it('masks educational framework and staff names', () => {
+    const text = 'לומדת בגן שקד עם המחנכת רחל לוי ומורת שילוב מירה כהן';
+    const masked = maskKnownStudentDetails(text, baseFormData);
+    expect(masked).not.toContain('גן שקד');
+    expect(masked).not.toContain('רחל לוי');
+    expect(masked).not.toContain('מירה כהן');
+    expect(masked).toContain('המסגרת');
+    expect(masked).toContain('איש צוות');
+  });
+
+  it('longer keywords are replaced before shorter ones (full name before parts)', () => {
+    const formData = { ...baseFormData, name: 'נועם ישראלי', educationalFramework: 'גן נועם' };
+    const text = 'נועם ישראלי לומדת בגן נועם';
+    const masked = maskKnownStudentDetails(text, formData);
+    expect(masked).toContain('המסגרת');
+    expect(masked).not.toContain('גן נועם');
+    expect(masked).not.toContain('נועם ישראלי');
+    expect(masked).not.toContain('נועם');
+  });
+
+  it('ignores empty or short fields', () => {
+    const sparseForm = { ...baseFormData, idNumber: '', birthDate: '', schoolName: 'א' };
+    const text = 'some text without empty field matches';
+    const masked = maskKnownStudentDetails(text, sparseForm);
+    expect(masked).toBe(text.trim());
+  });
+});
+
+describe('Mask prompt for AI (maskPromptForAi)', () => {
+  const baseFormData = {
+    name: 'דניאל כהן',
+    gender: 'girl',
+    idNumber: '345678912',
+    birthDate: '14/05/2021',
+    educationalFramework: 'גן שקד',
+    address: 'רחוב הרצל 24, רמת גן',
+    phone: '050-1234567',
+    schoolName: 'גן שקד',
+    gradeClass: 'גן חובה',
+    homeroomTeacher: 'רחל לוי',
+    integrationTeacher: 'מירה כהן',
+    learningSupportAssistant: 'שרה דוד',
+    counselorName: 'יעל גרין',
+    psychologistName: 'ד״ר אבי רון',
+    matyaCoordinator: 'נועה שרון',
+    emotionalTherapist: 'מיכל בר',
+    paraMedicalTeam: 'קלינאית תקשורת',
+    additionalPartners: 'הורים'
+  };
+
+  it('strips (ת.ל: DD/MM/YYYY) from ageDescription', () => {
+    const prompt = 'גיל הילד/ה: 6 שנים (ת.ל: 14/05/2021)';
+    const masked = maskPromptForAi(prompt, baseFormData);
+    expect(masked).not.toContain('14/05/2021');
+    expect(masked).not.toContain('(ת.ל:');
+    expect(masked).toContain('6 שנים');
+  });
+
+  it('masks all section 1 fields in a full prompt', () => {
+    const prompt = `שם הילד/ה: דניאל כהן
+גיל הילד/ה: 6 שנים (ת.ל: 14/05/2021)
+מסגרת חינוכית: גן שקד
+ת.ז: 345678912
+כתובת: רחוב הרצל 24, רמת גן
+טלפון: 050-1234567
+המחנכת: רחל לוי`;
+    const masked = maskPromptForAi(prompt, baseFormData);
+    console.log('=== MASKED OUTPUT ===');
+    console.log(masked);
+    expect(masked).not.toContain('דניאל');
+    expect(masked).not.toContain('כהן');
+    expect(masked).not.toContain('גן שקד');
+    expect(masked).not.toContain('345678912');
+    expect(masked).not.toContain('14/05/2021');
+    expect(masked).not.toContain('רחוב הרצל');
+    expect(masked).not.toContain('050-1234567');
+    expect(masked).not.toContain('רחל לוי');
+    expect(masked).toContain('הילדה');
+    expect(masked).toContain('המסגרת');
+    expect(masked).toContain('████');
+    expect(masked).toContain('איש צוות');
   });
 });
 

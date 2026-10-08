@@ -49,6 +49,7 @@ import {
   toHebrewAcronym,
   maskSensitiveValue,
   redactStudentNameInText,
+  maskPromptForAi,
   getNextSchoolYear,
   buildRolloverStudentForNextYear,
   STATUS_REPORT_SECTIONS_SCHEMA,
@@ -1150,7 +1151,7 @@ export default function EcologicalWorkPlanForm({
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        body: JSON.stringify({ contents: [{ parts: [{ text: maskPromptForAi(prompt, formData) }] }] })
       });
 
       if (!res.ok) throw new Error('Gemini API request failed');
@@ -1194,9 +1195,7 @@ export default function EcologicalWorkPlanForm({
       genderToUse === 'girl'
         ? 'בת (לשון נקבה בלבד – למשל: תשתתף, תמתין, תבחר)'
         : 'בן (לשון זכר בלבד – למשל: ישתתף, ימתין, יבחר)';
-    const firstName = (formData.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד'))
-      .trim()
-      .split(/\s+/)[0];
+    const childLabel = genderToUse === 'girl' ? 'הילדה' : 'הילד';
     const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
 
     setLoadingAiForGoalId(goalRow.id);
@@ -1205,7 +1204,7 @@ export default function EcologicalWorkPlanForm({
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
         const prompt = `אתה מומחה לכתיבת תכנית עבודה שנתית (תל"א / תח"י) בעברית.
-שם הילד/ה: ${firstName}
+שם הילד/ה: ${childLabel}
 מין הילד/ה: ${genderLabel}
 גיל הילד/ה: ${dateInfo.ageDescription}
 תאריך הזנת המטרה: ${dateInfo.entryDateFormatted}
@@ -1240,7 +1239,7 @@ export default function EcologicalWorkPlanForm({
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          body: JSON.stringify({ contents: [{ parts: [{ text: maskPromptForAi(prompt, formData) }] }] })
         });
 
         if (res.ok) {
@@ -1299,13 +1298,13 @@ export default function EcologicalWorkPlanForm({
           activityParticipation: ans1
             ? `${ans1}${g.activityParticipation ? `\n${g.activityParticipation}` : ''}`
             : g.activityParticipation ||
-              `בסביבת ${g.environment}, ${firstName} מתנסה בפעילות עם תיווך מותאם של הצוות.`,
+              `בסביבת ${g.environment}, ${childLabel} מתנסה בפעילות עם תיווך מותאם של הצוות.`,
           objectives: ans2
             ? `${g.objectives ? g.objectives + '\n' : ''}• ${ans2}`
             : g.objectives || `• יתקדם בהדרגה לעבר המטרה: ${g.title}.`,
           opportunities: ans2
-            ? `${g.opportunities ? g.opportunities + '\n' : ''}• המחנכת תתווך ל${firstName} באמצעות: ${ans2}.`
-            : g.opportunities || `• המבוגר יזמין ויתווך ל${firstName} באופן יומיומי ומדורג.`,
+            ? `${g.opportunities ? g.opportunities + '\n' : ''}• המחנכת תתווך ל${childLabel} באמצעות: ${ans2}.`
+            : g.opportunities || `• המבוגר יזמין ויתווך ל${childLabel} באופן יומיומי ומדורג.`,
           opportunitiesIntegration: g.opportunitiesIntegration || `• מורת השילוב תחזק מיומנויות תומכות בקבוצה קטנה.`,
           opportunitiesTherapist: g.opportunitiesTherapist || `• עיבוד חווית ההצלחה וחיזוק הוויסות בחדר הטיפולים.`,
           learningAccommodations: g.learningAccommodations || `• תיווך מילאי, חלוקת משימות לצעדים קטנים והארכת זמן.`,
@@ -1355,6 +1354,8 @@ export default function EcologicalWorkPlanForm({
     const cleanKey = (geminiApiKey || '').trim();
     if (!cleanKey) return null;
 
+    const maskedPrompt = maskPromptForAi(promptText, formData);
+
     const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
     for (const modelName of models) {
       try {
@@ -1363,7 +1364,7 @@ export default function EcologicalWorkPlanForm({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: promptText }] }],
+            contents: [{ parts: [{ text: maskedPrompt }] }],
             generationConfig: { responseMimeType: 'application/json' }
           })
         });

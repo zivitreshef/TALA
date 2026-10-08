@@ -1396,7 +1396,9 @@ export function generateDefaultQuestionsForCustomGoal(goalTitle, environment, fo
 export {
   toHebrewAcronym,
   maskSensitiveValue,
-  redactStudentNameInText
+  redactStudentNameInText,
+  maskKnownStudentDetails,
+  maskPromptForAi
 } from './domain/privacyAndAcronyms';
 
 // נתוני תלמיד ראשוניים לדוגמה המבוססים על מאגר המטרות החדש ותקציר מנהלים ממוקד
