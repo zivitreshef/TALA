@@ -78,7 +78,7 @@ import {
   sendSignedNdaEmailToAdmin,
   sendUserSurveyEmailToAdmin
 } from './emailService';
-import { detectStudentStage } from './utils/studentStage';
+import { detectStudentStage } from './studentStage.js';
 import {
   PRIMARY_ADMIN_EMAIL,
   isStudentOwnedByUser,

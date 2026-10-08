@@ -84,7 +84,7 @@ import {
   buildEvalWordDocumentHtml as renderEvalWordDocumentHtml,
   buildStatusReportWordDocumentHtml as renderStatusReportWordDocumentHtml
 } from './export/wordAndPrintBuilders';
-import { detectStudentStage, formatPromptWithStudentContext } from './utils/studentStage';
+import { detectStudentStage, formatPromptWithStudentContext } from './studentStage.js';
 import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
