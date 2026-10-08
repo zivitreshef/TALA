@@ -78,6 +78,7 @@ import {
   sendSignedNdaEmailToAdmin,
   sendUserSurveyEmailToAdmin
 } from './emailService';
+import { detectStudentStage } from './utils/studentStage';
 import {
   PRIMARY_ADMIN_EMAIL,
   isStudentOwnedByUser,
@@ -970,6 +971,7 @@ export default function App() {
     if (!currentUser) return;
     const newId = 'st_' + Date.now();
     const todayStr = new Date().toLocaleDateString('he-IL');
+    const stageInfo = detectStudentStage({ educationalFramework: '', teacherFreeText: '', birthDate: '' }, todayStr);
     const newStudentPlan = {
       id: newId,
       ownerEmail: currentUser.email.trim().toLowerCase(),
@@ -989,6 +991,10 @@ export default function App() {
       recommendations: '',
       status: 'בטיוטה',
       lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+      stage: stageInfo.stage,
+      stageSource: stageInfo.stageSource,
+      stageReason: stageInfo.stageReason,
+      stageUpdatedAt: stageInfo.stageUpdatedAt,
       goals: [
         {
           id: 'g_init_' + Date.now(),
