@@ -1,4 +1,3 @@
-SYNTAX_ERROR_HERE
 // Student stage detection (kindergarten vs school)
 // Determines if student is in kindergarten or school based on:
 // 1. educationalFramework / "מסגרת חינוכית" (highest priority)
