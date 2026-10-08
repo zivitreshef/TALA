@@ -84,6 +84,7 @@ import {
   buildEvalWordDocumentHtml as renderEvalWordDocumentHtml,
   buildStatusReportWordDocumentHtml as renderStatusReportWordDocumentHtml
 } from './export/wordAndPrintBuilders';
+import { detectStudentStage, formatPromptWithStudentContext } from './utils/studentStage';
 import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
@@ -342,6 +343,14 @@ export default function EcologicalWorkPlanForm({
     existingReportsByPlanType[activePlanKey] = baseSnapshot;
     existingReports[currentYear] = baseSnapshot;
 
+    const stageInfo = detectStudentStage(
+      {
+        educationalFramework: st?.educationalFramework,
+        teacherFreeText: st?.teacherFreeText,
+        birthDate: st?.birthDate
+      },
+      baseSnapshot.date || st?.date
+    );
     return {
       ...st,
       ...baseSnapshot,
@@ -349,7 +358,11 @@ export default function EcologicalWorkPlanForm({
       gender: initialGender,
       sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
       reportsByYear: existingReports,
-      reportsByPlanType: existingReportsByPlanType
+      reportsByPlanType: existingReportsByPlanType,
+      stage: stageInfo.stage,
+      stageSource: stageInfo.stageSource,
+      stageReason: stageInfo.stageReason,
+      stageUpdatedAt: stageInfo.stageUpdatedAt
     };
   };
 
@@ -855,10 +868,24 @@ export default function EcologicalWorkPlanForm({
       'statusReportUpdatedAt'
     ]);
     if (formData.isLocked && !allowedWhenLocked.has(field)) return;
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'educationalFramework' || field === 'teacherFreeText' || field === 'birthDate') {
+        const stageInfo = detectStudentStage(
+          {
+            educationalFramework: next.educationalFramework,
+            teacherFreeText: next.teacherFreeText,
+            birthDate: next.birthDate
+          },
+          next.date
+        );
+        next.stage = stageInfo.stage;
+        next.stageSource = stageInfo.stageSource;
+        next.stageReason = stageInfo.stageReason;
+        next.stageUpdatedAt = stageInfo.stageUpdatedAt;
+      }
+      return next;
+    });
   };
 
   // Update a row in the 8-row functional profile table (for תל"א)
@@ -1154,7 +1181,7 @@ export default function EcologicalWorkPlanForm({
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: maskPromptForAi(prompt, formData) }] }] })
+        body: JSON.stringify({ contents: [{ parts: [{ text: maskPromptForAi(formatPromptWithStudentContext(prompt, formData), formData) }] }] })
       });
 
       if (!res.ok) throw new Error('Gemini API request failed');
@@ -1242,7 +1269,7 @@ export default function EcologicalWorkPlanForm({
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: maskPromptForAi(prompt, formData) }] }] })
+          body: JSON.stringify({ contents: [{ parts: [{ text: maskPromptForAi(formatPromptWithStudentContext(prompt, formData), formData) }] }] })
         });
 
         if (res.ok) {
@@ -1418,7 +1445,7 @@ ${goalsSummary}
   "talaFocusDomains": ["לימודי", "חברתי"]
 }`;
 
-      const parsed = await callGeminiJson(prompt);
+      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed) {
         const nextExisting = parsed.strengthsExisting || formData.strengthsExisting;
         const nextEmpower = parsed.strengthsToEmpower || formData.strengthsToEmpower;
@@ -1618,7 +1645,7 @@ ${rawText}
       // Yield briefly so the busy indicator renders immediately
       await new Promise((resolve) => setTimeout(resolve, 60));
 
-      const parsed = await callGeminiJson(prompt);
+      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (
         parsed &&
         Array.isArray(parsed.goals) &&
@@ -1906,7 +1933,7 @@ ${rawText}
   "achievementStatus": "הושגה חלקית"
 }`;
 
-      const parsed = await callGeminiJson(prompt);
+      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed && parsed.formattedEvaluation) {
         const validStatuses = ['הושגה במלואה', 'הושגה חלקית', 'בתהליך', 'טרם הושגה'];
         const nextStatus = validStatuses.includes(parsed.achievementStatus)
@@ -2005,7 +2032,7 @@ ${goalsContext}
 
       await new Promise((resolve) => setTimeout(resolve, 60));
 
-      const parsed = await callGeminiJson(prompt);
+      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed && parsed.evalReportSummary) {
         const evalById = {};
         (parsed.goalsEvaluations || []).forEach((item) => {
@@ -2191,7 +2218,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 }`;
 
       await new Promise((resolve) => setTimeout(resolve, 60));
-      const parsed = await callGeminiJson(prompt);
+      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
         const sanitized = sanitizeStatusReportSections(parsed.sections, genderToUse);
         if (sanitized.length > 0) {
