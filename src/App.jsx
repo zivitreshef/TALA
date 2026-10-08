@@ -284,31 +284,7 @@ export default function App() {
   const [externalGoalsRevision, setExternalGoalsRevision] = useState(0);
   const [editingBankGoal, setEditingBankGoal] = useState(null); // null | { mode: 'add' | 'edit', ...fields }
 
-  // Pre-configured Gemini API Key (assembled at runtime to avoid plaintext scanner revocation)
-  const [geminiApiKey, setGeminiApiKey] = useState(() => {
-    const saved = localStorage.getItem('tala_gemini_api_key');
-    if (saved && saved.trim()) return saved.trim();
-    const defaultKeyCodes = [
-      65, 73, 122, 97, 83, 121, 67, 107, 78, 101, 105, 68, 104, 67, 71, 97,
-      66, 89, 104, 45, 68, 100, 87, 68, 87, 72, 110, 67, 57, 71, 120, 76,
-      122, 66, 119, 104, 103, 53, 99
-    ];
-    return String.fromCharCode(...defaultKeyCodes);
-  });
 
-  const handleChangeGeminiApiKey = (newKey) => {
-    setGeminiApiKey(newKey);
-    if (newKey) {
-      localStorage.setItem('tala_gemini_api_key', newKey);
-      saveSettingsToCloud({ geminiApiKey: newKey });
-    }
-  };
-
-  useEffect(() => {
-    if (geminiApiKey) {
-      localStorage.setItem('tala_gemini_api_key', geminiApiKey);
-    }
-  }, [geminiApiKey]);
 
   useEffect(() => {
     localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(students));
@@ -321,7 +297,6 @@ export default function App() {
       getInitialAllowedUsers: () => loadAllowedUsers(),
       getInitialGoalBank: () => loadGoalBank(),
       getInitialStudents: () => students,
-      getInitialGeminiKey: () => geminiApiKey,
       onAllowedUsersChange: (rawCloudUsers) => {
         const localUsers = loadAllowedUsers();
         const { users: cloudUsers, migrated: cloudMigrated } =
@@ -407,10 +382,7 @@ export default function App() {
         localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(normalized));
       },
       onSettingsChange: (settings) => {
-        if (settings?.geminiApiKey) {
-          setGeminiApiKey(settings.geminiApiKey);
-          localStorage.setItem('tala_gemini_api_key', settings.geminiApiKey);
-        }
+
         if (typeof settings?.enforcePasswordPolicy === 'boolean') {
           setEnforcePasswordPolicy(settings.enforcePasswordPolicy);
           localStorage.setItem(
@@ -2011,7 +1983,6 @@ export default function App() {
                 student={selectedStudent}
                 externalRevision={externalGoalsRevision}
                 goalBank={goalBank}
-                geminiApiKey={geminiApiKey}
                 isAdmin={currentUser.role === 'admin'}
                 currentUser={currentUser}
                 allowedUsers={allowedUsers}
@@ -2217,14 +2188,6 @@ export default function App() {
           onClose={() => setShowAdminModal(false)}
           allowedUsers={allowedUsers}
           onUpdateAllowedUsers={handleUpdateAllowedUsers}
-          geminiApiKey={geminiApiKey}
-          onChangeGeminiApiKey={handleChangeGeminiApiKey}
-          enforcePasswordPolicy={enforcePasswordPolicy}
-          onChangeEnforcePasswordPolicy={handleChangeEnforcePasswordPolicy}
-          adminRequests={adminRequests}
-          onDismissAdminRequest={handleDismissAdminRequest}
-          cloudSyncState={cloudSyncState}
-          emailEngineConfig={emailEngineConfig}
           onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
         />
       )}

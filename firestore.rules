@@ -62,5 +62,16 @@ service cloud.firestore {
       // Only the student's owner (or primary admin) can delete a student
       allow delete: if !isSignedIn() || isOwnerOfResource(resource.data);
     }
+
+    // Per-user rate limit counter — users can only touch their own doc
+    match /ai_rate_limits/{userId} {
+      allow read, write: if isSignedIn() && currentEmail() == userId;
+    }
+
+    // Audit log — completely locked down for clients
+    // Only the Cloud Function (Admin SDK) can write; no client read/write
+    match /ai_audit_logs/{logId} {
+      allow read, write: if false;
+    }
   }
 }

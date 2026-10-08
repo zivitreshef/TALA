@@ -211,7 +211,6 @@ export function subscribeToTalaBackend({
   getInitialAllowedUsers,
   getInitialGoalBank,
   getInitialStudents,
-  getInitialGeminiKey,
   onAllowedUsersChange,
   onGoalBankChange,
   onStudentsChange,
@@ -301,18 +300,6 @@ export function subscribeToTalaBackend({
         const data = snap.data();
         if (data) {
           onSettingsChange?.(data);
-        }
-      } else {
-        const initialKey = getInitialGeminiKey?.();
-        if (initialKey) {
-          try {
-            await setDoc(settingsDocRef, {
-              geminiApiKey: initialKey,
-              updatedAt: new Date().toISOString()
-            });
-          } catch (e) {
-            console.warn('Could not seed settings to Firestore:', e);
-          }
         }
       }
     },

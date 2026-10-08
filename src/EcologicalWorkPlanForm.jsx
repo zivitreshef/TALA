@@ -88,6 +88,9 @@ import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 
+// NEW: Firebase Functions imports
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
 const DURATION_TSHIRT_OPTIONS = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
   { size: 'S+', label: 'חודשיים', value: 'חודשיים' },
@@ -1349,37 +1352,23 @@ export default function EcologicalWorkPlanForm({
     }));
   };
 
-  // Helper to call Gemini API across available Flash models with JSON mode
+  // Helper to call Gemini API via secure backend proxy
   const callGeminiJson = async (promptText) => {
-    const cleanKey = (geminiApiKey || '').trim();
-    if (!cleanKey) return null;
+    // Instead of using client-side API key and direct fetch, call the Cloud Function
+    try {
+      const functions = getFunctions(); // Initialize Functions
+      const callGemini = httpsCallable(functions, 'callGemini'); // Get callable function
 
-    const maskedPrompt = maskPromptForAi(promptText, formData);
+      // Mask prompt client-side before sending to function (defense in depth)
+      const maskedPromptClientSide = maskPromptForAi(promptText, formData);
 
-    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-    for (const modelName of models) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${cleanKey}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: maskedPrompt }] }],
-            generationConfig: { responseMimeType: 'application/json' }
-          })
-        });
-        if (!res.ok) continue;
-        const data = await res.json();
-        const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const jsonMatch = textOut.match(/[\{\[][\s\S]*[\}\]]/);
-        if (jsonMatch) {
-          return JSON.parse(jsonMatch[0]);
-        }
-      } catch (err) {
-        console.warn(`Model ${modelName} call failed, trying next`, err);
-      }
+      const result = await callGemini({ promptText: maskedPromptClientSide, formData });
+      return result.data; // The cloud function returns the parsed JSON
+    } catch (error) {
+      console.error('Error calling Gemini via backend proxy:', error);
+      // Fallback or handle error appropriately in UI
+      return null;
     }
-    return null;
   };
 
   // === SUBMIT BUTTON: Generate Top Summary Table (and Goals if empty) from Teacher's Free Text + All Goals ===

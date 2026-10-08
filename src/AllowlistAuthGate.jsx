@@ -909,8 +909,7 @@ export function AdminAllowlistModal({
   onClose,
   allowedUsers,
   onUpdateAllowedUsers,
-  geminiApiKey,
-  onChangeGeminiApiKey,
+
   enforcePasswordPolicy,
   onChangeEnforcePasswordPolicy,
   adminRequests = [],
@@ -1500,37 +1499,7 @@ export function AdminAllowlistModal({
               marginBottom: '14px'
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '10px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2b4c73', fontWeight: 700, fontSize: '13.5px' }}>
-                <Sparkles size={16} style={{ color: '#8b6fc0' }} />
-                <span>מפתח Gemini AI:</span>
-              </div>
-              <input
-                type="password"
-                placeholder="הזן מפתח Gemini AI..."
-                value={geminiApiKey || ''}
-                onChange={(e) => onChangeGeminiApiKey && onChangeGeminiApiKey(e.target.value)}
-                dir="ltr"
-                style={{
-                  flex: '1 1 240px',
-                  maxWidth: '340px',
-                  padding: '7px 11px',
-                  borderRadius: '8px',
-                  border: '1.5px solid #8b6fc0',
-                  background: '#ffffff',
-                  fontSize: '13px',
-                  outline: 'none'
-                }}
-              />
-            </div>
+
 
             <div
               style={{
