@@ -995,19 +995,7 @@ export default function App() {
       stageSource: stageInfo.stageSource,
       stageReason: stageInfo.stageReason,
       stageUpdatedAt: stageInfo.stageUpdatedAt,
-      goals: [
-        {
-          id: 'g_init_' + Date.now(),
-          environment: ENVIRONMENTS_LIST[0],
-          activityParticipation: '',
-          title: '',
-          objectives: '',
-          opportunities: '',
-          partners: 'צוות הגן, סייעת אישית',
-          duration: 'עד סוף השנה',
-          evaluationCriteria: ''
-        }
-      ]
+      goals: []
     };
 
     setStudents((prev) => [newStudentPlan, ...prev]);
