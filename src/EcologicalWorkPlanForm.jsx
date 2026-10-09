@@ -5110,17 +5110,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           })}
         </div>
 
-        <div style={{ marginTop: '14px', textAlign: 'center' }}>
-          <button
-            type="button"
-            className="btn-add-goal-block-large"
-            onClick={handleAddGoalRow}
-            disabled={isReportLocked}
-          >
-            <Plus size={18} />
-            <span>הוסף מטרה / סביבה נוספת לתכנית העבודה</span>
-          </button>
-        </div>
+        {Array.isArray(formData.goals) && formData.goals.length > 0 && (
+          <div style={{ marginTop: '14px', textAlign: 'center' }}>
+            <button
+              type="button"
+              className="btn-add-goal-block-large"
+              onClick={handleAddGoalRow}
+              disabled={isReportLocked}
+            >
+              <Plus size={18} />
+              <span>הוסף מטרה / סביבה נוספת לתכנית העבודה</span>
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Section 4: Recommendations & Bottom Actions */}
