@@ -7,12 +7,13 @@
 const KDG_KEYWORDS = [
   'גן',
   'גני',
-  'גני-',
   'בגן',
-  'גננת',
-  'לגן',
   'מהגן',
+  'לגן',
   'הגן',
+  'גננת',
+  'לגננת',
+  'מהגננת',
   'הגננות'
 ];
 
@@ -51,28 +52,62 @@ export function normalizeText(text) {
   s = s.replace(/ביה['׳"]ס/g, 'ביה"ס');
   s = s.replace(/בי['׳"]ס/g, 'בי"ס');
   // Strip trailing dash on גני-
-  s = s.replace(/גני-/g, 'גני');
-  // Strip surrounding punctuation
+  s = s.replace(/גני-/g, 'גני ');
+  // Strip surrounding punctuation except double quotes in abbreviations and single quotes in class names (e.g. כיתה א')
   s = s.replace(/[.,:;()[\]{}]/g, ' ');
   // Collapse spaces
   s = s.replace(/\s+/g, ' ').trim();
   return s;
 }
 
+function tokenize(text) {
+  const norm = normalizeText(text);
+  if (!norm) return [];
+  return norm.split(/\s+/).filter(Boolean);
+}
+
 export function hasKindergarten(text) {
-  const n = normalizeText(text);
-  if (!n) return false;
-  return KDG_KEYWORDS.some((k) => n.includes(k));
+  const tokens = tokenize(text);
+  if (tokens.length === 0) return false;
+
+  return tokens.some((token) => {
+    const cleanToken = token.replace(/['׳]$/, '');
+    if (KDG_KEYWORDS.includes(token) || KDG_KEYWORDS.includes(cleanToken)) return true;
+    if (token === 'בגן' || token === 'לגן' || token === 'מהגן' || token === 'הגן' || token === 'גן' || token === 'גני' || token.startsWith('גן-')) return true;
+    return false;
+  });
 }
 
 export function hasSchool(text) {
-  const n = normalizeText(text);
-  if (!n) return false;
-  // Check bare ambiguous alone - if text is exactly ambiguous or only ambiguous tokens, don't count as school
-  const tokens = n.split(/\s+/).filter(Boolean);
-  const onlyAmbiguous = tokens.length > 0 && tokens.every((t) => BARE_AMBIGUOUS.includes(t));
-  if (onlyAmbiguous) return false;
-  return SCHOOL_KEYWORDS.some((k) => n.includes(k));
+  const norm = normalizeText(text);
+  const tokens = tokenize(text);
+  if (tokens.length === 0) return false;
+
+  // Check multi-word phrase keywords first
+  if (
+    norm.includes('בית-הספר') ||
+    norm.includes('בית ספר') ||
+    norm.includes('בית הספר') ||
+    norm.includes('בית ספרי') ||
+    norm.includes('בית-ספר') ||
+    norm.includes('ביה"ס') ||
+    norm.includes('בי"ס')
+  ) {
+    return true;
+  }
+
+  // Check single token keywords against non-ambiguous tokens
+  const nonAmbiguousTokens = tokens.filter((t) => !BARE_AMBIGUOUS.includes(t));
+  if (nonAmbiguousTokens.length === 0) return false;
+
+  return nonAmbiguousTokens.some((rawToken) => {
+    // Strip Hebrew conjunction/preposition prefixes like ובכיתה -> בכיתה / כיתה
+    const token = rawToken.replace(/^[ובלמה]+(?=כיתה|כתה)/, '');
+    const cleanToken = token.replace(/['׳]$/, '');
+    if (SCHOOL_KEYWORDS.includes(rawToken) || SCHOOL_KEYWORDS.includes(token) || SCHOOL_KEYWORDS.includes(cleanToken)) return true;
+    if (cleanToken.startsWith('כיתה') || cleanToken.startsWith('כתה')) return true;
+    return false;
+  });
 }
 
 function parseDate(d) {
@@ -80,19 +115,22 @@ function parseDate(d) {
   if (d instanceof Date && !isNaN(d)) return d;
   const s = String(d).trim();
   if (!s) return null;
-  // Try common formats; if fails, return null
-  const dt = new Date(s);
-  if (!isNaN(dt)) return dt;
-  // Try Israeli DD/MM/YYYY
-  const m = s.match(/(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})/);
+
+  // Try Israeli DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY first
+  const m = s.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})$/);
   if (m) {
-    const day = parseInt(m[1]);
-    const month = parseInt(m[2]) - 1;
-    let year = parseInt(m[3]);
+    const day = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10) - 1;
+    let year = parseInt(m[3], 10);
     if (year < 100) year += year >= 30 ? 1900 : 2000;
     const dt2 = new Date(year, month, day);
     if (!isNaN(dt2)) return dt2;
   }
+
+  // Fallback to ISO / Standard Date parse
+  const dt = new Date(s);
+  if (!isNaN(dt)) return dt;
+
   return null;
 }
 
@@ -101,12 +139,25 @@ function calcAgeYears(birthDate, referenceDate) {
   if (!b) return null;
   const ref = referenceDate ? parseDate(referenceDate) : new Date();
   if (!ref || isNaN(ref)) return null;
-  let age = (ref.getTime() - b.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+
+  let ageYears = ref.getFullYear() - b.getFullYear();
+  let monthDiff = ref.getMonth() - b.getMonth();
+  let dayDiff = ref.getDate() - b.getDate();
+
+  if (dayDiff < 0) {
+    monthDiff -= 1;
+  }
+  if (monthDiff < 0) {
+    ageYears -= 1;
+    monthDiff += 12;
+  }
+
+  let age = ageYears + monthDiff / 12;
   if (age < 0) age = 0;
   return age;
 }
 
-export function formatPromptWithStudentContext(prompt, formData) {
+export function formatPromptWithStudentContext(prompt, formData = {}) {
   const stageContext = `
 [STUDENT_CONTEXT]
 stage: ${formData.stage || 'unknown'}
