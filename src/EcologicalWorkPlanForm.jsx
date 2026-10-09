@@ -107,7 +107,7 @@ const getPlanTypeStorageKey = (schoolYear, planType) => {
   return `${yr}__${typeKey}`;
 };
 
-const buildFreshReportForPlanType = (planType) => {
+export const buildFreshReportForPlanType = (planType) => {
   const resolvedPlanType = planType || 'תל"א (תוכנית לימודים אישית)';
   const isTala = isTalaPlanType(resolvedPlanType);
   const freshGoal = {
@@ -158,7 +158,7 @@ const buildFreshReportForPlanType = (planType) => {
     statusReportSections: [],
     statusReportUpdatedAt: '',
     lastSavedAt: '',
-    goals: [freshGoal]
+    goals: []
   };
 };
 
@@ -4032,6 +4032,40 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {(!formData.goals || formData.goals.length === 0) && (
+          <div
+            style={{
+              padding: '36px 20px',
+              textAlign: 'center',
+              background: '#f8fafc',
+              border: '2px dashed #cbd5e1',
+              borderRadius: '12px',
+              marginBottom: '20px'
+            }}
+          >
+            <div style={{ fontSize: '15px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+              {isTalaMode
+                ? 'טרם הוגדרו מטרות בתכנית הלימודית היחידנית (תל"א)'
+                : 'טרם הוגדרו מטרות בתכנית החינוכית היחידנית (תח"י)'}
+            </div>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px 0' }}>
+              תוכל לבחור מטרה מתוך מאגר המטרות הדינמי לפי סביבה ותחום לימודי או להגדיר מטרה חדשה.
+            </p>
+            <button
+              type="button"
+              className="btn-add-goal-block-large"
+              onClick={handleAddGoalRow}
+              disabled={isReportLocked}
+              style={{ display: 'inline-flex', width: 'auto', padding: '10px 24px' }}
+            >
+              <Plus size={18} />
+              <span>
+                {isTalaMode ? '+ הוסף מטרה ראשונה לתל"א' : '+ הוסף מטרה ראשונה לתח"י'}
+              </span>
+            </button>
           </div>
         )}
 

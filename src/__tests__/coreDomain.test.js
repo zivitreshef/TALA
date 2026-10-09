@@ -39,6 +39,7 @@ import {
   reverseEngineerRawTextLocally,
   INITIAL_GOAL_BANK
 } from '../goalBankData';
+import { buildFreshReportForPlanType } from '../EcologicalWorkPlanForm';
 import { deriveFirebaseAuthPassword, sanitizeForFirestore } from '../firebaseBackend';
 import { safeGetStorageJson } from '../services/storage';
 import {
@@ -859,5 +860,15 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
       expect(opt).toHaveProperty('label');
       expect(opt).toHaveProperty('value');
     });
+  });
+
+  it('should initialize a fresh report with empty goals array for both TALA and TAHI', () => {
+    const talaFresh = buildFreshReportForPlanType('תל"א (תוכנית לימודים אישית)');
+    expect(isTalaPlanType(talaFresh.planType)).toBe(true);
+    expect(talaFresh.goals).toEqual([]);
+
+    const tahiFresh = buildFreshReportForPlanType('תח"י (תוכנית חינוכית יחידנית)');
+    expect(isTalaPlanType(tahiFresh.planType)).toBe(false);
+    expect(tahiFresh.goals).toEqual([]);
   });
 });
