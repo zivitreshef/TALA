@@ -88,6 +88,7 @@ import { detectStudentStage, formatPromptWithStudentContext } from './studentSta
 import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
+import { callAiProxyEndpoint } from './services/aiProxyClient';
 
 // NEW: Firebase Functions imports
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -1156,48 +1157,36 @@ export default function EcologicalWorkPlanForm({
     }
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-      const genderLabel = currentGender === 'girl' ? 'בת (לשון נקבה)' : 'בן (לשון זכר)';
-      const prompt = `אתה מדריך פדגוגי מומחה לבניית "תכנית עבודה משותפת ואינטגרטיבית ברוח הגישה האקולוגית" ותל"א / תח"י.
-המורה הגדירה את המטרה העליונה הבאה עבור תלמיד/ה (${genderLabel}, גיל: ${dateInfo.ageDescription}):
-מטרה: "${goalTitle}"
-סביבה / תחום: "${goalRow.environment || 'מרחב הגן / הכיתה'}"
-תאריך הזנת המטרה: ${dateInfo.entryDateFormatted}
-מידע חופשי על הילד/ה: "${formData.teacherFreeText || ''}"
+      const hints = {
+        gender: currentGender,
+        name: formData.name,
+        idNumber: formData.idNumber,
+        birthDate: formData.birthDate,
+        address: formData.address,
+        phone: formData.phone,
+        educationalFramework: formData.educationalFramework
+      };
 
-נסח בדיוק 3 שאלות מנחות (Facilitating Questions) קצרות, מכוונות ומעשיות בעברית (מותאמות ל${genderLabel}) שיסייעו למורה לדייק את מילוי השדות של מטרה זו בטבלה:
-- שאלה 1: על התפקוד הנוכחי של הילד/ה והגורמים המאפשרים/המגבילים בסביבה (עבור שדה "פעילות והשתתפות").
-- שאלה 2: על צעדים אופרטיביים הדרגתיים ואמצעי תיווך של הצוות (מחנכת, מורת שילוב, מטפלת) בהתאם לגיל הילד/ה ורמתו/ה (עבור שדות "יעדים ולו"ז" ו-"האמצעים לביצוע").
-- שאלה 3: על התאמות ללמידה ובדרכי ההיבחנות, תיחום הזמן המשוער לפי גודל המטרה (T-Shirt Size: למשל חודש עד ${dateInfo.plus1Month}, 3 חודשים עד ${dateInfo.plus3Months}, או חצי שנה עד ${dateInfo.plus6Months}) ואמות המידה להערכה.
-
-עבור כל שאלה הצע גם 2-3 תשובות קצרות לדוגמה שהמורה יכולה לבחור בלחיצה.
-החזר תשובה בפורמט JSON בלבד במבנה הבא:
-[
-  { "q": "1. טקסט השאלה הראשונה?", "suggestions": ["תשובה מומלצת א", "תשובה מומלצת ב"] },
-  { "q": "2. טקסט השאלה השנייה?", "suggestions": ["תשובה מומלצת א", "תשובה מומלצת ב"] },
-  { "q": "3. טקסט השאלה השלישית?", "suggestions": ["תשובה מומלצת א", "תשובה מומלצת ב"] }
-]`;
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: maskPromptForAi(formatPromptWithStudentContext(prompt, formData), formData) }] }] })
+      const parsed = await callAiProxyEndpoint({
+        operation: 'facilitate',
+        payload: {
+          goalTitle,
+          environment: goalRow.environment || 'מרחב הגן / הכיתה',
+          teacherFreeText: formData.teacherFreeText || '',
+          gender: currentGender,
+          ageDescription: dateInfo.ageDescription,
+          entryDateFormatted: dateInfo.entryDateFormatted
+        },
+        hints
       });
 
-      if (!res.ok) throw new Error('Gemini API request failed');
-      const data = await res.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setAiQuestionsMap((prev) => ({
-            ...prev,
-            [goalRow.id]: parsed.slice(0, 3)
-          }));
-          setLoadingAiForGoalId(null);
-          return;
-        }
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setAiQuestionsMap((prev) => ({
+          ...prev,
+          [goalRow.id]: parsed.slice(0, 3)
+        }));
+        setLoadingAiForGoalId(null);
+        return;
       }
       setAiQuestionsMap((prev) => ({
         ...prev,
@@ -1230,88 +1219,64 @@ export default function EcologicalWorkPlanForm({
 
     setLoadingAiForGoalId(goalRow.id);
 
-    if (geminiApiKey && (ans1 || ans2 || ans3)) {
+    if (ans1 || ans2 || ans3) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-        const prompt = `אתה מומחה לכתיבת תכנית עבודה שנתית (תל"א / תח"י) בעברית.
-שם הילד/ה: ${childLabel}
-מין הילד/ה: ${genderLabel}
-גיל הילד/ה: ${dateInfo.ageDescription}
-תאריך הזנת המטרה: ${dateInfo.entryDateFormatted}
-סביבה: ${goalRow.environment}
-מטרה (מה אנחנו רוצים שיקרה?): ${goalRow.title}
+        const hints = {
+          gender: genderToUse,
+          name: formData.name,
+          idNumber: formData.idNumber,
+          birthDate: formData.birthDate,
+          address: formData.address,
+          phone: formData.phone,
+          educationalFramework: formData.educationalFramework
+        };
 
-תשובות המורה ל-3 השאלות המנחות:
-1. תפקוד בסביבה וגורמים מאפשרים/מגבילים: ${ans1 || 'לא צוין'}
-2. צעדים אופרטיביים ואמצעי תיווך: ${ans2 || 'לא צוין'}
-3. שותפים, משך ואמות מידה להערכה: ${ans3 || 'לא צוין'}
-
-הנחיה לקביעת משך הזמן ("duration") לפי גודל המטרה (T-Shirt Size: S / M / L) ותאריך יחסי מתאריך הזנת המטרה (${dateInfo.entryDateFormatted}):
-- אל תקבע כברירת מחדל "עד סוף השנה"! העריך את גודל המטרה לפי גיל הילד/ה, רמתו/ה והקושי:
-- אם המטרה ממוקדת וברת השגה בטווח קצר (SMALL): קבע "חודש (עד ${dateInfo.plus1Month})" או "חודשיים (עד ${dateInfo.plus2Months})".
-- אם המטרה בינונית (MEDIUM): קבע "3 חודשים (עד ${dateInfo.plus3Months})" או "4 חודשים (עד ${dateInfo.plus4Months})".
-- אם המטרה רחבה וארוכת טווח (LARGE): קבע "חצי שנה (עד ${dateInfo.plus6Months})" או "עד סוף השנה (עד ${dateInfo.endOfYear})".
-
-נסח באופן מקצועי, בהיר ומותאם למין הילד/ה (${genderLabel}) את השדות הבאים והחזר JSON בלבד:
-{
-  "activityParticipation": "תיאור פעילות והשתתפות בסביבה...",
-  "objectives": "• יעד 1\\n• יעד 2\\n• יעד 3",
-  "opportunities": "• אמצעי תיווך של המחנכת...",
-  "opportunitiesIntegration": "• אמצעי תיווך של מורת שילוב...",
-  "opportunitiesTherapist": "• אמצעי תיווך של מטפלת באומנויות...",
-  "learningAccommodations": "• התאמות ללמידה ובדרכי ההיבחנות...",
-  "partners": "מחנכת, מורת שילוב, מטפלת באומנויות",
-  "tShirtSize": "S",
-  "duration": "חודש (עד ${dateInfo.plus1Month})",
-  "evaluationCriteria": "אמות מידה להערכה..."
-}`;
-
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: maskPromptForAi(formatPromptWithStudentContext(prompt, formData), formData) }] }] })
+        const enriched = await callAiProxyEndpoint({
+          operation: 'applyAnswers',
+          payload: {
+            goalRow,
+            answers: [ans1, ans2, ans3],
+            gender: genderToUse,
+            ageDescription: dateInfo.ageDescription,
+            entryDateFormatted: dateInfo.entryDateFormatted
+          },
+          hints
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const enriched = JSON.parse(jsonMatch[0]);
-            setFormData((prev) => ({
-              ...prev,
-              goals: (prev.goals || []).map((g) => {
-                if (g.id !== goalRow.id) return g;
-                const mergedGoal = {
-                  ...g,
-                  activityParticipation:
-                    enriched.activityParticipation || g.activityParticipation,
-                  objectives: enriched.objectives || g.objectives,
-                  opportunities: enriched.opportunities || g.opportunities,
-                  opportunitiesIntegration:
-                    enriched.opportunitiesIntegration || g.opportunitiesIntegration,
-                  opportunitiesTherapist:
-                    enriched.opportunitiesTherapist || g.opportunitiesTherapist,
-                  learningAccommodations:
-                    enriched.learningAccommodations || g.learningAccommodations,
-                  partners: enriched.partners || g.partners,
-                  tShirtSize: enriched.tShirtSize || g.tShirtSize,
-                  duration: enriched.duration || g.duration,
-                  evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria,
-                  isTeacherModified: true
-                };
-                mergedGoal.duration = normalizeAndSizeGoalDuration(
-                  mergedGoal,
-                  prev.teacherFreeText || '',
-                  prev,
-                  dateInfo
-                );
-                return adaptGoalToGender(mergedGoal, genderToUse);
-              })
-            }));
-            setLoadingAiForGoalId(null);
-            return;
-          }
+        if (enriched) {
+          setFormData((prev) => ({
+            ...prev,
+            goals: (prev.goals || []).map((g) => {
+              if (g.id !== goalRow.id) return g;
+              const mergedGoal = {
+                ...g,
+                activityParticipation:
+                  enriched.activityParticipation || g.activityParticipation,
+                objectives: enriched.objectives || g.objectives,
+                opportunities: enriched.opportunities || g.opportunities,
+                opportunitiesIntegration:
+                  enriched.opportunitiesIntegration || g.opportunitiesIntegration,
+                opportunitiesTherapist:
+                  enriched.opportunitiesTherapist || g.opportunitiesTherapist,
+                learningAccommodations:
+                  enriched.learningAccommodations || g.learningAccommodations,
+                partners: enriched.partners || g.partners,
+                tShirtSize: enriched.tShirtSize || g.tShirtSize,
+                duration: enriched.duration || g.duration,
+                evaluationCriteria: enriched.evaluationCriteria || g.evaluationCriteria,
+                isTeacherModified: true
+              };
+              mergedGoal.duration = normalizeAndSizeGoalDuration(
+                mergedGoal,
+                prev.teacherFreeText || '',
+                prev,
+                dateInfo
+              );
+              return adaptGoalToGender(mergedGoal, genderToUse);
+            })
+          }));
+          setLoadingAiForGoalId(null);
+          return;
         }
       } catch (err) {
         console.warn('Fallback to local synthesis for facilitating answers', err);
@@ -1381,19 +1346,26 @@ export default function EcologicalWorkPlanForm({
 
   // Helper to call Gemini API via secure backend proxy
   const callGeminiJson = async (promptText) => {
-    // Instead of using client-side API key and direct fetch, call the Cloud Function
     try {
-      const functions = getFunctions(); // Initialize Functions
-      const callGemini = httpsCallable(functions, 'callGemini'); // Get callable function
-
-      // Mask prompt client-side before sending to function (defense in depth)
       const maskedPromptClientSide = maskPromptForAi(promptText, formData);
+      const hints = {
+        gender: formData.gender || 'boy',
+        name: formData.name,
+        idNumber: formData.idNumber,
+        birthDate: formData.birthDate,
+        address: formData.address,
+        phone: formData.phone,
+        educationalFramework: formData.educationalFramework
+      };
 
-      const result = await callGemini({ promptText: maskedPromptClientSide, formData });
-      return result.data; // The cloud function returns the parsed JSON
+      const result = await callAiProxyEndpoint({
+        operation: 'rawPrompt',
+        payload: { prompt: maskedPromptClientSide },
+        hints
+      });
+      return result;
     } catch (error) {
-      console.error('Error calling Gemini via backend proxy:', error);
-      // Fallback or handle error appropriately in UI
+      console.warn('Backend AI Proxy request failed, falling back to local processing:', error);
       return null;
     }
   };
@@ -1412,7 +1384,7 @@ export default function EcologicalWorkPlanForm({
 
     setIsGeneratingSummary(true);
 
-    if (geminiApiKey && freeText) {
+    if (freeText) {
       const goalsSummary = goalsList
         .map(
           (g, idx) =>
@@ -1532,8 +1504,8 @@ ${goalsSummary}
     );
     const removedGoals = Array.isArray(formData.removedAiGoals) ? formData.removedAiGoals : [];
 
-    // 1. Try Live Gemini AI if API key is provided
-    if (geminiApiKey && geminiApiKey.trim()) {
+    // 1. Try Live Gemini AI via backend proxy (with local synthesis fallback)
+    if (rawText) {
       const bankReference = sortedGoals
         .slice(0, 20)
         .map(
@@ -1910,7 +1882,7 @@ ${rawText}
     const isEndYear = fieldName === 'endYearEvaluation';
     const periodTitle = isEndYear ? 'הערכת סוף שנה' : 'הערכת מחצית השנה';
 
-    if (geminiApiKey && geminiApiKey.trim()) {
+    if (rawText) {
       const prompt = `אתה מומחה פדגוגי לכתיבת דוח "${periodTitle}" (הערכה תקופתית לתל"א / תח"י) במשרד החינוך.
 המורה הזינה הערות גולמיות על התקדמות הילד/ה ביחס למטרה ספציפית.
 מין הילד/ה: ${genderToUse === 'girl' ? 'בת (נקבה – נסח בלשון נקבה בלבד)' : 'בן (זכר – נסח בלשון זכר בלבד)'}
@@ -1991,7 +1963,7 @@ ${rawText}
     const genderToUse = formData.gender || 'boy';
     const goalsList = formData.goals || [];
 
-    if (geminiApiKey && geminiApiKey.trim()) {
+    if (rawText) {
       const goalsContext = goalsList
         .map(
           (g, idx) =>
@@ -2117,7 +2089,7 @@ ${goalsContext}
         )
     );
 
-    if (geminiApiKey && geminiApiKey.trim()) {
+    if (validGoals) {
       const studentCardPayload = {
         name: formData.name && formData.name !== 'תלמיד/ה חדש/ה' ? formData.name : '',
         gender: isGirl ? 'נקבה (בת)' : 'זכר (בן)',
