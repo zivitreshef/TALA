@@ -22,16 +22,23 @@ function resolveSiteVersionFromGit() {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore']
     });
-    let maxPr = 31;
+    const commitCount = Number(
+      execSync('git rev-list --count HEAD', {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).trim()
+    ) || 0;
+
+    let maxPr = 38;
     const rx = /Merge pull request #(\d+)|\(#(\d+)\)/gi;
     let m;
     while ((m = rx.exec(logText)) !== null) {
       const num = Number(m[1] || m[2]);
       if (num > maxPr) maxPr = num;
     }
-    return `1.0.${maxPr + 1}`;
+    return `1.0.${maxPr + 2}`;
   } catch (_) {
-    return '1.0.35';
+    return '1.0.40';
   }
 }
 
