@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { recordUserPresence } from '../firebaseBackend';
 import {
   isStudentOwnedByUser,
   isStudentSharedWithUser,
@@ -870,5 +871,12 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     const tahiFresh = buildFreshReportForPlanType('תח"י (תוכנית חינוכית יחידנית)');
     expect(isTalaPlanType(tahiFresh.planType)).toBe(false);
     expect(tahiFresh.goals).toEqual([]);
+  });
+
+  it('recordUserPresence handles null and invalid user inputs gracefully', async () => {
+    const resNull = await recordUserPresence(null);
+    expect(resNull).toBe(false);
+    const resNoEmail = await recordUserPresence({ name: 'Test' });
+    expect(resNoEmail).toBe(false);
   });
 });
