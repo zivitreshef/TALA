@@ -2107,7 +2107,7 @@ export default function App() {
                         title="צפייה בסרטון הדרכה קצר על עבודה עם מערכת TALA"
                       >
                         <BookOpen size={18} style={{ color: '#16a34a' }} />
-                        <span>🎥 סרטון הדרכה (סרטון NotebookLM)</span>
+                        <span>🎥 סרטון הדרכה</span>
                       </button>
                       <button
                         type="button"
