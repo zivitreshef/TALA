@@ -225,6 +225,16 @@ export const DEFAULT_ALLOWED_USERS = [
     active: true
   },
   {
+    id: 'u_moti_test',
+    email: 'moti_reshef@bmc.com',
+    name: 'מוטי רשף (משתמש בדיקה)',
+    role: 'teacher',
+    title: 'מורה שילוב / מורה חדש',
+    group: 'מתי"א מרכז',
+    ...createPasswordCredentials('TALA2026', 'd4e3f2a1b0c9876543210fe987654321'),
+    active: true
+  },
+  {
     id: 'u_teacher_1',
     email: 'teacher@tala.edu.il',
     name: 'מיכל כהן',
