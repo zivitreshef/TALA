@@ -1281,6 +1281,9 @@ export default function App() {
     setBankAddToast(
       `✅ המטרה "${genderTitle}" נוספה לתכנית של ${studentDisplayName} ומשקלה במאגר עלה ב-+1!`
     );
+    if (onboardingTourStep === 5) {
+      setOnboardingTourStep(6);
+    }
     setTimeout(() => setBankAddToast(''), 3500);
   };
 
