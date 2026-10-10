@@ -2139,10 +2139,14 @@ export default function App() {
                   </p>
                   <button
                     type="button"
-                    className={`btn-inside-landing-primary ${onboardingTourStep === 1 ? 'tour-highlight-btn' : ''}`}
+                    className={`btn-inside-landing-primary ${userStudents.length === 0 && onboardingTourStep === 1 ? 'tour-highlight-btn' : ''}`}
                     onClick={() => {
                       handleAddNewStudent();
-                      setOnboardingTourStep(2);
+                      if (userStudents.length === 0) {
+                        setOnboardingTourStep(2);
+                      } else {
+                        setOnboardingTourStep(0);
+                      }
                     }}
                   >
                     <UserPlus size={18} />
@@ -2203,7 +2207,10 @@ export default function App() {
                           key={st.id}
                           type="button"
                           className="inside-landing-student-row"
-                          onClick={() => setSelectedStudentId(st.id)}
+                          onClick={() => {
+                            setSelectedStudentId(st.id);
+                            setOnboardingTourStep(0);
+                          }}
                         >
                           <div className="inside-st-main">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
