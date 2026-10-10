@@ -954,6 +954,7 @@ export function AdminAllowlistModal({
     trialDays: DEFAULT_TRIAL_DAYS
   });
   const [editUserError, setEditUserError] = useState('');
+  const [detailsSavedToastId, setDetailsSavedToastId] = useState(null);
   const [userPresenceMap, setUserPresenceMap] = useState({});
 
   useEffect(() => {
