@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   Lock,
@@ -38,7 +38,7 @@ import {
   verifyUserPassword
 } from './allowedUsers';
 import { sendUserInvitationEmailInBackground } from './emailService';
-import { fetchAllowedUsersFromCloud } from './firebaseBackend';
+import { fetchAllowedUsersFromCloud, subscribeToUserPresence } from './firebaseBackend';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -954,7 +954,115 @@ export function AdminAllowlistModal({
     trialDays: DEFAULT_TRIAL_DAYS
   });
   const [editUserError, setEditUserError] = useState('');
-  const [detailsSavedToastId, setDetailsSavedToastId] = useState(null);
+  const [userPresenceMap, setUserPresenceMap] = useState({});
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = subscribeToUserPresence((presenceData) => {
+      setUserPresenceMap(presenceData || {});
+    });
+    return () => unsub?.();
+  }, [isOpen]);
+
+  const getUserPresenceBadge = (userEmail) => {
+    if (!userEmail) return null;
+    const userKey = userEmail.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+    const presenceData = userPresenceMap[userKey];
+    const lastActiveIso = presenceData?.lastActiveIso;
+
+    if (!lastActiveIso) {
+      return (
+        <span
+          style={{
+            fontSize: '10.5px',
+            fontWeight: 700,
+            padding: '1px 6px',
+            borderRadius: '999px',
+            background: '#fef2f2',
+            color: '#b91c1c',
+            border: '1px solid #fecaca',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}
+          title="מנותק/ת (אין פעילות בדפדפן)"
+        >
+          <span>🔴</span>
+          <span>לא מחובר/ת</span>
+        </span>
+      );
+    }
+
+    const diffMs = Date.now() - new Date(lastActiveIso).getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMinutes < 5) {
+      return (
+        <span
+          style={{
+            fontSize: '10.5px',
+            fontWeight: 700,
+            padding: '1px 6px',
+            borderRadius: '999px',
+            background: '#dcfce7',
+            color: '#15803d',
+            border: '1px solid #86efac',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}
+          title={`פעיל/ה כעת באתר (${diffMinutes === 0 ? 'ממש עכשיו' : `לפני ${diffMinutes} דקות`})`}
+        >
+          <span>🟢</span>
+          <span>מחובר/ת</span>
+        </span>
+      );
+    }
+
+    if (diffMinutes <= 15) {
+      return (
+        <span
+          style={{
+            fontSize: '10.5px',
+            fontWeight: 700,
+            padding: '1px 6px',
+            borderRadius: '999px',
+            background: '#fef9c3',
+            color: '#a16207',
+            border: '1px solid #fef08a',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}
+          title={`מנוחה / חוסר פעילות (${diffMinutes} דקות)`}
+        >
+          <span>🟡</span>
+          <span>במנוחה ({diffMinutes} דק')</span>
+        </span>
+      );
+    }
+
+    return (
+      <span
+        style={{
+          fontSize: '10.5px',
+          fontWeight: 700,
+          padding: '1px 6px',
+          borderRadius: '999px',
+          background: '#fef2f2',
+          color: '#b91c1c',
+          border: '1px solid #fecaca',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '3px'
+        }}
+        title={`מנותק/ת (פעילות אחרונה לפני ${diffMinutes} דקות)`}
+      >
+        <span>🔴</span>
+        <span>לא מחובר/ת</span>
+      </span>
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -2163,6 +2271,7 @@ export function AdminAllowlistModal({
                                     ⭐ משוב נשלח ✓
                                   </span>
                                 )}
+                                {getUserPresenceBadge(u.email)}
                               </div>
                             )}
                           </>

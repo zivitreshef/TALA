@@ -548,4 +548,30 @@ export async function recordUserPresence(currentUser) {
   }
 }
 
+export function subscribeToUserPresence(onPresenceChange) {
+  const db = getFirestoreDb();
+  if (!db) return () => {};
+  try {
+    const presenceRef = doc(db, 'tala_config', 'presence');
+    return onSnapshot(
+      presenceRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          onPresenceChange?.(data.activeUsers || {});
+        } else {
+          onPresenceChange?.({});
+        }
+      },
+      (err) => {
+        console.warn('Firestore presence listener warning:', err);
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to subscribe to user presence:', err);
+    return () => {};
+  }
+}
+
+
 
