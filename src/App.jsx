@@ -352,25 +352,9 @@ export default function App() {
           return cu;
         });
 
-        // On initial cloud sync, heal any custom user that was saved to localStorage when a cloud write failed
+        // On initial cloud sync, keep cloud list authoritative. Do not auto-reinject deleted local users.
         if (!didInitialUsersMerge) {
           didInitialUsersMerge = true;
-          const cloudEmails = new Set(
-            mergedUsers.map((u) => (u.email || '').trim().toLowerCase())
-          );
-          localUsers.forEach((lu) => {
-            const emailKey = (lu.email || '').trim().toLowerCase();
-            const isLegacySeedDemo =
-              lu.id === 'u_teacher_1' ||
-              lu.id === 'u_teacher_2' ||
-              emailKey === 'teacher@tala.edu.il' ||
-              emailKey === 'gan@tala.edu.il';
-            if (emailKey && !cloudEmails.has(emailKey) && !isLegacySeedDemo) {
-              mergedUsers.push(lu);
-              cloudEmails.add(emailKey);
-              needsCloudHeal = true;
-            }
-          });
         }
 
         if (needsCloudHeal) {
@@ -1559,6 +1543,11 @@ export default function App() {
               }
               setShowArchiveModal(true);
             }}
+            style={
+              archivedUserStudents.length === 0
+                ? { opacity: 0.45, cursor: 'not-allowed', filter: 'grayscale(1)' }
+                : undefined
+            }
             title={
               archivedUserStudents.length === 0
                 ? 'הארכיון ריק – אין תלמידים בארכיון'
@@ -2043,6 +2032,83 @@ export default function App() {
               </div>
 
               <div className="inside-landing-cards-grid">
+                {/* Onboarding Quickstart Banner for New Users */}
+                {userStudents.length === 0 && (
+                  <div
+                    style={{
+                      gridColumn: '1 / -1',
+                      background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
+                      border: '1.5px solid #86efac',
+                      borderRadius: '16px',
+                      padding: '20px 24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '16px',
+                      marginBottom: '8px',
+                      boxShadow: '0 4px 12px rgba(22, 101, 52, 0.08)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: '1 1 300px' }}>
+                      <div
+                        style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '12px',
+                          background: '#22c55e',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <Sparkles size={26} />
+                      </div>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 800, color: '#14532d' }}>
+                          צעד ראשון במערכת TALA: יצירת תוכנית העבודה הראשונה שלך
+                        </h4>
+                        <p style={{ margin: 0, fontSize: '13px', color: '#166534', lineHeight: 1.5 }}>
+                          ברוכה הבאה! לחצי על הכפתור "צור תוכנית עבודה" כדי להתחיל. המערכת תלווה אותך צעד אחר צעד בהגדרת הפרופיל, בחירת מטרות מהמאגר והפקה מקצועית.
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        className="btn-inside-landing-primary"
+                        onClick={() =>
+                          window.open(
+                            'https://www.youtube.com/results?search_query=TALA+%D7%AA%D7%9B%D7%A0%D7%99%D7%AA+%D7%A2%D7%91%D7%95%D7%93%D7%94+%D7%90%D7%A7%D7%95%D7%9C%D7%95%D7%92%D7%99%D7%AA',
+                            '_blank'
+                          )
+                        }
+                        style={{
+                          background: '#ffffff',
+                          color: '#166534',
+                          border: '1.5px solid #86efac',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                        }}
+                        title="צפייה בסרטון הדרכה קצר על עבודה עם מערכת TALA"
+                      >
+                        <BookOpen size={18} style={{ color: '#16a34a' }} />
+                        <span>🎥 סרטון הדרכה (1 דקה)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-inside-landing-primary"
+                        onClick={handleAddNewStudent}
+                        style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' }}
+                      >
+                        <UserPlus size={18} />
+                        <span>יצירת תלמיד/ה ראשון/ה כעת</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Card 1: Create New Student */}
                 <div className="inside-landing-card create-card">
                   <div className="inside-card-icon create-icon">

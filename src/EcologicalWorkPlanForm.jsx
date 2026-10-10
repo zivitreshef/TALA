@@ -3937,18 +3937,22 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 : '3. הגדרת מטרות ויעדים לפי סביבות פעילות ותחומי תפקוד (תח"י)'}
             </h3>
             <p className="section-sub-desc">
-              בחרי מטרה מתוך מאגר המטרות הדינמי או הקלידי מטרה חדשה.
+              {isTalaMode
+                ? 'תל"א מיועדת לתלמידים בחינוך המיוחד / גני שילוב. בחרי מטרה מתוך מאגר המטרות הדינמי או הקלידי מטרה חדשה.'
+                : 'תח"י מיועדת לתלמידי שילוב בחינוך הרגיל. בחרי מטרה מתוך מאגר המטרות הדינמי לפי סביבות פעילות ותחומי תפקוד.'}
             </p>
           </div>
-          <button
-            type="button"
-            className="btn-add-goal-block"
-            onClick={handleAddGoalRow}
-            disabled={isReportLocked}
-          >
-            <Plus size={18} />
-            <span>הוסף מטרה / סביבה חדשה</span>
-          </button>
+          {Array.isArray(formData.goals) && formData.goals.length > 0 && (
+            <button
+              type="button"
+              className="btn-add-goal-block"
+              onClick={handleAddGoalRow}
+              disabled={isReportLocked}
+            >
+              <Plus size={18} />
+              <span>הוסף מטרה / סביבה חדשה</span>
+            </button>
+          )}
         </div>
 
         {/* In תל"א mode, render Focus Domains Checkboxes from the Google Doc Template */}
