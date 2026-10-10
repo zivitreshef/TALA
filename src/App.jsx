@@ -291,6 +291,8 @@ export default function App() {
   });
   const [showLogoutUnsavedModal, setShowLogoutUnsavedModal] = useState(false);
   const [showIntroVideoModal, setShowIntroVideoModal] = useState(false);
+  // Guided Onboarding Interactive Tour Step (0 = inactive, 1 = point to create card button, 2 = point to name field, 3 = point to gender, 4 = point to framework, 5 = point to first goal button, 6 = point to free text & analyze button)
+  const [onboardingTourStep, setOnboardingTourStep] = useState(0);
 
   const toggleFrameworkCluster = (frameworkKey) => {
     setExpandedFrameworks((prev) => ({
@@ -2017,6 +2019,8 @@ export default function App() {
                 emailEngineConfig={emailEngineConfig}
                 onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
                 onNotifySharedColleague={handleNotifySharedColleague}
+                onboardingTourStep={onboardingTourStep}
+                setOnboardingTourStep={setOnboardingTourStep}
               />
             </ErrorBoundary>
           ) : (
@@ -2095,8 +2099,8 @@ export default function App() {
                       <button
                         type="button"
                         className="btn-inside-landing-primary"
-                        onClick={handleAddNewStudent}
-                        style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' }}
+                        onClick={() => setOnboardingTourStep(1)}
+                        style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', position: 'relative' }}
                       >
                         <UserPlus size={18} />
                         <span>יצירת תלמיד/ה ראשון/ה כעת</span>
@@ -2106,7 +2110,13 @@ export default function App() {
                 )}
 
                 {/* Card 1: Create New Student */}
-                <div className="inside-landing-card create-card">
+                <div className="inside-landing-card create-card" style={{ position: 'relative' }}>
+                  {onboardingTourStep === 1 && (
+                    <div className="onboarding-tour-arrow-box" style={{ top: '-48px', left: '50%', transform: 'translateX(-50%)' }}>
+                      <span className="tour-arrow-anim">👇</span>
+                      <span>לחצי כאן לפתיחת תוכנית עבודה חדשה</span>
+                    </div>
+                  )}
                   <div className="inside-card-icon create-icon">
                     <GraduationCap size={26} />
                   </div>
@@ -2116,8 +2126,11 @@ export default function App() {
                   </p>
                   <button
                     type="button"
-                    className="btn-inside-landing-primary"
-                    onClick={handleAddNewStudent}
+                    className={`btn-inside-landing-primary ${onboardingTourStep === 1 ? 'tour-highlight-btn' : ''}`}
+                    onClick={() => {
+                      handleAddNewStudent();
+                      setOnboardingTourStep(2);
+                    }}
                   >
                     <UserPlus size={18} />
                     <span>צור תוכנית עבודה לתלמיד/ה חדש/ה</span>

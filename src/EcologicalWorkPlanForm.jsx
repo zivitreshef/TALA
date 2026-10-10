@@ -246,7 +246,9 @@ export default function EcologicalWorkPlanForm({
   onDraftStateChange,
   onNotifySharedColleague,
   emailEngineConfig,
-  onUpdateEmailEngineConfig
+  onUpdateEmailEngineConfig,
+  onboardingTourStep = 0,
+  setOnboardingTourStep
 }) {
   const containerRef = useRef(null);
   const evalReportSectionRef = useRef(null);
@@ -3277,20 +3279,38 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
 
         <div className="personal-details-grid">
-          <div className="form-field">
+          <div className="form-field" style={{ position: 'relative' }}>
+            {onboardingTourStep === 2 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
+                <span className="tour-arrow-anim">👇</span>
+                <span>צעד 1: הקלידי את שם הילד/ה</span>
+              </div>
+            )}
             <label>שם הילד/ה:</label>
             <input
               type="text"
               disabled={isReportLocked}
+              className={onboardingTourStep === 2 ? 'tour-highlight-input' : ''}
               value={formData.name === 'תלמיד/ה חדש/ה' ? '' : (formData.name || '')}
-              onChange={(e) => handleFieldChange('name', e.target.value)}
+              onChange={(e) => {
+                handleFieldChange('name', e.target.value);
+                if (onboardingTourStep === 2 && e.target.value.trim()) {
+                  setOnboardingTourStep?.(3);
+                }
+              }}
               placeholder="שם פרטי ושם משפחה"
             />
           </div>
 
-          <div className="form-field">
+          <div className="form-field" style={{ position: 'relative' }}>
+            {onboardingTourStep === 3 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
+                <span className="tour-arrow-anim">👇</span>
+                <span>צעד 2: בחרי מין (בן / בת)</span>
+              </div>
+            )}
             <label>מין הילד/ה:</label>
-            <div className="gender-radio-group" role="radiogroup" aria-label="מין הילד/ה">
+            <div className={`gender-radio-group ${onboardingTourStep === 3 ? 'tour-highlight-input' : ''}`} role="radiogroup" aria-label="מין הילד/ה">
               <label className={`gender-radio-option ${currentGender === 'boy' ? 'selected' : ''}`}>
                 <input
                   type="radio"
@@ -3298,7 +3318,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   value="boy"
                   disabled={isReportLocked}
                   checked={currentGender === 'boy'}
-                  onChange={() => handleGenderChange('boy')}
+                  onChange={() => {
+                    handleGenderChange('boy');
+                    if (onboardingTourStep === 3) setOnboardingTourStep?.(4);
+                  }}
                 />
                 <span>בן</span>
               </label>
@@ -3309,7 +3332,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   value="girl"
                   disabled={isReportLocked}
                   checked={currentGender === 'girl'}
-                  onChange={() => handleGenderChange('girl')}
+                  onChange={() => {
+                    handleGenderChange('girl');
+                    if (onboardingTourStep === 3) setOnboardingTourStep?.(4);
+                  }}
                 />
                 <span>בת</span>
               </label>
@@ -3338,13 +3364,25 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             />
           </div>
 
-          <div className="form-field">
+          <div className="form-field" style={{ position: 'relative' }}>
+            {onboardingTourStep === 4 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
+                <span className="tour-arrow-anim">👇</span>
+                <span>צעד 3: הזני מסגרת חינוכית</span>
+              </div>
+            )}
             <label>מסגרת חינוכית:</label>
             <input
               type="text"
               disabled={isReportLocked}
+              className={onboardingTourStep === 4 ? 'tour-highlight-input' : ''}
               value={formData.educationalFramework || ''}
-              onChange={(e) => handleFieldChange('educationalFramework', e.target.value)}
+              onChange={(e) => {
+                handleFieldChange('educationalFramework', e.target.value);
+                if (onboardingTourStep === 4 && e.target.value.trim()) {
+                  setOnboardingTourStep?.(5);
+                }
+              }}
               placeholder="שם הגן / בית הספר והכיתה"
             />
           </div>
@@ -3608,16 +3646,31 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <div className="privacy-sensitive-info-note">
                 🔒 <strong>לתשומת לבך (שמירה על פרטיות):</strong> נא להימנע מהקלדת פרטים מזהים או מידע אישי רגיש בטקסט החופשי (כגון שמות מלאים של הילד/ה או בני משפחה, מספרי תעודת זהות, טלפונים או כתובות). מומלץ להשתמש בתיאור כללי כגון "הילד/ה" או בראשי תיבות בלבד.
               </div>
-              <textarea
-                rows={4}
-                disabled={isReportLocked}
-                value={formData.teacherFreeText || ''}
-                onInput={handleTextareaAutoResize}
-                onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
-                placeholder="הזיני כאן מידע גולמי וחופשי על התלמיד/ה... למשל: ילד נעים, חברותי וסקרן בעל יכולת ריכוז טובה, וורבלי ומלא אנרגיות. מתקשה במשחק משותף עם חברים ומשחק לידם באופן תבניתי, לא ניגש לשולחן הסדנא מיוזמתו ומתקשה בתכנון והתארגנות, וזקוק לתיווך בגמילה בשירותים ובוויסות רגשי..."
-              />
+              <div style={{ position: 'relative' }}>
+                {onboardingTourStep === 6 && (
+                  <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
+                    <span className="tour-arrow-anim">👇</span>
+                    <span>צעד 5: הזיני תיאור חופשי של התלמיד/ה</span>
+                  </div>
+                )}
+                <textarea
+                  rows={4}
+                  disabled={isReportLocked}
+                  className={onboardingTourStep === 6 ? 'tour-highlight-input' : ''}
+                  value={formData.teacherFreeText || ''}
+                  onInput={handleTextareaAutoResize}
+                  onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
+                  placeholder="הזיני כאן מידע גולמי וחופשי על התלמיד/ה... למשל: ילד נעים, חברותי וסקרן בעל יכולת ריכוז טובה, וורבלי ומלא אנרגיות. מתקשה במשחק משותף עם חברים ומשחק לידם באופן תבניתי, לא ניגש לשולחן הסדנא מיוזמתו ומתקשה בתכנון והתארגנות, וזקוק לתיווך בגמילה בשירותים ובוויסות רגשי..."
+                />
+              </div>
 
-              <div className="submit-summary-action-row">
+              <div className="submit-summary-action-row" style={{ position: 'relative' }}>
+                {onboardingTourStep === 6 && (
+                  <div className="onboarding-tour-arrow-box" style={{ top: '-46px', left: '0' }}>
+                    <span className="tour-arrow-anim">👈</span>
+                    <span>צעד 6: לחצי כאן לניתוח וגזירת מטרות אוטומטית ב-AI</span>
+                  </div>
+                )}
                 <span className="submit-helper-text">
                   {isTalaMode
                     ? 'לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את הרקע והתמיכה, מטרות התלמיד/ה, טבלת הפרופיל התפקודי, תחומי המיקוד וטבלת תוכנית העבודה:'
@@ -3625,8 +3678,11 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 </span>
                 <button
                   type="button"
-                  className="btn-submit-generate-summary"
-                  onClick={handleReverseEngineerFullReport}
+                  className={`btn-submit-generate-summary ${onboardingTourStep === 6 ? 'tour-highlight-btn' : ''}`}
+                  onClick={() => {
+                    handleReverseEngineerFullReport();
+                    setOnboardingTourStep?.(0);
+                  }}
                   disabled={isReportLocked || isReverseEngineering}
                 >
                   {isReverseEngineering ? (
@@ -4030,18 +4086,29 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px 0' }}>
               תוכל לבחור מטרה מתוך מאגר המטרות הדינמי לפי סביבה ותחום לימודי או להגדיר מטרה חדשה.
             </p>
-            <button
-              type="button"
-              className="btn-add-goal-block-large"
-              onClick={handleAddGoalRow}
-              disabled={isReportLocked}
-              style={{ display: 'inline-flex', width: 'auto', padding: '10px 24px' }}
-            >
-              <Plus size={18} />
-              <span>
-                {isTalaMode ? '+ הוסף מטרה ראשונה לתל"א' : '+ הוסף מטרה ראשונה לתח"י'}
-              </span>
-            </button>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              {onboardingTourStep === 5 && (
+                <div className="onboarding-tour-arrow-box" style={{ top: '-48px', left: '50%', transform: 'translateX(-50%)' }}>
+                  <span className="tour-arrow-anim">👇</span>
+                  <span>צעד 4: לחצי כאן להוספת מטרה ראשונה</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className={`btn-add-goal-block-large ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
+                onClick={() => {
+                  handleAddGoalRow();
+                  if (onboardingTourStep === 5) setOnboardingTourStep?.(6);
+                }}
+                disabled={isReportLocked}
+                style={{ display: 'inline-flex', width: 'auto', padding: '10px 24px' }}
+              >
+                <Plus size={18} />
+                <span>
+                  {isTalaMode ? '+ הוסף מטרה ראשונה לתל"א' : '+ הוסף מטרה ראשונה לתח"י'}
+                </span>
+              </button>
+            </div>
           </div>
         )}
 

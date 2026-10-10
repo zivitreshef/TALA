@@ -3761,5 +3761,58 @@ body {
   line-height: 1.45;
 }
 
+/* === ONBOARDING INTERACTIVE GUIDED TOUR STYLES === */
+.onboarding-tour-arrow-box {
+  position: absolute;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #dc2626;
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
+  animation: tourPulseGlow 1.2s infinite alternate ease-in-out;
+  pointer-events: none;
+}
+
+.tour-arrow-anim {
+  font-size: 16px;
+  display: inline-block;
+  animation: tourArrowBounce 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes tourArrowBounce {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-5px); }
+}
+
+@keyframes tourPulseGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+    transform: scale(1.04);
+  }
+}
+
+.tour-highlight-btn {
+  box-shadow: 0 0 0 4px #fca5a5, 0 0 18px rgba(220, 38, 38, 0.5) !important;
+  border-color: #dc2626 !important;
+  animation: tourPulseGlow 1.2s infinite alternate ease-in-out;
+}
+
+.tour-highlight-input {
+  border: 2px solid #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25) !important;
+  background-color: #fff5f5 !important;
+}
+
 
 
