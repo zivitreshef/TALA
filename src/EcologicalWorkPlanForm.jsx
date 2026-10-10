@@ -254,8 +254,11 @@ export default function EcologicalWorkPlanForm({
   const section1Ref = useRef(null);
   const section2Ref = useRef(null);
   const section3Ref = useRef(null);
+  const saveProgressRef = useRef(null);
   const evalReportSectionRef = useRef(null);
   const statusReportSectionRef = useRef(null);
+
+  const [showTourCompletionModal, setShowTourCompletionModal] = useState(false);
 
   // Auto-scroll smooth effect when onboarding tour step advances
   useEffect(() => {
@@ -266,6 +269,8 @@ export default function EcologicalWorkPlanForm({
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (onboardingTourStep === 6) {
       section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (onboardingTourStep === 7) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [onboardingTourStep]);
 
@@ -2577,10 +2582,28 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </div>
           </div>
 
-          <button type="button" className="btn-save-progress" onClick={handleSaveProgress}>
-            <Save size={17} />
-            <span>שמור התקדמות</span>
-          </button>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            {onboardingTourStep === 7 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '44px', right: '0' }}>
+                <span className="tour-arrow-anim">☝️</span>
+                <span>צעד 7: לחצי כאן לשמירת התקדמות וסיום התוכנית!</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className={`btn-save-progress ${onboardingTourStep === 7 ? 'tour-highlight-btn' : ''}`}
+              onClick={() => {
+                handleSaveProgress();
+                if (onboardingTourStep === 7) {
+                  setOnboardingTourStep?.(0);
+                  setShowTourCompletionModal(true);
+                }
+              }}
+            >
+              <Save size={17} />
+              <span>שמור התקדמות</span>
+            </button>
+          </div>
 
           {saveBanner && (
             <span className="save-toast-badge">
@@ -3708,7 +3731,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   className={`btn-submit-generate-summary ${onboardingTourStep === 6 ? 'tour-highlight-btn' : ''}`}
                   onClick={() => {
                     handleReverseEngineerFullReport();
-                    setOnboardingTourStep?.(0);
+                    if (onboardingTourStep === 6) {
+                      setOnboardingTourStep?.(7);
+                    }
                   }}
                   disabled={isReportLocked || isReverseEngineering}
                 >
@@ -5796,6 +5821,35 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Tour Completion Success Modal */}
+      {showTourCompletionModal && (
+        <div className="modal-backdrop" onClick={() => setShowTourCompletionModal(false)} dir="rtl">
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '520px', padding: '24px', textAlign: 'center', borderRadius: '20px' }}
+          >
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.2)' }}>
+              <CheckCircle2 size={36} />
+            </div>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', color: '#14532d', fontWeight: 800 }}>
+              🎉 כל הכבוד! תהליך ההדרכה הושלם בהצלחה!
+            </h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#166534', lineHeight: 1.6 }}>
+              תוכנית העבודה החדשה נשמרה בהצלחה במערכת ובענן. כעת תוכלי להמשיך לערוך, להדפיס, לייצא ל-Word או לשתף עם שאר חברי הצוות!
+            </p>
+            <button
+              type="button"
+              className="btn-inside-landing-primary"
+              onClick={() => setShowTourCompletionModal(false)}
+              style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', width: '100%', justifyContent: 'center', padding: '12px' }}
+            >
+              <span>הבנתי, תודה! מעבר לעבודה במערכת</span>
+            </button>
           </div>
         </div>
       )}
