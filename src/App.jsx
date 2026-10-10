@@ -1522,13 +1522,23 @@ export default function App() {
         <div className="tala-header-controls">
           <button
             type="button"
-            className="btn-header-bank"
+            className={`btn-header-bank ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
             onClick={() => {
               setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
               setShowGoalBankOverview(true);
+              if (onboardingTourStep === 5) {
+                setOnboardingTourStep(6);
+              }
             }}
+            style={{ position: 'relative' }}
             title="צפה בדירוג שכיחות המטרות במאגר והוסף מטרות לתכנית התלמיד/ה"
           >
+            {onboardingTourStep === 5 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '42px', right: '0' }}>
+                <span className="tour-arrow-anim">☝️</span>
+                <span>צעד 5: לחצי כאן לפתיחת מאגר המטרות הדינמי</span>
+              </div>
+            )}
             <TrendingUp size={16} />
             <span>מאגר מטרות דינמי ({goalBank.length})</span>
           </button>

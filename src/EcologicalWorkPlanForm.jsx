@@ -251,8 +251,23 @@ export default function EcologicalWorkPlanForm({
   setOnboardingTourStep
 }) {
   const containerRef = useRef(null);
+  const section1Ref = useRef(null);
+  const section2Ref = useRef(null);
+  const section3Ref = useRef(null);
   const evalReportSectionRef = useRef(null);
   const statusReportSectionRef = useRef(null);
+
+  // Auto-scroll smooth effect when onboarding tour step advances
+  useEffect(() => {
+    if (!onboardingTourStep) return;
+    if (onboardingTourStep === 2 || onboardingTourStep === 3 || onboardingTourStep === 4) {
+      section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (onboardingTourStep === 5) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (onboardingTourStep === 6) {
+      section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [onboardingTourStep]);
 
   const buildNormalizedStudentData = (st) => {
     const initialGender = st?.gender || 'boy';
@@ -3208,7 +3223,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       ) : (
         <>
           {/* Section 1: Student Personal Details & Plan Type Radio Selector */}
-          <section className="form-section-card">
+          <section className="form-section-card" ref={section1Ref}>
         <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
           <button
@@ -3241,13 +3256,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
 
         {/* Radio Buttons for תל"א OR תח"י */}
-        <div className="plan-type-radio-bar">
+        <div className="plan-type-radio-bar" style={{ position: 'relative' }}>
+          {onboardingTourStep === 4.5 && (
+            <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
+              <span className="tour-arrow-anim">👇</span>
+              <span>צעד 4: בחרי סוג תוכנית (תל"א / תח"י)</span>
+            </div>
+          )}
           <span className="plan-type-label">סוג התוכנית:</span>
           <div className="plan-type-options">
             <label
               className={`plan-type-radio-card ${
                 formData.planType === 'תל"א (תוכנית לימודים אישית)' ? 'selected' : ''
-              }`}
+              } ${onboardingTourStep === 4.5 ? 'tour-highlight-input' : ''}`}
             >
               <input
                 type="radio"
@@ -3255,7 +3276,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 value='תל"א (תוכנית לימודים אישית)'
                 disabled={isReportLocked}
                 checked={formData.planType === 'תל"א (תוכנית לימודים אישית)'}
-                onChange={(e) => handlePlanTypeChange(e.target.value)}
+                onChange={(e) => {
+                  handlePlanTypeChange(e.target.value);
+                  if (onboardingTourStep === 4.5) setOnboardingTourStep?.(5);
+                }}
               />
               <span>תל"א – תוכנית לימודים אישית</span>
             </label>
@@ -3263,7 +3287,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label
               className={`plan-type-radio-card ${
                 formData.planType === 'תח"י (תוכנית חינוכית יחידנית)' ? 'selected' : ''
-              }`}
+              } ${onboardingTourStep === 4.5 ? 'tour-highlight-input' : ''}`}
             >
               <input
                 type="radio"
@@ -3271,7 +3295,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 value='תח"י (תוכנית חינוכית יחידנית)'
                 disabled={isReportLocked}
                 checked={formData.planType === 'תח"י (תוכנית חינוכית יחידנית)'}
-                onChange={(e) => handlePlanTypeChange(e.target.value)}
+                onChange={(e) => {
+                  handlePlanTypeChange(e.target.value);
+                  if (onboardingTourStep === 4.5) setOnboardingTourStep?.(5);
+                }}
               />
               <span>תח"י – תוכנית חינוכית יחידנית</span>
             </label>
@@ -3380,7 +3407,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               onChange={(e) => {
                 handleFieldChange('educationalFramework', e.target.value);
                 if (onboardingTourStep === 4 && e.target.value.trim()) {
-                  setOnboardingTourStep?.(5);
+                  setOnboardingTourStep?.(4.5);
                 }
               }}
               placeholder="שם הגן / בית הספר והכיתה"
@@ -3578,7 +3605,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       </section>
 
       {/* Section 2: Teacher Free Text + עיבוד המידע Button + Student Profile (תל"א) or Strengths Table (תח"י) */}
-      <section className="form-section-card highlight-summary-section">
+      <section className="form-section-card highlight-summary-section" ref={section2Ref}>
         <div className="section-header-line">
           <h3>
             {isTalaMode
