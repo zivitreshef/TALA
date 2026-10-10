@@ -912,11 +912,14 @@ export function AdminAllowlistModal({
 
   enforcePasswordPolicy,
   onChangeEnforcePasswordPolicy,
+  geminiApiKey,
+  onChangeGeminiApiKey,
   adminRequests = [],
   onDismissAdminRequest,
   cloudSyncState,
   emailEngineConfig
 }) {
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -1499,7 +1502,39 @@ export function AdminAllowlistModal({
               marginBottom: '14px'
             }}
           >
-
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e3a5f', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Sparkles size={16} style={{ color: '#6d28d9' }} />
+                <span>מפתח Gemini AI API (מנהל מערכת):</span>
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type={showGeminiKey ? 'text' : 'password'}
+                  value={geminiApiKey || ''}
+                  onChange={(e) => onChangeGeminiApiKey && onChangeGeminiApiKey(e.target.value)}
+                  placeholder="הזן מפתח AI (AI Studio Gemini Key)..."
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '13px'
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary-sm"
+                  onClick={() => setShowGeminiKey((prev) => !prev)}
+                  title={showGeminiKey ? 'הסתר מפתח' : 'הצג מפתח'}
+                  style={{ padding: '4px 10px' }}
+                >
+                  {showGeminiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                מפתח זה מאפשר הפעלת Gemini AI (הצעת ניסוחים, שאלות מנחות, ניתוח וגזירת מטרות) ישירות בדפדפן במידה והפונקציה בענן אינה פתוחה.
+              </span>
+            </div>
 
             <div
               style={{

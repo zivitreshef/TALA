@@ -523,3 +523,29 @@ export async function deleteStudentFromCloud(studentId) {
   }
 }
 
+export async function recordUserPresence(currentUser) {
+  const db = getFirestoreDb();
+  if (!db || !currentUser || !currentUser.email) return false;
+  const userKey = currentUser.email.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+  try {
+    await setDoc(
+      doc(db, 'tala_config', 'presence'),
+      {
+        activeUsers: {
+          [userKey]: {
+            email: currentUser.email.trim().toLowerCase(),
+            name: currentUser.name || currentUser.email,
+            lastActiveIso: new Date().toISOString()
+          }
+        }
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    console.warn('Failed to update presence in Firestore:', err);
+    return false;
+  }
+}
+
+
