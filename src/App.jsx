@@ -290,6 +290,7 @@ export default function App() {
     draftData: null
   });
   const [showLogoutUnsavedModal, setShowLogoutUnsavedModal] = useState(false);
+  const [showIntroVideoModal, setShowIntroVideoModal] = useState(false);
 
   const toggleFrameworkCluster = (frameworkKey) => {
     setExpandedFrameworks((prev) => ({
@@ -2079,12 +2080,7 @@ export default function App() {
                       <button
                         type="button"
                         className="btn-inside-landing-primary"
-                        onClick={() =>
-                          window.open(
-                            'https://www.youtube.com/results?search_query=TALA+%D7%AA%D7%9B%D7%A0%D7%99%D7%AA+%D7%A2%D7%91%D7%95%D7%93%D7%94+%D7%90%D7%A7%D7%95%D7%9C%D7%95%D7%92%D7%99%D7%AA',
-                            '_blank'
-                          )
-                        }
+                        onClick={() => setShowIntroVideoModal(true)}
                         style={{
                           background: '#ffffff',
                           color: '#166534',
@@ -2094,7 +2090,7 @@ export default function App() {
                         title="צפייה בסרטון הדרכה קצר על עבודה עם מערכת TALA"
                       >
                         <BookOpen size={18} style={{ color: '#16a34a' }} />
-                        <span>🎥 סרטון הדרכה (1 דקה)</span>
+                        <span>🎥 סרטון הדרכה (סרטון NotebookLM)</span>
                       </button>
                       <button
                         type="button"
@@ -3357,6 +3353,49 @@ export default function App() {
                 onClick={() => setShowArchiveModal(false)}
               >
                 סגור ארכיון
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Introductory Video Player Modal */}
+      {showIntroVideoModal && (
+        <div className="modal-backdrop" onClick={() => setShowIntroVideoModal(false)} dir="rtl">
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '820px', padding: '0', overflow: 'hidden', borderRadius: '16px' }}
+          >
+            <div className="modal-header" style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <div className="modal-header-title">
+                <BookOpen size={20} className="text-primary" />
+                <h3>סרטון הדרכה – היכרות עם מערכת TALA</h3>
+              </div>
+              <button type="button" className="btn-icon-close" onClick={() => setShowIntroVideoModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ background: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <video
+                controls
+                autoPlay
+                style={{ width: '100%', maxHeight: '75vh', display: 'block' }}
+                src="./tala_intro_video.mp4"
+              >
+                הדפדפן שלך אינו תומך בנגן הווידאו.
+              </video>
+            </div>
+            <div className="modal-footer" style={{ padding: '12px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#64748b' }}>
+                הופק באמצעות NotebookLM • הדרכה קצרה וממוקדת
+              </span>
+              <button
+                type="button"
+                className="btn-primary-sm"
+                onClick={() => setShowIntroVideoModal(false)}
+              >
+                סגור נגן
               </button>
             </div>
           </div>
