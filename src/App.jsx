@@ -69,6 +69,7 @@ import {
   saveSettingsToCloud,
   saveStudentToCloud,
   deleteStudentFromCloud,
+  recordUserPresence,
   ensureFirebaseAuthSession,
   signOutFirebaseAuthSession
 } from './firebaseBackend';
@@ -142,6 +143,28 @@ export default function App() {
       return false;
     }
   });
+
+  const GEMINI_KEY_STORAGE_KEY = 'tala_gemini_api_key';
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    try {
+      return localStorage.getItem(GEMINI_KEY_STORAGE_KEY) || import.meta.env?.VITE_GEMINI_API_KEY || '';
+    } catch (e) {
+      return '';
+    }
+  });
+
+  const handleChangeGeminiApiKey = (newKey) => {
+    const trimmed = (newKey || '').trim();
+    setGeminiApiKey(trimmed);
+    try {
+      if (trimmed) {
+        localStorage.setItem(GEMINI_KEY_STORAGE_KEY, trimmed);
+      } else {
+        localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
+      }
+    } catch (e) {}
+    saveSettingsToCloud({ geminiApiKey: trimmed });
+  };
 
   // Direct Background Email Engine configuration (synced across cloud for all users)
   const [emailEngineConfig, setEmailEngineConfig] = useState(() => loadEmailEngineConfig());
@@ -879,6 +902,18 @@ export default function App() {
     return () => clearInterval(timerId);
   }, [currentUser, students, surveySnoozedInSession]);
 
+  // Record active user presence in Firestore for deployment gate (15 min idle rule)
+  useEffect(() => {
+    if (!currentUser) return;
+    recordUserPresence(currentUser);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        recordUserPresence(currentUser);
+      }
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [currentUser]);
+
   const handleLoginSuccess = (user) => {
     const stampedUser = stampSessionUserWithDate(user);
     setCurrentUser(stampedUser);
@@ -1377,6 +1412,8 @@ export default function App() {
         onLoginSuccess={handleLoginSuccess}
         onUpdateAllowedUsers={handleUpdateAllowedUsers}
         onSubmitAdminRequest={handleSubmitAdminRequest}
+        enforcePasswordPolicy={enforcePasswordPolicy}
+        onChangeEnforcePasswordPolicy={handleChangeEnforcePasswordPolicy}
       />
     );
   }
@@ -2183,6 +2220,13 @@ export default function App() {
           allowedUsers={allowedUsers}
           onUpdateAllowedUsers={handleUpdateAllowedUsers}
           onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
+          enforcePasswordPolicy={enforcePasswordPolicy}
+          onChangeEnforcePasswordPolicy={handleChangeEnforcePasswordPolicy}
+          geminiApiKey={geminiApiKey}
+          onChangeGeminiApiKey={handleChangeGeminiApiKey}
+          adminRequests={adminRequests}
+          onDismissAdminRequest={handleDismissAdminRequest}
+          cloudSyncState={cloudSyncState}
         />
       )}
 
