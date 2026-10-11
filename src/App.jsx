@@ -35,6 +35,7 @@ import {
   stampSessionUserWithDate,
   isSessionUserValidForToday,
   isTrialUserExpired,
+  getTrialRemainingDays,
   createPasswordCredentials,
   ensureUsersListPasswordsHashed,
   verifyUserPassword
@@ -111,6 +112,7 @@ import {
   LogoutUnsavedModal
 } from './components/modals/StudentActionModals';
 import TrialNdaModal from './components/modals/TrialNdaModal';
+import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import './index.css';
@@ -128,6 +130,7 @@ export default function App() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showSelfPasswordModal, setShowSelfPasswordModal] = useState(false);
   const [showFeedbackSurveyModal, setShowFeedbackSurveyModal] = useState(false);
+  const [showTrialUpgradeModal, setShowTrialUpgradeModal] = useState(false);
   const [surveySnoozedInSession, setSurveySnoozedInSession] = useState(false);
   const [cloudSyncState, setCloudSyncState] = useState({
     connected: false,
@@ -215,14 +218,14 @@ export default function App() {
       const saved = localStorage.getItem(SESSION_USER_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (!isSessionUserValidForToday(parsed) || isTrialUserExpired(parsed)) {
+        if (!isSessionUserValidForToday(parsed)) {
           localStorage.removeItem(SESSION_USER_KEY);
           return null;
         }
         const stillAllowed = loadAllowedUsers().find(
           (u) => u.email.toLowerCase() === parsed.email?.toLowerCase() && u.active
         );
-        if (!stillAllowed || isTrialUserExpired(stillAllowed)) {
+        if (!stillAllowed) {
           localStorage.removeItem(SESSION_USER_KEY);
           return null;
         }
@@ -490,7 +493,7 @@ export default function App() {
         u.email.toLowerCase() === currentUser.email?.toLowerCase()
     );
     if (matchingUser) {
-      if (!matchingUser.active || isTrialUserExpired(matchingUser)) {
+      if (!matchingUser.active) {
         performLogout();
       } else if (
         (matchingUser.name || '') !== (currentUser.name || '') ||
@@ -917,6 +920,26 @@ export default function App() {
     return () => clearInterval(interval);
   }, [currentUser]);
 
+  // Proactive Trial Expiration Alert Modal (pops up once per browser session when remaining trial days <= 2)
+  useEffect(() => {
+    if (!currentUser || !currentUser.isTrialUser) return;
+    if (currentUser.mustChangePassword) return;
+    if (currentUser.mustSignNda || !currentUser.ndaSigned) return;
+
+    const remaining = getTrialRemainingDays(currentUser);
+    if (remaining !== null && remaining <= 2) {
+      const sessionKey = `tala_trial_alert_shown_${currentUser.email.toLowerCase()}`;
+      const alreadyShown = sessionStorage.getItem(sessionKey);
+      if (!alreadyShown) {
+        sessionStorage.setItem(sessionKey, 'true');
+        const timer = setTimeout(() => {
+          setShowTrialUpgradeModal(true);
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [currentUser]);
+
   const handleLoginSuccess = (user) => {
     const stampedUser = stampSessionUserWithDate(user);
     setCurrentUser(stampedUser);
@@ -978,7 +1001,7 @@ export default function App() {
     if (!currentUser) return undefined;
 
     const checkDailySessionExpiry = () => {
-      if (!isSessionUserValidForToday(currentUser) || isTrialUserExpired(currentUser)) {
+      if (!isSessionUserValidForToday(currentUser)) {
         if (unsavedDraftState.isDirty && unsavedDraftState.draftData) {
           handleSaveAndLogout();
         } else {
@@ -1434,8 +1457,60 @@ export default function App() {
     );
   }
 
+  const isTrialExpired = Boolean(currentUser?.isTrialUser && isTrialUserExpired(currentUser));
+
+  // If trial period has ended, all the user will be able to see after a successful login is the upgrade modal
+  if (isTrialExpired) {
+    return (
+      <div
+        className="tala-app-container"
+        dir="rtl"
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          padding: '20px'
+        }}
+      >
+        <TrialUpgradeModal
+          isOpen={true}
+          isExpired={true}
+          currentUser={currentUser}
+          remainingDays={0}
+          onLogout={performLogout}
+          onOpenSurvey={() => setShowFeedbackSurveyModal(true)}
+          onSubmitSupportMessage={(payload) => {
+            handleSubmitAdminRequest({
+              id: 'trial_inquiry_' + Date.now(),
+              topic: payload.topic || '💬 פנייה ממשתמש/ת ניסיון שפג תוקפו (הסדרת מנוי)',
+              name: payload.name || currentUser.name,
+              email: payload.email || currentUser.email,
+              notes: payload.notes,
+              createdAt: new Date().toLocaleString('he-IL', {
+                dateStyle: 'short',
+                timeStyle: 'short'
+              })
+            });
+          }}
+        />
+
+        {/* Survey Modal accessible from the expired modal if user wishes to submit feedback */}
+        <UserFeedbackSurveyModal
+          isOpen={Boolean(showFeedbackSurveyModal)}
+          currentUser={currentUser}
+          onSubmitSurvey={handleSubmitUserSurvey}
+          onSnoozeSurvey={() => setShowFeedbackSurveyModal(false)}
+          onDismissSurveyPermanently={() => setShowFeedbackSurveyModal(false)}
+        />
+      </div>
+    );
+  }
+
   const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
   const totalAdminAlerts = lockedOutUsers.length + (adminRequests || []).length;
+  const trialRemainingDays = currentUser?.isTrialUser ? getTrialRemainingDays(currentUser) : null;
 
   const userStudents = getStudentsForUser(students, currentUser);
   const archivedUserStudents = getArchivedStudentsForUser(students, currentUser);
@@ -1561,7 +1636,7 @@ export default function App() {
               </div>
             )}
             <TrendingUp size={16} />
-            <span>מאגר מטרות דינמי ({goalBank.length})</span>
+            <span>מאגר מטרות דינמי</span>
           </button>
 
           <button
@@ -1591,6 +1666,51 @@ export default function App() {
             <Archive size={16} />
             <span>ארכיון ({archivedUserStudents.length})</span>
           </button>
+
+          {currentUser.isTrialUser && (
+            <button
+              type="button"
+              className="btn-header-bank"
+              onClick={() => setShowTrialUpgradeModal(true)}
+              title="מידע על תקופת הניסיון והסדרת מנוי שנתי (150 ₪ לשנה)"
+              style={{
+                position: 'relative',
+                background:
+                  trialRemainingDays !== null && trialRemainingDays <= 2
+                    ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                    : 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+                color:
+                  trialRemainingDays !== null && trialRemainingDays <= 2
+                    ? '#92400e'
+                    : '#5b21b6',
+                borderColor:
+                  trialRemainingDays !== null && trialRemainingDays <= 2
+                    ? '#f59e0b'
+                    : '#8b5cf6',
+                fontWeight: 600
+              }}
+            >
+              <Sparkles size={16} />
+              <span>רכישת מנוי שנתי</span>
+              {trialRemainingDays !== null && trialRemainingDays <= 2 && (
+                <span
+                  style={{
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    padding: '1px 6px',
+                    borderRadius: '999px',
+                    marginRight: '6px'
+                  }}
+                >
+                  {trialRemainingDays === 0
+                    ? 'היום!'
+                    : `נותרו ${trialRemainingDays} ימים`}
+                </span>
+              )}
+            </button>
+          )}
 
           {!currentUser.surveyCompleted && !currentUser.surveyDismissed && (
             <button
@@ -2323,6 +2443,37 @@ export default function App() {
         onSubmitSurvey={handleSubmitUserSurvey}
         onSnoozeSurvey={handleSnoozeUserSurvey}
         onDismissSurveyPermanently={handleDismissUserSurveyPermanently}
+      />
+
+      {/* Trial User Upgrade & Personal Letter Modal */}
+      <TrialUpgradeModal
+        isOpen={Boolean(
+          showTrialUpgradeModal &&
+            currentUser &&
+            currentUser.isTrialUser &&
+            !currentUser.mustChangePassword &&
+            !(currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned))
+        )}
+        onClose={() => setShowTrialUpgradeModal(false)}
+        currentUser={currentUser}
+        remainingDays={trialRemainingDays}
+        onOpenSurvey={() => {
+          setShowTrialUpgradeModal(false);
+          setShowFeedbackSurveyModal(true);
+        }}
+        onSubmitSupportMessage={(payload) => {
+          handleSubmitAdminRequest({
+            id: 'trial_inquiry_' + Date.now(),
+            topic: payload.topic || '💬 פנייה ממשתמש/ת ניסיון (הסדרת מנוי)',
+            name: payload.name || currentUser.name,
+            email: payload.email || currentUser.email,
+            notes: payload.notes,
+            createdAt: new Date().toLocaleString('he-IL', {
+              dateStyle: 'short',
+              timeStyle: 'short'
+            })
+          });
+        }}
       />
 
       {/* Admin Allowlist Management Modal (Only accessible to Admin) */}

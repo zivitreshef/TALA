@@ -323,16 +323,6 @@ export function verifyAllowedUser(email, accessCode, usersList) {
     };
   }
 
-  if (isTrialUserExpired(found)) {
-    return {
-      allowed: false,
-      isDisabled: true,
-      isTrialExpired: true,
-      reason:
-        'גישה נדחתה: תקופת הניסיון (Trial) שהוגדרה עבור חשבונך הסתיימה. להארכת תקופת הגישה ניתן לפנות למנהל/ת המערכת.'
-    };
-  }
-
   const isPasswordMatch = verifyUserPassword(found, cleanCode);
 
   if (!isPasswordMatch) {
@@ -390,6 +380,7 @@ export function verifyAllowedUser(email, accessCode, usersList) {
   return {
     allowed: true,
     user: found,
+    isTrialExpired: isTrialUserExpired(found),
     updatedUsersList
   };
 }

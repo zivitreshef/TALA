@@ -531,15 +531,18 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(isTrialUserExpired(trialUser, day9)).toBe(true);
     expect(getTrialRemainingDays(trialUser, day9)).toBe(0);
 
-    // Expired trial user is blocked by verifyAllowedUser
+    // Expired trial user is allowed to authenticate with valid password, but marked as isTrialExpired: true
     const expiredUser = {
       ...trialUser,
       trialExpiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     };
     const res = verifyAllowedUser('dana@trial.edu.il', 'Trial1234', [expiredUser]);
-    expect(res.allowed).toBe(false);
+    expect(res.allowed).toBe(true);
     expect(res.isTrialExpired).toBe(true);
-    expect(res.reason).toContain('תקופת הניסיון');
+
+    // Invalid password for expired trial user is still rejected
+    const badPwRes = verifyAllowedUser('dana@trial.edu.il', 'WrongPassword', [expiredUser]);
+    expect(badPwRes.allowed).toBe(false);
 
     // Signed NDA HTML document contains signer details, ID number, Hebrew NDA text, and both graphical + stamp signatures
     const sampleTableSig = '<table width="224"><tr><td bgcolor="#1e3a5f">&nbsp;</td></tr></table>';
