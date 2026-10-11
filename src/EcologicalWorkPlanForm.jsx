@@ -84,8 +84,12 @@ import {
   buildEvalWordDocumentHtml as renderEvalWordDocumentHtml,
   buildStatusReportWordDocumentHtml as renderStatusReportWordDocumentHtml
 } from './export/wordAndPrintBuilders';
-import { detectStudentStage, formatPromptWithStudentContext } from './studentStage.js';
-import { canLockReport } from './domain/permissions';
+import {
+  detectStudentStage,
+  formatPromptWithStudentContext,
+  getEffectiveStudentStage,
+  isGoalRelevantForStage
+} from './studentStage.js';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
@@ -478,6 +482,7 @@ export default function EcologicalWorkPlanForm({
   // State for Goal Picker / Autocomplete per goal card
   const [openPickerGoalId, setOpenPickerGoalId] = useState(null);
   const [pickerEnvFilter, setPickerEnvFilter] = useState('הכל');
+  const [pickerStageFilter, setPickerStageFilter] = useState(null); // null = auto based on student stage
   const [pickerSearch, setPickerSearch] = useState('');
   const [expandedQuickObjMap, setExpandedQuickObjMap] = useState({});
 
@@ -4180,8 +4185,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               matchedBankItem?.facilitatingQuestions?.slice(0, 3) ||
               generateDefaultQuestionsForCustomGoal(goalRow.title, goalRow.environment);
 
-            // Filter goals in picker by search & environment, preserving popularity sort
+            // Determine effective student stage and filter goals in picker
+            const effectiveStage = getEffectiveStudentStage(formData);
+            const activeStageFilter = pickerStageFilter !== null ? pickerStageFilter : effectiveStage;
+
+            // Filter goals in picker by stage, search & environment, preserving popularity sort
             const filteredBankGoals = sortedGoals.filter((item) => {
+              const matchesStage = isGoalRelevantForStage(item, activeStageFilter);
               const matchesEnv =
                 pickerEnvFilter === 'הכל' || item.environment === pickerEnvFilter;
               const q = (pickerSearch || '').trim();
@@ -4194,7 +4204,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 (item.suggestedObjectives || []).some(
                   (o) => o.includes(q) || adaptTextToGender(o, currentGender).includes(q)
                 );
-              return matchesEnv && matchesQuery;
+              return matchesStage && matchesEnv && matchesQuery;
             });
 
             return (
@@ -4412,15 +4422,43 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                             onChange={(e) => setPickerSearch(e.target.value)}
                           />
                         </div>
-                        <div className="bank-env-pills">
+                        <div className="bank-env-pills" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {/* Stage filter pills: גן / בית ספר / הכל */}
+                          <div style={{ display: 'inline-flex', gap: '4px', background: '#e2e8f0', padding: '2px', borderRadius: '999px', marginLeft: '6px' }}>
+                            <button
+                              type="button"
+                              className={`env-pill ${activeStageFilter === 'kindergarten' ? 'active' : ''}`}
+                              onClick={() => setPickerStageFilter('kindergarten')}
+                              style={{ padding: '3px 10px', fontSize: '11px', margin: 0 }}
+                            >
+                              גן
+                            </button>
+                            <button
+                              type="button"
+                              className={`env-pill ${activeStageFilter === 'school' ? 'active' : ''}`}
+                              onClick={() => setPickerStageFilter('school')}
+                              style={{ padding: '3px 10px', fontSize: '11px', margin: 0 }}
+                            >
+                              בית ספר
+                            </button>
+                            <button
+                              type="button"
+                              className={`env-pill ${activeStageFilter === 'all' ? 'active' : ''}`}
+                              onClick={() => setPickerStageFilter('all')}
+                              style={{ padding: '3px 10px', fontSize: '11px', margin: 0 }}
+                            >
+                              הכל
+                            </button>
+                          </div>
+
                           <button
                             type="button"
                             className={`env-pill ${pickerEnvFilter === 'הכל' ? 'active' : ''}`}
                             onClick={() => setPickerEnvFilter('הכל')}
                           >
-                            כל המטרות
+                            כל הסביבות
                           </button>
-                          {ENVIRONMENTS_LIST.slice(0, 8).map((env) => (
+                          {ENVIRONMENTS_LIST.map((env) => (
                             <button
                               key={env}
                               type="button"
@@ -4439,6 +4477,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                             bankItem.title,
                             currentGender
                           );
+                          const itemStages = Array.isArray(bankItem.stages) && bankItem.stages.length > 0
+                            ? bankItem.stages
+                            : (bankItem.stage ? [bankItem.stage] : ['kindergarten']);
+
                           return (
                             <div key={bankItem.id} className="goal-bank-option-row">
                               <div
@@ -4449,6 +4491,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                   <span className="popularity-rank-badge">
                                     #{rankIdx + 1}
                                   </span>
+                                  {itemStages.includes('kindergarten') && (
+                                    <span className="stage-chip stage-chip-kdg">גן</span>
+                                  )}
+                                  {itemStages.includes('school') && (
+                                    <span className="stage-chip stage-chip-school">בית ספר</span>
+                                  )}
                                   <strong>{displayBankTitle}</strong>
                                   <span className="env-tag-chip">{bankItem.environment}</span>
                                   <span className="usage-count-badge">
@@ -4456,15 +4504,6 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                     <span>נבחר {bankItem.usageCount ?? 0} פעמים</span>
                                   </span>
                                 </div>
-                                {bankItem.suggestedObjectives && bankItem.suggestedObjectives.length > 0 && (
-                                  <div className="goal-option-sub-preview">
-                                    יעדים במאגר:{' '}
-                                    {bankItem.suggestedObjectives
-                                      .slice(0, 2)
-                                      .map((o) => adaptTextToGender(o, currentGender))
-                                      .join(' | ')}
-                                  </div>
-                                )}
                               </div>
                               <div className="goal-bank-option-buttons">
                                 <button

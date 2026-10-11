@@ -4,7 +4,9 @@ import {
   hasKindergarten,
   hasSchool,
   detectStudentStage,
-  formatPromptWithStudentContext
+  formatPromptWithStudentContext,
+  getEffectiveStudentStage,
+  isGoalRelevantForStage
 } from '../utils/studentStage.js';
 
 describe('studentStage detection logic', () => {
@@ -182,6 +184,34 @@ describe('studentStage detection logic', () => {
       expect(result).toContain('stage: kindergarten');
       expect(result).toContain('stage_source: teacher_text');
       expect(result).toContain('Do something');
+    });
+  });
+
+  describe('Goal Bank Stage Filtering & School Goals Integration', () => {
+    it('getEffectiveStudentStage resolves correctly', () => {
+      expect(getEffectiveStudentStage({ stage: 'kindergarten' })).toBe('kindergarten');
+      expect(getEffectiveStudentStage({ stage: 'school' })).toBe('school');
+      expect(getEffectiveStudentStage({ educationalFramework: 'גן חובה' })).toBe('kindergarten');
+      expect(getEffectiveStudentStage({ educationalFramework: 'כיתה ד\'' })).toBe('school');
+      expect(getEffectiveStudentStage({})).toBe('all');
+    });
+
+    it('isGoalRelevantForStage filters goals according to their stages', () => {
+      const kdgGoal = { title: 'משחק בגן', stages: ['kindergarten'] };
+      const schoolGoal = { title: 'כתיבה', stages: ['school'] };
+      const dualGoal = { title: 'שפה', stages: ['kindergarten', 'school'] };
+
+      expect(isGoalRelevantForStage(kdgGoal, 'kindergarten')).toBe(true);
+      expect(isGoalRelevantForStage(kdgGoal, 'school')).toBe(false);
+      expect(isGoalRelevantForStage(kdgGoal, 'all')).toBe(true);
+
+      expect(isGoalRelevantForStage(schoolGoal, 'kindergarten')).toBe(false);
+      expect(isGoalRelevantForStage(schoolGoal, 'school')).toBe(true);
+      expect(isGoalRelevantForStage(schoolGoal, 'all')).toBe(true);
+
+      expect(isGoalRelevantForStage(dualGoal, 'kindergarten')).toBe(true);
+      expect(isGoalRelevantForStage(dualGoal, 'school')).toBe(true);
+      expect(isGoalRelevantForStage(dualGoal, 'all')).toBe(true);
     });
   });
 });

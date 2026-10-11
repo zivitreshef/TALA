@@ -110,7 +110,7 @@ export function hasSchool(text) {
   });
 }
 
-function parseDate(d) {
+export function parseDate(d) {
   if (!d) return null;
   if (d instanceof Date && !isNaN(d)) return d;
   const s = String(d).trim();
@@ -134,7 +134,7 @@ function parseDate(d) {
   return null;
 }
 
-function calcAgeYears(birthDate, referenceDate) {
+export function calcAgeYears(birthDate, referenceDate) {
   const b = parseDate(birthDate);
   if (!b) return null;
   const ref = referenceDate ? parseDate(referenceDate) : new Date();
@@ -155,6 +155,36 @@ function calcAgeYears(birthDate, referenceDate) {
   let age = ageYears + monthDiff / 12;
   if (age < 0) age = 0;
   return age;
+}
+
+export function parseAgeFromFreeText(rawText = '') {
+  if (!rawText) return null;
+  const numAgeMatch = String(rawText).match(/(?:בן|בת|גיל)\s*(\d{1,2}(?:\.\d+)?)\s*(וחצי)?/);
+  if (numAgeMatch) {
+    let val = parseFloat(numAgeMatch[1]);
+    if (numAgeMatch[2] && !String(numAgeMatch[1]).includes('.')) val += 0.5;
+    if (val >= 1 && val <= 25) return val;
+  }
+  const hebWordAges = {
+    שנתיים: 2,
+    שלוש: 3,
+    ארבע: 4,
+    חמש: 5,
+    שש: 6,
+    שבע: 7,
+    שמונה: 8,
+    תשע: 9,
+    עשר: 10
+  };
+  const wordMatch = String(rawText).match(
+    /(?:בן|בת|גיל)\s*(שנתיים|שלוש|ארבע|חמש|שש|שבע|שמונה|תשע|עשר)(?:\s+(וחצי))?/
+  );
+  if (wordMatch && hebWordAges[wordMatch[1]]) {
+    let val = hebWordAges[wordMatch[1]];
+    if (wordMatch[2]) val += 0.5;
+    return val;
+  }
+  return null;
 }
 
 export function formatPromptWithStudentContext(prompt, formData = {}) {
@@ -267,11 +297,67 @@ export function detectStudentStage(fields = {}, referenceDate) {
     }
   }
 
-  // 4. No data
+  // 4. Age mentioned in teacher text fallback
+  const textToScan = teacherFreeText || fields.rawText || '';
+  if (textToScan) {
+    const parsedAge = parseAgeFromFreeText(textToScan);
+    if (parsedAge != null) {
+      if (parsedAge < 6.0) {
+        return {
+          stage: 'kindergarten',
+          stageSource: 'teacher_text_age',
+          stageReason: `age ${parsedAge} < 6.0 (parsed from teacher text) -> kindergarten`,
+          stageUpdatedAt: new Date().toISOString()
+        };
+      }
+      if (parsedAge >= 6.0) {
+        return {
+          stage: 'school',
+          stageSource: 'teacher_text_age',
+          stageReason: `age ${parsedAge} >= 6.0 (parsed from teacher text) -> school`,
+          stageUpdatedAt: new Date().toISOString()
+        };
+      }
+    }
+  }
+
+  // 5. No data
   return {
     stage: 'unknown',
     stageSource: 'no_data',
     stageReason: 'no unambiguous signal from educationalFramework/teacherFreeText/birthDate',
     stageUpdatedAt: new Date().toISOString()
   };
+}
+
+/**
+ * Returns effective stage: 'kindergarten' | 'school' | 'all'
+ * If student is not passed or stage is unknown, returns 'all' (present both).
+ */
+export function getEffectiveStudentStage(studentOrFields = {}, referenceDate) {
+  if (!studentOrFields) return 'all';
+  // If already detected and known
+  if (studentOrFields.stage === 'kindergarten' || studentOrFields.stage === 'school') {
+    return studentOrFields.stage;
+  }
+  const detected = detectStudentStage(studentOrFields, referenceDate);
+  if (detected.stage === 'kindergarten' || detected.stage === 'school') {
+    return detected.stage;
+  }
+  return 'all';
+}
+
+/**
+ * Checks if a goal is relevant for a given effective stage ('kindergarten' | 'school' | 'all')
+ */
+export function isGoalRelevantForStage(goal, effectiveStage = 'all') {
+  if (!goal) return false;
+  if (!effectiveStage || effectiveStage === 'all' || effectiveStage === 'unknown') {
+    return true;
+  }
+  const stages = Array.isArray(goal.stages) && goal.stages.length > 0
+    ? goal.stages
+    : (goal.stage ? [goal.stage] : ['kindergarten']);
+
+  return stages.includes(effectiveStage) || stages.includes('all');
 }

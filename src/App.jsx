@@ -79,7 +79,11 @@ import {
   sendSignedNdaEmailToAdmin,
   sendUserSurveyEmailToAdmin
 } from './emailService';
-import { detectStudentStage } from './studentStage.js';
+import {
+  detectStudentStage,
+  getEffectiveStudentStage,
+  isGoalRelevantForStage
+} from './studentStage.js';
 import {
   PRIMARY_ADMIN_EMAIL,
   isStudentOwnedByUser,
@@ -306,6 +310,7 @@ export default function App() {
   const [showGoalBankOverview, setShowGoalBankOverview] = useState(false);
   const [goalBankSearch, setGoalBankSearch] = useState('');
   const [goalBankEnvFilter, setGoalBankEnvFilter] = useState('הכל');
+  const [goalBankStageFilter, setGoalBankStageFilter] = useState(null); // null = auto based on selected student stage
   const [targetBankStudentId, setTargetBankStudentId] = useState('');
   const [bankAddToast, setBankAddToast] = useState('');
   const [externalGoalsRevision, setExternalGoalsRevision] = useState(0);
@@ -1293,12 +1298,13 @@ export default function App() {
       mode: 'add',
       id: '',
       title: '',
+      stages: ['kindergarten'],
       environment: ENVIRONMENTS_LIST[0],
       usageCount: 0,
       defaultActivity: '',
       suggestedObjectivesText: '',
       defaultOpportunities: '',
-      defaultPartners: 'צוות הגן, הורים',
+      defaultPartners: 'צוות חינוכי, הורים',
       defaultDuration: 'עד סוף השנה',
       defaultEvaluation: ''
     });
@@ -1309,6 +1315,9 @@ export default function App() {
       mode: 'edit',
       id: goalItem.id,
       title: goalItem.title || '',
+      stages: Array.isArray(goalItem.stages) && goalItem.stages.length > 0
+        ? goalItem.stages
+        : (goalItem.stage ? [goalItem.stage] : ['kindergarten']),
       environment: goalItem.environment || ENVIRONMENTS_LIST[0],
       usageCount: goalItem.usageCount ?? 0,
       defaultActivity: goalItem.defaultActivity || '',
@@ -1337,11 +1346,16 @@ export default function App() {
       return;
     }
 
+    const resolvedStages = Array.isArray(editingBankGoal.stages) && editingBankGoal.stages.length > 0
+      ? editingBankGoal.stages
+      : ['kindergarten'];
+
     if (editingBankGoal.mode === 'add') {
       setGoalBank((prev) => {
         const nextBank = addGoalByAdmin(
           {
             title: editingBankGoal.title,
+            stages: resolvedStages,
             environment: editingBankGoal.environment,
             usageCount: editingBankGoal.usageCount,
             defaultActivity: editingBankGoal.defaultActivity,
@@ -1362,6 +1376,7 @@ export default function App() {
           editingBankGoal.id,
           {
             title: editingBankGoal.title,
+            stages: resolvedStages,
             environment: editingBankGoal.environment,
             usageCount: editingBankGoal.usageCount,
             defaultActivity: editingBankGoal.defaultActivity,
@@ -2448,6 +2463,46 @@ export default function App() {
                     </div>
 
                     <div className="admin-field">
+                      <label>שלב חינוכי (גן / בית ספר):</label>
+                      <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginTop: '6px' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>
+                          <input
+                            type="checkbox"
+                            checked={(editingBankGoal.stages || []).includes('kindergarten')}
+                            onChange={(e) => {
+                              const cur = editingBankGoal.stages || [];
+                              const next = e.target.checked
+                                ? [...cur, 'kindergarten']
+                                : cur.filter((s) => s !== 'kindergarten');
+                              setEditingBankGoal({
+                                ...editingBankGoal,
+                                stages: next.length > 0 ? next : ['kindergarten']
+                              });
+                            }}
+                          />
+                          <span>גן</span>
+                        </label>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>
+                          <input
+                            type="checkbox"
+                            checked={(editingBankGoal.stages || []).includes('school')}
+                            onChange={(e) => {
+                              const cur = editingBankGoal.stages || [];
+                              const next = e.target.checked
+                                ? [...cur, 'school']
+                                : cur.filter((s) => s !== 'school');
+                              setEditingBankGoal({
+                                ...editingBankGoal,
+                                stages: next.length > 0 ? next : ['school']
+                              });
+                            }}
+                          />
+                          <span>בית ספר</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="admin-field">
                       <label>מונה שכיחות:</label>
                       <input
                         type="number"
@@ -2660,15 +2715,74 @@ export default function App() {
                 />
               </div>
 
-              {/* Quick Environment Filter Pills */}
+              {/* Stage Filter Pills & Environment Filter Pills */}
               <div
                 style={{
                   display: 'flex',
                   gap: '6px',
                   flexWrap: 'wrap',
+                  alignItems: 'center',
                   marginBottom: '12px'
                 }}
               >
+                {/* Stage pills (גן / בית ספר / הכל) */}
+                {(() => {
+                  const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
+                  const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
+                  return (
+                    <div style={{ display: 'inline-flex', gap: '4px', background: '#e2e8f0', padding: '2px', borderRadius: '999px', marginLeft: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setGoalBankStageFilter('kindergarten')}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: '999px',
+                          fontSize: '11px',
+                          fontWeight: activeStage === 'kindergarten' ? 700 : 600,
+                          cursor: 'pointer',
+                          border: 'none',
+                          background: activeStage === 'kindergarten' ? '#7c3aed' : 'transparent',
+                          color: activeStage === 'kindergarten' ? '#ffffff' : '#334155'
+                        }}
+                      >
+                        גן
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGoalBankStageFilter('school')}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: '999px',
+                          fontSize: '11px',
+                          fontWeight: activeStage === 'school' ? 700 : 600,
+                          cursor: 'pointer',
+                          border: 'none',
+                          background: activeStage === 'school' ? '#7c3aed' : 'transparent',
+                          color: activeStage === 'school' ? '#ffffff' : '#334155'
+                        }}
+                      >
+                        בית ספר
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setGoalBankStageFilter('all')}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: '999px',
+                          fontSize: '11px',
+                          fontWeight: activeStage === 'all' ? 700 : 600,
+                          cursor: 'pointer',
+                          border: 'none',
+                          background: activeStage === 'all' ? '#7c3aed' : 'transparent',
+                          color: activeStage === 'all' ? '#ffffff' : '#334155'
+                        }}
+                      >
+                        הכל
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 {goalBankEnvironments.map((envName) => {
                   const isActiveEnv = goalBankEnvFilter === envName;
                   return (
@@ -2690,64 +2804,74 @@ export default function App() {
                         transition: 'all 0.15s'
                       }}
                     >
-                      {envName}
+                      {envName === 'הכל' ? 'כל הסביבות' : envName}
                     </button>
                   );
                 })}
               </div>
 
               <div className="goal-bank-items-scroll" style={{ maxHeight: '420px' }}>
-                {sortedBank
-                  .filter((g) => {
-                    if (
-                      goalBankEnvFilter !== 'הכל' &&
-                      (g.environment || '').trim() !== goalBankEnvFilter
-                    ) {
-                      return false;
-                    }
-                    const q = goalBankSearch.trim();
-                    if (!q) return true;
-                    return (
-                      (g.title || '').includes(q) ||
-                      (g.environment || '').includes(q) ||
-                      (g.suggestedObjectives || []).some((o) => o.includes(q))
-                    );
-                  })
-                  .map((g, i) => {
-                    const targetStudentForCheck =
-                      activeBankTargetStudent &&
-                      unsavedDraftState.isDirty &&
-                      unsavedDraftState.draftData?.id === activeBankTargetStudent.id
-                        ? unsavedDraftState.draftData
-                        : activeBankTargetStudent;
-                    const targetGender = targetStudentForCheck?.gender || 'boy';
-                    const genderAdaptedTitle = adaptTextToGender(g.title || '', targetGender);
-                    const isAlreadyInTargetStudent = Boolean(
-                      targetStudentForCheck &&
-                        (targetStudentForCheck.goals || []).some(
-                          (stGoal) =>
-                            (stGoal.title || '').trim() === genderAdaptedTitle.trim() ||
-                            (stGoal.title || '').trim() === (g.title || '').trim()
-                        )
-                    );
+                {(() => {
+                  const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
+                  const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
+                  return sortedBank
+                    .filter((g) => {
+                      if (!isGoalRelevantForStage(g, activeStage)) {
+                        return false;
+                      }
+                      if (
+                        goalBankEnvFilter !== 'הכל' &&
+                        (g.environment || '').trim() !== goalBankEnvFilter
+                      ) {
+                        return false;
+                      }
+                      const q = goalBankSearch.trim();
+                      if (!q) return true;
+                      return (
+                        (g.title || '').includes(q) ||
+                        (g.environment || '').includes(q) ||
+                        (g.suggestedObjectives || []).some((o) => o.includes(q))
+                      );
+                    })
+                    .map((g, i) => {
+                      const targetStudentForCheck =
+                        activeBankTargetStudent &&
+                        unsavedDraftState.isDirty &&
+                        unsavedDraftState.draftData?.id === activeBankTargetStudent.id
+                          ? unsavedDraftState.draftData
+                          : activeBankTargetStudent;
+                      const targetGender = targetStudentForCheck?.gender || 'boy';
+                      const genderAdaptedTitle = adaptTextToGender(g.title || '', targetGender);
+                      const isAlreadyInTargetStudent = Boolean(
+                        targetStudentForCheck &&
+                          (targetStudentForCheck.goals || []).some(
+                            (stGoal) =>
+                              (stGoal.title || '').trim() === genderAdaptedTitle.trim() ||
+                              (stGoal.title || '').trim() === (g.title || '').trim()
+                          )
+                      );
+                      const itemStages = Array.isArray(g.stages) && g.stages.length > 0
+                        ? g.stages
+                        : (g.stage ? [g.stage] : ['kindergarten']);
 
-                    return (
-                      <div key={g.id} className="goal-bank-option-row" style={{ cursor: 'default' }}>
-                        <div className="goal-bank-option-main">
-                          <div className="goal-option-title-line">
-                            <span className="popularity-rank-badge">#{i + 1}</span>
-                            <strong>{g.title}</strong>
-                            <span className="env-tag-chip">{g.environment}</span>
-                            <span className="usage-count-badge">
-                              נבחר {g.usageCount ?? 0} פעמים
-                            </span>
-                          </div>
-                          {g.suggestedObjectives?.length > 0 && (
-                            <div className="goal-option-sub-preview">
-                              יעדים משויכים: {g.suggestedObjectives.join(' • ')}
+                      return (
+                        <div key={g.id} className="goal-bank-option-row" style={{ cursor: 'default' }}>
+                          <div className="goal-bank-option-main">
+                            <div className="goal-option-title-line">
+                              <span className="popularity-rank-badge">#{i + 1}</span>
+                              {itemStages.includes('kindergarten') && (
+                                <span className="stage-chip stage-chip-kdg">גן</span>
+                              )}
+                              {itemStages.includes('school') && (
+                                <span className="stage-chip stage-chip-school">בית ספר</span>
+                              )}
+                              <strong>{g.title}</strong>
+                              <span className="env-tag-chip">{g.environment}</span>
+                              <span className="usage-count-badge">
+                                נבחר {g.usageCount ?? 0} פעמים
+                              </span>
                             </div>
-                          )}
-                        </div>
+                          </div>
 
                         <div
                           className="goal-bank-admin-actions"
@@ -2852,7 +2976,8 @@ export default function App() {
                         </div>
                       </div>
                     );
-                  })}
+                  });
+                })()}
               </div>
             </div>
             <div className="modal-footer" style={{ textAlign: 'left' }}>

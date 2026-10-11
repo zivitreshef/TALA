@@ -1678,6 +1678,28 @@ input, textarea, select, button {
   border-radius: 10px;
 }
 
+.stage-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.3;
+}
+
+.stage-chip-kdg {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.stage-chip-school {
+  background: #e0e7ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+}
+
 .usage-count-badge {
   background: var(--primary-light);
   color: var(--primary-deep);
