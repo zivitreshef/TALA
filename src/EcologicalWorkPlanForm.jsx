@@ -36,6 +36,8 @@ import {
   buildDefaultTalaProfileRows,
   isTalaPlanType,
   getSortedGoalBank,
+  canonicalizeEnvironment,
+  getCanonicalEnvironmentsForStage,
   generateDefaultQuestionsForCustomGoal,
   reverseEngineerRawTextLocally,
   adaptTextToGender,
@@ -4193,7 +4195,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             const filteredBankGoals = sortedGoals.filter((item) => {
               const matchesStage = isGoalRelevantForStage(item, activeStageFilter);
               const matchesEnv =
-                pickerEnvFilter === 'הכל' || item.environment === pickerEnvFilter;
+                pickerEnvFilter === 'הכל' ||
+                canonicalizeEnvironment(item.environment) === pickerEnvFilter ||
+                (item.environment && item.environment.includes(pickerEnvFilter));
               const q = (pickerSearch || '').trim();
               const inflectedTitle = adaptTextToGender(item.title, currentGender);
               const matchesQuery =
@@ -4458,7 +4462,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                           >
                             כל הסביבות
                           </button>
-                          {ENVIRONMENTS_LIST.map((env) => (
+                          {getCanonicalEnvironmentsForStage(activeStageFilter).filter((e) => e !== 'הכל').map((env) => (
                             <button
                               key={env}
                               type="button"
@@ -4498,7 +4502,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                     <span className="stage-chip stage-chip-school">בית ספר</span>
                                   )}
                                   <strong>{displayBankTitle}</strong>
-                                  <span className="env-tag-chip">{bankItem.environment}</span>
+                                  <span className="env-tag-chip">{canonicalizeEnvironment(bankItem.environment)}</span>
                                   <span className="usage-count-badge">
                                     <TrendingUp size={12} />
                                     <span>נבחר {bankItem.usageCount ?? 0} פעמים</span>

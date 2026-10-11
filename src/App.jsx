@@ -59,7 +59,10 @@ import {
   adaptTextToGender,
   resolveStudentAgeAndDateInfo,
   normalizeAndSizeGoalDuration,
-  isGoalEmpty
+  isGoalEmpty,
+  deduplicateAndNormalizeGoalBank,
+  getCanonicalEnvironmentsForStage,
+  canonicalizeEnvironment
 } from './goalBankData';
 import {
   subscribeToTalaBackend,
@@ -372,21 +375,26 @@ export default function App() {
         saveAllowedUsers(mergedUsers);
       },
       onGoalBankChange: (cloudGoals) => {
+        const cleanedGoals = deduplicateAndNormalizeGoalBank(cloudGoals || []);
         const hasOldTestingWeights =
           localStorage.getItem('tala_cloud_goal_weights_zeroed_v1') !== 'true' &&
-          Array.isArray(cloudGoals) &&
-          cloudGoals.some((g) => Number(g.usageCount) > 0);
+          Array.isArray(cleanedGoals) &&
+          cleanedGoals.some((g) => Number(g.usageCount) > 0);
 
         if (hasOldTestingWeights) {
-          const zeroedGoals = cloudGoals.map((g) => ({ ...g, usageCount: 0 }));
+          const zeroedGoals = cleanedGoals.map((g) => ({ ...g, usageCount: 0 }));
           localStorage.setItem('tala_cloud_goal_weights_zeroed_v1', 'true');
           setGoalBank(zeroedGoals);
           saveGoalBank(zeroedGoals);
           saveGoalBankToCloud(zeroedGoals);
         } else {
           localStorage.setItem('tala_cloud_goal_weights_zeroed_v1', 'true');
-          setGoalBank(cloudGoals);
-          saveGoalBank(cloudGoals);
+          setGoalBank(cleanedGoals);
+          saveGoalBank(cleanedGoals);
+          // If deduplication removed messy items or normalized composite environments, sync back to cloud
+          if (Array.isArray(cloudGoals) && cleanedGoals.length !== cloudGoals.length) {
+            saveGoalBankToCloud(cleanedGoals);
+          }
         }
       },
       onStudentsChange: (cloudStudents) => {
@@ -1454,17 +1462,6 @@ export default function App() {
   }, {});
   const frameworkClusters = Object.entries(studentsByFramework);
   const sortedBank = getSortedGoalBank(goalBank);
-  const goalBankEnvironments = [
-    'הכל',
-    ...Array.from(
-      new Set(
-        [
-          ...ENVIRONMENTS_LIST,
-          ...(goalBank || []).map((g) => (g.environment || '').trim()).filter(Boolean)
-        ]
-      )
-    )
-  ];
   const activeBankTargetStudent =
     userStudents.find(
       (s) => s.id === (targetBankStudentId || selectedStudentId)
@@ -1472,6 +1469,9 @@ export default function App() {
     selectedStudent ||
     userStudents[0] ||
     null;
+  const activeGoalBankStudentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
+  const currentModalStage = goalBankStageFilter !== null ? goalBankStageFilter : activeGoalBankStudentStage;
+  const goalBankEnvironments = getCanonicalEnvironmentsForStage(currentModalStage);
 
   const filteredArchivedStudents = archivedUserStudents.filter(
     (s) =>
@@ -2821,7 +2821,8 @@ export default function App() {
                       }
                       if (
                         goalBankEnvFilter !== 'הכל' &&
-                        (g.environment || '').trim() !== goalBankEnvFilter
+                        canonicalizeEnvironment(g.environment) !== goalBankEnvFilter &&
+                        !(g.environment || '').includes(goalBankEnvFilter)
                       ) {
                         return false;
                       }
@@ -2866,7 +2867,7 @@ export default function App() {
                                 <span className="stage-chip stage-chip-school">בית ספר</span>
                               )}
                               <strong>{g.title}</strong>
-                              <span className="env-tag-chip">{g.environment}</span>
+                              <span className="env-tag-chip">{canonicalizeEnvironment(g.environment)}</span>
                               <span className="usage-count-badge">
                                 נבחר {g.usageCount ?? 0} פעמים
                               </span>

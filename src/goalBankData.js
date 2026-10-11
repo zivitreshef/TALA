@@ -1,6 +1,6 @@
 // מאגר מטרות ויעדים דינמי (מבוסס על סביבות ההשתתפות בגן)
 
-export const ENVIRONMENTS_LIST = [
+export const KINDERGARTEN_ENVIRONMENTS = [
   'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה',
   'מפגש בגן',
   'משחק במרחב הגן',
@@ -8,12 +8,72 @@ export const ENVIRONMENTS_LIST = [
   'חצר',
   'שירותים',
   'אוכל',
-  'פעילות שאינה בשגרה',
+  'פעילות שאינה בשגרה'
+];
+
+export const SCHOOL_ENVIRONMENTS = [
   'האזנה ודיבור – כשירות תקשורתית',
   'כתיבה',
   'קריאה והפקת משמעות',
   'כשירות לשונית – ידע לשוני'
 ];
+
+export const ENVIRONMENTS_LIST = [
+  ...KINDERGARTEN_ENVIRONMENTS,
+  ...SCHOOL_ENVIRONMENTS
+];
+
+/**
+ * Normalizes any freeform or composite environment string to its primary canonical environment.
+ */
+export function canonicalizeEnvironment(rawEnv = '') {
+  if (!rawEnv) return KINDERGARTEN_ENVIRONMENTS[0];
+  const trimmed = String(rawEnv).trim();
+  if (ENVIRONMENTS_LIST.includes(trimmed)) return trimmed;
+
+  // Check which canonical environment appears first in the string
+  let earliestEnv = null;
+  let earliestIdx = Infinity;
+  for (const env of ENVIRONMENTS_LIST) {
+    const idx = trimmed.indexOf(env);
+    if (idx !== -1 && idx < earliestIdx) {
+      earliestIdx = idx;
+      earliestEnv = env;
+    }
+  }
+  if (earliestEnv) return earliestEnv;
+
+  // Keywords fallback
+  if (trimmed.includes('סדנא') || trimmed.includes('יצירה')) return 'סדנא / יצירה';
+  if (trimmed.includes('מפגש')) return 'מפגש בגן';
+  if (trimmed.includes('מרחב הגן') || trimmed.includes('פינות')) return 'משחק במרחב הגן';
+  if (trimmed.includes('חצר')) return 'חצר';
+  if (trimmed.includes('שולחן') || trimmed.includes('קופסא') || trimmed.includes('בנייה')) {
+    return 'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה';
+  }
+  if (trimmed.includes('שירותים') || trimmed.includes('שרותים')) return 'שירותים';
+  if (trimmed.includes('אוכל') || trimmed.includes('ארוחה')) return 'אוכל';
+  if (trimmed.includes('האזנה') || trimmed.includes('דיבור')) return 'האזנה ודיבור – כשירות תקשורתית';
+  if (trimmed.includes('כתיבה')) return 'כתיבה';
+  if (trimmed.includes('קריאה')) return 'קריאה והפקת משמעות';
+  if (trimmed.includes('לשוני') || trimmed.includes('לשון')) return 'כשירות לשונית – ידע לשוני';
+  if (trimmed.includes('שגרה')) return 'פעילות שאינה בשגרה';
+
+  return trimmed || KINDERGARTEN_ENVIRONMENTS[0];
+}
+
+/**
+ * Returns canonical environment pills filtered by active stage
+ */
+export function getCanonicalEnvironmentsForStage(stage = 'all') {
+  if (stage === 'kindergarten') {
+    return ['הכל', ...KINDERGARTEN_ENVIRONMENTS];
+  }
+  if (stage === 'school') {
+    return ['הכל', ...SCHOOL_ENVIRONMENTS];
+  }
+  return ['הכל', ...ENVIRONMENTS_LIST];
+}
 
 export const TALA_PROFILE_DOMAINS = [
   {
@@ -260,18 +320,18 @@ export const INITIAL_GOAL_BANK = [
   },
   {
     id: 'gb_table_3',
-    title: 'תשחק במשחקי קופסא חברתיים בעלי חוקים ותורות בתיווך מופחת.',
+    title: 'ישחק במשחקי קופסא חברתיים בעלי חוקים ותורות בתיווך מופחת.',
     stages: ['kindergarten'],
     environment: 'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה',
     usageCount: 0,
     defaultActivity:
-      'מגלה עניין במשחקי קופסא חברתיים ומשחקי מסלול, אך זקוקה לתיווך רציף של מבוגר לזכירת חוקי המשחק, שמירה על תורות וצעידה בהתאם לכמות בקוביה.',
+      'מגלה עניין במשחקי קופסא חברתיים ומשחקי מסלול, אך זקוק לתיווך רציף של מבוגר לזכירת חוקי המשחק, שמירה על תורות וצעידה בהתאם לכמות בקוביה.',
     suggestedObjectives: TABLE_GAMES_OBJECTIVES,
     defaultOpportunities:
       '• משחקי קופסא חברתיים ומשחקי מסלול בקבוצה קטנה עם הפחתה הדרגתית של תיווך המבוגר.\n• תרגול זכירת שלבי המשחק וחוקיו, המתנה לתור וצעידה בהתאם לכמות בקוביה.\n• תיווך רגשי-התנהגותי להתמודדות מותאמת עם ניצחון והפסד.',
     defaultPartners: 'צוות הגן, גננת שילוב, סייעת אישית',
     defaultDuration: 'עד סוף השנה',
-    defaultEvaluation: 'תשחק במשחקי קופסא חברתיים בעלי חוקים ותורות בתיווך מופחת מראשיתו ועד סופו.',
+    defaultEvaluation: 'ישחק במשחקי קופסא חברתיים בעלי חוקים ותורות בתיווך מופחת מראשיתו ועד סופו.',
     facilitatingQuestions: [
       {
         q: '1. באיזה שלב במשחק הקופסא נדרש כיום עיקר התיווך של המבוגר?',
@@ -440,7 +500,7 @@ export const INITIAL_GOAL_BANK = [
   },
   {
     id: 'gb_workshop_3',
-    title: 'תרכוש ותשכלל מיומנויות בתחום הוויזו מוטורי (ציור, העתקה, גזירה וכיו"ב)',
+    title: 'ירכוש וישכלל מיומנויות בתחום הוויזו מוטורי (ציור, העתקה, גזירה וכיו"ב)',
     stages: ['kindergarten'],
     environment: 'סדנא / יצירה',
     usageCount: 0,
@@ -451,7 +511,7 @@ export const INITIAL_GOAL_BANK = [
       '• תרגול מובנה וחווייתי של ציור, העתקה, גזירה, הדבקה וצביעה בשולחן הסדנא.\n• התאמת כלי היצירה והדרכת מרפאה בעיסוק.\n• שיום הכלים הספציפיים והפעלים המתאימים בזמן הפעילות.',
     defaultPartners: 'צוות הגן, מרפאה בעיסוק, סייעת אישית',
     defaultDuration: 'עד סוף השנה',
-    defaultEvaluation: 'תרכוש ותשכלל מיומנויות וויזו-מוטוריות ותיישם אותן בפעילות היצירה.',
+    defaultEvaluation: 'ירכוש וישכלל מיומנויות וויזו-מוטוריות ותיישם אותן בפעילות היצירה.',
     facilitatingQuestions: [
       {
         q: '1. באילו מיומנויות וויזו-מוטוריות ניכר הקושי המרכזי?',
@@ -994,6 +1054,83 @@ export const INITIAL_GOAL_BANK = [
 
 const GOAL_BANK_STORAGE_KEY = 'tala_ecological_goal_bank_v2';
 export const GOAL_WEIGHTS_RESET_FLAG_KEY = 'tala_goal_weights_zeroed_v1';
+const GOAL_DEDUPLICATION_FLAG_KEY = 'tala_goal_dedup_and_clean_v1';
+
+/**
+ * Normalizes and deduplicates an entire goal bank:
+ * 1. Converts compound/raw environment strings to canonical environments.
+ * 2. Merges gender duplicates (e.g. ישחק... and תשחק...) into a single canonical masculine entry.
+ * 3. Keeps highest usageCount and merges suggestedObjectives.
+ */
+export function deduplicateAndNormalizeGoalBank(rawBank = []) {
+  if (!Array.isArray(rawBank)) return INITIAL_GOAL_BANK;
+
+  const dedupMap = new Map();
+
+  rawBank.forEach((g) => {
+    if (!g || !g.title) return;
+    const cleanTitle = (g.title || '').trim();
+    if (!cleanTitle) return;
+
+    // Normalize environment
+    const canonicalEnv = canonicalizeEnvironment(g.environment);
+
+    // Normalize title to canonical gender-neutral / masculine form for keying
+    const canonicalTitle = adaptTextToGender(cleanTitle, 'boy').trim();
+
+    // Key by normalized title
+    const key = canonicalTitle;
+
+    const stages = Array.isArray(g.stages) && g.stages.length > 0
+      ? g.stages
+      : (g.stage ? [g.stage] : ['kindergarten']);
+
+    const objectives = Array.isArray(g.suggestedObjectives)
+      ? g.suggestedObjectives
+      : (typeof g.suggestedObjectives === 'string' ? g.suggestedObjectives.split('\n') : []);
+    const cleanObjectives = objectives.map((o) => o.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean);
+
+    if (dedupMap.has(key)) {
+      const existing = dedupMap.get(key);
+      const mergedUsage = Math.max(Number(existing.usageCount) || 0, Number(g.usageCount) || 0);
+      const mergedStages = Array.from(new Set([...(existing.stages || []), ...stages]));
+      const existingObjSet = new Set(existing.suggestedObjectives || []);
+      const mergedObjectives = [...(existing.suggestedObjectives || [])];
+      cleanObjectives.forEach((obj) => {
+        if (!existingObjSet.has(obj)) {
+          existingObjSet.add(obj);
+          mergedObjectives.push(obj);
+        }
+      });
+
+      // Keep whichever has richer data, but preserve canonical title & canonical env
+      dedupMap.set(key, {
+        ...existing,
+        title: canonicalTitle,
+        environment: canonicalEnv || existing.environment,
+        stages: mergedStages,
+        usageCount: mergedUsage,
+        suggestedObjectives: mergedObjectives,
+        defaultActivity: existing.defaultActivity || g.defaultActivity || '',
+        defaultOpportunities: existing.defaultOpportunities || g.defaultOpportunities || '',
+        defaultPartners: existing.defaultPartners || g.defaultPartners || '',
+        defaultDuration: existing.defaultDuration || g.defaultDuration || 'עד סוף השנה',
+        defaultEvaluation: existing.defaultEvaluation || g.defaultEvaluation || ''
+      });
+    } else {
+      dedupMap.set(key, {
+        ...g,
+        title: canonicalTitle,
+        environment: canonicalEnv,
+        stages: stages,
+        usageCount: Number(g.usageCount) || 0,
+        suggestedObjectives: cleanObjectives
+      });
+    }
+  });
+
+  return Array.from(dedupMap.values());
+}
 
 export function loadGoalBank() {
   try {
@@ -1003,7 +1140,7 @@ export function loadGoalBank() {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
         // Upgrade existing items: ensure stages exist & inject missing initial items (e.g. school goals)
-        const existingTitles = new Set(parsed.map((g) => (g.title || '').trim()));
+        const existingTitles = new Set(parsed.map((g) => adaptTextToGender((g.title || '').trim(), 'boy')));
         let upgraded = parsed.map((g) => {
           if (!g.stages || !Array.isArray(g.stages) || g.stages.length === 0) {
             return {
@@ -1017,29 +1154,32 @@ export function loadGoalBank() {
         // Merge any new initial goals that aren't yet in saved bank
         let hasNewInitial = false;
         INITIAL_GOAL_BANK.forEach((initGoal) => {
-          if (!existingTitles.has((initGoal.title || '').trim())) {
+          const initKey = adaptTextToGender((initGoal.title || '').trim(), 'boy');
+          if (!existingTitles.has(initKey)) {
             upgraded.push({ ...initGoal });
             hasNewInitial = true;
           }
         });
 
+        // Run deduplication & canonicalization pass
+        const cleaned = deduplicateAndNormalizeGoalBank(upgraded);
+
         if (!localStorage.getItem(GOAL_WEIGHTS_RESET_FLAG_KEY)) {
-          upgraded = upgraded.map((g) => ({ ...g, usageCount: 0 }));
+          cleaned.forEach((g) => { g.usageCount = 0; });
           localStorage.setItem(GOAL_WEIGHTS_RESET_FLAG_KEY, 'true');
         }
 
-        if (hasNewInitial) {
-          localStorage.setItem(GOAL_BANK_STORAGE_KEY, JSON.stringify(upgraded));
-        }
+        localStorage.setItem(GOAL_DEDUPLICATION_FLAG_KEY, 'true');
+        localStorage.setItem(GOAL_BANK_STORAGE_KEY, JSON.stringify(cleaned));
 
-        return upgraded;
+        return cleaned;
       }
     }
   } catch (e) {
     console.warn('Failed to load goal bank from localStorage', e);
   }
   localStorage.setItem(GOAL_WEIGHTS_RESET_FLAG_KEY, 'true');
-  return INITIAL_GOAL_BANK;
+  return deduplicateAndNormalizeGoalBank(INITIAL_GOAL_BANK);
 }
 
 export function saveGoalBank(bank) {
@@ -1053,11 +1193,13 @@ export function getSortedGoalBank(bank) {
 
 export function recordGoalUsageOrAdd(goalData, currentBank) {
   const bank = [...(currentBank || loadGoalBank())];
-  const cleanTitle = (goalData.title || '').trim();
-  if (!cleanTitle) return bank;
+  const rawTitle = (goalData.title || '').trim();
+  if (!rawTitle) return bank;
+  const canonicalTitle = adaptTextToGender(rawTitle, 'boy').trim();
+  const canonicalEnv = canonicalizeEnvironment(goalData.environment);
 
   const existingIndex = bank.findIndex(
-    (item) => item.title.trim() === cleanTitle
+    (item) => adaptTextToGender((item.title || '').trim(), 'boy') === canonicalTitle
   );
 
   const goalStages = Array.isArray(goalData.stages) && goalData.stages.length > 0
@@ -1086,9 +1228,10 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
 
     bank[existingIndex] = {
       ...existing,
+      title: canonicalTitle,
       stages: mergedStages,
       usageCount: (Number(existing.usageCount) || 0) + 1,
-      environment: goalData.environment || existing.environment,
+      environment: canonicalEnv || canonicalizeEnvironment(existing.environment),
       defaultActivity: existing.defaultActivity || goalData.activityParticipation || '',
       suggestedObjectives: newObjList,
       defaultOpportunities: existing.defaultOpportunities || goalData.opportunities || '',
@@ -1104,9 +1247,9 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
 
     const newEntry = {
       id: 'gb_custom_' + Date.now(),
-      title: cleanTitle,
+      title: canonicalTitle,
       stages: goalStages,
-      environment: goalData.environment || ENVIRONMENTS_LIST[0],
+      environment: canonicalEnv || ENVIRONMENTS_LIST[0],
       usageCount: 1,
       defaultActivity: goalData.activityParticipation || '',
       suggestedObjectives: objLines.length > 0 ? objLines : ['יישום המטרה בהדרגה בסביבה הטבעית תוך תיווך מותאם.'],
@@ -1114,7 +1257,7 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
       defaultPartners: goalData.partners || 'צוות הגן, הורים',
       defaultDuration: goalData.duration || 'עד סוף השנה',
       defaultEvaluation: goalData.evaluationCriteria || '',
-      facilitatingQuestions: generateDefaultQuestionsForCustomGoal(cleanTitle, goalData.environment)
+      facilitatingQuestions: generateDefaultQuestionsForCustomGoal(canonicalTitle, canonicalEnv)
     };
     bank.push(newEntry);
   }
@@ -1127,7 +1270,7 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
 
 export function addGoalByAdmin(goalInput, currentBank) {
   const bank = [...(currentBank || loadGoalBank())];
-  const cleanTitle = (goalInput.title || '').trim();
+  const cleanTitle = adaptTextToGender((goalInput.title || '').trim(), 'boy');
   if (!cleanTitle) return bank;
 
   const objectivesArray = Array.isArray(goalInput.suggestedObjectives)
@@ -1145,7 +1288,7 @@ export function addGoalByAdmin(goalInput, currentBank) {
     id: 'gb_admin_' + Date.now(),
     title: cleanTitle,
     stages: goalStages,
-    environment: (goalInput.environment || ENVIRONMENTS_LIST[0]).trim(),
+    environment: canonicalizeEnvironment(goalInput.environment),
     usageCount: Number(goalInput.usageCount) >= 0 ? Number(goalInput.usageCount) : 0,
     defaultActivity: (goalInput.defaultActivity || '').trim(),
     suggestedObjectives:
@@ -1158,7 +1301,7 @@ export function addGoalByAdmin(goalInput, currentBank) {
     defaultEvaluation: (goalInput.defaultEvaluation || '').trim(),
     facilitatingQuestions: generateDefaultQuestionsForCustomGoal(
       cleanTitle,
-      goalInput.environment
+      canonicalizeEnvironment(goalInput.environment)
     )
   };
 
@@ -1180,8 +1323,8 @@ export function updateGoalByAdmin(goalId, updatedFields, currentBank) {
         .map((s) => s.replace(/^[•\-*]\s*/, '').trim())
         .filter(Boolean);
 
-  const updatedTitle = (updatedFields.title ?? existing.title).trim();
-  const updatedEnv = (updatedFields.environment ?? existing.environment).trim();
+  const updatedTitle = adaptTextToGender((updatedFields.title ?? existing.title).trim(), 'boy');
+  const updatedEnv = canonicalizeEnvironment(updatedFields.environment ?? existing.environment);
   const updatedStages = Array.isArray(updatedFields.stages) && updatedFields.stages.length > 0
     ? updatedFields.stages
     : (existing.stages || ['kindergarten']);
