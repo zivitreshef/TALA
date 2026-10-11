@@ -62,7 +62,9 @@ import {
   isGoalEmpty,
   deduplicateAndNormalizeGoalBank,
   getCanonicalEnvironmentsForStage,
-  canonicalizeEnvironment
+  canonicalizeEnvironment,
+  KINDERGARTEN_ENVIRONMENTS,
+  SCHOOL_ENVIRONMENTS
 } from './goalBankData';
 import {
   subscribeToTalaBackend,
