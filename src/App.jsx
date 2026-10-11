@@ -314,6 +314,7 @@ export default function App() {
   const [goalBankSearch, setGoalBankSearch] = useState('');
   const [goalBankEnvFilter, setGoalBankEnvFilter] = useState('הכל');
   const [goalBankStageFilter, setGoalBankStageFilter] = useState(null); // null = auto based on selected student stage
+  const [selectedHlDomain, setSelectedHlDomain] = useState(null); // null = show HL domains grid; string = domain drilled into
   const [targetBankStudentId, setTargetBankStudentId] = useState('');
   const [bankAddToast, setBankAddToast] = useState('');
   const [externalGoalsRevision, setExternalGoalsRevision] = useState(0);
@@ -2347,6 +2348,7 @@ export default function App() {
           onClick={() => {
             setShowGoalBankOverview(false);
             setEditingBankGoal(null);
+            setSelectedHlDomain(null);
           }}
           dir="rtl"
         >
@@ -2365,6 +2367,7 @@ export default function App() {
                 onClick={() => {
                   setShowGoalBankOverview(false);
                   setEditingBankGoal(null);
+                  setSelectedHlDomain(null);
                 }}
               >
                 ✕
@@ -2673,6 +2676,7 @@ export default function App() {
                           onClick={() => {
                             setSelectedStudentId(activeBankTargetStudent.id);
                             setShowGoalBankOverview(false);
+                            setSelectedHlDomain(null);
                           }}
                           style={{ fontSize: '12px', padding: '4px 10px' }}
                         >
@@ -2715,125 +2719,235 @@ export default function App() {
                 />
               </div>
 
-              {/* Stage Filter Pills & Environment Filter Pills */}
+              {/* Stage Filter Pills & High-Level Domain Navigation Bar */}
               <div
                 style={{
                   display: 'flex',
-                  gap: '6px',
+                  gap: '8px',
                   flexWrap: 'wrap',
                   alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginBottom: '12px'
                 }}
               >
-                {/* Stage pills (גן / בית ספר / הכל) */}
-                {(() => {
-                  const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
-                  const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
-                  return (
-                    <div style={{ display: 'inline-flex', gap: '4px', background: '#e2e8f0', padding: '2px', borderRadius: '999px', marginLeft: '6px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setGoalBankStageFilter('kindergarten')}
-                        style={{
-                          padding: '3px 10px',
-                          borderRadius: '999px',
-                          fontSize: '11px',
-                          fontWeight: activeStage === 'kindergarten' ? 700 : 600,
-                          cursor: 'pointer',
-                          border: 'none',
-                          background: activeStage === 'kindergarten' ? '#7c3aed' : 'transparent',
-                          color: activeStage === 'kindergarten' ? '#ffffff' : '#334155'
-                        }}
-                      >
-                        גן
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setGoalBankStageFilter('school')}
-                        style={{
-                          padding: '3px 10px',
-                          borderRadius: '999px',
-                          fontSize: '11px',
-                          fontWeight: activeStage === 'school' ? 700 : 600,
-                          cursor: 'pointer',
-                          border: 'none',
-                          background: activeStage === 'school' ? '#7c3aed' : 'transparent',
-                          color: activeStage === 'school' ? '#ffffff' : '#334155'
-                        }}
-                      >
-                        בית ספר
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setGoalBankStageFilter('all')}
-                        style={{
-                          padding: '3px 10px',
-                          borderRadius: '999px',
-                          fontSize: '11px',
-                          fontWeight: activeStage === 'all' ? 700 : 600,
-                          cursor: 'pointer',
-                          border: 'none',
-                          background: activeStage === 'all' ? '#7c3aed' : 'transparent',
-                          color: activeStage === 'all' ? '#ffffff' : '#334155'
-                        }}
-                      >
-                        הכל
-                      </button>
-                    </div>
-                  );
-                })()}
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* Stage pills (גן / בית ספר / הכל) */}
+                  {(() => {
+                    const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
+                    const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
+                    return (
+                      <div style={{ display: 'inline-flex', gap: '4px', background: '#e2e8f0', padding: '2px', borderRadius: '999px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGoalBankStageFilter('kindergarten');
+                            setSelectedHlDomain(null);
+                            setGoalBankEnvFilter('הכל');
+                          }}
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            fontSize: '11px',
+                            fontWeight: activeStage === 'kindergarten' ? 700 : 600,
+                            cursor: 'pointer',
+                            border: 'none',
+                            background: activeStage === 'kindergarten' ? '#7c3aed' : 'transparent',
+                            color: activeStage === 'kindergarten' ? '#ffffff' : '#334155'
+                          }}
+                        >
+                          גן
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGoalBankStageFilter('school');
+                            setSelectedHlDomain(null);
+                            setGoalBankEnvFilter('הכל');
+                          }}
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            fontSize: '11px',
+                            fontWeight: activeStage === 'school' ? 700 : 600,
+                            cursor: 'pointer',
+                            border: 'none',
+                            background: activeStage === 'school' ? '#7c3aed' : 'transparent',
+                            color: activeStage === 'school' ? '#ffffff' : '#334155'
+                          }}
+                        >
+                          בית ספר
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGoalBankStageFilter('all');
+                            setSelectedHlDomain(null);
+                            setGoalBankEnvFilter('הכל');
+                          }}
+                          style={{
+                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            fontSize: '11px',
+                            fontWeight: activeStage === 'all' ? 700 : 600,
+                            cursor: 'pointer',
+                            border: 'none',
+                            background: activeStage === 'all' ? '#7c3aed' : 'transparent',
+                            color: activeStage === 'all' ? '#ffffff' : '#334155'
+                          }}
+                        >
+                          הכל
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
 
-                {goalBankEnvironments.map((envName) => {
-                  const isActiveEnv = goalBankEnvFilter === envName;
-                  return (
-                    <button
-                      key={envName}
-                      type="button"
-                      onClick={() => setGoalBankEnvFilter(envName)}
-                      style={{
-                        padding: '4px 11px',
-                        borderRadius: '999px',
-                        fontSize: '12px',
-                        fontWeight: isActiveEnv ? 700 : 600,
-                        cursor: 'pointer',
-                        border: isActiveEnv ? '1.5px solid #6d28d9' : '1px solid #cbd5e1',
-                        background: isActiveEnv
-                          ? 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)'
-                          : '#f8fafc',
-                        color: isActiveEnv ? '#ffffff' : '#334155',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      {envName === 'הכל' ? 'כל הסביבות' : envName}
-                    </button>
-                  );
-                })}
+                {/* Back button or breadcrumb when drilled down into a specific HL domain */}
+                {selectedHlDomain && !goalBankSearch.trim() && (
+                  <button
+                    type="button"
+                    className="goal-bank-hl-back-btn"
+                    onClick={() => {
+                      setSelectedHlDomain(null);
+                      setGoalBankEnvFilter('הכל');
+                    }}
+                  >
+                    <span>←</span>
+                    <span>חזרה לכל התחומים</span>
+                  </button>
+                )}
               </div>
 
-              <div className="goal-bank-items-scroll" style={{ maxHeight: '420px' }}>
-                {(() => {
-                  const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
-                  const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
-                  return sortedBank
-                    .filter((g) => {
-                      if (!isGoalRelevantForStage(g, activeStage)) {
-                        return false;
+              {/* VIEW 1: High-Level Goal Domains Grid (When no domain selected and no search) */}
+              {!selectedHlDomain && !goalBankSearch.trim() ? (
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600, marginBottom: '10px' }}>
+                    בחר/י תחום פעילות או מטרת-על כדי לצפות במטרות המותאמות:
+                  </div>
+                  <div className="goal-bank-hl-domains-grid">
+                    {(() => {
+                      const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
+                      const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
+
+                      // Gather relevant canonical environments for active stage
+                      const domainsToShow = [];
+                      if (activeStage === 'kindergarten' || activeStage === 'all') {
+                        KINDERGARTEN_ENVIRONMENTS.forEach((env) => {
+                          domainsToShow.push({ name: env, stage: 'kindergarten', stageLabel: 'גן' });
+                        });
                       }
-                      if (
-                        goalBankEnvFilter !== 'הכל' &&
-                        canonicalizeEnvironment(g.environment) !== goalBankEnvFilter &&
-                        !(g.environment || '').includes(goalBankEnvFilter)
-                      ) {
-                        return false;
+                      if (activeStage === 'school' || activeStage === 'all') {
+                        SCHOOL_ENVIRONMENTS.forEach((env) => {
+                          domainsToShow.push({ name: env, stage: 'school', stageLabel: 'בית ספר' });
+                        });
                       }
-                      const q = goalBankSearch.trim();
-                      if (!q) return true;
-                      return (
-                        (g.title || '').includes(q) ||
-                        (g.environment || '').includes(q) ||
-                        (g.suggestedObjectives || []).some((o) => o.includes(q))
-                      );
-                    })
+
+                      const domainIcons = {
+                        'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה': '🎲',
+                        'מפגש בגן': '⭕',
+                        'משחק במרחב הגן': '🧸',
+                        'סדנא / יצירה': '🎨',
+                        'חצר': '⚽',
+                        'שירותים': '🧼',
+                        'אוכל': '🍎',
+                        'פעילות שאינה בשגרה': '✨',
+                        'האזנה ודיבור – כשירות תקשורתית': '🗣️',
+                        'כתיבה': '✍️',
+                        'קריאה והפקת משמעות': '📖',
+                        'כשירות לשונית – ידע לשוני': '💬'
+                      };
+
+                      return domainsToShow.map((item) => {
+                        const count = sortedBank.filter((g) => {
+                          if (!isGoalRelevantForStage(g, activeStage)) return false;
+                          const canon = canonicalizeEnvironment(g.environment);
+                          return canon === item.name || (g.environment || '').includes(item.name);
+                        }).length;
+
+                        return (
+                          <div
+                            key={`${item.stage}-${item.name}`}
+                            className="goal-bank-hl-card"
+                            onClick={() => {
+                              setSelectedHlDomain(item.name);
+                              setGoalBankEnvFilter(item.name);
+                            }}
+                          >
+                            <div className="goal-bank-hl-card-header">
+                              <span className="goal-bank-hl-card-icon">
+                                {domainIcons[item.name] || '🎯'}
+                              </span>
+                              <span
+                                className={`stage-chip ${
+                                  item.stage === 'school' ? 'stage-chip-school' : 'stage-chip-kdg'
+                                }`}
+                              >
+                                {item.stageLabel}
+                              </span>
+                            </div>
+                            <div className="goal-bank-hl-card-title">{item.name}</div>
+                            <div className="goal-bank-hl-card-footer">
+                              <span className="goal-bank-hl-card-count">
+                                {count} {count === 1 ? 'מטרה קיימת' : 'מטרות קיימות'}
+                              </span>
+                              <span className="goal-bank-hl-card-action">
+                                צפה במטרות ⬅
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              ) : (
+                /* VIEW 2: Drilled-down Goals List (Under selected domain or during search) */
+                <>
+                  {selectedHlDomain && !goalBankSearch.trim() && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 12px',
+                        background: '#f8fafc',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                        marginBottom: '10px'
+                      }}
+                    >
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                        🎯 מטרות בתחום: <strong>{selectedHlDomain}</strong>
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="goal-bank-items-scroll" style={{ maxHeight: '420px' }}>
+                    {(() => {
+                      const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
+                      const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
+                      const effectiveEnvFilter = selectedHlDomain || goalBankEnvFilter;
+
+                      return sortedBank
+                        .filter((g) => {
+                          if (!isGoalRelevantForStage(g, activeStage)) {
+                            return false;
+                          }
+                          if (
+                            effectiveEnvFilter !== 'הכל' &&
+                            canonicalizeEnvironment(g.environment) !== effectiveEnvFilter &&
+                            !(g.environment || '').includes(effectiveEnvFilter)
+                          ) {
+                            return false;
+                          }
+                          const q = goalBankSearch.trim();
+                          if (!q) return true;
+                          return (
+                            (g.title || '').includes(q) ||
+                            (g.environment || '').includes(q) ||
+                            (g.suggestedObjectives || []).some((o) => o.includes(q))
+                          );
+                        })
                     .map((g, i) => {
                       const targetStudentForCheck =
                         activeBankTargetStudent &&
@@ -2980,14 +3094,17 @@ export default function App() {
                   });
                 })()}
               </div>
-            </div>
-            <div className="modal-footer" style={{ textAlign: 'left' }}>
+            </>
+          )}
+        </div>
+        <div className="modal-footer" style={{ textAlign: 'left' }}>
               <button
                 type="button"
                 className="btn-primary-sm"
                 onClick={() => {
                   setShowGoalBankOverview(false);
                   setEditingBankGoal(null);
+                  setSelectedHlDomain(null);
                 }}
               >
                 סגור

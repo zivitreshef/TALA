@@ -2492,6 +2492,115 @@ input, textarea, select, button {
   color: var(--primary-deep);
 }
 
+/* === Progressive Disclosure High-Level (HL) Goal Domain Cards === */
+.goal-bank-hl-domains-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  padding: 4px 2px;
+}
+
+.goal-bank-hl-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: right;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.goal-bank-hl-card:hover {
+  border-color: #8b5cf6;
+  background: #faf8ff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.12);
+}
+
+.goal-bank-hl-card:active {
+  transform: translateY(0);
+}
+
+.goal-bank-hl-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.goal-bank-hl-card-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.goal-bank-hl-card-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.45;
+  margin-bottom: 12px;
+  flex-grow: 1;
+}
+
+.goal-bank-hl-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.goal-bank-hl-card-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.goal-bank-hl-card-action {
+  font-size: 12px;
+  font-weight: 700;
+  color: #7c3aed;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.goal-bank-hl-card:hover .goal-bank-hl-card-action {
+  color: #5b21b6;
+  text-decoration: underline;
+}
+
+.goal-bank-hl-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.goal-bank-hl-back-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
 /* ==========================================================================
    RESPONSIVE DESIGN: TABLETS, iPHONE 14 PLUS (428×926), & ALL MOBILE PHONES
    ========================================================================== */
