@@ -92,6 +92,7 @@ import {
   getEffectiveStudentStage,
   isGoalRelevantForStage
 } from './studentStage.js';
+import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
