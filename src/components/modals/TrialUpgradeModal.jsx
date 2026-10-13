@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   HeartHandshake,
@@ -29,14 +29,21 @@ export default function TrialUpgradeModal({
   isExpired = false,
   onLogout = null
 }) {
+  const isNonTrialUser = Boolean(currentUser && !currentUser.isTrialUser);
   const [supportMessage, setSupportMessage] = useState('');
   const [messageSent, setMessageSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAboutLetter, setShowAboutLetter] = useState(!isNonTrialUser);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowAboutLetter(!isNonTrialUser);
+      setMessageSent(false);
+      setSupportMessage('');
+    }
+  }, [isOpen, isNonTrialUser]);
 
   if (!isOpen || !currentUser) return null;
-
-  const isNonTrialUser = !currentUser.isTrialUser;
-  const [showAboutLetter, setShowAboutLetter] = useState(!isNonTrialUser);
   const whatsappPhone = '972559236606';
   const defaultWhatsappText = encodeURIComponent(
     isNonTrialUser

@@ -212,6 +212,21 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
       expect(content).toContain('אודות TALA ואיך נולדה האפליקציה');
     });
 
+    it('verifies TrialUpgradeModal declares all hooks before any early return to avoid React error #310', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const content = fs.readFileSync(
+        path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+        'utf-8'
+      );
+
+      const earlyReturnIndex = content.indexOf('if (!isOpen || !currentUser) return null;');
+      const showAboutLetterHookIndex = content.indexOf('useState(!isNonTrialUser)');
+      expect(earlyReturnIndex).toBeGreaterThan(-1);
+      expect(showAboutLetterHookIndex).toBeGreaterThan(-1);
+      expect(showAboutLetterHookIndex).toBeLessThan(earlyReturnIndex);
+    });
+
     it('verifies App.jsx uses concise "עזרה" text for the support button', async () => {
       const fs = await import('fs');
       const path = await import('path');
