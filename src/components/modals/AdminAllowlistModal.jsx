@@ -668,7 +668,7 @@ export default function AdminAllowlistModal({
                 fontWeight: 600
               }}
             >
-              <span title="מכסת AI Studio Gemini יומית">🤖 AI: {dailyAiCount} / {DAILY_AI_QUOTA_LIMIT}</span>
+              <span title="מכסת AI Studio Gemini יומית (איפוס כל 24 שעות)">🤖 AI יומי: {dailyAiCount} / {DAILY_AI_QUOTA_LIMIT}</span>
               <span style={{ opacity: 0.5 }}>|</span>
               <span title="מכסת שליחת מיילים יומית">✉️ מיילים: {dailyEmailCount} / {DAILY_EMAIL_QUOTA_LIMIT}</span>
               <span style={{ opacity: 0.5 }}>|</span>
@@ -1486,7 +1486,7 @@ export default function AdminAllowlistModal({
                       <th>שם המתי"א / צוות</th>
                       <th>מספר מורות</th>
                       <th>סה"כ תלמידים</th>
-                      <th>שימושי AI כוללים</th>
+                      <th title="סה״כ פעולות AI של כלל המורות במתי״א זו מאז תחילת המעקב">שימושי AI (מצטבר)</th>
                       <th>מנויים משלמים</th>
                       <th>פעולות</th>
                     </tr>
@@ -1573,11 +1573,13 @@ export default function AdminAllowlistModal({
                     gap: '4px'
                   }}
                 >
-                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#5b21b6' }}>🤖 סה"כ שאילתות AI</span>
+                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#5b21b6' }}>🤖 סה"כ שאילתות AI (מצטבר)</span>
                   <strong style={{ fontSize: '26px', color: '#4c1d95' }}>
                     {allowedUsers.reduce((sum, u) => sum + (Number(u.aiUsageCount) || 0), 0)}
                   </strong>
-                  <span style={{ fontSize: '11.5px', color: '#7c3aed' }}>ניסוח יעדים ושאלות מנחות</span>
+                  <span style={{ fontSize: '11.5px', color: '#7c3aed' }}>
+                    היום: <strong>{dailyAiCount}</strong> מתוך {DAILY_AI_QUOTA_LIMIT} | ניסוח יעדים
+                  </span>
                 </div>
 
                 <div
@@ -1629,7 +1631,7 @@ export default function AdminAllowlistModal({
                         <th>שם המורה</th>
                         <th>צוות / מתי"א</th>
                         <th>תלמידים שנוצרו</th>
-                        <th>שימושי AI</th>
+                        <th title="סה״כ שימושי AI של המורה מאז תחילת המעקב">שימושי AI (מצטבר)</th>
                         <th>סטטוס מנוי</th>
                         <th>שימוש אחרון ב-AI</th>
                       </tr>
