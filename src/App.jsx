@@ -1728,7 +1728,7 @@ export default function App() {
               }}
             >
               <MessageCircle size={16} />
-              <span>עזרה ופנייה למנהלת</span>
+              <span>עזרה</span>
             </button>
           )}
 

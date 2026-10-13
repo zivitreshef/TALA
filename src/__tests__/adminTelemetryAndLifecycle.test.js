@@ -199,6 +199,43 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
       expect(content).not.toContain('(055-9236606)');
       expect(content).not.toContain('{whatsappDisplayPhone}');
     });
+
+    it('verifies TrialUpgradeModal includes about toggle for paid users and hides letter by default', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const content = fs.readFileSync(
+        path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+        'utf-8'
+      );
+
+      expect(content).toContain('showAboutLetter');
+      expect(content).toContain('אודות TALA ואיך נולדה האפליקציה');
+    });
+
+    it('verifies App.jsx uses concise "עזרה" text for the support button', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const content = fs.readFileSync(
+        path.resolve(__dirname, '../App.jsx'),
+        'utf-8'
+      );
+
+      expect(content).toContain('<span>עזרה</span>');
+      expect(content).not.toContain('<span>עזרה ופנייה למנהלת</span>');
+    });
+
+    it('verifies AdminAllowlistModal clarifies daily vs cumulative AI usage', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const content = fs.readFileSync(
+        path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx'),
+        'utf-8'
+      );
+
+      expect(content).toContain('AI יומי:');
+      expect(content).toContain('סה"כ שאילתות AI (מצטבר)');
+      expect(content).toContain('שימושי AI (מצטבר)');
+    });
   });
 });
 
