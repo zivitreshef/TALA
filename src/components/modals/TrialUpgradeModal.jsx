@@ -32,14 +32,16 @@ export default function TrialUpgradeModal({
 
   if (!isOpen || !currentUser) return null;
 
+  const isNonTrialUser = !currentUser.isTrialUser;
   const whatsappPhone = '972559236606';
-  const whatsappDisplayPhone = '055-9236606';
   const defaultWhatsappText = encodeURIComponent(
-    `היי זיוית, ${
-      isExpired ? 'הסתיימה תקופת הניסיון שלי' : 'התנסיתי במערכת TALA'
-    } ואשמח להסדיר רכישת מנוי שנתי (150 ש"ח לשנה). שמי: ${currentUser.name || ''} (${
-      currentUser.email || ''
-    }). תודה!`
+    isNonTrialUser
+      ? `היי זיוית, שמי ${currentUser.name || ''} (${currentUser.email || ''}) ממערכת TALA. ברצוני להתייעץ בנושא המערכת. תודה!`
+      : `היי זיוית, ${
+          isExpired ? 'הסתיימה תקופת הניסיון שלי' : 'התנסיתי במערכת TALA'
+        } ואשמח להסדיר רכישת מנוי שנתי (150 ש"ח לשנה). שמי: ${currentUser.name || ''} (${
+          currentUser.email || ''
+        }). תודה!`
   );
   const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${defaultWhatsappText}`;
 
@@ -50,10 +52,12 @@ export default function TrialUpgradeModal({
     setIsSubmitting(true);
     if (typeof onSubmitSupportMessage === 'function') {
       onSubmitSupportMessage({
-        topic: isExpired
+        topic: isNonTrialUser
+          ? '💬 פנייה ממשתמש/ת מנוי (תמיכה ושאלות)'
+          : isExpired
           ? '💬 פנייה ממשתמש/ת ניסיון שפג תוקפו (הסדרת מנוי)'
           : '💬 פנייה ממשתמש/ת ניסיון (הסדרת מנוי / תמיכה)',
-        notes: `פנייה ממשתמש/ת ניסיון (${isExpired ? 'פג תוקף' : 'בתקופת ניסיון'}):\n${supportMessage.trim()}\n(טלפון לוואטסאפ: ${whatsappDisplayPhone})`,
+        notes: `פנייה מ${isNonTrialUser ? 'משתמש/ת מנוי' : isExpired ? 'משתמש/ת ניסיון שפג תוקפו' : 'משתמש/ת ניסיון'}:\n${supportMessage.trim()}\n(ערוץ פנייה מועדף: וואטסאפ ישיר לזיוית)`,
         name: currentUser.name,
         email: currentUser.email
       });
@@ -121,12 +125,16 @@ export default function TrialUpgradeModal({
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
-                {isExpired
+                {isNonTrialUser
+                  ? 'מרכז תמיכה ופנייה למנהלת המערכת'
+                  : isExpired
                   ? 'תקופת הניסיון הסתיימה – הסדרת מנוי שנתי ל-TALA'
                   : 'הסדרת מנוי שנתי – שותפים לדרך ב-TALA'}
               </h3>
               <span style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.85)' }}>
-                {isExpired
+                {isNonTrialUser
+                  ? 'תמיכה פדגוגית, סיוע טכני, שאלון משוב וקשר ישיר עם זיוית'
+                  : isExpired
                   ? 'להמשך עבודה במערכת ופתיחת הגישה לנתונים'
                   : 'מכתב אישי מזיוית רשף, יוצרת המערכת'}
               </span>
@@ -198,8 +206,29 @@ export default function TrialUpgradeModal({
             fontSize: '14px'
           }}
         >
-          {/* Expired State Banner */}
-          {isExpired ? (
+          {/* Status Banners */}
+          {isNonTrialUser ? (
+            <div
+              style={{
+                background: '#f0fdf4',
+                border: '1.5px solid #86efac',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                color: '#166534'
+              }}
+            >
+              <ShieldCheck size={24} style={{ flexShrink: 0, color: '#16a34a' }} />
+              <div>
+                <strong>מנוי שנתי פעיל – מערכת TALA 🌷</strong>
+                <div style={{ fontSize: '12.5px', marginTop: '2px' }}>
+                  חשבונך מוגדר כמנוי פעיל עם גישה מלאה. לשאלות מקצועיות, סיוע טכני או הצעות לשיפור, זיוית זמינה תמיד בוואטסאפ או בטופס להלן.
+                </div>
+              </div>
+            </div>
+          ) : isExpired ? (
             <div
               style={{
                 background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
@@ -316,17 +345,19 @@ export default function TrialUpgradeModal({
           >
             <div>
               <div style={{ fontSize: '13px', color: '#166534', fontWeight: 600 }}>
-                רישיון שימוש שנתי מלא ל-TALA
+                {isNonTrialUser ? 'פנייה ישירה למנהלת המערכת' : 'רישיון שימוש שנתי מלא ל-TALA'}
               </div>
-              <div style={{ fontSize: '24px', fontWeight: 800, color: '#14532d' }}>
-                150 ₪ <span style={{ fontSize: '14px', fontWeight: 500 }}>/ שנה בלבד</span>
+              <div style={{ fontSize: isNonTrialUser ? '20px' : '24px', fontWeight: 800, color: '#14532d' }}>
+                {isNonTrialUser ? 'מענה ישיר בוואטסאפ ובמייל' : '150 ₪ / שנה בלבד'}
               </div>
               <div style={{ fontSize: '12.5px', color: '#166534', marginTop: '2px' }}>
-                כולל מנגנון AI מאובטח, מאגר מטרות דינמי, דוחות תל"א/תח"י, סנכרון ענן וגיבויים.
+                {isNonTrialUser
+                  ? 'זיוית רשף זמינה להתייעצות פדגוגית, שאלות טכניות ומענה על כל צורך.'
+                  : 'כולל מנגנון AI מאובטח, מאגר מטרות דינמי, דוחות תל"א/תח"י, סנכרון ענן וגיבויים.'}
               </div>
             </div>
 
-            {/* Direct WhatsApp Action Button */}
+            {/* Direct WhatsApp Action Button (Phone number masked) */}
             <a
               href={whatsappUrl}
               target="_blank"
@@ -349,7 +380,7 @@ export default function TrialUpgradeModal({
               onMouseLeave={(e) => (e.currentTarget.style.background = '#25D366')}
             >
               <MessageCircle size={20} />
-              <span>רכישת מנוי בוואטסאפ (055-9236606)</span>
+              <span>{isNonTrialUser ? 'שיחה ישירה בוואטסאפ עם זיוית' : 'פנייה בוואטסאפ להסדרת מנוי'}</span>
             </a>
           </div>
 
@@ -479,7 +510,7 @@ export default function TrialUpgradeModal({
                   }}
                 >
                   <div style={{ fontSize: '12px', color: '#64748b' }}>
-                    מייל: <strong>zivit.reshef@gmail.com</strong> | וואטסאפ: <strong>{whatsappDisplayPhone}</strong>
+                    מייל: <strong>zivit.reshef@gmail.com</strong> | וואטסאפ: <strong>זמין בלחיצה ישירה למעלה</strong>
                   </div>
                   <button
                     type="submit"

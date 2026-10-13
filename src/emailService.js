@@ -1,3 +1,5 @@
+import { incrementDailyQuotaCount } from './allowedUsers';
+
 export const EMAIL_ENGINE_STORAGE_KEY = 'tala_email_engine_config_v1';
 
 // Default template for Google Apps Script Direct Email Dispatcher (100% Free, Unlimited Attachments up to 25MB)
@@ -222,6 +224,7 @@ export async function sendReportEmailInBackground({
       throw new Error(resultJson.error || 'שגיאה בשליחת המייל דרך Google Apps Script.');
     }
 
+    incrementDailyQuotaCount('email');
     return { ok: true, provider: 'apps_script' };
   }
 

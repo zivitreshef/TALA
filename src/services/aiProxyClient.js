@@ -1,4 +1,5 @@
 import { getActiveFirebaseConfig, getFirebaseAuth } from '../firebaseBackend';
+import { incrementDailyQuotaCount } from '../allowedUsers';
 
 async function callDirectGeminiApi({ prompt, model = 'gemini-2.5-flash', apiKey }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -91,13 +92,16 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
     }
 
     const data = await res.json();
+    incrementDailyQuotaCount('ai');
     return data.data; // The returned structured JSON or fallback object
   } catch (proxyError) {
     console.warn('[aiProxyClient] Proxy endpoint unavailable or failed:', proxyError.message);
     if (localApiKey) {
       console.info('[aiProxyClient] Using direct Gemini API call via saved Admin key...');
       const promptToUse = payload?.prompt || JSON.stringify(payload);
-      return await callDirectGeminiApi({ prompt: promptToUse, model, apiKey: localApiKey });
+      const directResult = await callDirectGeminiApi({ prompt: promptToUse, model, apiKey: localApiKey });
+      incrementDailyQuotaCount('ai');
+      return directResult;
     }
     throw proxyError;
   }

@@ -510,5 +510,200 @@ export function getTrialRemainingDays(user, now = new Date()) {
   return Math.ceil(diffMs / (24 * 60 * 60 * 1000));
 }
 
+/**
+ * Extends a trial user's trial period by the specified number of additional days.
+ * If the trial is already expired, extends from the current date.
+ * If the trial is still active, adds days to the existing expiration date.
+ */
+export function extendUserTrial(user, additionalDays = 7, now = new Date()) {
+  if (!user || typeof user !== 'object') return user;
+  const daysToAdd = Math.max(1, Number(additionalDays) || 7);
+  const nowDate = now instanceof Date ? now : new Date(now);
+  
+  let baseTime = nowDate.getTime();
+  if (user.trialExpiresAt) {
+    const existingExp = new Date(user.trialExpiresAt).getTime();
+    if (!Number.isNaN(existingExp) && existingExp > nowDate.getTime()) {
+      baseTime = existingExp;
+    }
+  }
+
+  const nextExpIso = new Date(baseTime + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
+  const remainingDays = Math.ceil((new Date(nextExpIso).getTime() - nowDate.getTime()) / (24 * 60 * 60 * 1000));
+
+  return {
+    ...user,
+    isTrialUser: true,
+    trialDays: remainingDays,
+    trialExpiresAt: nextExpIso,
+    trialExtendedAt: nowDate.toISOString()
+  };
+}
+
+/**
+ * Upgrades a user to a full annual paid subscription (365 days from now).
+ */
+export function upgradeUserToAnnualPaid(user, now = new Date()) {
+  if (!user || typeof user !== 'object') return user;
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const nextYearIso = new Date(nowDate.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+  return {
+    ...user,
+    isTrialUser: false,
+    subscriptionType: 'annual_paid',
+    paidExpiresAt: nextYearIso,
+    upgradedToPaidAt: nowDate.toISOString(),
+    trialExpiresAt: null,
+    trialDays: null
+  };
+}
+
+/**
+ * Checks if a paid user's annual subscription has expired.
+ */
+export function isPaidUserExpired(user, now = new Date()) {
+  if (!user || user.subscriptionType !== 'annual_paid' || !user.paidExpiresAt) return false;
+  const expMs = new Date(user.paidExpiresAt).getTime();
+  if (Number.isNaN(expMs)) return false;
+  const nowMs = (now instanceof Date ? now : new Date(now)).getTime();
+  return nowMs > expMs;
+}
+
+/**
+ * Computes a standardized subscription lifecycle status for display and filtering.
+ */
+export function getUserSubscriptionStatus(user, now = new Date()) {
+  if (!user) return 'unknown';
+  if (user.email?.toLowerCase() === 'zivit.reshef@gmail.com' || user.role === 'admin') {
+    return 'admin';
+  }
+  if (user.lockedOut) return 'locked_out';
+  if (!user.active) return 'disabled';
+
+  if (user.isTrialUser) {
+    return isTrialUserExpired(user, now) ? 'trial_expired' : 'trial_active';
+  }
+
+  if (user.subscriptionType === 'annual_paid') {
+    return isPaidUserExpired(user, now) ? 'paid_expired' : 'paid_active';
+  }
+
+  return 'paid_active';
+}
+
+/**
+ * Renames a group / Matya across an entire list of users (bulk rename).
+ */
+export function renameUserGroupInList(usersList, oldGroupName, newGroupName) {
+  if (!Array.isArray(usersList)) return [];
+  const cleanOld = String(oldGroupName ?? '').trim().toLowerCase();
+  const cleanNew = String(newGroupName ?? '').trim();
+  if (!cleanOld || !cleanNew) return usersList;
+
+  return usersList.map((u) => {
+    const currentGroup = String(u.group ?? '').trim();
+    if (currentGroup.toLowerCase() === cleanOld) {
+      return { ...u, group: cleanNew };
+    }
+    return u;
+  });
+}
+
+/**
+ * Aggregates group / Matya statistics (teachers count, students count, AI usage).
+ */
+export function computeGroupStats(usersList = [], studentsList = []) {
+  const groupsMap = new Map();
+
+  for (const user of usersList) {
+    const groupName = (user.group || '').trim() || 'ללא שיוך צוות / מתי"א';
+    if (!groupsMap.has(groupName)) {
+      groupsMap.set(groupName, {
+        name: groupName,
+        teachersCount: 0,
+        studentsCount: 0,
+        aiUsageTotal: 0,
+        payingCount: 0,
+        trialCount: 0
+      });
+    }
+    const stat = groupsMap.get(groupName);
+    stat.teachersCount += 1;
+    stat.aiUsageTotal += Number(user.aiUsageCount) || 0;
+    if (user.isTrialUser) {
+      stat.trialCount += 1;
+    } else {
+      stat.payingCount += 1;
+    }
+  }
+
+  for (const student of studentsList) {
+    const ownerEmail = (student.ownerEmail || '').trim().toLowerCase();
+    const owner = usersList.find((u) => (u.email || '').trim().toLowerCase() === ownerEmail);
+    const groupName = (owner?.group || '').trim() || 'ללא שיוך צוות / מתי"א';
+    if (groupsMap.has(groupName)) {
+      groupsMap.get(groupName).studentsCount += 1;
+    }
+  }
+
+  return Array.from(groupsMap.values()).sort((a, b) => b.teachersCount - a.teachersCount);
+}
+
+// ============================================================================
+// Daily Quota Tracking Telemetry (Gemini AI & Google Apps Script Email)
+// ============================================================================
+
+export const DAILY_AI_QUOTA_LIMIT = 1500;
+export const DAILY_EMAIL_QUOTA_LIMIT = 100;
+
+export function getDailyQuotaStorageKey(serviceName, date = new Date()) {
+  const dayKey = getCurrentLocalDayKey(date);
+  return `tala_quota_${serviceName}_${dayKey}`;
+}
+
+export function getDailyQuotaCount(serviceName, date = new Date()) {
+  try {
+    if (typeof localStorage === 'undefined') return 0;
+    const key = getDailyQuotaStorageKey(serviceName, date);
+    return parseInt(localStorage.getItem(key) || '0', 10) || 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+export function incrementDailyQuotaCount(serviceName, amount = 1, date = new Date()) {
+  try {
+    if (typeof localStorage === 'undefined') return 0;
+    const key = getDailyQuotaStorageKey(serviceName, date);
+    const current = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+    const next = current + Math.max(1, amount);
+    localStorage.setItem(key, String(next));
+    return next;
+  } catch (_) {
+    return 0;
+  }
+}
+
+export function recordAiTelemetryForUser(userEmail, usersList) {
+  incrementDailyQuotaCount('ai');
+  if (!Array.isArray(usersList) || !userEmail) return usersList;
+
+  const cleanEmail = userEmail.trim().toLowerCase();
+  const nowIso = new Date().toISOString();
+
+  return usersList.map((u) => {
+    if ((u.email || '').trim().toLowerCase() === cleanEmail) {
+      return {
+        ...u,
+        aiUsageCount: (Number(u.aiUsageCount) || 0) + 1,
+        lastAiUsedAt: nowIso
+      };
+    }
+    return u;
+  });
+}
+
+
 
 

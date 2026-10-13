@@ -27,7 +27,8 @@ import {
   Unlock,
   GraduationCap,
   UserPlus,
-  Bell
+  Bell,
+  MessageCircle
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -42,9 +43,9 @@ import {
 } from './allowedUsers';
 import {
   AllowlistAuthGate,
-  AdminAllowlistModal,
   UserSelfPasswordModal
 } from './AllowlistAuthGate';
+import AdminAllowlistModal from './components/modals/AdminAllowlistModal';
 import {
   INITIAL_STUDENTS_DATA,
   ENVIRONMENTS_LIST,
@@ -1712,6 +1713,25 @@ export default function App() {
             </button>
           )}
 
+          {!currentUser.isTrialUser && (
+            <button
+              type="button"
+              className="btn-header-bank"
+              onClick={() => setShowTrialUpgradeModal(true)}
+              title="תמיכה, וואטסאפ ופנייה ישירה למנהלת המערכת"
+              style={{
+                position: 'relative',
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                color: '#166534',
+                borderColor: '#86efac',
+                fontWeight: 600
+              }}
+            >
+              <MessageCircle size={16} />
+              <span>עזרה ופנייה למנהלת</span>
+            </button>
+          )}
+
           {!currentUser.surveyCompleted && !currentUser.surveyDismissed && (
             <button
               type="button"
@@ -2445,12 +2465,11 @@ export default function App() {
         onDismissSurveyPermanently={handleDismissUserSurveyPermanently}
       />
 
-      {/* Trial User Upgrade & Personal Letter Modal */}
+      {/* Trial / Contact & Support Modal (Accessible to all users) */}
       <TrialUpgradeModal
         isOpen={Boolean(
           showTrialUpgradeModal &&
             currentUser &&
-            currentUser.isTrialUser &&
             !currentUser.mustChangePassword &&
             !(currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned))
         )}
@@ -2463,8 +2482,8 @@ export default function App() {
         }}
         onSubmitSupportMessage={(payload) => {
           handleSubmitAdminRequest({
-            id: 'trial_inquiry_' + Date.now(),
-            topic: payload.topic || '💬 פנייה ממשתמש/ת ניסיון (הסדרת מנוי)',
+            id: 'support_inquiry_' + Date.now(),
+            topic: payload.topic || '💬 פנייה למנהלת המערכת',
             name: payload.name || currentUser.name,
             email: payload.email || currentUser.email,
             notes: payload.notes,
@@ -2491,6 +2510,8 @@ export default function App() {
           adminRequests={adminRequests}
           onDismissAdminRequest={handleDismissAdminRequest}
           cloudSyncState={cloudSyncState}
+          emailEngineConfig={emailEngineConfig}
+          students={students}
         />
       )}
 
