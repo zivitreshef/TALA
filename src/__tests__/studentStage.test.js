@@ -8,6 +8,7 @@ import {
   getEffectiveStudentStage,
   isGoalRelevantForStage
 } from '../utils/studentStage.js';
+import { getAdditionalMetadataItems } from '../export/wordAndPrintBuilders.js';
 
 describe('studentStage detection logic', () => {
   it('normalizes Hebrew text correctly with maqaf and quotes', () => {
@@ -212,6 +213,75 @@ describe('studentStage detection logic', () => {
       expect(isGoalRelevantForStage(dualGoal, 'kindergarten')).toBe(true);
       expect(isGoalRelevantForStage(dualGoal, 'school')).toBe(true);
       expect(isGoalRelevantForStage(dualGoal, 'all')).toBe(true);
+    });
+  });
+
+  describe('Explicit User Stage Selection & Additional Info Metadata', () => {
+    it('detectStudentStage respects explicit user selection over conflicting text', () => {
+      const explicitKdg = detectStudentStage({
+        stage: 'kindergarten',
+        stageSource: 'user_explicit',
+        educationalFramework: 'בית ספר יסודי כיתה ד\'',
+        teacherFreeText: 'לומד בכיתה ומקשיב למורה'
+      });
+      expect(explicitKdg.stage).toBe('kindergarten');
+      expect(explicitKdg.stageSource).toBe('user_explicit');
+
+      const explicitSchool = detectStudentStage({
+        stage: 'school',
+        stageSource: 'user_explicit',
+        educationalFramework: 'גן חובה שקד',
+        teacherFreeText: 'הולך לגן'
+      });
+      expect(explicitSchool.stage).toBe('school');
+      expect(explicitSchool.stageSource).toBe('user_explicit');
+    });
+
+    it('getAdditionalMetadataItems formats school labels correctly ("as is")', () => {
+      const schoolForm = {
+        stage: 'school',
+        schoolName: 'בי״ס אלונים',
+        gradeClass: 'כיתה ב׳1',
+        homeroomTeacher: 'רחל כהן',
+        integrationTeacher: 'מיכל לוי',
+        matyaCoordinator: 'רונית שרון'
+      };
+      const items = getAdditionalMetadataItems(schoolForm, false);
+      const labels = items.map((i) => i.label);
+
+      expect(labels).toContain('בית הספר');
+      expect(labels).toContain('כיתה');
+      expect(labels).toContain('מחנכת');
+      expect(labels).toContain('מורת שילוב');
+      expect(labels).toContain('מתכללת מטעם המתי"א');
+      expect(labels).not.toContain('מתכללת בית ספרית מטעם המתי"א');
+      expect(labels).not.toContain('גן');
+      expect(labels).not.toContain('שלב גן');
+      expect(labels).not.toContain('גננת');
+      expect(labels).not.toContain('גננת שילוב');
+    });
+
+    it('getAdditionalMetadataItems formats kindergarten labels correctly', () => {
+      const kdgForm = {
+        stage: 'kindergarten',
+        schoolName: 'גן שקד',
+        gradeClass: 'טרום חובה: גילאי 4–5',
+        homeroomTeacher: 'שרה הגננת',
+        integrationTeacher: 'ענת גננת שילוב',
+        matyaCoordinator: 'רונית שרון'
+      };
+      const items = getAdditionalMetadataItems(kdgForm, false);
+      const labels = items.map((i) => i.label);
+
+      expect(labels).toContain('גן');
+      expect(labels).toContain('שלב גן');
+      expect(labels).toContain('גננת');
+      expect(labels).toContain('גננת שילוב');
+      expect(labels).toContain('מתכללת מטעם המתי"א');
+      expect(labels).not.toContain('בית הספר');
+      expect(labels).not.toContain('כיתה');
+      expect(labels).not.toContain('מחנכת');
+      expect(labels).not.toContain('מורת שילוב');
     });
   });
 });
