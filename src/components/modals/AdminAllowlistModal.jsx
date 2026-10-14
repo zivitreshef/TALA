@@ -318,18 +318,28 @@ export default function AdminAllowlistModal({
   // Quick Action Handlers
   const handleExtendTrialDays = (userObj, daysToAdd) => {
     const updatedUser = extendUserTrial(userObj, daysToAdd);
-    onUpdateAllowedUsers(allowedUsers.map((u) => (u.id === userObj.id ? updatedUser : u)));
+    onUpdateAllowedUsers(
+      allowedUsers.map((u) => {
+        const isMatch = (u.id && userObj.id && u.id === userObj.id) ||
+          ((u.email || '').toLowerCase() === (userObj.email || '').toLowerCase());
+        return isMatch ? updatedUser : u;
+      })
+    );
     setInviteStatusBanner(`✅ תקופת הניסיון של ${userObj.name} הוארכה ב-${daysToAdd} ימים בהצלחה!`);
     setTimeout(() => setInviteStatusBanner(''), 4000);
   };
 
   const handleUpgradeToPaid = (userObj) => {
-    if (window.confirm(`האם להמיר את המשתמש/ת "${userObj.name}" למנוי שנתי פעיל (ל-365 ימים)?`)) {
-      const updatedUser = upgradeUserToAnnualPaid(userObj);
-      onUpdateAllowedUsers(allowedUsers.map((u) => (u.id === userObj.id ? updatedUser : u)));
-      setInviteStatusBanner(`🎉 ${userObj.name} שודרג/ה בהצלחה למנוי שנתי מלא ל-365 ימים!`);
-      setTimeout(() => setInviteStatusBanner(''), 4000);
-    }
+    const updatedUser = upgradeUserToAnnualPaid(userObj);
+    onUpdateAllowedUsers(
+      allowedUsers.map((u) => {
+        const isMatch = (u.id && userObj.id && u.id === userObj.id) ||
+          ((u.email || '').toLowerCase() === (userObj.email || '').toLowerCase());
+        return isMatch ? updatedUser : u;
+      })
+    );
+    setInviteStatusBanner(`🎉 ${userObj.name} שודרג/ה בהצלחה למנוי שנתי פעיל (365 ימים)!`);
+    setTimeout(() => setInviteStatusBanner(''), 4000);
   };
 
   const handleQuickResetPasswordAndEmail = async (userObj) => {
@@ -1186,32 +1196,42 @@ export default function AdminAllowlistModal({
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                {userStatus === 'admin' && (
+                                {(userStatus === 'admin' || u.role === 'admin') && (
                                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#1e3a8a', background: '#dbeafe', padding: '1px 7px', borderRadius: '999px' }}>
-                                    מנהל מערכת
+                                    מנהל מערכת (גישה מלאה)
                                   </span>
                                 )}
-                                {userStatus === 'paid_active' && (
+                                {userStatus === 'paid_active' && u.role !== 'admin' && (
                                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#166534', background: '#dcfce7', padding: '1px 7px', borderRadius: '999px' }}>
                                     ✓ מנוי שנתי פעיל
+                                    {u.paidExpiresAt && (
+                                      <span style={{ fontSize: '10px', opacity: 0.9, marginRight: '4px' }}>
+                                        (עד {new Date(u.paidExpiresAt).toLocaleDateString('he-IL')})
+                                      </span>
+                                    )}
                                   </span>
                                 )}
-                                {userStatus === 'trial_active' && (
+                                {userStatus === 'trial_active' && u.role !== 'admin' && (
                                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#5b21b6', background: '#ede9fe', padding: '1px 7px', borderRadius: '999px' }}>
                                     ⏳ ניסיון ({remainingDays} ימים)
                                   </span>
                                 )}
-                                {userStatus === 'trial_expired' && (
+                                {userStatus === 'trial_expired' && u.role !== 'admin' && (
                                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#991b1b', background: '#fee2e2', padding: '1px 7px', borderRadius: '999px' }}>
                                     ⏰ פג תוקף הניסיון
                                   </span>
                                 )}
+                                {userStatus === 'paid_expired' && u.role !== 'admin' && (
+                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#991b1b', background: '#fee2e2', padding: '1px 7px', borderRadius: '999px' }}>
+                                    ⏰ פג תוקף המנוי
+                                  </span>
+                                )}
                               </div>
 
-                              {/* Quick Action: Extend / Upgrade */}
-                              {!isMainAdmin && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                                  {u.isTrialUser && (
+                              {/* Quick Action: Extend / Upgrade (Only for non-admin users) */}
+                              {!isMainAdmin && u.role !== 'admin' && userStatus !== 'admin' && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', flexWrap: 'wrap' }}>
+                                  {u.isTrialUser ? (
                                     <>
                                       <button
                                         type="button"
@@ -1231,24 +1251,40 @@ export default function AdminAllowlistModal({
                                       >
                                         +14 ימים
                                       </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpgradeToPaid(u)}
+                                        className="btn-secondary-sm"
+                                        style={{
+                                          fontSize: '10px',
+                                          padding: '2px 6px',
+                                          background: '#f0fdf4',
+                                          color: '#15803d',
+                                          borderColor: '#86efac',
+                                          fontWeight: 700
+                                        }}
+                                        title="המר למנוי שנתי מלא (365 ימים)"
+                                      >
+                                        שדרג למנוי
+                                      </button>
                                     </>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpgradeToPaid(u)}
+                                      className="btn-secondary-sm"
+                                      style={{
+                                        fontSize: '10px',
+                                        padding: '2px 6px',
+                                        background: '#f8fafc',
+                                        color: '#334155',
+                                        borderColor: '#cbd5e1'
+                                      }}
+                                      title="הארך את המנוי ב-365 ימים נוספים"
+                                    >
+                                      הארך בשנה (+365)
+                                    </button>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpgradeToPaid(u)}
-                                    className="btn-secondary-sm"
-                                    style={{
-                                      fontSize: '10px',
-                                      padding: '2px 6px',
-                                      background: '#f0fdf4',
-                                      color: '#15803d',
-                                      borderColor: '#86efac',
-                                      fontWeight: 700
-                                    }}
-                                    title="המר למנוי שנתי מלא (365 ימים)"
-                                  >
-                                    שדרג למנוי
-                                  </button>
                                 </div>
                               )}
                             </div>
@@ -1773,7 +1809,66 @@ export default function AdminAllowlistModal({
           {/* TAB 5: SETTINGS */}
           {activeTab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Gemini Key */}
+              {/* Cloud AI Backend Status Banner */}
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '12px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck size={20} style={{ color: '#16a34a' }} />
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#14532d' }}>
+                      שרת AI ענן מאובטח (Google Cloud Functions v2)
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      padding: '3px 10px',
+                      borderRadius: '999px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      border: '1px solid #bbf7d0'
+                    }}
+                  >
+                    <CheckCircle2 size={13} />
+                    <span>פעיל ומחובר • Blaze Plan</span>
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '12px', color: '#166534', lineHeight: 1.5 }}>
+                  כל בקשות ה-AI מנותבות דרך שרת ה-Proxy המאובטח של TALA המצויד במפתח GCP משולם (Enterprise Quota), סינון PII אוטומטי והגנת הזרקת פקודות.
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                    fontSize: '11px',
+                    color: '#15803d',
+                    paddingTop: '4px',
+                    borderTop: '1px dashed #bbf7d0'
+                  }}
+                >
+                  <span>• גרסת שרת: <strong>Node.js 22 LTS</strong></span>
+                  <span>• שרת מארח: <strong>us-central1 (Cloud Run v2)</strong></span>
+                  <span>• סטטוס מכסות: <strong>ללא הגבלת חינמי (1,000+ RPM)</strong></span>
+                </div>
+              </div>
+
+              {/* Gemini Fallback Key */}
               <div
                 style={{
                   background: 'linear-gradient(135deg, #eaf3fc 0%, #f3eefc 100%)',
@@ -1787,14 +1882,14 @@ export default function AdminAllowlistModal({
               >
                 <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e3a5f', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Sparkles size={16} style={{ color: '#6d28d9' }} />
-                  <span>מפתח Gemini AI API (מנהל מערכת):</span>
+                  <span>מפתח גיבוי מקומי לדפדפן (אופציונלי):</span>
                 </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     type={showGeminiKey ? 'text' : 'password'}
                     value={geminiApiKey || ''}
                     onChange={(e) => onChangeGeminiApiKey && onChangeGeminiApiKey(e.target.value)}
-                    placeholder="הזן מפתח AI (AI Studio Gemini Key)..."
+                    placeholder="הזן מפתח גיבוי מקומי (AI Studio)..."
                     style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
                   />
                   <button
@@ -1807,7 +1902,7 @@ export default function AdminAllowlistModal({
                   </button>
                 </div>
                 <span style={{ fontSize: '11px', color: '#64748b' }}>
-                  מפתח זה מאפשר הפעלת Gemini AI (הצעת ניסוחים, שאלות מנחות ודוחות) ישירות בדפדפן אם פונקציית הענן חסומה.
+                  מפתח זה נשמר מקומית בלבד בדפדפן ומשמש כגיבוי חירום בלבד אם שרת הענן אינו זמין. בפעילות רגילה המערכת משתמשת אוטומטית בשרת הענן המאובטח שלמעלה.
                 </span>
               </div>
 

@@ -557,6 +557,19 @@ export default function App() {
     saveAllowedUsers(hashedList);
     saveAllowedUsersToCloud(hashedList);
 
+    // Sync currentUser session if the currently active user was modified
+    if (currentUser?.email) {
+      const activeEmailLower = currentUser.email.trim().toLowerCase();
+      const myUpdated = hashedList.find(
+        (u) => (u.email || '').toLowerCase() === activeEmailLower
+      );
+      if (myUpdated) {
+        const syncedCurrent = { ...currentUser, ...myUpdated };
+        setCurrentUser(syncedCurrent);
+        safeSetStorageJson(SESSION_USER_KEY, syncedCurrent);
+      }
+    }
+
     if (
       editMeta &&
       editMeta.oldEmail &&
