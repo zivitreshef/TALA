@@ -1066,10 +1066,10 @@ export default function App() {
       recommendations: '',
       status: 'בטיוטה',
       lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
-      stage: stageInfo.stage,
-      stageSource: stageInfo.stageSource,
-      stageReason: stageInfo.stageReason,
-      stageUpdatedAt: stageInfo.stageUpdatedAt,
+      stage: 'school',
+      stageSource: 'user_explicit',
+      stageReason: 'בחירת ברירת מחדל: בית ספר',
+      stageUpdatedAt: new Date().toISOString(),
       goals: []
     };
 

@@ -203,6 +203,16 @@ ${prompt}`;
 }
 
 export function detectStudentStage(fields = {}, referenceDate) {
+  // 0. User explicit selection (highest priority)
+  if (fields.stageSource === 'user_explicit' && (fields.stage === 'kindergarten' || fields.stage === 'school')) {
+    return {
+      stage: fields.stage,
+      stageSource: 'user_explicit',
+      stageReason: fields.stageReason || `User explicit selection: ${fields.stage}`,
+      stageUpdatedAt: fields.stageUpdatedAt || new Date().toISOString()
+    };
+  }
+
   const {
     educationalFramework,
     מסגרת_חינוכית,

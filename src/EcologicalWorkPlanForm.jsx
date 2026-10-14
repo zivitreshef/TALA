@@ -345,6 +345,21 @@ export default function EcologicalWorkPlanForm({
       goals: normalizedGoals
     };
 
+    const stageInfo = detectStudentStage(
+      {
+        educationalFramework: st?.educationalFramework,
+        teacherFreeText: st?.teacherFreeText,
+        birthDate: st?.birthDate
+      },
+      baseSnapshot.date || st?.date
+    );
+    const resolvedStage = (st?.stage === 'kindergarten' || st?.stage === 'school')
+      ? st.stage
+      : (stageInfo.stage === 'kindergarten' ? 'kindergarten' : 'school');
+    const resolvedStageSource = st?.stageSource || (st?.stage ? 'user_explicit' : (stageInfo.stageSource || 'user_explicit'));
+    const resolvedStageReason = st?.stageReason || (st?.stage ? 'בחירת משתמש' : stageInfo.stageReason);
+    const resolvedStageUpdatedAt = st?.stageUpdatedAt || stageInfo.stageUpdatedAt;
+
     if (hasTachiStrengthsOnly && isTalaPlanType(currentPlanType)) {
       const tachiKey = getPlanTypeStorageKey(currentYear, 'תח"י (תוכנית חינוכית יחידנית)');
       const talaKey = getPlanTypeStorageKey(currentYear, 'תל"א (תוכנית לימודים אישית)');
@@ -363,6 +378,10 @@ export default function EcologicalWorkPlanForm({
         ...emptyTalaReport,
         schoolYear: currentYear,
         gender: initialGender,
+        stage: resolvedStage,
+        stageSource: resolvedStageSource,
+        stageReason: resolvedStageReason,
+        stageUpdatedAt: resolvedStageUpdatedAt,
         sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
         reportsByYear: existingReports,
         reportsByPlanType: existingReportsByPlanType
@@ -373,14 +392,6 @@ export default function EcologicalWorkPlanForm({
     existingReportsByPlanType[activePlanKey] = baseSnapshot;
     existingReports[currentYear] = baseSnapshot;
 
-    const stageInfo = detectStudentStage(
-      {
-        educationalFramework: st?.educationalFramework,
-        teacherFreeText: st?.teacherFreeText,
-        birthDate: st?.birthDate
-      },
-      baseSnapshot.date || st?.date
-    );
     return {
       ...st,
       ...baseSnapshot,
@@ -389,10 +400,10 @@ export default function EcologicalWorkPlanForm({
       sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
       reportsByYear: existingReports,
       reportsByPlanType: existingReportsByPlanType,
-      stage: stageInfo.stage,
-      stageSource: stageInfo.stageSource,
-      stageReason: stageInfo.stageReason,
-      stageUpdatedAt: stageInfo.stageUpdatedAt
+      stage: resolvedStage,
+      stageSource: resolvedStageSource,
+      stageReason: resolvedStageReason,
+      stageUpdatedAt: resolvedStageUpdatedAt
     };
   };
 
@@ -596,6 +607,8 @@ export default function EcologicalWorkPlanForm({
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const sortedGoals = getSortedGoalBank(goalBank);
   const currentGender = formData.gender || 'boy';
+  const currentStage = formData.stage === 'kindergarten' ? 'kindergarten' : 'school';
+  const isKindergarten = currentStage === 'kindergarten';
   const isReportLocked = Boolean(formData.isLocked);
   const userCanLockReport = canLockReport(formData, currentUser);
   const isTalaMode = isTalaPlanType(formData.planType);
@@ -901,19 +914,26 @@ export default function EcologicalWorkPlanForm({
     if (formData.isLocked && !allowedWhenLocked.has(field)) return;
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
-      if (field === 'educationalFramework' || field === 'teacherFreeText' || field === 'birthDate') {
-        const stageInfo = detectStudentStage(
-          {
-            educationalFramework: next.educationalFramework,
-            teacherFreeText: next.teacherFreeText,
-            birthDate: next.birthDate
-          },
-          next.date
-        );
-        next.stage = stageInfo.stage;
-        next.stageSource = stageInfo.stageSource;
-        next.stageReason = stageInfo.stageReason;
-        next.stageUpdatedAt = stageInfo.stageUpdatedAt;
+      if (field === 'stage') {
+        next.stage = value;
+        next.stageSource = 'user_explicit';
+        next.stageReason = value === 'kindergarten' ? 'בחירת משתמש: גן ילדים' : 'בחירת משתמש: בית ספר';
+        next.stageUpdatedAt = new Date().toISOString();
+      } else if (field === 'educationalFramework' || field === 'teacherFreeText' || field === 'birthDate') {
+        if (next.stageSource !== 'user_explicit') {
+          const stageInfo = detectStudentStage(
+            {
+              educationalFramework: next.educationalFramework,
+              teacherFreeText: next.teacherFreeText,
+              birthDate: next.birthDate
+            },
+            next.date
+          );
+          next.stage = stageInfo.stage === 'kindergarten' ? 'kindergarten' : 'school';
+          next.stageSource = stageInfo.stageSource;
+          next.stageReason = stageInfo.stageReason;
+          next.stageUpdatedAt = stageInfo.stageUpdatedAt;
+        }
       }
       return next;
     });
@@ -2812,6 +2832,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <span><strong>ת.ז:</strong> {getDisplayMaskedField(formData.idNumber)}</span>
               <span><strong>ת.ל:</strong> {getDisplayMaskedField(formData.birthDate)}</span>
               <span><strong>מסגרת חינוכית:</strong> {hideStudentDetailsOnPrint ? maskSensitiveValue(formData.educationalFramework) : formData.educationalFramework}</span>
+              <span><strong>שלב חינוכי:</strong> {isKindergarten ? 'גן ילדים' : 'בית ספר'}</span>
               {formData.planType && <span><strong>סוג תוכנית:</strong> {formData.planType}</span>}
               {formData.address && <span><strong>כתובת:</strong> {getDisplayMaskedField(formData.address)}</span>}
               {formData.phone && <span><strong>טלפון:</strong> {getDisplayMaskedField(formData.phone)}</span>}
@@ -3401,6 +3422,42 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           <div className="form-field">
+            <label>
+              שלב חינוכי: <span style={{ color: '#e11d48', fontWeight: 'bold' }} title="שדה חובה">*</span>
+            </label>
+            <div className="gender-radio-group" role="radiogroup" aria-label="שלב חינוכי">
+              <label className={`gender-radio-option ${currentStage === 'school' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="studentStage"
+                  value="school"
+                  disabled={isReportLocked}
+                  checked={currentStage === 'school'}
+                  onChange={() => {
+                    handleFieldChange('stage', 'school');
+                    setPickerStageFilter(null);
+                  }}
+                />
+                <span>בית ספר</span>
+              </label>
+              <label className={`gender-radio-option ${currentStage === 'kindergarten' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="studentStage"
+                  value="kindergarten"
+                  disabled={isReportLocked}
+                  checked={currentStage === 'kindergarten'}
+                  onChange={() => {
+                    handleFieldChange('stage', 'kindergarten');
+                    setPickerStageFilter(null);
+                  }}
+                />
+                <span>גן ילדים</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="form-field">
             <label>ת.ז:</label>
             <input
               type="text"
@@ -3441,7 +3498,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   setOnboardingTourStep?.(4.5);
                 }
               }}
-              placeholder="שם הגן / בית הספר והכיתה"
+              placeholder={isKindergarten ? 'שם הגן' : 'שם בית הספר והכיתה'}
             />
           </div>
 
@@ -3516,47 +3573,66 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               }}
             >
               <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#475569', marginBottom: '10px' }}>
-                פרטי מסגרת, צוות כיתה ושותפים חינוכיים לתהליך (אופציונלי):
+                {isKindergarten
+                  ? 'פרטי מסגרת, צוות הגן ושותפים חינוכיים לתהליך (אופציונלי):'
+                  : 'פרטי מסגרת, צוות כיתה ושותפים חינוכיים לתהליך (אופציונלי):'}
               </div>
               <div className="personal-details-grid">
                 <div className="form-field">
-                  <label>בית הספר:</label>
+                  <label>{isKindergarten ? 'גן:' : 'בית הספר:'}</label>
                   <input
                     type="text"
                     disabled={isReportLocked}
                     value={formData.schoolName || ''}
                     onChange={(e) => handleFieldChange('schoolName', e.target.value)}
-                    placeholder="שם בית הספר / המוסד החינוכי"
+                    placeholder={isKindergarten ? 'שם הגן' : 'שם בית הספר / המוסד החינוכי'}
                   />
                 </div>
                 <div className="form-field">
-                  <label>כיתה:</label>
-                  <input
-                    type="text"
-                    disabled={isReportLocked}
-                    value={formData.gradeClass || ''}
-                    onChange={(e) => handleFieldChange('gradeClass', e.target.value)}
-                    placeholder="למשל: א׳1 / גן שקד"
-                  />
+                  <label>{isKindergarten ? 'שלב גן:' : 'כיתה:'}</label>
+                  {isKindergarten ? (
+                    <select
+                      disabled={isReportLocked}
+                      value={formData.gradeClass || ''}
+                      onChange={(e) => handleFieldChange('gradeClass', e.target.value)}
+                    >
+                      <option value="">-- בחרי שלב גן --</option>
+                      <option value="טרום-טרום חובה: גילאי 3–4">טרום-טרום חובה: גילאי 3–4</option>
+                      <option value="טרום חובה: גילאי 4–5">טרום חובה: גילאי 4–5</option>
+                      <option value="גן חובה: גילאי 5–6">גן חובה: גילאי 5–6</option>
+                      {formData.gradeClass &&
+                        !['טרום-טרום חובה: גילאי 3–4', 'טרום חובה: גילאי 4–5', 'גן חובה: גילאי 5–6'].includes(formData.gradeClass) && (
+                          <option value={formData.gradeClass}>{formData.gradeClass}</option>
+                        )}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      disabled={isReportLocked}
+                      value={formData.gradeClass || ''}
+                      onChange={(e) => handleFieldChange('gradeClass', e.target.value)}
+                      placeholder="למשל: א׳1 / גן שקד"
+                    />
+                  )}
                 </div>
                 <div className="form-field">
-                  <label>מחנכת:</label>
+                  <label>{isKindergarten ? 'גננת:' : 'מחנכת:'}</label>
                   <input
                     type="text"
                     disabled={isReportLocked}
                     value={formData.homeroomTeacher || ''}
                     onChange={(e) => handleFieldChange('homeroomTeacher', e.target.value)}
-                    placeholder="שם מחנכת הכיתה / הגננת"
+                    placeholder={isKindergarten ? 'שם הגננת' : 'שם מחנכת הכיתה / הגננת'}
                   />
                 </div>
                 <div className="form-field">
-                  <label>מורת שילוב:</label>
+                  <label>{isKindergarten ? 'גננת שילוב:' : 'מורת שילוב:'}</label>
                   <input
                     type="text"
                     disabled={isReportLocked}
                     value={formData.integrationTeacher || ''}
                     onChange={(e) => handleFieldChange('integrationTeacher', e.target.value)}
-                    placeholder="שם מורת השילוב"
+                    placeholder={isKindergarten ? 'שם גננת השילוב' : 'שם מורת השילוב'}
                   />
                 </div>
                 <div className="form-field">
@@ -3590,7 +3666,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   />
                 </div>
                 <div className="form-field">
-                  <label>מתכללת בית ספרית מטעם המתי"א:</label>
+                  <label>מתכללת מטעם המתי"א:</label>
                   <input
                     type="text"
                     disabled={isReportLocked}

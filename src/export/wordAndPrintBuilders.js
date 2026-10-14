@@ -11,16 +11,17 @@ import {
 } from '../goalBankData';
 
 export function getAdditionalMetadataItems(formData = {}, hideDetails = false) {
+  const isKindergarten = formData.stage === 'kindergarten';
   const rawItems = [
-    { label: 'בית הספר', value: formData.schoolName, sensitive: true },
-    { label: 'כיתה', value: formData.gradeClass, sensitive: false },
-    { label: 'מחנכת', value: formData.homeroomTeacher, sensitive: false },
-    { label: 'מורת שילוב', value: formData.integrationTeacher, sensitive: false },
+    { label: isKindergarten ? 'גן' : 'בית הספר', value: formData.schoolName, sensitive: true },
+    { label: isKindergarten ? 'שלב גן' : 'כיתה', value: formData.gradeClass, sensitive: false },
+    { label: isKindergarten ? 'גננת' : 'מחנכת', value: formData.homeroomTeacher, sensitive: false },
+    { label: isKindergarten ? 'גננת שילוב' : 'מורת שילוב', value: formData.integrationTeacher, sensitive: false },
     { label: 'שותפים נוספים לכתיבת התוכנית', value: formData.additionalPartners, sensitive: false },
     { label: 'תומכת למידה', value: formData.learningSupportAssistant, sensitive: false },
     { label: 'יועצת', value: formData.counselorName, sensitive: false },
     { label: 'פסיכולוגית', value: formData.psychologistName, sensitive: false },
-    { label: 'מתכללת מתי"א', value: formData.matyaCoordinator, sensitive: false },
+    { label: 'מתכללת מטעם המתי"א', value: formData.matyaCoordinator, sensitive: false },
     { label: 'מטפלת רגשית', value: formData.emotionalTherapist, sensitive: false },
     { label: 'צוות פרא-רפואי', value: formData.paraMedicalTeam, sensitive: false }
   ];
