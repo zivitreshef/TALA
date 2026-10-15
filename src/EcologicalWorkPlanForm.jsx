@@ -26,7 +26,8 @@ import {
   Loader2,
   X,
   Lock,
-  Unlock
+  Unlock,
+  MessageCircle
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
@@ -270,9 +271,9 @@ export default function EcologicalWorkPlanForm({
   // Auto-scroll smooth effect when onboarding tour step advances
   useEffect(() => {
     if (!onboardingTourStep) return;
-    if (onboardingTourStep === 2 || onboardingTourStep === 3 || onboardingTourStep === 4) {
+    if (onboardingTourStep === 2 || onboardingTourStep === 3 || onboardingTourStep === 3.5 || onboardingTourStep === 4) {
       section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else if (onboardingTourStep === 5) {
+    } else if (onboardingTourStep === 4.5 || onboardingTourStep === 5) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else if (onboardingTourStep === 6) {
       section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2614,7 +2615,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             {onboardingTourStep === 7 && (
               <div className="onboarding-tour-arrow-box" style={{ top: '44px', right: '0' }}>
                 <span className="tour-arrow-anim">☝️</span>
-                <span>צעד 7: לחצי כאן לשמירת התקדמות וסיום התוכנית!</span>
+                <span>צעד 8: לחצי כאן לשמירת התקדמות וסיום התוכנית!</span>
               </div>
             )}
             <button
@@ -3312,7 +3313,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           {onboardingTourStep === 4.5 && (
             <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
               <span className="tour-arrow-anim">👇</span>
-              <span>צעד 4: בחרי סוג תוכנית (תל"א / תח"י)</span>
+              <span>צעד 5: בחרי סוג תוכנית (תל"א / תח"י)</span>
             </div>
           )}
           <span className="plan-type-label">סוג התוכנית:</span>
@@ -3399,7 +3400,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   checked={currentGender === 'boy'}
                   onChange={() => {
                     handleGenderChange('boy');
-                    if (onboardingTourStep === 3) setOnboardingTourStep?.(4);
+                    if (onboardingTourStep === 3) setOnboardingTourStep?.(3.5);
                   }}
                 />
                 <span>בן</span>
@@ -3413,7 +3414,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   checked={currentGender === 'girl'}
                   onChange={() => {
                     handleGenderChange('girl');
-                    if (onboardingTourStep === 3) setOnboardingTourStep?.(4);
+                    if (onboardingTourStep === 3) setOnboardingTourStep?.(3.5);
                   }}
                 />
                 <span>בת</span>
@@ -3421,11 +3422,17 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </div>
           </div>
 
-          <div className="form-field">
+          <div className="form-field" style={{ position: 'relative' }}>
+            {onboardingTourStep === 3.5 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
+                <span className="tour-arrow-anim">👇</span>
+                <span>צעד 3: בחרי שלב חינוכי (בית ספר / גן ילדים)</span>
+              </div>
+            )}
             <label>
               שלב חינוכי: <span style={{ color: '#e11d48', fontWeight: 'bold' }} title="שדה חובה">*</span>
             </label>
-            <div className="gender-radio-group" role="radiogroup" aria-label="שלב חינוכי">
+            <div className={`gender-radio-group ${onboardingTourStep === 3.5 ? 'tour-highlight-input' : ''}`} role="radiogroup" aria-label="שלב חינוכי">
               <label className={`gender-radio-option ${currentStage === 'school' ? 'selected' : ''}`}>
                 <input
                   type="radio"
@@ -3436,6 +3443,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   onChange={() => {
                     handleFieldChange('stage', 'school');
                     setPickerStageFilter(null);
+                    if (onboardingTourStep === 3.5) setOnboardingTourStep?.(4);
                   }}
                 />
                 <span>בית ספר</span>
@@ -3450,6 +3458,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   onChange={() => {
                     handleFieldChange('stage', 'kindergarten');
                     setPickerStageFilter(null);
+                    if (onboardingTourStep === 3.5) setOnboardingTourStep?.(4);
                   }}
                 />
                 <span>גן ילדים</span>
@@ -3483,7 +3492,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             {onboardingTourStep === 4 && (
               <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
                 <span className="tour-arrow-anim">👇</span>
-                <span>צעד 3: הזני מסגרת חינוכית</span>
+                <span>צעד 4: הזני מסגרת חינוכית ({isKindergarten ? 'שם הגן' : 'שם בית הספר'})</span>
               </div>
             )}
             <label>מסגרת חינוכית:</label>
@@ -3802,7 +3811,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 {onboardingTourStep === 6 && (
                   <div className="onboarding-tour-arrow-box" style={{ top: '-46px', left: '0' }}>
                     <span className="tour-arrow-anim">👈</span>
-                    <span>צעד 6: לחצי כאן לניתוח וגזירת מטרות אוטומטית ב-AI</span>
+                    <span>צעד 7: לחצי כאן לניתוח וגזירת מטרות אוטומטית ב-AI</span>
                   </div>
                 )}
                 <span className="submit-helper-text">
@@ -4226,7 +4235,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               {onboardingTourStep === 5 && (
                 <div className="onboarding-tour-arrow-box" style={{ top: '-48px', left: '50%', transform: 'translateX(-50%)' }}>
                   <span className="tour-arrow-anim">👇</span>
-                  <span>צעד 4: לחצי כאן להוספת מטרה ראשונה</span>
+                  <span>צעד 6: לחצי כאן להוספת מטרות מהמאגר האקולוגי</span>
                 </div>
               )}
               <button
@@ -5951,24 +5960,43 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           <div
             className="modal-container"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '520px', padding: '24px', textAlign: 'center', borderRadius: '20px' }}
+            style={{ maxWidth: '520px', padding: '28px 24px', textAlign: 'center', borderRadius: '20px' }}
           >
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.2)' }}>
               <CheckCircle2 size={36} />
             </div>
             <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', color: '#14532d', fontWeight: 800 }}>
-              🎉 כל הכבוד! תהליך ההדרכה הושלם בהצלחה!
+              🎉 כל הכבוד! תוכנית העבודה נשמרה בהצלחה!
             </h3>
-            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#166534', lineHeight: 1.6 }}>
-              תוכנית העבודה החדשה נשמרה בהצלחה במערכת ובענן. כעת תוכלי להמשיך לערוך, להדפיס, לייצא ל-Word או לשתף עם שאר חברי הצוות!
+            <p style={{ margin: '0 0 18px 0', fontSize: '14px', color: '#166534', lineHeight: 1.6 }}>
+              תוכנית העבודה הראשונה שלך נשמרה בענן. כעת תוכלי להמשיך לעדכן, להוסיף מטרות, להדפיס, לייצא ל-Word או לשתף עם שאר חברי הצוות.
             </p>
+
+            <div style={{
+              background: '#f0fdf4',
+              border: '1.5px solid #86efac',
+              borderRadius: '12px',
+              padding: '14px 16px',
+              margin: '0 0 20px 0',
+              textAlign: 'right',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px'
+            }}>
+              <MessageCircle size={24} style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ fontSize: '13.5px', color: '#166534', lineHeight: 1.5 }}>
+                <strong>אנחנו תמיד כאן בשבילך!</strong>
+                <div>לכל שאלה, רעיון, קושי או משוב – את מוזמנת לפנות אלינו בכל עת באמצעות כפתור <strong>"עזרה"</strong> בסרגל העליון (תמיכה, וואטסאפ או פנייה ישירה).</div>
+              </div>
+            </div>
+
             <button
               type="button"
               className="btn-inside-landing-primary"
               onClick={() => setShowTourCompletionModal(false)}
-              style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', width: '100%', justifyContent: 'center', padding: '12px' }}
+              style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', width: '100%', justifyContent: 'center', padding: '12px', fontSize: '15px', fontWeight: 700 }}
             >
-              <span>הבנתי, תודה! מעבר לעבודה במערכת</span>
+              <span>מעבר לעבודה שוטפת במערכת 👍</span>
             </button>
           </div>
         </div>

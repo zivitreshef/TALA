@@ -16,7 +16,8 @@ import {
   LogOut,
   Info,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  BookOpen
 } from 'lucide-react';
 
 export default function TrialUpgradeModal({
@@ -24,6 +25,7 @@ export default function TrialUpgradeModal({
   onClose,
   currentUser,
   onOpenSurvey,
+  onOpenIntroVideo,
   onSubmitSupportMessage,
   remainingDays = null,
   isExpired = false,
@@ -429,6 +431,59 @@ export default function TrialUpgradeModal({
               <MessageCircle size={20} />
               <span>{isNonTrialUser ? 'שיחה ישירה בוואטסאפ עם זיוית' : 'פנייה בוואטסאפ להסדרת מנוי'}</span>
             </a>
+          </div>
+
+          {/* Tutorial Video Section */}
+          <div
+            style={{
+              background: '#f0fdf4',
+              border: '1.5px solid #86efac',
+              borderRadius: '12px',
+              padding: '14px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <BookOpen size={22} color="#16a34a" style={{ flexShrink: 0 }} />
+              <div>
+                <strong style={{ color: '#14532d', fontSize: '13.5px' }}>
+                  סרטון הדרכה והיכרות עם TALA (3 דק׳)
+                </strong>
+                <div style={{ fontSize: '12.5px', color: '#166534' }}>
+                  הדרכה קצרה וממוקדת: בניית תוכנית אקולוגית, בחירת מטרות מהמאגר והפקת דוחות מקצועיים.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary-sm"
+              onClick={() => {
+                if (!isExpired && onClose) onClose();
+                if (typeof onOpenIntroVideo === 'function') {
+                  onOpenIntroVideo();
+                }
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)'
+              }}
+            >
+              <BookOpen size={16} />
+              <span>צפייה בסרטון</span>
+            </button>
           </div>
 
           {/* Survey Button Section */}

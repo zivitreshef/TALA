@@ -99,6 +99,9 @@ export function AllowlistAuthGate({
   const [contactNotes, setContactNotes] = useState('');
   const [contactSentSuccess, setContactSentSuccess] = useState(false);
 
+  // Introductory Video modal state on login page
+  const [showIntroVideoModal, setShowIntroVideoModal] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -218,6 +221,34 @@ export function AllowlistAuthGate({
             <p className="auth-subtitle">
               תוכנית עבודה שנתית – תל"א (תוכנית לימודים אישית) / תח"י (תוכנית חינוכית יחידנית) ברוח הגישה האקולוגית
             </p>
+
+            <button
+              type="button"
+              className="btn-auth-watch-video"
+              onClick={() => setShowIntroVideoModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '9px 18px',
+                fontSize: '13.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+                marginTop: '10px',
+                transition: 'all 0.2s ease',
+                width: 'fit-content'
+              }}
+              title="צפייה בסרטון היכרות והדרכה קצר על מערכת TALA"
+            >
+              <BookOpen size={17} />
+              <span>🎥 צפייה בסרטון היכרות והדרכה (3 דק׳)</span>
+            </button>
           </div>
 
           <div className="auth-features-list">
@@ -507,6 +538,49 @@ export function AllowlistAuthGate({
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Introductory Video Player Modal */}
+      {showIntroVideoModal && (
+        <div className="modal-backdrop" onClick={() => setShowIntroVideoModal(false)} dir="rtl">
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '820px', padding: '0', overflow: 'hidden', borderRadius: '16px' }}
+          >
+            <div className="modal-header" style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <div className="modal-header-title">
+                <BookOpen size={20} className="text-primary" />
+                <h3>סרטון הדרכה – היכרות עם מערכת TALA</h3>
+              </div>
+              <button type="button" className="btn-icon-close" onClick={() => setShowIntroVideoModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ background: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+              <video
+                controls
+                autoPlay
+                style={{ width: '100%', maxHeight: '75vh', display: 'block' }}
+                src="./tala_intro_video.mp4"
+              >
+                הדפדפן שלך אינו תומך בנגן הווידאו.
+              </video>
+            </div>
+            <div className="modal-footer" style={{ padding: '12px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#64748b' }}>
+                הופק באמצעות NotebookLM • הדרכה קצרה וממוקדת
+              </span>
+              <button
+                type="button"
+                className="btn-primary-sm"
+                onClick={() => setShowIntroVideoModal(false)}
+              >
+                סגור נגן
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1082,6 +1082,71 @@ export default function App() {
     }));
   };
 
+  // Load a rich sample student plan for quick onboarding exploration
+  const handleLoadSampleStudent = () => {
+    if (!currentUser) return;
+    const newId = 'st_sample_' + Date.now();
+    const todayStr = new Date().toLocaleDateString('he-IL');
+    const sampleStudentPlan = {
+      id: newId,
+      ownerEmail: currentUser.email.trim().toLowerCase(),
+      date: todayStr,
+      schoolYear: 'תשפ"ו (2025-2026)',
+      planType: 'תל"א (תוכנית לימודים אישית)',
+      name: 'יונתן כהן (תוכנית לדוגמה)',
+      gender: 'boy',
+      idNumber: '012345678',
+      birthDate: '15/04/2018',
+      educationalFramework: 'בית ספר ארזים',
+      gradeClass: 'כיתה ב׳2',
+      address: 'הדרור 14, תל אביב',
+      phone: '050-1234567',
+      stage: 'school',
+      stageSource: 'user_explicit',
+      stageReason: 'תוכנית לדוגמה להתרשמות',
+      stageUpdatedAt: new Date().toISOString(),
+      teacherFreeText: 'יונתן ילד מקסים וסקרן, אוהב מאוד לצייר ולבנות בלגו. מפגין קושי מסוים בשמירה על קשב בריכוז ממושך ומעברים בין פעילויות. משתתף בהתלהבות בשיעורי ספורט ומוזיקה ויוצר קשרים חברתיים בקלות.',
+      strengthsExisting: 'יכולת ביטוי מילולית עשירה, אמפתיה לחברים, מוטיבציה גבוהה להצלחה.',
+      strengthsToEmpower: 'התמדה במשימות כתובות, ויסות תנועתי בכיתה, שימוש בכרטיסיות ניווט עצמי.',
+      recommendations: 'מומלץ לשלב הפוגות תנועתיות קצרות, חיזוקים חיוביים תכופים, ותיווך מותאם במעברים.',
+      status: 'בטיוטה',
+      lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
+      goals: [
+        {
+          id: 'g_sample_1',
+          domain: 'תפקוד התנהגותי ורגשי',
+          subDomain: 'ויסות והתארגנות',
+          mainGoal: 'יונתן ישב במקומו וישתתף במליאת הבוקר במשך 15 דקות רצופות תוך שימוש באביזר תחושתי.',
+          performanceStandard: '4 מתוך 5 ימים בשבוע',
+          timeline: 'אמצע שנה (פברואר)',
+          environment: 'כיתת אם / מליאה',
+          partners: 'מחנכת, מורת שילוב, סייעת',
+          toolsAndMethods: 'לוח זמנים חזותי, כרית ישיבה תחושתית, חיזוק מותאם בתום המליאה'
+        },
+        {
+          id: 'g_sample_2',
+          domain: 'תפקוד שפתי ואורייני',
+          subDomain: 'קריאה וכתיבה',
+          mainGoal: 'יונתן יקרא פסקה קצרה (3-4 שורות) ויענה על 2 שאלות איתור מידע ברמת דיוק של 80%.',
+          performanceStandard: 'ב-3 מפגשים פרטניים עוקבים',
+          timeline: 'סוף שנה (יוני)',
+          environment: 'חדר שילוב / למידה פרטנית',
+          partners: 'מורת שילוב, הורים',
+          toolsAndMethods: 'דפי עבודה מוגדלים, סימון מרקר להדגשת מילות מפתח'
+        }
+      ]
+    };
+
+    setStudents((prev) => [sampleStudentPlan, ...prev]);
+    saveStudentToCloud(sampleStudentPlan);
+    setSelectedStudentId(newId);
+    setExpandedFrameworks((prev) => ({
+      ...prev,
+      'בית ספר ארזים': true
+    }));
+    setOnboardingTourStep(0);
+  };
+
   const handleDeleteStudent = (studentObj, e) => {
     if (e) e.stopPropagation();
     if (!isStudentOwnedByUser(studentObj, currentUser)) return;
@@ -1495,6 +1560,7 @@ export default function App() {
           remainingDays={0}
           onLogout={performLogout}
           onOpenSurvey={() => setShowFeedbackSurveyModal(true)}
+          onOpenIntroVideo={() => setShowIntroVideoModal(true)}
           onSubmitSupportMessage={(payload) => {
             handleSubmitAdminRequest({
               id: 'trial_inquiry_' + Date.now(),
@@ -1726,49 +1792,36 @@ export default function App() {
             </button>
           )}
 
-          {!currentUser.isTrialUser && (
-            <button
-              type="button"
-              className="btn-header-bank"
-              onClick={() => setShowTrialUpgradeModal(true)}
-              title="תמיכה, וואטסאפ ופנייה ישירה למנהלת המערכת"
-              style={{
-                position: 'relative',
-                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                color: '#166534',
-                borderColor: '#86efac',
-                fontWeight: 600
-              }}
-            >
-              <MessageCircle size={16} />
-              <span>עזרה</span>
-            </button>
-          )}
-
-          {!currentUser.surveyCompleted && !currentUser.surveyDismissed && (
-            <button
-              type="button"
-              className="btn-header-bank"
-              onClick={() => setShowFeedbackSurveyModal(true)}
-              title="מילוי שאלון משוב חוויית משתמש (אופציונלי)"
-              style={{ position: 'relative' }}
-            >
-              <MessageSquareHeart size={16} />
-              <span>משוב על המערכת</span>
-              {currentUser.role !== 'admin' && (
-                <span
-                  style={{
-                    width: '7px',
-                    height: '7px',
-                    borderRadius: '50%',
-                    background: '#8b5cf6',
-                    display: 'inline-block',
-                    marginRight: '4px'
-                  }}
-                />
-              )}
-            </button>
-          )}
+          {/* Unified Help & Support Hub */}
+          <button
+            type="button"
+            className="btn-header-bank"
+            onClick={() => setShowTrialUpgradeModal(true)}
+            title="מרכז עזרה, סרטון הדרכה, וואטסאפ ומשוב"
+            style={{
+              position: 'relative',
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+              color: '#166534',
+              borderColor: '#86efac',
+              fontWeight: 600
+            }}
+          >
+            <MessageCircle size={16} />
+            <span>עזרה</span>
+            {!currentUser.surveyCompleted && !currentUser.surveyDismissed && currentUser.role !== 'admin' && (
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: '#16a34a',
+                  display: 'inline-block',
+                  marginRight: '4px'
+                }}
+                title="ישנו שאלון משוב פתוח"
+              />
+            )}
+          </button>
 
           {currentUser.role === 'admin' && (
             <button
@@ -2226,81 +2279,149 @@ export default function App() {
                   <div
                     style={{
                       gridColumn: '1 / -1',
-                      background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
+                      background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)',
                       border: '1.5px solid #86efac',
                       borderRadius: '16px',
-                      padding: '20px 24px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '16px',
-                      marginBottom: '8px',
-                      boxShadow: '0 4px 12px rgba(22, 101, 52, 0.08)'
+                      padding: '24px 28px',
+                      marginBottom: '16px',
+                      boxShadow: '0 4px 14px rgba(22, 101, 52, 0.06)'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: '1 1 300px' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '18px' }}>
                       <div
                         style={{
-                          width: '48px',
-                          height: '48px',
+                          width: '46px',
+                          height: '46px',
                           borderRadius: '12px',
-                          background: '#22c55e',
+                          background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                           color: '#ffffff',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          flexShrink: 0
+                          flexShrink: 0,
+                          boxShadow: '0 3px 8px rgba(22, 163, 74, 0.25)'
                         }}
                       >
-                        <Sparkles size={26} />
+                        <Sparkles size={24} />
                       </div>
                       <div>
-                        <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 800, color: '#14532d' }}>
-                          צעד ראשון במערכת TALA: יצירת תוכנית העבודה הראשונה שלך
-                        </h4>
-                        <p style={{ margin: 0, fontSize: '13px', color: '#166534', lineHeight: 1.5 }}>
-                          ברוכה הבאה! לחצי על הכפתור "צור תוכנית עבודה" כדי להתחיל. המערכת תלווה אותך צעד אחר צעד בהגדרת הפרופיל, בחירת מטרות מהמאגר והפקה מקצועית.
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                          <h4 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#14532d' }}>
+                            צעד ראשון במערכת TALA: יצירת תוכנית העבודה הראשונה שלך
+                          </h4>
+                          <span
+                            style={{
+                              background: '#dcfce7',
+                              color: '#15803d',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              border: '1px solid #86efac'
+                            }}
+                          >
+                            הדרכה מלווה
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '13.5px', color: '#166534', lineHeight: 1.55 }}>
+                          ברוכה הבאה! לחצי על הכפתור הירוק כדי להתחיל. המערכת תלווה אותך שלב אחר שלב: הזנת פרטי התלמיד/ה, בחירת שלב חינוכי (גן/בי"ס), מטרות מהמאגר האקולוגי ושמירה מאובטחת.
                         </p>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px',
+                        paddingTop: '16px',
+                        borderTop: '1px solid rgba(134, 239, 172, 0.5)'
+                      }}
+                    >
+                      {/* Dominant Primary CTA */}
                       <button
                         type="button"
-                        className="btn-inside-landing-primary"
-                        onClick={() => setShowIntroVideoModal(true)}
-                        style={{
-                          background: '#ffffff',
-                          color: '#166534',
-                          border: '1.5px solid #86efac',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                        className="btn-inside-landing-primary tour-highlight-btn"
+                        onClick={() => {
+                          handleAddNewStudent();
+                          setOnboardingTourStep(2);
                         }}
-                        title="צפייה בסרטון הדרכה קצר על עבודה עם מערכת TALA"
+                        style={{
+                          background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: '14.5px',
+                          padding: '11px 22px',
+                          borderRadius: '10px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          cursor: 'pointer',
+                          border: 'none',
+                          boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)'
+                        }}
                       >
-                        <BookOpen size={18} style={{ color: '#16a34a' }} />
-                        <span>🎥 סרטון הדרכה</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-inside-landing-primary"
-                        onClick={() => setOnboardingTourStep(1)}
-                        style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', position: 'relative' }}
-                      >
+                        <span className="tour-arrow-anim-horizontal" style={{ fontSize: '16px' }}>👈</span>
                         <UserPlus size={18} />
-                        <span>יצירת תלמיד/ה ראשון/ה כעת</span>
+                        <span>לחצי כאן להתחלה: יצירת תוכנית עבודה ראשונה</span>
                       </button>
+
+                      {/* Secondary Options Group */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn-inside-landing-primary"
+                          onClick={handleLoadSampleStudent}
+                          style={{
+                            background: '#ffffff',
+                            color: '#0369a1',
+                            border: '1.5px solid #bae6fd',
+                            borderRadius: '10px',
+                            padding: '8px 14px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                          title="טעינת תלמיד לדוגמה עם יעדים ומטרות מלאים להתרשמות נוחה"
+                        >
+                          <Sparkles size={15} style={{ color: '#0284c7' }} />
+                          <span>צפייה בתוכנית לדוגמה</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn-inside-landing-primary"
+                          onClick={() => setShowIntroVideoModal(true)}
+                          style={{
+                            background: '#ffffff',
+                            color: '#475569',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '10px',
+                            padding: '8px 14px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                          title="צפייה בסרטון הדרכה קצר על עבודה עם מערכת TALA"
+                        >
+                          <BookOpen size={15} style={{ color: '#64748b' }} />
+                          <span>סרטון הדרכה (3 דק׳)</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Card 1: Create New Student */}
                 <div className="inside-landing-card create-card" style={{ position: 'relative' }}>
-                  {onboardingTourStep === 1 && (
-                    <div className="onboarding-tour-arrow-box" style={{ top: '-48px', left: '50%', transform: 'translateX(-50%)' }}>
-                      <span className="tour-arrow-anim">👇</span>
-                      <span>לחצי כאן לפתיחת תוכנית עבודה חדשה</span>
-                    </div>
-                  )}
                   <div className="inside-card-icon create-icon">
                     <GraduationCap size={26} />
                   </div>
@@ -2492,6 +2613,10 @@ export default function App() {
         onOpenSurvey={() => {
           setShowTrialUpgradeModal(false);
           setShowFeedbackSurveyModal(true);
+        }}
+        onOpenIntroVideo={() => {
+          setShowTrialUpgradeModal(false);
+          setShowIntroVideoModal(true);
         }}
         onSubmitSupportMessage={(payload) => {
           handleSubmitAdminRequest({
