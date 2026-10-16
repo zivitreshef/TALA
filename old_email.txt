@@ -1,0 +1,79 @@
+const handleResendInvitationEmail = async (userObj) => {
+    setAddUserError('');
+    setInviteStatusBanner('');
+    setSendingInviteForUserId(userObj.id);
+    try {
+      // Since passwords are stored one-way hashed+salted, generate a fresh temporary password for the re-sent invite
+      const freshTempPassword = generateRandomTempPassword();
+      const creds = createPasswordCredentials(freshTempPassword);
+
+      onUpdateAllowedUsers(
+        allowedUsers.map((u) => {
+          if (u.id !== userObj.id) return u;
+          const { accessCode: _removed, ...rest } = u;
+          return {
+            ...rest,
+            ...creds,
+            mustChangePassword: true,
+            active: true,
+            lockedOut: false,
+            failedLoginAttempts: 0
+          };
+        })
+      );
+
+      await sendUserInvitationEmailInBackground({
+        config: emailEngineConfig,
+        userName: userObj.name,
+        userEmail: userObj.email,
+        userTitle: userObj.title,
+        tempPassword: freshTempPassword,
+        siteUrl: 'https://zivitreshef.github.io/TALA/'
+      });
+
+      setInviteStatusBanner(
+        `≡ƒô¿ ╫₧╫Ö╫Ö╫£ ╫ö╫û╫₧╫á╫ö ╫ò╫ö╫ô╫¿╫¢╫ö ╫á╫⌐╫£╫ù ╫æ╫ö╫ª╫£╫ù╫ö ╫É╫£ ${userObj.name} (${userObj.email}) ╫ó╫¥ ╫í╫Ö╫í╫₧╫ö ╫û╫₧╫á╫Ö╫¬ ╫ù╫ô╫⌐╫ö!`
+      );
+    } catch (err) {
+      console.error('Error resending invite:', err);
+      setAddUserError(`╫⌐╫Æ╫Ö╫É╫ö ╫æ╫⌐╫£╫Ö╫ù╫¬ ╫₧╫Ö╫Ö╫£ ╫ö╫û╫₧╫á╫ö ╫É╫£ ${userObj.email}: ${err?.message || ''}`);
+    } finally {
+      setSendingInviteForUserId(null);
+    }
+  };
+
+  const handleStartChangePassword = (user) => {
+    setEditingPasswordUserId(user.id);
+    setNewPasswordValue('');
+    setShowEditingPassword(false);
+    setRowPasswordError('');
+  };
+
+  const handleSaveNewPassword = (userId) => {
+    setRowPasswordError('');
+    const trimmed = newPasswordValue.trim();
+    if (!trimmed) {
+      setRowPasswordError('╫á╫É ╫£╫ö╫û╫Ö╫ƒ ╫í╫Ö╫í╫₧╫ö ╫ù╫ô╫⌐╫ö.');
+      return;
+    }
+
+    if (enforcePasswordPolicy) {
+      const validation = validatePasswordPolicy(trimmed);
+      if (!validation.valid) {
+        setRowPasswordError(validation.errorMessage);
+        return;
+      }
+    }
+
+    const creds = createPasswordCredentials(trimmed);
+    onUpdateAllowedUsers(
+      allowedUsers.map((u) => {
+        if (u.id !== userId) return u;
+        const { accessCode: _removed, ...rest } = u;
+        return {
+          ...rest,
+          ...creds,
+          failedLoginAttempts: 0,
+          lockedOut: false,
+          active: true,
+ 

@@ -411,13 +411,13 @@
         </div>
         <div class="pillar-card p-purple">
           <span class="pillar-icon">🔐</span>
-          <h4>הצפנת סיסמאות ואימות</h4>
-          <p>רשימת מורשים סגורה (Allowlist), גיבוב חד-כיווני <span dir="ltr">SHA-256 (256 rounds + 128-bit Salt)</span>, מדיניות סיסמה קשיחה וחסימת Brute-Force.</p>
+          <h4>הצפנת סיסמאות ואימות בשרת</h4>
+          <p>אימות סיסמה מבוסס פונקציית ענן (<span dir="ltr">talaLogin</span>) עם הנפקת Custom Token, גיבוב <span dir="ltr">SHA-256 (256 rounds + Salt)</span>, ונעילת מאגר המשתמשים.</p>
         </div>
         <div class="pillar-card p-emerald">
           <span class="pillar-icon">🛡️</span>
           <h4>בקרת גישה ובידוד נתונים</h4>
-          <p>אימות דו-שכבתי ב-Firebase Auth ובחוקי שרת (<span dir="ltr">firestore.rules</span>), בידוד תיקי תלמידים לפי <span dir="ltr">ownerEmail</span> ושיתוף צוותי מבוקר.</p>
+          <p>אימות מלא ב-Firebase Auth ואכיפת שרת (<span dir="ltr">firestore.rules</span>): חסימת גישה אנונימית (403), בידוד תיקי תלמידים לפי <span dir="ltr">ownerEmail</span> ושיתוף מבוקר.</p>
         </div>
         <div class="pillar-card p-amber">
           <span class="pillar-icon">🕵️‍♀️</span>
@@ -555,7 +555,7 @@
           <rect x="24" y="104" width="272" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.5" />
           <text x="160" y="122" fill="#4c1d95" font-size="11.5" font-weight="700" text-anchor="middle">Cloud Firestore (NoSQL Real-Time DB)</text>
           <text x="160" y="138" fill="#334155" font-size="10" text-anchor="middle">• tala_students/{id} (מופרד לפי ownerEmail)</text>
-          <text x="160" y="152" fill="#334155" font-size="10" text-anchor="middle">• tala_config (Hashed Users, Goal Bank, Settings)</text>
+          <text x="160" y="152" fill="#334155" font-size="10" text-anchor="middle">• tala_config (נעול; allowed_users למנהלים בלבד)</text>
 
           <!-- Bi-directional arrow Client <-> Firebase -->
           <line x1="385" y1="95" x2="313" y2="95" stroke="#6d28d9" stroke-width="2.2" marker-end="url(#arrowPurple)" marker-start="url(#arrowPurple)" />
@@ -707,8 +707,8 @@
           <rect x="148" y="200" width="245" height="76" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2" />
           <text x="270" y="222" fill="#065f46" font-size="11.5" font-weight="700" text-anchor="middle">5. פתיחת סשן ואימות Firebase Auth</text>
           <text x="270" y="239" fill="#334155" font-size="10" text-anchor="middle">• חותמת תאריך יומית: sessionDate (YYYY-MM-DD)</text>
-          <text x="270" y="254" fill="#334155" font-size="10" text-anchor="middle">• חיבור שקט ל-Firebase Auth (JWT Token)</text>
-          <text x="270" y="268" fill="#047857" font-size="9.5" font-weight="600" text-anchor="middle">• מחיקת accessCode גלוי והותרת Hash+Salt בלבד</text>
+          <text x="270" y="254" fill="#334155" font-size="10" text-anchor="middle">• אימות שרת ב-Cloud Function (talaLogin) + Custom Token</text>
+          <text x="270" y="268" fill="#047857" font-size="9.5" font-weight="600" text-anchor="middle">• נעילת allowed_users להרשאות Admin בלבד</text>
 
           <line x1="393" y1="238" x2="445" y2="238" stroke="#1e3a5f" stroke-width="2" marker-end="url(#fcArrow)" />
 
@@ -812,9 +812,9 @@
             בסיס הנתונים בענן של Google מוגן בשתי שכבות: הצפנת <strong>AES-256 במנוחה</strong> (Encryption at Rest) וחוקי גישה בשרת:
           </p>
           <ul class="feature-list">
-            <li><strong>אימות זהות בשרת:</strong> בעת הכניסה, <span class="code-tag purple">ensureFirebaseAuthSession</span> רושם/מחבר את המורה ל-Firebase Auth כך שהשרת מקבל טוקן חתום (<span class="code-tag">request.auth.token.email</span>).</li>
-            <li><strong>בידוד בעלות (<span dir="ltr">isOwnerOfResource</span>):</strong> גישה לקריאה ועריכה של כרטיס תלמיד ב-<span class="code-tag">tala_students/{id}</span> מותרת רק לבעל הכרטיס (<span class="code-tag">ownerEmail</span>), לשותפי צוות ב-<span class="code-tag">sharedWith</span> או למנהלת המערכת.</li>
-            <li><strong>הגנה מפני חטיפת בעלות ומחיקה:</strong> חוקי השרת אוסרים על שותפים (<span class="code-tag">sharedWith</span>) לשנות את שדה <span class="code-tag">ownerEmail</span>, לארכב תלמיד או למחוק אותו (<span class="code-tag">allow delete: if isOwnerOfResource</span>).</li>
+            <li><strong>אימות זהות מבוסס שרת (Server-Side Custom Token):</strong> אימות הסיסמה מבוצע כולו ב-Cloud Function (<span class="code-tag purple">talaLogin</span>) המאמתת את הגיבוב המוצפן ומנפיקה Firebase Custom Token מאומת. אין גזירת סיסמאות בדפדפן.</li>
+            <li><strong>נעילת הגדרות ומשתמשים (<span dir="ltr">tala_config Lockdown</span>):</strong> קובץ המשתמשים והסיסמאות <span class="code-tag">tala_config/allowed_users</span> חסום לחלוטין לקריאה ולכתיבה ללקוח (Admin בלבד). מורים מקבלים תצוגת אינדקס מוגנת (<span class="code-tag">directory</span>) ופרופיל אישי בלבד (<span class="code-tag">tala_profiles</span>).</li>
+            <li><strong>בידוד בעלות מלא (<span dir="ltr">Zero Anonymous Access</span>):</strong> כל גישה אנונימית ל-Firestore חסומה (403 Forbidden). כרטיסי תלמידים ב-<span class="code-tag">tala_students</span> נגישים אך ורק לבעל הכרטיס (<span class="code-tag">ownerEmail</span>) או לשותפי צוות מאומתים ב-<span class="code-tag">sharedWith</span>.</li>
           </ul>
         </div>
       </div>
@@ -948,8 +948,8 @@
           <tr>
             <td class="layer-col">2. אימות וסיסמאות<br/><span style="font-size:10.5px; color:#64748b;">Authentication</span></td>
             <td class="threat-col">חשיפת סיסמאות במאגר או מתקפת ניחוש (Brute-Force)</td>
-            <td class="control-col">גיבוב חד-כיווני <strong>SHA-256 (256 סבבים) + 128-bit Random Salt</strong> אישי; מחיקת סיסמה גלויה; חסימת חשבון אוטומטית לאחר 5 ניסיונות כושלים; חובת החלפת סיסמה זמנית.</td>
-            <td class="code-col"><span class="code-tag purple">allowedUsers.js</span><br/><span class="code-tag">hashPasswordWithSalt()</span></td>
+            <td class="control-col">אימות סיסמה בשרת ב-<strong>Cloud Function (talaLogin)</strong> עם גיבוב <strong>SHA-256 (256 סבבים) + Salt אישי</strong>; הנפקת <strong>Firebase Custom Token</strong>; נעילת <strong>allowed_users</strong> למנהלים בלבד וחסימת קריאה מהדפדפן; נעילה אוטומטית לאחר 5 ניסיונות.</td>
+            <td class="code-col"><span class="code-tag purple">functions/index.js (talaLogin)</span><br/><span class="code-tag">loginWithTala()</span></td>
           </tr>
           <tr>
             <td class="layer-col">3. ניהול סשן ומחשבים משותפים<br/><span style="font-size:10.5px; color:#64748b;">Session Security</span></td>
@@ -960,7 +960,7 @@
           <tr>
             <td class="layer-col">4. הרשאות וענן<br/><span style="font-size:10.5px; color:#64748b;">Cloud &amp; RBAC</span></td>
             <td class="threat-col">צפייה בתיקי תלמידים של מורה אחרת או מחיקה ע"י שותף</td>
-            <td class="control-col">אימות מול <strong>Firebase Auth</strong> ואכיפת חוקים בשרת ובקוד: בידוד מלא לפי <span class="code-tag">ownerEmail</span>; שותפים ב-<span class="code-tag">sharedWith</span> מנועים מלמחוק, לארכב, לנעול או לשנות בעלות.</td>
+            <td class="control-col">אכיפת <strong>Firestore Rules</strong> בשרת: חסימה מוחלטת של קריאות לא מאומתות (403); בידוד מלא לפי <span class="code-tag">ownerEmail</span>; נעילת tala_config; שותפים ב-<span class="code-tag">sharedWith</span> מנועים מלמחוק או לשנות בעלות.</td>
             <td class="code-col"><span class="code-tag purple">firestore.rules</span><br/><span class="code-tag">domain/permissions.js</span></td>
           </tr>
           <tr>

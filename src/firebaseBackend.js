@@ -1,12 +1,10 @@
 import { initializeApp, getApps } from 'firebase/app';
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut
-} from 'firebase/auth';
+import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
 import {
   getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   doc,
   collection,
   setDoc,
@@ -14,9 +12,20 @@ import {
   onSnapshot,
   getDoc,
   getDocs,
-  writeBatch
+  writeBatch,
+  query,
+  where,
+  updateDoc,
+  deleteField,
+  runTransaction
 } from 'firebase/firestore';
 import { ensureUsersListPasswordsHashed } from './allowedUsers.js';
+import { mergeStudentSnapshots } from './domain/studentSyncMerge.js';
+
+const PRIMARY_ADMIN_EMAIL = 'zivit.reshef@gmail.com';
+// Must match emailKey() in functions/index.js
+const profileDocId = (email) =>
+  String(email || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
 
 const FIREBASE_CONFIG_STORAGE_KEY = 'tala_firebase_config_v1';
 
@@ -113,7 +122,16 @@ export function getFirestoreDb() {
   try {
     const app = getFirebaseAppInstance();
     if (!app) return null;
-    dbInstance = getFirestore(app);
+    try {
+      // ponytail: native Firestore IndexedDB cache queues offline writes + syncs multi-tab
+      dbInstance = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      });
+    } catch {
+      dbInstance = getFirestore(app);
+    }
     return dbInstance;
   } catch (err) {
     console.error('Error initializing Firebase Firestore:', err);
@@ -135,60 +153,43 @@ export function getFirebaseAuth() {
 }
 
 /**
- * Ensures any teacher access code meets Firebase Auth's 6-character minimum
- * deterministically without altering the teacher's login UX.
+ * Server-verified login: the `talaLogin` Cloud Function checks the password
+ * (and lockout), then returns a Firebase custom token + the user record.
+ * Resolves to `{ allowed, user?, reason?, isLockedOut?, isDisabled? }`.
  */
-export function deriveFirebaseAuthPassword(accessCode = '') {
-  const raw = String(accessCode || '').trim();
-  if (!raw) return 'Tala#DefaultAuth2026';
-  return raw.length >= 6 ? raw : `Tala#${raw}#2026`;
+export async function loginWithTala(email, accessCode) {
+  const auth = getFirebaseAuth();
+  if (!auth) return { allowed: false, reason: 'שרת ההתחברות אינו זמין. נסו שוב מאוחר יותר.' };
+  const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
+  const url =
+    import.meta.env?.VITE_TALA_LOGIN_URL ||
+    `https://us-central1-${projectId}.cloudfunctions.net/talaLogin`;
+  let data;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, accessCode })
+    });
+    data = await res.json();
+  } catch (err) {
+    console.warn('[talaLogin] request failed:', err);
+    return { allowed: false, reason: 'שרת ההתחברות אינו זמין. נסו שוב מאוחר יותר.' };
+  }
+  if (!data?.allowed || !data.token) return { ...data, allowed: false };
+  await signInWithCustomToken(auth, data.token);
+  return { allowed: true, user: data.user };
 }
 
 /**
- * Seamlessly signs the teacher into Firebase Auth (or auto-provisions their account
- * on first login) so Firestore Security Rules receive a verified `request.auth.token.email`.
- * Never blocks login if Email/Password provider is not yet enabled in Firebase Console.
+ * Returns the already-signed-in Firebase user (Firebase persists the session).
+ * Sign-in itself only happens via loginWithTala.
  */
-let firebaseAuthConfigNotFound = false;
-
-export async function ensureFirebaseAuthSession(email) {
-  if (firebaseAuthConfigNotFound) return null;
+export async function ensureFirebaseAuthSession() {
   const auth = getFirebaseAuth();
-  const normalizedEmail = String(email || '').trim().toLowerCase();
-  if (!auth || !normalizedEmail) return null;
-
-  // Stable per-email credential. It must NOT depend on the teacher's TALA password:
-  // that password can change, and its plaintext is unavailable when a session is restored.
-  // NOTE: this identifies the teacher to Firestore rules but is derivable client-side,
-  // so it is not a strong secret (see server-side token minting for a real fix).
-  const password = deriveFirebaseAuthPassword(`tala-fb:${normalizedEmail}`);
-
-  try {
-    const cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
-    return cred.user;
-  } catch (signInErr) {
-    const code = signInErr?.code || '';
-    if (code === 'auth/configuration-not-found') {
-      firebaseAuthConfigNotFound = true;
-      return null;
-    }
-    if (
-      code === 'auth/user-not-found' ||
-      code === 'auth/invalid-credential' ||
-      code === 'auth/invalid-login-credentials'
-    ) {
-      try {
-        const created = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
-        return created.user;
-      } catch (createErr) {
-        if (createErr?.code === 'auth/configuration-not-found') {
-          firebaseAuthConfigNotFound = true;
-        }
-        return null;
-      }
-    }
-    return null;
-  }
+  if (!auth) return null;
+  await auth.authStateReady?.();
+  return auth.currentUser;
 }
 
 export async function signOutFirebaseAuthSession() {
@@ -208,183 +209,229 @@ export function isCloudBackendConfigured() {
 // === Cloud Sync & Persistence Helpers ===
 
 /**
- * Subscribe to Allowed Users, Goal Bank, Settings, and Students in real time.
- * Automatically seeds Firestore with local data on first run if the cloud documents don't exist yet.
+ * Subscribe to cloud data in real time. Must be called after login: it waits for the
+ * Firebase Auth session, then attaches only the listeners that role is allowed to read.
+ *   admin   : allowed_users, admin_requests
+ *   teacher : directory (colleague picker) + own profile
+ *   all     : goal_bank, settings, students (own + shared; primary admin sees all)
  */
 export function subscribeToTalaBackend({
-  getInitialAllowedUsers,
+  email,
+  isAdmin,
   getInitialGoalBank,
   getInitialStudents,
   onAllowedUsersChange,
+  onDirectoryChange,
+  onProfileChange,
   onGoalBankChange,
   onStudentsChange,
   onSettingsChange,
   onSyncStatusChange
 }) {
   const db = getFirestoreDb();
-  if (!db) {
+  const auth = getFirebaseAuth();
+  if (!db || !auth) {
     onSyncStatusChange?.({ connected: false, status: 'local_only' });
     return () => {};
   }
 
-  onSyncStatusChange?.({ connected: true, status: 'connecting' });
-
+  const me = String(email || '').trim().toLowerCase();
+  const sawAll = me === PRIMARY_ADMIN_EMAIL;
   const unsubscribers = [];
-
-  // 1. Allowed Users & Roles (tala_config/allowed_users)
-  const usersDocRef = doc(db, 'tala_config', 'allowed_users');
-  const unsubUsers = onSnapshot(
-    usersDocRef,
-    async (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (Array.isArray(data?.users) && data.users.length > 0) {
-          onAllowedUsersChange?.(data.users);
-        }
-      } else {
-        // Seed initial allowed users from local storage / defaults
-        const seedUsers = getInitialAllowedUsers?.() || [];
-        if (seedUsers.length > 0) {
-          try {
-            const { users: hashedSeed } = ensureUsersListPasswordsHashed(seedUsers);
-            await setDoc(usersDocRef, {
-              users: sanitizeForFirestore(hashedSeed),
-              updatedAt: new Date().toISOString()
-            });
-          } catch (e) {
-            console.warn('Could not seed allowed_users to Firestore:', e);
-          }
-        }
-      }
-      onSyncStatusChange?.({ connected: true, status: 'synced' });
-    },
-    (err) => {
-      console.error('Firestore allowed_users listener error:', err);
+  let cancelled = false;
+  const listenError = (label, report) => (err) => {
+    console.error(`Firestore ${label} listener error:`, err);
+    if (report) {
       onSyncStatusChange?.({ connected: false, status: 'error', error: err.message });
     }
-  );
-  unsubscribers.push(unsubUsers);
+  };
 
-  // 2. Shared Dynamic Goal Bank (tala_config/goal_bank)
-  const goalBankDocRef = doc(db, 'tala_config', 'goal_bank');
-  const unsubGoalBank = onSnapshot(
-    goalBankDocRef,
-    async (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (Array.isArray(data?.goals) && data.goals.length > 0) {
-          onGoalBankChange?.(data.goals);
-        }
-      } else {
-        const seedGoals = getInitialGoalBank?.() || [];
-        if (seedGoals.length > 0) {
-          try {
-            await setDoc(goalBankDocRef, {
-              goals: seedGoals,
-              updatedAt: new Date().toISOString()
-            });
-          } catch (e) {
-            console.warn('Could not seed goal_bank to Firestore:', e);
-          }
-        }
-      }
-    },
-    (err) => {
-      console.error('Firestore goal_bank listener error:', err);
+  const start = async () => {
+    await auth.authStateReady?.();
+    if (cancelled) return;
+    if (!auth.currentUser) {
+      onSyncStatusChange?.({ connected: false, status: 'local_only' });
+      return;
     }
-  );
-  unsubscribers.push(unsubGoalBank);
+    onSyncStatusChange?.({ connected: true, status: 'connecting' });
 
-  // 3. Shared System Settings (tala_config/settings)
-  const settingsDocRef = doc(db, 'tala_config', 'settings');
-  const unsubSettings = onSnapshot(
-    settingsDocRef,
-    async (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data) {
-          onSettingsChange?.(data);
-        }
-      }
-    },
-    (err) => {
-      console.error('Firestore settings listener error:', err);
+    if (isAdmin) {
+      // 1a. Allowed users (admin only). Writes go through the talaConfigWrite function.
+      unsubscribers.push(
+        onSnapshot(
+          doc(db, 'tala_config', 'allowed_users'),
+          (snap) => {
+            const users = snap.exists() ? snap.data()?.users : null;
+            if (Array.isArray(users) && users.length > 0) onAllowedUsersChange?.(users);
+            onSyncStatusChange?.({ connected: true, status: 'synced' });
+          },
+          listenError('allowed_users', true)
+        )
+      );
+      // 1b. Contact / NDA / survey requests (admin only)
+      unsubscribers.push(
+        onSnapshot(
+          doc(db, 'tala_config', 'admin_requests'),
+          (snap) => {
+            const requests = snap.exists() ? snap.data()?.requests : null;
+            if (Array.isArray(requests)) onSettingsChange?.({ adminRequests: requests });
+          },
+          listenError('admin_requests')
+        )
+      );
+    } else {
+      // 1c. Non-sensitive directory of colleagues + this user's own profile (server-published)
+      unsubscribers.push(
+        onSnapshot(
+          doc(db, 'tala_config', 'directory'),
+          (snap) => {
+            const users = snap.exists() ? snap.data()?.users : null;
+            if (Array.isArray(users)) onDirectoryChange?.(users);
+            onSyncStatusChange?.({ connected: true, status: 'synced' });
+          },
+          listenError('directory', true)
+        ),
+        onSnapshot(
+          doc(db, 'tala_profiles', profileDocId(me)),
+          (snap) => onProfileChange?.(snap.exists() ? snap.data() : null),
+          listenError('profile')
+        )
+      );
     }
-  );
-  unsubscribers.push(unsubSettings);
 
-  // 4. Students & Reports Collection (tala_students/{studentId})
-  const studentsColRef = collection(db, 'tala_students');
-  const migrationMetaRef = doc(db, 'tala_config', 'students_migration_meta');
-
-  const unsubStudents = onSnapshot(
-    studentsColRef,
-    async (querySnap) => {
-      if (querySnap.empty) {
-        // Check if initial migration has ever run; if not, seed local students
-        try {
-          const metaSnap = await getDoc(migrationMetaRef);
-          if (!metaSnap.exists()) {
-            const seedStudents = getInitialStudents?.() || [];
-            if (seedStudents.length > 0) {
-              const batch = writeBatch(db);
-              seedStudents.forEach((st) => {
-                if (st && st.id) {
-                  batch.set(doc(db, 'tala_students', st.id), {
-                    ...st,
-                    updatedAt: new Date().toISOString()
-                  });
-                }
-              });
-              batch.set(migrationMetaRef, {
-                migratedAt: new Date().toISOString(),
-                count: seedStudents.length
-              });
-              await batch.commit();
-              return;
+    // 2. Shared Dynamic Goal Bank (tala_config/goal_bank)
+    const goalBankDocRef = doc(db, 'tala_config', 'goal_bank');
+    unsubscribers.push(
+      onSnapshot(
+        goalBankDocRef,
+        async (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (Array.isArray(data?.goals) && data.goals.length > 0) {
+              onGoalBankChange?.(data.goals);
+            }
+          } else {
+            const seedGoals = getInitialGoalBank?.() || [];
+            if (seedGoals.length > 0) {
+              try {
+                await setDoc(goalBankDocRef, {
+                  goals: seedGoals,
+                  updatedAt: new Date().toISOString()
+                });
+              } catch (e) {
+                console.warn('Could not seed goal_bank to Firestore:', e);
+              }
             }
           }
-        } catch (e) {
-          console.warn('Could not seed initial students to Firestore:', e);
-        }
-      }
+        },
+        listenError('goal_bank')
+      )
+    );
 
+    // 3. Shared System Settings (tala_config/settings). Secrets must not live here.
+    const settingsDocRef = doc(db, 'tala_config', 'settings');
+    unsubscribers.push(
+      onSnapshot(
+        settingsDocRef,
+        async (snap) => {
+          const data = snap.exists() ? snap.data() : null;
+          if (!data) return;
+          if ('geminiApiKey' in data && isAdmin) {
+            // One-time cleanup of a key that was previously synced to the shared doc.
+            updateDoc(settingsDocRef, { geminiApiKey: deleteField() }).catch(() => {});
+          }
+          const { geminiApiKey: _secret, ...publicSettings } = data;
+          onSettingsChange?.(publicSettings);
+        },
+        listenError('settings')
+      )
+    );
+
+    // 4. Students & reports (tala_students/{studentId})
+    const studentsColRef = collection(db, 'tala_students');
+    const emit = (docs) => {
       const cloudStudents = [];
-      querySnap.forEach((docSnap) => {
-        const d = docSnap.data();
-        if (d && d.id) {
-          cloudStudents.push(d);
-        }
+      docs.forEach((d) => {
+        if (d && d.id) cloudStudents.push(d);
       });
       onStudentsChange?.(cloudStudents);
       onSyncStatusChange?.({ connected: true, status: 'synced' });
-    },
-    (err) => {
-      console.error('Firestore tala_students listener error:', err);
-      onSyncStatusChange?.({ connected: false, status: 'error', error: err.message });
-    }
-  );
-  unsubscribers.push(unsubStudents);
+    };
 
-  // 5. Contact Admin Requests (tala_config/admin_requests)
-  const adminReqsDocRef = doc(db, 'tala_config', 'admin_requests');
-  const unsubAdminReqs = onSnapshot(
-    adminReqsDocRef,
-    (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        if (Array.isArray(data?.requests)) {
-          onSettingsChange?.({ adminRequests: data.requests });
+    if (sawAll) {
+      const migrationMetaRef = doc(db, 'tala_config', 'students_migration_meta');
+      unsubscribers.push(
+        onSnapshot(
+          studentsColRef,
+          async (querySnap) => {
+            if (querySnap.empty) {
+              // Seed local students once, from the primary admin only
+              try {
+                const metaSnap = await getDoc(migrationMetaRef);
+                if (!metaSnap.exists()) {
+                  const seedStudents = getInitialStudents?.() || [];
+                  if (seedStudents.length > 0) {
+                    const batch = writeBatch(db);
+                    seedStudents.forEach((st) => {
+                      if (st && st.id) {
+                        batch.set(doc(db, 'tala_students', st.id), {
+                          ...st,
+                          updatedAt: new Date().toISOString()
+                        });
+                      }
+                    });
+                    batch.set(migrationMetaRef, {
+                      migratedAt: new Date().toISOString(),
+                      count: seedStudents.length
+                    });
+                    await batch.commit();
+                    return;
+                  }
+                }
+              } catch (e) {
+                console.warn('Could not seed initial students to Firestore:', e);
+              }
+            }
+            emit(querySnap.docs.map((d) => d.data()));
+          },
+          listenError('tala_students', true)
+        )
+      );
+    } else {
+      // Rules only allow queries provably limited to the caller's own / shared students.
+      const owned = new Map();
+      const shared = new Map();
+      let readyCount = 0;
+      const mark = (map, snap, first) => {
+        map.clear();
+        snap.forEach((d) => map.set(d.id, d.data()));
+        if (first.done !== true) {
+          first.done = true;
+          readyCount += 1;
         }
-      }
-    },
-    (err) => {
-      console.error('Firestore admin_requests listener error:', err);
+        if (readyCount === 2) emit([...new Map([...shared, ...owned]).values()]);
+      };
+      const ownedFirst = {};
+      const sharedFirst = {};
+      unsubscribers.push(
+        onSnapshot(
+          query(studentsColRef, where('ownerEmail', '==', me)),
+          (snap) => mark(owned, snap, ownedFirst),
+          listenError('tala_students (owned)', true)
+        ),
+        onSnapshot(
+          query(studentsColRef, where('sharedWith', 'array-contains', me)),
+          (snap) => mark(shared, snap, sharedFirst),
+          listenError('tala_students (shared)', true)
+        )
+      );
     }
-  );
-  unsubscribers.push(unsubAdminReqs);
+  };
+
+  start();
 
   return () => {
+    cancelled = true;
     unsubscribers.forEach((u) => {
       try {
         u();
@@ -430,37 +477,41 @@ export async function fetchAllowedUsersFromCloud() {
   }
 }
 
-export async function saveAllowedUsersToCloud(usersList) {
-  const db = getFirestoreDb();
-  if (!db) return false;
+// Writes to tala_config/allowed_users and admin_requests are server-authorised.
+async function postConfigWrite(payload) {
   try {
-    const { users: hashedUsers } = ensureUsersListPasswordsHashed(usersList || []);
-    const cleanUsers = sanitizeForFirestore(hashedUsers);
-    await setDoc(doc(db, 'tala_config', 'allowed_users'), {
-      users: cleanUsers,
-      updatedAt: new Date().toISOString()
-    });
-    return true;
+    const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
+    const url =
+      import.meta.env?.VITE_TALA_CONFIG_WRITE_URL ||
+      `https://us-central1-${projectId}.cloudfunctions.net/talaConfigWrite`;
+    const headers = { 'Content-Type': 'application/json' };
+    const idToken = await getFirebaseAuth()?.currentUser?.getIdToken();
+    if (idToken) headers.Authorization = `Bearer ${idToken}`;
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+    if (!res.ok) console.warn('[talaConfigWrite] rejected:', res.status, payload.kind);
+    return res.ok;
   } catch (err) {
-    console.error('Failed to save allowedUsers to Firestore:', err);
+    console.error('[talaConfigWrite] failed:', err);
     return false;
   }
 }
 
+export async function saveAllowedUsersToCloud(usersList) {
+  const { users: hashedUsers } = ensureUsersListPasswordsHashed(usersList || []);
+  return postConfigWrite({ kind: 'users', users: sanitizeForFirestore(hashedUsers) });
+}
+
+/** Admin only: replace the whole list (used for dismissing requests). */
 export async function saveAdminRequestsToCloud(requestsList) {
-  const db = getFirestoreDb();
-  if (!db) return false;
-  try {
-    const cleanRequests = sanitizeForFirestore(requestsList || []);
-    await setDoc(doc(db, 'tala_config', 'admin_requests'), {
-      requests: cleanRequests,
-      updatedAt: new Date().toISOString()
-    });
-    return true;
-  } catch (err) {
-    console.error('Failed to save adminRequests to Firestore:', err);
-    return false;
-  }
+  return postConfigWrite({
+    kind: 'adminRequests',
+    requests: sanitizeForFirestore(requestsList || [])
+  });
+}
+
+/** Anyone (incl. logged-out login-page visitors): append one contact/NDA/survey request. */
+export async function submitAdminRequestToCloud(request) {
+  return postConfigWrite({ kind: 'submitRequest', request: sanitizeForFirestore(request) });
 }
 
 export async function saveGoalBankToCloud(goalsList) {
@@ -483,7 +534,9 @@ export async function saveSettingsToCloud(settingsObj) {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
-    const cleanSettings = sanitizeForFirestore(settingsObj || {});
+    // The Gemini key is a secret: it stays in this browser only, never in shared settings.
+    const { geminiApiKey: _secret, ...shareable } = settingsObj || {};
+    const cleanSettings = sanitizeForFirestore(shareable);
     await setDoc(
       doc(db, 'tala_config', 'settings'),
       {
@@ -502,16 +555,48 @@ export async function saveSettingsToCloud(settingsObj) {
 export async function saveStudentToCloud(studentObj) {
   const db = getFirestoreDb();
   if (!db || !studentObj || !studentObj.id) return false;
+  const docRef = doc(db, 'tala_students', studentObj.id);
+  const cleanStudent = sanitizeForFirestore(studentObj);
+
   try {
-    const cleanStudent = sanitizeForFirestore(studentObj);
-    await setDoc(doc(db, 'tala_students', studentObj.id), {
-      ...cleanStudent,
-      updatedAt: new Date().toISOString()
+    // Non-destructive concurrent reconciliation if document already exists
+    await runTransaction(db, async (transaction) => {
+      const serverSnap = await transaction.get(docRef);
+      let payload = {
+        ...cleanStudent,
+        updatedAt: new Date().toISOString()
+      };
+      if (serverSnap.exists()) {
+        const serverData = serverSnap.data();
+        if (serverData && serverData.updatedAt && serverData.updatedAt !== studentObj.lastLoadedAt) {
+          payload = sanitizeForFirestore(
+            mergeStudentSnapshots({
+              localStudent: payload,
+              serverStudent: serverData,
+              baseSnapshot: studentObj._baseSnapshot || {}
+            })
+          );
+        }
+      }
+      transaction.set(docRef, payload);
     });
     return true;
   } catch (err) {
-    console.error('Failed to save student to Firestore:', err);
-    return false;
+    // Fallback for offline, network partitions, or environments without active transactions
+    try {
+      await setDoc(
+        docRef,
+        {
+          ...cleanStudent,
+          updatedAt: new Date().toISOString()
+        },
+        { merge: true }
+      );
+      return true;
+    } catch (fallbackErr) {
+      console.error('Failed to save student to Firestore:', fallbackErr);
+      return false;
+    }
   }
 }
 
@@ -576,6 +661,5 @@ export function subscribeToUserPresence(onPresenceChange) {
     return () => {};
   }
 }
-
 
 

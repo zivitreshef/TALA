@@ -1,0 +1,25 @@
+{
+  "name": "TALA – תוכנית עבודה שנתית (תל\"א / תח\"י)",
+  "short_name": "TALA",
+  "description": "מערכת חכמה לבניית תוכנית עבודה שנתית חינוכית-אקולוגית (תל\"א / תח\"י)",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f5f0",
+  "theme_color": "#3b6ea5",
+  "icons": [
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "./tala-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

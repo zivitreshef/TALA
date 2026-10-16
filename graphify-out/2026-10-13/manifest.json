@@ -1,0 +1,308 @@
+{
+  "firebase.json": {
+    "mtime": 1791466720.4173014,
+    "seen": 1791477110.7740507,
+    "ast_hash": "f344269fcedd4f68ee6d05bbce20212f",
+    "semantic_hash": "f344269fcedd4f68ee6d05bbce20212f"
+  },
+  "functions/index.js": {
+    "mtime": 1791467005.5431032,
+    "seen": 1791477110.7740507,
+    "ast_hash": "4f60c23ad96722b39b0d6f6654fa9de7",
+    "semantic_hash": "4f60c23ad96722b39b0d6f6654fa9de7"
+  },
+  "functions/package.json": {
+    "mtime": 1791466561.5336776,
+    "seen": 1791477110.7740507,
+    "ast_hash": "63f5a81f976afe0aaed82c812658c433",
+    "semantic_hash": "63f5a81f976afe0aaed82c812658c433"
+  },
+  "old_allowlist.jsx": {
+    "mtime": 1791136081.5639524,
+    "seen": 1791477110.7740507,
+    "ast_hash": "62b969374256462446fb202f9323cf2d",
+    "semantic_hash": "62b969374256462446fb202f9323cf2d"
+  },
+  "package.json": {
+    "mtime": 1791469160.8880448,
+    "seen": 1791477110.7740507,
+    "ast_hash": "42fc85b60807aa47484f92606d6de160",
+    "semantic_hash": "42fc85b60807aa47484f92606d6de160"
+  },
+  "scratch/fixAppAdmin.py": {
+    "mtime": 1791135808.6067588,
+    "seen": 1791477110.7740507,
+    "ast_hash": "ab6e4bb37d6d933946d63a2d6f93422d",
+    "semantic_hash": "ab6e4bb37d6d933946d63a2d6f93422d"
+  },
+  "scratch/fixRow.py": {
+    "mtime": 1791135518.8731532,
+    "seen": 1791477110.7740507,
+    "ast_hash": "4546a8faa3fc83a6649ad362b0594e7b",
+    "semantic_hash": "4546a8faa3fc83a6649ad362b0594e7b"
+  },
+  "src/AllowlistAuthGate.jsx": {
+    "mtime": 1791467380.6322987,
+    "seen": 1791477110.7740507,
+    "ast_hash": "2209a8376f3ded5a47d69434875afc79",
+    "semantic_hash": "2209a8376f3ded5a47d69434875afc79"
+  },
+  "src/App.jsx": {
+    "mtime": 1791467534.1196167,
+    "seen": 1791477110.7740507,
+    "ast_hash": "3dbe898ea15ec1babbc831d7bbb99cd9",
+    "semantic_hash": "3dbe898ea15ec1babbc831d7bbb99cd9"
+  },
+  "src/EcologicalWorkPlanForm.jsx": {
+    "mtime": 1791466774.4030502,
+    "seen": 1791477110.7740507,
+    "ast_hash": "df6ea3b553d629047fdb3c5d9c89d2b7",
+    "semantic_hash": "df6ea3b553d629047fdb3c5d9c89d2b7"
+  },
+  "src/__tests__/coreDomain.test.js": {
+    "mtime": 1791454982.664365,
+    "seen": 1791477110.7740507,
+    "ast_hash": "0a5c7feb945a2ed997e5831b8268fb5a",
+    "semantic_hash": "0a5c7feb945a2ed997e5831b8268fb5a"
+  },
+  "src/allowedUsers.js": {
+    "mtime": 1791131370.1152186,
+    "seen": 1791477110.7740507,
+    "ast_hash": "99a881bee044c4f5636db978d6ad8aa2",
+    "semantic_hash": "99a881bee044c4f5636db978d6ad8aa2"
+  },
+  "src/components/ErrorBoundary.jsx": {
+    "mtime": 1791131370.1447692,
+    "seen": 1791477110.7740507,
+    "ast_hash": "caa4b7f154bb3febd9b30a89918f46a5",
+    "semantic_hash": "caa4b7f154bb3febd9b30a89918f46a5"
+  },
+  "src/components/form/ShareTeamModal.jsx": {
+    "mtime": 1791136152.962619,
+    "seen": 1791477110.7740507,
+    "ast_hash": "68ca175fa9ec56168c2bfcae13c0880c",
+    "semantic_hash": "68ca175fa9ec56168c2bfcae13c0880c"
+  },
+  "src/components/form/StatusReportPanel.jsx": {
+    "mtime": 1791183067.6597075,
+    "seen": 1791477110.7740507,
+    "ast_hash": "44eeb5aee37f02664e7b23669eec939f",
+    "semantic_hash": "44eeb5aee37f02664e7b23669eec939f"
+  },
+  "src/components/modals/StudentActionModals.jsx": {
+    "mtime": 1791136152.9669375,
+    "seen": 1791477110.7740507,
+    "ast_hash": "c9ad3dc6600901c9dc2325e25722e887",
+    "semantic_hash": "c9ad3dc6600901c9dc2325e25722e887"
+  },
+  "src/components/modals/TrialNdaModal.jsx": {
+    "mtime": 1791136152.9669375,
+    "seen": 1791477110.7740507,
+    "ast_hash": "d1c844c0d631dfd3ab127504570b30e4",
+    "semantic_hash": "d1c844c0d631dfd3ab127504570b30e4"
+  },
+  "src/components/modals/UserFeedbackSurveyModal.jsx": {
+    "mtime": 1791136152.9694338,
+    "seen": 1791477110.7740507,
+    "ast_hash": "45e9caa0841863a6b5b3dec5db2909e8",
+    "semantic_hash": "45e9caa0841863a6b5b3dec5db2909e8"
+  },
+  "src/domain/goalSizingAndMerge.js": {
+    "mtime": 1791452838.0453079,
+    "seen": 1791477110.7740507,
+    "ast_hash": "fb6053b1e12f3740a2bb8abd33b3bbbe",
+    "semantic_hash": "fb6053b1e12f3740a2bb8abd33b3bbbe"
+  },
+  "src/domain/permissions.js": {
+    "mtime": 1791183067.6597075,
+    "seen": 1791477110.7740507,
+    "ast_hash": "bad7f0f0dd70680c33c7420593ef9bb7",
+    "semantic_hash": "bad7f0f0dd70680c33c7420593ef9bb7"
+  },
+  "src/domain/privacyAndAcronyms.js": {
+    "mtime": 1791454996.8107502,
+    "seen": 1791477110.7740507,
+    "ast_hash": "841deeed4c57a6da31adf88f7640d017",
+    "semantic_hash": "841deeed4c57a6da31adf88f7640d017"
+  },
+  "src/domain/schoolYearRollover.js": {
+    "mtime": 1791231179.5799224,
+    "seen": 1791477110.7740507,
+    "ast_hash": "92069027ef5479b987c76329b1a5b11f",
+    "semantic_hash": "92069027ef5479b987c76329b1a5b11f"
+  },
+  "src/domain/statusReportGenerator.js": {
+    "mtime": 1791231179.5799224,
+    "seen": 1791477110.7740507,
+    "ast_hash": "888d87e3e84d3c4470db8aa6d56ce746",
+    "semantic_hash": "888d87e3e84d3c4470db8aa6d56ce746"
+  },
+  "src/emailService.js": {
+    "mtime": 1791136152.9721017,
+    "seen": 1791477110.7740507,
+    "ast_hash": "dccd5858c0f2a0fade2e21df0b4e7953",
+    "semantic_hash": "dccd5858c0f2a0fade2e21df0b4e7953"
+  },
+  "src/export/wordAndPrintBuilders.js": {
+    "mtime": 1791231179.5799224,
+    "seen": 1791477110.7740507,
+    "ast_hash": "28804f19ce4ade3dfa57cbde554c57bd",
+    "semantic_hash": "28804f19ce4ade3dfa57cbde554c57bd"
+  },
+  "src/firebaseBackend.js": {
+    "mtime": 1791467659.114315,
+    "seen": 1791477110.7740507,
+    "ast_hash": "ac8c60a5509f09c309fd84d11d908cfd",
+    "semantic_hash": "ac8c60a5509f09c309fd84d11d908cfd"
+  },
+  "src/goalBankData.js": {
+    "mtime": 1791452799.3657799,
+    "seen": 1791477110.7740507,
+    "ast_hash": "532460f2d0180fdea5b2a66b5567aeb8",
+    "semantic_hash": "532460f2d0180fdea5b2a66b5567aeb8"
+  },
+  "src/main.jsx": {
+    "mtime": 1791131370.1430857,
+    "seen": 1791477110.7740507,
+    "ast_hash": "cdd82b768936c02c7313ac2fa5218f43",
+    "semantic_hash": "cdd82b768936c02c7313ac2fa5218f43"
+  },
+  "src/services/storage.js": {
+    "mtime": 1791131370.1787465,
+    "seen": 1791477110.7740507,
+    "ast_hash": "24be2bf92b5a9263dab2bc6350d8c88c",
+    "semantic_hash": "24be2bf92b5a9263dab2bc6350d8c88c"
+  },
+  "vite.config.js": {
+    "mtime": 1791208796.4267144,
+    "seen": 1791477110.7740507,
+    "ast_hash": "989ba3831c8326071351be48f67bdc65",
+    "semantic_hash": "989ba3831c8326071351be48f67bdc65"
+  },
+  ".github/workflows/deploy.yml": {
+    "mtime": 1791051249.9696398,
+    "seen": 1791477110.7740507,
+    "ast_hash": "3e4c715ae78bcd0ddc1c195e1674b7b0",
+    "semantic_hash": "3e4c715ae78bcd0ddc1c195e1674b7b0"
+  },
+  ".kilo/plans/1791449388302-mask-pii-before-ai.md": {
+    "mtime": 1791452336.5126977,
+    "seen": 1791477110.7740507,
+    "ast_hash": "fa094793505cdadf2f3655ae6ae733e6",
+    "semantic_hash": "fa094793505cdadf2f3655ae6ae733e6"
+  },
+  ".kilo/plans/1791456858571-ai-security-hardening.md": {
+    "mtime": 1791459900.0568988,
+    "seen": 1791477110.7740507,
+    "ast_hash": "880dc9fe554265bb0bd004b20ed8d991",
+    "semantic_hash": "880dc9fe554265bb0bd004b20ed8d991"
+  },
+  "GEMINI.md": {
+    "mtime": 1791058494.833932,
+    "seen": 1791477110.7740507,
+    "ast_hash": "80a921fa1c7d09c13615eb4cdeddc24a",
+    "semantic_hash": "80a921fa1c7d09c13615eb4cdeddc24a"
+  },
+  "README.md": {
+    "mtime": 1790885168.9458587,
+    "seen": 1791477110.7740507,
+    "ast_hash": "46379f1f8f9ec79cbe0ee517c4f4763e",
+    "semantic_hash": "46379f1f8f9ec79cbe0ee517c4f4763e"
+  },
+  "TALA_Architecture_And_Security.html": {
+    "mtime": 1791112754.752176,
+    "seen": 1791477110.7740507,
+    "ast_hash": "8ce35c00bb24e54fc784c6deda874ba3",
+    "semantic_hash": "8ce35c00bb24e54fc784c6deda874ba3"
+  },
+  "TALA_Marketing_Presentation.html": {
+    "mtime": 1791058494.8382947,
+    "seen": 1791477110.7740507,
+    "ast_hash": "185bffd1643891e392b1f2e271ade3ea",
+    "semantic_hash": "185bffd1643891e392b1f2e271ade3ea"
+  },
+  "extract_funcs.txt": {
+    "mtime": 1791135861.3674967,
+    "seen": 1791477110.7740507,
+    "ast_hash": "dd2986e58f3375fd82c6abcfe4008656",
+    "semantic_hash": "dd2986e58f3375fd82c6abcfe4008656"
+  },
+  "gemini_check.txt": {
+    "mtime": 1791135842.8370173,
+    "seen": 1791477110.7740507,
+    "ast_hash": "4318d4626df7d09938ac00a72e2d6582",
+    "semantic_hash": "4318d4626df7d09938ac00a72e2d6582"
+  },
+  "index.html": {
+    "mtime": 1791029680.774335,
+    "seen": 1791477110.7740507,
+    "ast_hash": "6876702767fc39ada9c9934138157cf2",
+    "semantic_hash": "6876702767fc39ada9c9934138157cf2"
+  },
+  "old_email.txt": {
+    "mtime": 1791136094.9102917,
+    "seen": 1791477110.7740507,
+    "ast_hash": "99c83c87a1380c91b9eec1a46063c442",
+    "semantic_hash": "99c83c87a1380c91b9eec1a46063c442"
+  },
+  "table_body_check.txt": {
+    "mtime": 1791135755.1493156,
+    "seen": 1791477110.7740507,
+    "ast_hash": "0858cc589f8f022af5fe999e70cbf55b",
+    "semantic_hash": "0858cc589f8f022af5fe999e70cbf55b"
+  },
+  "table_check.txt": {
+    "mtime": 1791135499.7942083,
+    "seen": 1791477110.7740507,
+    "ast_hash": "e59f968e7df6320fbc56fae10db3772a",
+    "semantic_hash": "e59f968e7df6320fbc56fae10db3772a"
+  },
+  "TALA_Architecture_And_Security.pdf": {
+    "mtime": 1791112754.7692997,
+    "seen": 1791477110.7740507,
+    "ast_hash": "1161c1aa6798cd5039c632a0f8e9b002",
+    "semantic_hash": "1161c1aa6798cd5039c632a0f8e9b002"
+  },
+  "TALA_Marketing_Presentation.pdf": {
+    "mtime": 1791058494.9037817,
+    "seen": 1791477110.7740507,
+    "ast_hash": "78131e0621238a0c736ef61502453f81",
+    "semantic_hash": "78131e0621238a0c736ef61502453f81"
+  },
+  "public/apple-touch-icon.png": {
+    "mtime": 1791029652.680444,
+    "seen": 1791477110.7740507,
+    "ast_hash": "a74e2126857e56656a22cb9755002c84",
+    "semantic_hash": "a74e2126857e56656a22cb9755002c84"
+  },
+  "public/favicon-16x16.png": {
+    "mtime": 1791029652.667483,
+    "seen": 1791477110.7740507,
+    "ast_hash": "c711732bbd84a2cc1076aae86bd28a55",
+    "semantic_hash": "c711732bbd84a2cc1076aae86bd28a55"
+  },
+  "public/favicon-32x32.png": {
+    "mtime": 1791029652.6694915,
+    "seen": 1791477110.7740507,
+    "ast_hash": "2ed210320f6e918707a183337283f591",
+    "semantic_hash": "2ed210320f6e918707a183337283f591"
+  },
+  "public/favicon.png": {
+    "mtime": 1791029652.6730235,
+    "seen": 1791477110.7740507,
+    "ast_hash": "42445ff586258e35e3acf3fd0cce9ebc",
+    "semantic_hash": "42445ff586258e35e3acf3fd0cce9ebc"
+  },
+  "public/tala-logo.jpg": {
+    "mtime": 1790888726.8748145,
+    "seen": 1791477110.7740507,
+    "ast_hash": "cb1c9b9697a4f6438543f7708c6817e4",
+    "semantic_hash": "cb1c9b9697a4f6438543f7708c6817e4"
+  },
+  "public/tala-logo.png": {
+    "mtime": 1790888726.8679206,
+    "seen": 1791477110.7740507,
+    "ast_hash": "901a057c9e4b7463d9d29ef777ea7ebe",
+    "semantic_hash": "901a057c9e4b7463d9d29ef777ea7ebe"
+  }
+}

@@ -27,7 +27,8 @@ import {
   X,
   Lock,
   Unlock,
-  MessageCircle
+  MessageCircle,
+  ClipboardCopy
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
@@ -97,7 +98,11 @@ import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 import ParentVoiceControl from './components/form/ParentVoiceControl';
+import MinistryCopyModal from './components/form/MinistryCopyModal';
+import QuickObservationModal from './components/form/QuickObservationModal';
 import { appendToFreeText } from './domain/parentInvite';
+import { addObservationToGoal } from './domain/goalObservations';
+import { DISCIPLINE_LEAD_OPTIONS } from './domain/studentSyncMerge';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
 
 // NEW: Firebase Functions imports
@@ -413,6 +418,8 @@ export default function EcologicalWorkPlanForm({
   const [formData, setFormData] = useState(() => buildNormalizedStudentData(student));
   const savedSnapshotRef = useRef(JSON.stringify(buildNormalizedStudentData(student)));
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
+  const [showMinistryCopyModal, setShowMinistryCopyModal] = useState(false);
+  const [observationModalGoalId, setObservationModalGoalId] = useState(null);
   const [saveBanner, setSaveBanner] = useState(false);
   const [autoSavedTime, setAutoSavedTime] = useState('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -3219,6 +3226,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="button"
               className="btn-print-doc"
               onClick={() => {
+                handleSaveProgress();
+                setShowMinistryCopyModal(true);
+              }}
+              title="העתקת סעיפי התוכנית כטקסט נקי להדבקה במנב״ס / משו״ב"
+            >
+              <ClipboardCopy size={18} />
+              <span>העתקה למנב&quot;ס</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
                 setShowEvalReportSection((prev) => {
                   const next = !prev;
                   if (next) {
@@ -4353,6 +4373,30 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       placeholder="הקלד סביבה..."
                       className="env-text-input"
                     />
+
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginRight: '6px' }}>
+                      <label style={{ fontWeight: 600, fontSize: '12.5px', color: '#475569' }}>מוביל/ת מטרה:</label>
+                      <select
+                        disabled={isReportLocked}
+                        value={goalRow.leadProfessional || 'צוות משותף'}
+                        onChange={(e) => handleGoalChange(goalRow.id, 'leadProfessional', e.target.value)}
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '12px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: goalRow.leadProfessional && goalRow.leadProfessional !== 'צוות משותף' ? '#eff6ff' : '#ffffff',
+                          color: goalRow.leadProfessional && goalRow.leadProfessional !== 'צוות משותף' ? '#1d4ed8' : '#334155',
+                          fontWeight: goalRow.leadProfessional && goalRow.leadProfessional !== 'צוות משותף' ? 700 : 500
+                        }}
+                      >
+                        {DISCIPLINE_LEAD_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -5164,35 +5208,66 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 {/* Light Collapsible Mid-Year & End-of-Year Evaluation Drawer */}
                 <div style={{ marginTop: '10px', borderTop: '1px dashed #cbd5e1', paddingTop: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedEvalMap((prev) => ({
-                          ...prev,
-                          [goalRow.id]: !prev[goalRow.id]
-                        }))
-                      }
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        background: expandedEvalMap[goalRow.id] ? '#ede9fe' : '#f8fafc',
-                        color: expandedEvalMap[goalRow.id] ? '#5b21b6' : '#475569',
-                        border: expandedEvalMap[goalRow.id] ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        padding: '5px 11px',
-                        fontSize: '12.5px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {expandedEvalMap[goalRow.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      <span>
-                        {expandedEvalMap[goalRow.id]
-                          ? 'הסתר הערכת מחצית / סוף שנה'
-                          : '+ הערכת מחצית / סוף שנה'}
-                      </span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedEvalMap((prev) => ({
+                            ...prev,
+                            [goalRow.id]: !prev[goalRow.id]
+                          }))
+                        }
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: expandedEvalMap[goalRow.id] ? '#ede9fe' : '#f8fafc',
+                          color: expandedEvalMap[goalRow.id] ? '#5b21b6' : '#475569',
+                          border: expandedEvalMap[goalRow.id] ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '5px 11px',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {expandedEvalMap[goalRow.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        <span>
+                          {expandedEvalMap[goalRow.id]
+                            ? 'הסתר הערכת מחצית / סוף שנה'
+                            : '+ הערכת מחצית / סוף שנה'}
+                        </span>
+                      </button>
+
+                      {!isReportLocked && (
+                        <button
+                          type="button"
+                          onClick={() => setObservationModalGoalId(goalRow.id)}
+                          title="תיעוד תצפית מהירה מהשטח ושילוב בהערכת מחצית/סוף שנה"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#f0f9ff',
+                            color: '#0369a1',
+                            border: '1px solid #bae6fd',
+                            borderRadius: '6px',
+                            padding: '5px 11px',
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Plus size={14} />
+                          <span>
+                            תצפית מהירה
+                            {Array.isArray(goalRow.observations) && goalRow.observations.length > 0
+                              ? ` (${goalRow.observations.length})`
+                              : ''}
+                          </span>
+                        </button>
+                      )}
+                    </div>
 
                     {(goalRow.achievementStatus || goalRow.midYearEvaluation || goalRow.endYearEvaluation) && !expandedEvalMap[goalRow.id] && (
                       <span
@@ -5424,6 +5499,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           >
             <Download size={18} />
             <span>הורד קובץ Word</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-print-doc"
+            onClick={() => {
+              handleSaveProgress();
+              setShowMinistryCopyModal(true);
+            }}
+            title="העתקת סעיפי התוכנית כטקסט נקי להדבקה במנב״ס / משו״ב"
+          >
+            <ClipboardCopy size={18} />
+            <span>העתקה למנב&quot;ס</span>
           </button>
 
           <button
@@ -6019,6 +6107,56 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
         </div>
       )}
+      {showMinistryCopyModal && (
+        <MinistryCopyModal
+          formData={formData}
+          hideDetails={hideStudentDetailsOnPrint}
+          onToggleHideDetails={setHideStudentDetailsOnPrint}
+          onClose={() => setShowMinistryCopyModal(false)}
+        />
+      )}
+      {observationModalGoalId &&
+        (() => {
+          const targetGoal = (formData.goals || []).find((g) => g.id === observationModalGoalId);
+          if (!targetGoal) return null;
+          return (
+            <QuickObservationModal
+              goalRow={targetGoal}
+              authorName={currentUser?.name || currentUser?.email || ''}
+              onAddObservation={(obsInput) => {
+                const { updatedGoal } = addObservationToGoal(targetGoal, obsInput);
+                const nextGoals = (formData.goals || []).map((g) =>
+                  g.id === targetGoal.id ? updatedGoal : g
+                );
+                const nextData = {
+                  ...formData,
+                  goals: nextGoals,
+                  lastSavedAt: new Date().toISOString()
+                };
+                setFormData(nextData);
+                onSaveStudentPlan?.(nextData);
+              }}
+              onDeleteObservation={(obsId) => {
+                const nextGoals = (formData.goals || []).map((g) =>
+                  g.id === targetGoal.id
+                    ? {
+                        ...g,
+                        observations: (g.observations || []).filter((o) => o.id !== obsId)
+                      }
+                    : g
+                );
+                const nextData = {
+                  ...formData,
+                  goals: nextGoals,
+                  lastSavedAt: new Date().toISOString()
+                };
+                setFormData(nextData);
+                onSaveStudentPlan?.(nextData);
+              }}
+              onClose={() => setObservationModalGoalId(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

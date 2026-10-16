@@ -72,6 +72,7 @@ import {
   subscribeToTalaBackend,
   saveAllowedUsersToCloud,
   saveAdminRequestsToCloud,
+  submitAdminRequestToCloud,
   saveGoalBankToCloud,
   saveSettingsToCloud,
   saveStudentToCloud,
@@ -176,7 +177,6 @@ export default function App() {
         localStorage.removeItem(GEMINI_KEY_STORAGE_KEY);
       }
     } catch (e) {}
-    saveSettingsToCloud({ geminiApiKey: trimmed });
   };
 
   // Direct Background Email Engine configuration (synced across cloud for all users)
@@ -199,9 +199,9 @@ export default function App() {
     setAdminRequests((prev) => {
       const next = [newReq, ...prev];
       localStorage.setItem(ADMIN_REQUESTS_STORAGE_KEY, JSON.stringify(next));
-      saveAdminRequestsToCloud(next);
       return next;
     });
+    submitAdminRequestToCloud(newReq);
   };
 
   const handleDismissAdminRequest = (reqId) => {
@@ -223,9 +223,8 @@ export default function App() {
           localStorage.removeItem(SESSION_USER_KEY);
           return null;
         }
-        const stillAllowed = loadAllowedUsers().find(
-          (u) => u.email.toLowerCase() === parsed.email?.toLowerCase() && u.active
-        );
+        // The server verified this user at login; the live profile listener enforces later deactivation.
+        const stillAllowed = parsed?.email && parsed.active ? parsed : null;
         if (!stillAllowed) {
           localStorage.removeItem(SESSION_USER_KEY);
           return null;
@@ -334,10 +333,33 @@ export default function App() {
 
   // Real-time Cloud Firestore Backend Subscription
   useEffect(() => {
+    // Cloud data is only readable after login (Firestore rules require a verified session).
+    if (!currentUser?.email) return undefined;
     let didInitialUsersMerge = false;
+    const meKey = currentUser.email.trim().toLowerCase();
+    const isAdminUser = currentUser.role === 'admin' || meKey === 'zivit.reshef@gmail.com';
+    // Non-admins get a public directory + their own profile (never the password hashes).
+    let directoryUsers = [];
+    let myProfile = null;
+    const mergeDirectoryAndProfile = () => {
+      if (!myProfile) return;
+      const sameUser = (u) => (u.email || '').trim().toLowerCase() === meKey;
+      const list = directoryUsers.map((d) => (sameUser(d) ? { ...d, ...myProfile } : d));
+      if (!list.some(sameUser)) list.push(myProfile);
+      setAllowedUsers(list);
+    };
     const unsubscribe = subscribeToTalaBackend({
-      getInitialAllowedUsers: () => loadAllowedUsers(),
+      email: meKey,
+      isAdmin: isAdminUser,
       getInitialGoalBank: () => loadGoalBank(),
+      onDirectoryChange: (users) => {
+        directoryUsers = users;
+        mergeDirectoryAndProfile();
+      },
+      onProfileChange: (profile) => {
+        myProfile = profile;
+        mergeDirectoryAndProfile();
+      },
       getInitialStudents: () => students,
       onAllowedUsersChange: (rawCloudUsers) => {
         const localUsers = loadAllowedUsers();
@@ -441,7 +463,7 @@ export default function App() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [currentUser?.email, currentUser?.role]);
 
   // Local dismissed shared report IDs per teacher email
   const [dismissedSharedByEmail, setDismissedSharedByEmail] = useState(() =>

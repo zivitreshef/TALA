@@ -1,0 +1,344 @@
+{
+  "firebase.json": {
+    "mtime": 1791466720.4173014,
+    "seen": 1791477110.7740507,
+    "ast_hash": "f344269fcedd4f68ee6d05bbce20212f",
+    "semantic_hash": "f344269fcedd4f68ee6d05bbce20212f"
+  },
+  "functions/index.js": {
+    "mtime": 1791467005.5431032,
+    "seen": 1791477110.7740507,
+    "ast_hash": "4f60c23ad96722b39b0d6f6654fa9de7",
+    "semantic_hash": "4f60c23ad96722b39b0d6f6654fa9de7"
+  },
+  "functions/package.json": {
+    "mtime": 1791466561.5336776,
+    "seen": 1791477110.7740507,
+    "ast_hash": "63f5a81f976afe0aaed82c812658c433",
+    "semantic_hash": "63f5a81f976afe0aaed82c812658c433"
+  },
+  "package.json": {
+    "mtime": 1791922591.3393345,
+    "seen": 1791923085.0203934,
+    "ast_hash": "305414ced30ce979b1016a865acb92a1",
+    "semantic_hash": "305414ced30ce979b1016a865acb92a1"
+  },
+  "scratch/fixAppAdmin.py": {
+    "mtime": 1791135808.6067588,
+    "seen": 1791477110.7740507,
+    "ast_hash": "ab6e4bb37d6d933946d63a2d6f93422d",
+    "semantic_hash": "ab6e4bb37d6d933946d63a2d6f93422d"
+  },
+  "scratch/fixRow.py": {
+    "mtime": 1791135518.8731532,
+    "seen": 1791477110.7740507,
+    "ast_hash": "4546a8faa3fc83a6649ad362b0594e7b",
+    "semantic_hash": "4546a8faa3fc83a6649ad362b0594e7b"
+  },
+  "src/AllowlistAuthGate.jsx": {
+    "mtime": 1791632837.031108,
+    "seen": 1791923085.0203934,
+    "ast_hash": "68758f28434b5744f65f639d32d08f8b",
+    "semantic_hash": "68758f28434b5744f65f639d32d08f8b"
+  },
+  "src/App.jsx": {
+    "mtime": 1791921931.5923903,
+    "seen": 1791923085.0203934,
+    "ast_hash": "916fc2d043fe54d82fa227f9ccb64cd2",
+    "semantic_hash": "916fc2d043fe54d82fa227f9ccb64cd2"
+  },
+  "src/EcologicalWorkPlanForm.jsx": {
+    "mtime": 1791707432.0203135,
+    "seen": 1791923085.0203934,
+    "ast_hash": "68af187948f56fc6a8fae1082ecfaa9c",
+    "semantic_hash": "68af187948f56fc6a8fae1082ecfaa9c"
+  },
+  "src/__tests__/coreDomain.test.js": {
+    "mtime": 1791737030.6179893,
+    "seen": 1791923085.0203934,
+    "ast_hash": "5206002ef453548ba34ce0831a9f12f1",
+    "semantic_hash": "5206002ef453548ba34ce0831a9f12f1"
+  },
+  "src/allowedUsers.js": {
+    "mtime": 1791920887.97578,
+    "seen": 1791923085.0203934,
+    "ast_hash": "b557533ccdb412084340ec57adf55f2f",
+    "semantic_hash": "b557533ccdb412084340ec57adf55f2f"
+  },
+  "src/components/ErrorBoundary.jsx": {
+    "mtime": 1791131370.1447692,
+    "seen": 1791477110.7740507,
+    "ast_hash": "caa4b7f154bb3febd9b30a89918f46a5",
+    "semantic_hash": "caa4b7f154bb3febd9b30a89918f46a5"
+  },
+  "src/components/form/ShareTeamModal.jsx": {
+    "mtime": 1791136152.962619,
+    "seen": 1791477110.7740507,
+    "ast_hash": "68ca175fa9ec56168c2bfcae13c0880c",
+    "semantic_hash": "68ca175fa9ec56168c2bfcae13c0880c"
+  },
+  "src/components/form/StatusReportPanel.jsx": {
+    "mtime": 1791183067.6597075,
+    "seen": 1791477110.7740507,
+    "ast_hash": "44eeb5aee37f02664e7b23669eec939f",
+    "semantic_hash": "44eeb5aee37f02664e7b23669eec939f"
+  },
+  "src/components/modals/StudentActionModals.jsx": {
+    "mtime": 1791136152.9669375,
+    "seen": 1791477110.7740507,
+    "ast_hash": "c9ad3dc6600901c9dc2325e25722e887",
+    "semantic_hash": "c9ad3dc6600901c9dc2325e25722e887"
+  },
+  "src/components/modals/TrialNdaModal.jsx": {
+    "mtime": 1791136152.9669375,
+    "seen": 1791477110.7740507,
+    "ast_hash": "d1c844c0d631dfd3ab127504570b30e4",
+    "semantic_hash": "d1c844c0d631dfd3ab127504570b30e4"
+  },
+  "src/components/modals/UserFeedbackSurveyModal.jsx": {
+    "mtime": 1791136152.9694338,
+    "seen": 1791477110.7740507,
+    "ast_hash": "45e9caa0841863a6b5b3dec5db2909e8",
+    "semantic_hash": "45e9caa0841863a6b5b3dec5db2909e8"
+  },
+  "src/domain/goalSizingAndMerge.js": {
+    "mtime": 1791452838.0453079,
+    "seen": 1791477110.7740507,
+    "ast_hash": "fb6053b1e12f3740a2bb8abd33b3bbbe",
+    "semantic_hash": "fb6053b1e12f3740a2bb8abd33b3bbbe"
+  },
+  "src/domain/permissions.js": {
+    "mtime": 1791183067.6597075,
+    "seen": 1791477110.7740507,
+    "ast_hash": "bad7f0f0dd70680c33c7420593ef9bb7",
+    "semantic_hash": "bad7f0f0dd70680c33c7420593ef9bb7"
+  },
+  "src/domain/privacyAndAcronyms.js": {
+    "mtime": 1791454996.8107502,
+    "seen": 1791477110.7740507,
+    "ast_hash": "841deeed4c57a6da31adf88f7640d017",
+    "semantic_hash": "841deeed4c57a6da31adf88f7640d017"
+  },
+  "src/domain/schoolYearRollover.js": {
+    "mtime": 1791231179.5799224,
+    "seen": 1791477110.7740507,
+    "ast_hash": "92069027ef5479b987c76329b1a5b11f",
+    "semantic_hash": "92069027ef5479b987c76329b1a5b11f"
+  },
+  "src/domain/statusReportGenerator.js": {
+    "mtime": 1791231179.5799224,
+    "seen": 1791477110.7740507,
+    "ast_hash": "888d87e3e84d3c4470db8aa6d56ce746",
+    "semantic_hash": "888d87e3e84d3c4470db8aa6d56ce746"
+  },
+  "src/emailService.js": {
+    "mtime": 1791920887.9837954,
+    "seen": 1791923085.022809,
+    "ast_hash": "7f34b23af4225428d14eeb79d6fe8a7a",
+    "semantic_hash": "7f34b23af4225428d14eeb79d6fe8a7a"
+  },
+  "src/export/wordAndPrintBuilders.js": {
+    "mtime": 1791231179.5799224,
+    "seen": 1791477110.7740507,
+    "ast_hash": "28804f19ce4ade3dfa57cbde554c57bd",
+    "semantic_hash": "28804f19ce4ade3dfa57cbde554c57bd"
+  },
+  "src/firebaseBackend.js": {
+    "mtime": 1791631824.6913068,
+    "seen": 1791923085.022809,
+    "ast_hash": "e7ba72eb990de5945fe9b73c9af087e5",
+    "semantic_hash": "e7ba72eb990de5945fe9b73c9af087e5"
+  },
+  "src/goalBankData.js": {
+    "mtime": 1791702994.8787594,
+    "seen": 1791923085.022809,
+    "ast_hash": "711f62a44a7d626586d5d6280114bd9c",
+    "semantic_hash": "711f62a44a7d626586d5d6280114bd9c"
+  },
+  "src/main.jsx": {
+    "mtime": 1791491777.9358683,
+    "seen": 1791923085.022809,
+    "ast_hash": "cdd82b768936c02c7313ac2fa5218f43",
+    "semantic_hash": "cdd82b768936c02c7313ac2fa5218f43"
+  },
+  "src/services/storage.js": {
+    "mtime": 1791131370.1787465,
+    "seen": 1791477110.7740507,
+    "ast_hash": "24be2bf92b5a9263dab2bc6350d8c88c",
+    "semantic_hash": "24be2bf92b5a9263dab2bc6350d8c88c"
+  },
+  "vite.config.js": {
+    "mtime": 1791632837.033872,
+    "seen": 1791923085.022809,
+    "ast_hash": "95e0501576220db7e973602faeb84813",
+    "semantic_hash": "95e0501576220db7e973602faeb84813"
+  },
+  ".github/workflows/deploy.yml": {
+    "mtime": 1791051249.9696398,
+    "seen": 1791477110.7740507,
+    "ast_hash": "3e4c715ae78bcd0ddc1c195e1674b7b0",
+    "semantic_hash": "3e4c715ae78bcd0ddc1c195e1674b7b0"
+  },
+  ".kilo/plans/1791449388302-mask-pii-before-ai.md": {
+    "mtime": 1791452336.5126977,
+    "seen": 1791477110.7740507,
+    "ast_hash": "fa094793505cdadf2f3655ae6ae733e6",
+    "semantic_hash": "fa094793505cdadf2f3655ae6ae733e6"
+  },
+  ".kilo/plans/1791456858571-ai-security-hardening.md": {
+    "mtime": 1791459900.0568988,
+    "seen": 1791477110.7740507,
+    "ast_hash": "880dc9fe554265bb0bd004b20ed8d991",
+    "semantic_hash": "880dc9fe554265bb0bd004b20ed8d991"
+  },
+  "GEMINI.md": {
+    "mtime": 1791058494.833932,
+    "seen": 1791477110.7740507,
+    "ast_hash": "80a921fa1c7d09c13615eb4cdeddc24a",
+    "semantic_hash": "80a921fa1c7d09c13615eb4cdeddc24a"
+  },
+  "README.md": {
+    "mtime": 1790885168.9458587,
+    "seen": 1791477110.7740507,
+    "ast_hash": "46379f1f8f9ec79cbe0ee517c4f4763e",
+    "semantic_hash": "46379f1f8f9ec79cbe0ee517c4f4763e"
+  },
+  "TALA_Architecture_And_Security.html": {
+    "mtime": 1791112754.752176,
+    "seen": 1791477110.7740507,
+    "ast_hash": "8ce35c00bb24e54fc784c6deda874ba3",
+    "semantic_hash": "8ce35c00bb24e54fc784c6deda874ba3"
+  },
+  "TALA_Marketing_Presentation.html": {
+    "mtime": 1791058494.8382947,
+    "seen": 1791477110.7740507,
+    "ast_hash": "185bffd1643891e392b1f2e271ade3ea",
+    "semantic_hash": "185bffd1643891e392b1f2e271ade3ea"
+  },
+  "index.html": {
+    "mtime": 1791029680.774335,
+    "seen": 1791477110.7740507,
+    "ast_hash": "6876702767fc39ada9c9934138157cf2",
+    "semantic_hash": "6876702767fc39ada9c9934138157cf2"
+  },
+  "old_email.txt": {
+    "mtime": 1791136094.9102917,
+    "seen": 1791477110.7740507,
+    "ast_hash": "99c83c87a1380c91b9eec1a46063c442",
+    "semantic_hash": "99c83c87a1380c91b9eec1a46063c442"
+  },
+  "TALA_Architecture_And_Security.pdf": {
+    "mtime": 1791112754.7692997,
+    "seen": 1791477110.7740507,
+    "ast_hash": "1161c1aa6798cd5039c632a0f8e9b002",
+    "semantic_hash": "1161c1aa6798cd5039c632a0f8e9b002"
+  },
+  "TALA_Marketing_Presentation.pdf": {
+    "mtime": 1791058494.9037817,
+    "seen": 1791477110.7740507,
+    "ast_hash": "78131e0621238a0c736ef61502453f81",
+    "semantic_hash": "78131e0621238a0c736ef61502453f81"
+  },
+  "public/apple-touch-icon.png": {
+    "mtime": 1791029652.680444,
+    "seen": 1791477110.7740507,
+    "ast_hash": "a74e2126857e56656a22cb9755002c84",
+    "semantic_hash": "a74e2126857e56656a22cb9755002c84"
+  },
+  "public/favicon-16x16.png": {
+    "mtime": 1791029652.667483,
+    "seen": 1791477110.7740507,
+    "ast_hash": "c711732bbd84a2cc1076aae86bd28a55",
+    "semantic_hash": "c711732bbd84a2cc1076aae86bd28a55"
+  },
+  "public/favicon-32x32.png": {
+    "mtime": 1791029652.6694915,
+    "seen": 1791477110.7740507,
+    "ast_hash": "2ed210320f6e918707a183337283f591",
+    "semantic_hash": "2ed210320f6e918707a183337283f591"
+  },
+  "public/favicon.png": {
+    "mtime": 1791029652.6730235,
+    "seen": 1791477110.7740507,
+    "ast_hash": "42445ff586258e35e3acf3fd0cce9ebc",
+    "semantic_hash": "42445ff586258e35e3acf3fd0cce9ebc"
+  },
+  "public/tala-logo.jpg": {
+    "mtime": 1790888726.8748145,
+    "seen": 1791477110.7740507,
+    "ast_hash": "cb1c9b9697a4f6438543f7708c6817e4",
+    "semantic_hash": "cb1c9b9697a4f6438543f7708c6817e4"
+  },
+  "public/tala-logo.png": {
+    "mtime": 1790888726.8679206,
+    "seen": 1791477110.7740507,
+    "ast_hash": "901a057c9e4b7463d9d29ef777ea7ebe",
+    "semantic_hash": "901a057c9e4b7463d9d29ef777ea7ebe"
+  },
+  "scripts/checkPresenceGate.js": {
+    "mtime": 1791630567.015342,
+    "seen": 1791923085.0203934,
+    "ast_hash": "6ba38028e81473a103c6f3b845052a25",
+    "semantic_hash": "6ba38028e81473a103c6f3b845052a25"
+  },
+  "src/__tests__/adminTelemetryAndLifecycle.test.js": {
+    "mtime": 1791922591.345704,
+    "seen": 1791923085.0203934,
+    "ast_hash": "15ca14c8ae5446199649c1284608bef6",
+    "semantic_hash": "15ca14c8ae5446199649c1284608bef6"
+  },
+  "src/__tests__/aiBackendSecurity.test.js": {
+    "mtime": 1791544827.6858592,
+    "seen": 1791923085.0203934,
+    "ast_hash": "433148f9eebf9c05d8db3a0decf29d91",
+    "semantic_hash": "433148f9eebf9c05d8db3a0decf29d91"
+  },
+  "src/__tests__/goalBankDedup.test.js": {
+    "mtime": 1791703002.4036062,
+    "seen": 1791923085.0203934,
+    "ast_hash": "70743e276ff78461bb3c9aef4e68e93c",
+    "semantic_hash": "70743e276ff78461bb3c9aef4e68e93c"
+  },
+  "src/__tests__/studentStage.test.js": {
+    "mtime": 1791701569.8255403,
+    "seen": 1791923085.0203934,
+    "ast_hash": "d1b72270f482d3c7ae8e825bd77f5dea",
+    "semantic_hash": "d1b72270f482d3c7ae8e825bd77f5dea"
+  },
+  "src/components/modals/AdminAllowlistModal.jsx": {
+    "mtime": 1791921931.5998607,
+    "seen": 1791923085.022809,
+    "ast_hash": "9305d0d354be190f2a52edbfd8f93398",
+    "semantic_hash": "9305d0d354be190f2a52edbfd8f93398"
+  },
+  "src/components/modals/TrialUpgradeModal.jsx": {
+    "mtime": 1791922591.3477025,
+    "seen": 1791923085.022809,
+    "ast_hash": "b837854c72c952659dcc1ae6070074a9",
+    "semantic_hash": "b837854c72c952659dcc1ae6070074a9"
+  },
+  "src/services/aiProxyClient.js": {
+    "mtime": 1791920887.9890916,
+    "seen": 1791923085.022809,
+    "ast_hash": "46534d01f044ba6f767eb074d70c5447",
+    "semantic_hash": "46534d01f044ba6f767eb074d70c5447"
+  },
+  "src/studentStage.js": {
+    "mtime": 1791700273.3764462,
+    "seen": 1791923085.022809,
+    "ast_hash": "c6f5e2166a9e3914490b6db61e3ed673",
+    "semantic_hash": "c6f5e2166a9e3914490b6db61e3ed673"
+  },
+  "src/utils/studentStage.js": {
+    "mtime": 1791700273.3764462,
+    "seen": 1791923085.022809,
+    "ast_hash": "c6f5e2166a9e3914490b6db61e3ed673",
+    "semantic_hash": "c6f5e2166a9e3914490b6db61e3ed673"
+  },
+  "public/tala_intro_video.mp4": {
+    "mtime": 1791662340.2220776,
+    "seen": 1791923085.022809,
+    "ast_hash": "31e23463c94a5897a441df44409b377b",
+    "semantic_hash": "31e23463c94a5897a441df44409b377b"
+  }
+}
