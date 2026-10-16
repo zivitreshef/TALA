@@ -27,7 +27,6 @@ import {
   Users
 } from 'lucide-react';
 import {
-  verifyAllowedUser,
   validatePasswordPolicy,
   MAX_FAILED_LOGIN_ATTEMPTS,
   DEFAULT_TRIAL_DAYS,
@@ -38,7 +37,7 @@ import {
   verifyUserPassword
 } from './allowedUsers';
 import { sendUserInvitationEmailInBackground } from './emailService';
-import { fetchAllowedUsersFromCloud, subscribeToUserPresence } from './firebaseBackend';
+import { loginWithTala, subscribeToUserPresence } from './firebaseBackend';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -107,56 +106,11 @@ export function AllowlistAuthGate({
     setErrorMsg('');
     setIsAccountLockedError(false);
 
-    // Ensure we always verify against the latest cloud allowed_users merged with any local users
-    const latestCloudUsers = await fetchAllowedUsersFromCloud();
-    let effectiveUsersList = allowedUsers;
-    let needsCloudSync = false;
-
-    if (Array.isArray(latestCloudUsers) && latestCloudUsers.length > 0) {
-      const cloudByEmail = new Map(
-        latestCloudUsers.map((cu) => [(cu.email || '').trim().toLowerCase(), cu])
-      );
-      const merged = [...latestCloudUsers];
-      (allowedUsers || []).forEach((lu) => {
-        const key = (lu.email || '').trim().toLowerCase();
-        if (key && !cloudByEmail.has(key)) {
-          merged.push(lu);
-          needsCloudSync = true;
-        }
-      });
-      effectiveUsersList = merged;
-    }
-
-    let result = verifyAllowedUser(email, accessCode, effectiveUsersList);
-
-    // If cloud verification failed due to stale password on cloud, check if local allowedUsers has the updated password
-    if (!result.allowed && Array.isArray(allowedUsers) && allowedUsers.length > 0) {
-      const localCheck = verifyAllowedUser(email, accessCode, allowedUsers);
-      if (localCheck.allowed && localCheck.user) {
-        const healedList = effectiveUsersList.map((u) =>
-          (u.email || '').trim().toLowerCase() === (localCheck.user.email || '').trim().toLowerCase()
-            ? { ...u, ...localCheck.user, failedLoginAttempts: 0, lockedOut: false }
-            : u
-        );
-        result = {
-          allowed: true,
-          user: localCheck.user,
-          updatedUsersList: healedList
-        };
-        needsCloudSync = true;
-      }
-    }
-
-    if (onUpdateAllowedUsers) {
-      if (result.updatedUsersList && (Array.isArray(latestCloudUsers) || result.allowed)) {
-        onUpdateAllowedUsers(result.updatedUsersList);
-      } else if (needsCloudSync && result.allowed) {
-        onUpdateAllowedUsers(effectiveUsersList);
-      }
-    }
+    // Password check + lockout run server-side (talaLogin Cloud Function).
+    const result = await loginWithTala(email, accessCode);
 
     if (!result.allowed) {
-      setErrorMsg(result.reason);
+      setErrorMsg(result.reason || 'ההתחברות נכשלה.');
       if (result.isLockedOut || result.isDisabled) {
         setIsAccountLockedError(true);
       }

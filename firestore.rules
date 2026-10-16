@@ -26,43 +26,69 @@ service cloud.firestore {
         currentEmail() in data.sharedWith;
     }
 
-    // Global configuration (allowed users, goal bank, admin requests, settings)
-    match /tala_config/{docId} {
-      allow read: if true;
-      allow write: if true;
+    function isAdmin() {
+      return isPrimaryAdmin() || (isSignedIn() && request.auth.token.role == 'admin');
     }
 
-    // Student plans & status reports
-    match /tala_students/{studentId} {
-      allow read: if !isSignedIn() ||
-        isOwnerOfResource(resource.data) ||
-        isSharedOnResource(resource.data) ||
-        resource.data.ownerEmail == null ||
-        resource.data.ownerEmail == '';
+    // Users list: admin read only. All writes go through the talaConfigWrite /
+    // talaLogin Cloud Functions (Admin SDK bypasses rules), never from clients.
+    match /tala_config/allowed_users {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /tala_config/admin_requests {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
 
-      allow create: if !isSignedIn() ||
-        isOwnerOfResource(request.resource.data) ||
-        request.resource.data.ownerEmail == null;
+    // Server-published, non-secret views of the users list.
+    match /tala_config/directory {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    match /tala_profiles/{key} {
+      allow read: if isPrimaryAdmin() ||
+        (isSignedIn() && resource.data.email.lower() == currentEmail());
+      allow write: if false;
+    }
+
+    match /tala_config/settings {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /tala_config/goal_bank {
+      allow read, write: if isSignedIn();
+    }
+    match /tala_config/presence {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+    match /tala_config/students_migration_meta {
+      allow read, write: if isPrimaryAdmin();
+    }
+    // Any other tala_config doc: denied by default.
+
+    // Student plans & status reports. Owner, shared teachers and the primary admin only.
+    match /tala_students/{studentId} {
+      allow read: if isOwnerOfResource(resource.data) || isSharedOnResource(resource.data);
+
+      allow create: if isSignedIn() &&
+        (isPrimaryAdmin() || request.resource.data.ownerEmail.lower() == currentEmail());
 
       // Prevent non-owners from hijacking ownerEmail or archiving a shared student
       allow update: if (
-        !isSignedIn() ||
         isOwnerOfResource(resource.data) ||
         isSharedOnResource(resource.data)
       ) && (
-        // Shared teachers cannot change ownerEmail or toggle archived status
-        resource.data.ownerEmail == null ||
         request.resource.data.ownerEmail == resource.data.ownerEmail
       ) && (
-        !isSignedIn() ||
         isOwnerOfResource(resource.data) ||
         request.resource.data.archived == resource.data.archived
       );
 
       // Only the student's owner (or primary admin) can delete a student
-      allow delete: if !isSignedIn() || isOwnerOfResource(resource.data);
+      allow delete: if isOwnerOfResource(resource.data);
     }
-
     // Parent / student input invites. The doc ID is a 128-bit random token (capability URL).
     function answerOk(responses, key) {
       return !(key in responses) ||

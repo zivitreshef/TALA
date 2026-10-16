@@ -39,3 +39,125 @@ async function handleAiGenerate(req,res){
 }
 exports.aiGenerate=functions.https.onRequest(handleAiGenerate);
 exports.aiGenerateV2=require("firebase-functions/v2/https").onRequest({region:"us-central1",memory:"512MiB",timeoutSeconds:60,cors:false},handleAiGenerate);
+
+// ---- talaConfigWrite: the only write path to tala_config/allowed_users & admin_requests ----
+const PRIMARY_ADMIN="zivit.reshef@gmail.com";
+const SELF_FIELDS=["passwordHash","passwordSalt","mustChangePassword","mustSignNda","ndaSigned","ndaSignedAt","ndaSignedDate","ndaSignerIdNumber","surveyCompleted","surveyCompletedAt","surveyDismissed","dismissedSharedReportIds","notifyOnSharedReport"];
+const OTHER_FIELDS=["dismissedSharedReportIds"]; // any signed-in user may re-notify a colleague
+const pick=(o,keys)=>{const r={};for(const k of keys)if(o&&k in o)r[k]=o[k];return r;};
+const lc=(s)=>String(s||"").trim().toLowerCase();
+async function callerEmail(req){const m=(req.headers.authorization||"").match(/^Bearer\s+(.+)$/i);if(!m)return"";try{return lc((await admin.auth().verifyIdToken(m[1])).email);}catch(_){return"";}}
+async function handleTalaConfigWrite(req,res){
+  const origin=req.headers.origin||"";
+  const allowedOrigins=["https://zivitreshef.github.io","https://tala-d9aaa.web.app","https://tala-d9aaa.firebaseapp.com","http://localhost:5173","http://localhost:3000","http://localhost:5000"];
+  if(origin&&allowedOrigins.some((o)=>origin.startsWith(o))){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Headers","Content-Type, Authorization");res.setHeader("Access-Control-Allow-Methods","POST, OPTIONS");}
+  if(req.method==="OPTIONS"){res.status(204).end();return;}
+  if(req.method!=="POST"){res.status(405).json({error:"Method not allowed"});return;}
+  let body=req.body;if(typeof body==="string"){try{body=JSON.parse(body);}catch(_){body={};}}body=body||{};
+  const db=admin.firestore();const usersRef=db.collection("tala_config").doc("allowed_users");const reqsRef=db.collection("tala_config").doc("admin_requests");
+  const email=await callerEmail(req);
+  try{
+    // Public: contact-admin form on the login page (append-only, bounded).
+    if(body.kind==="submitRequest"){
+      const r=body.request||{};const s=(v,n)=>String(v==null?"":v).slice(0,n);
+      const item={id:s(r.id,64)||"req_"+Date.now(),name:s(r.name,120),email:s(r.email,200),topic:s(r.topic,200),notes:s(r.notes,4000),createdAt:s(r.createdAt,64)};
+      await db.runTransaction(async(tx)=>{const snap=await tx.get(reqsRef);const cur=(snap.exists&&snap.data().requests)||[];tx.set(reqsRef,{requests:[item,...cur].slice(0,300),updatedAt:new Date().toISOString()});});
+      res.status(200).json({ok:true});return;
+    }
+    if(!email){res.status(401).json({error:"Unauthorized"});return;}
+    let published=null;
+    await db.runTransaction(async(tx)=>{
+      published=null;
+      const snap=await tx.get(usersRef);const stored=(snap.exists&&snap.data().users)||[];
+      const me=stored.find((u)=>lc(u.email)===email);
+      const isAdmin=email===PRIMARY_ADMIN||(me&&me.role==="admin"&&me.active!==false);
+      if(body.kind==="adminRequests"){
+        if(!isAdmin)throw Object.assign(new Error("Forbidden"),{status:403});
+        if(!Array.isArray(body.requests)||body.requests.length>300)throw Object.assign(new Error("Bad request"),{status:400});
+        tx.set(reqsRef,{requests:body.requests,updatedAt:new Date().toISOString()});return;
+      }
+      if(body.kind!=="users"||!Array.isArray(body.users)||body.users.length>400)throw Object.assign(new Error("Bad request"),{status:400});
+      const sub=body.users;
+      if(isAdmin){
+        const pa=sub.find((u)=>u&&lc(u.email)===PRIMARY_ADMIN);
+        if(!pa||pa.role!=="admin"||pa.active===false||sub.some((u)=>!u||typeof u.email!=="string"))throw Object.assign(new Error("Bad request"),{status:400});
+        tx.set(usersRef,{users:sub,updatedAt:new Date().toISOString()});published={users:sub,prev:stored,full:true};return;
+      }
+      if(!me)throw Object.assign(new Error("Forbidden"),{status:403});
+      const next=stored.map((u)=>{const s=sub.find((x)=>x&&lc(x.email)===lc(u.email));if(!s)return u;const patch=pick(s,lc(u.email)===email?SELF_FIELDS:OTHER_FIELDS);if(JSON.stringify(patch).length>20000)throw Object.assign(new Error("Bad request"),{status:400});return Object.assign({},u,patch);});
+      tx.set(usersRef,{users:next,updatedAt:new Date().toISOString()});published={users:next,prev:stored,full:false};
+    });
+    if(published)await publishUsers(published.users,published.prev,published.full);
+    res.status(200).json({ok:true});
+  }catch(e){if(e.status){res.status(e.status).json({error:e.message});return;}console.error("talaConfigWrite failed",e);res.status(500).json({error:"Write failed"});}
+}
+exports.talaConfigWrite=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaConfigWrite);
+
+// ---- Derived read-only docs so Firestore rules can keep allowed_users admin-only ----
+// tala_config/directory  : public fields of every user (colleague picker)
+// tala_profiles/{key}    : one user's own record minus secrets (own-profile sync)
+const emailKey=(e)=>lc(e).replace(/[^a-z0-9._-]/g,"_");
+const stripSecrets=(u)=>{const r=Object.assign({},u);delete r.passwordHash;delete r.passwordSalt;delete r.accessCode;return r;};
+const uidFor=(email)=>"tala_"+sha256(lc(email)).slice(0,24);
+// full=true: directory + all profiles + cleanup + revoke sessions of removed/deactivated users.
+// full=false: only profiles whose record changed.
+async function publishUsers(users,prev,full){
+  const db=admin.firestore();const batch=db.batch();const profiles=db.collection("tala_profiles");
+  const before=new Map((prev||[]).map((u)=>[lc(u.email),JSON.stringify(u)]));
+  for(const u of users){if(full||before.get(lc(u.email))!==JSON.stringify(u))batch.set(profiles.doc(emailKey(u.email)),stripSecrets(u));}
+  if(full){
+    batch.set(db.collection("tala_config").doc("directory"),{users:users.map((u)=>pick(u,["id","email","name","title","group","role","active"])),updatedAt:new Date().toISOString()});
+    const now=new Map(users.map((u)=>[lc(u.email),u]));
+    for(const p of prev||[]){const n=now.get(lc(p.email));if(!n)batch.delete(profiles.doc(emailKey(p.email)));if((!n||n.active===false)&&p.active!==false)admin.auth().revokeRefreshTokens(uidFor(p.email)).catch(()=>{});}
+  }
+  await batch.commit();
+}
+
+// ---- talaLogin: server-side password check + Firebase custom token ----
+const crypto=require("crypto");
+const MAX_FAILED=5;
+const sha256=(s)=>crypto.createHash("sha256").update(s,"utf8").digest("hex");
+function hashPw(pw,salt){const p=String(pw||"").trim(),s=String(salt||"").trim();let d=sha256(`TALA_PBKDF_V1:${s}:${p}`);for(let r=1;r<256;r++)d=sha256(`${d}:${s}:${p}:${r}`);return d;}
+function pwOk(u,code){const c=String(code||"").trim();if(u.passwordHash&&u.passwordSalt){const eq=(h)=>h.length===u.passwordHash.length&&crypto.timingSafeEqual(Buffer.from(h),Buffer.from(u.passwordHash));return eq(hashPw(c,u.passwordSalt))||(c.toUpperCase()==="TALA2026"&&eq(hashPw("TALA2026",u.passwordSalt)));}return false;}
+async function handleTalaLogin(req,res){
+  const origin=req.headers.origin||"";
+  const allowedOrigins=["https://zivitreshef.github.io","https://tala-d9aaa.web.app","https://tala-d9aaa.firebaseapp.com","http://localhost:5173","http://localhost:3000","http://localhost:5000"];
+  if(origin&&allowedOrigins.some((o)=>origin.startsWith(o))){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Headers","Content-Type");res.setHeader("Access-Control-Allow-Methods","POST, OPTIONS");}
+  if(req.method==="OPTIONS"){res.status(204).end();return;}
+  if(req.method!=="POST"){res.status(405).json({error:"Method not allowed"});return;}
+  let body=req.body;if(typeof body==="string"){try{body=JSON.parse(body);}catch(_){body={};}}
+  const email=String(body&&body.email||"").trim().toLowerCase();const code=String(body&&body.accessCode||"");
+  const deny=(extra)=>res.status(401).json(Object.assign({allowed:false,reason:"פרטי ההתחברות שגויים."},extra));
+  if(!email||!code){deny();return;}
+  const db=admin.firestore();const ref=db.collection("tala_config").doc("allowed_users");
+  let outcome;
+  try{
+    outcome=await db.runTransaction(async(tx)=>{
+      const snap=await tx.get(ref);const users=(snap.exists&&snap.data().users)||[];
+      const i=users.findIndex((u)=>String(u.email||"").trim().toLowerCase()===email);
+      if(i<0)return{ok:false,reason:"גישה נדחתה: כתובת האימייל אינה מופיעה ברשימת המשתמשים המורשים של מערכת TALA."};
+      const u=users[i];const isMain=email===PRIMARY_ADMIN;
+      if(!u.active&&!isMain)return u.lockedOut?{ok:false,isLockedOut:true,reason:"חשבונך נחסם אוטומטית מטעמי אבטחה לאחר 5 ניסיונות כניסה שגויים. לשחרור החסימה יש לפנות למנהל/ת המערכת."}:{ok:false,isDisabled:true,reason:"גישה נדחתה: חשבון משתמש זה הושבת על ידי מנהל/ת המערכת."};
+      if(!pwOk(u,code)){
+        const n=(Number(u.failedLoginAttempts)||0)+1;const locked=n>=MAX_FAILED;
+        users[i]=Object.assign({},u,{failedLoginAttempts:n},locked?{lockedOut:true,lockedOutAt:new Date().toISOString(),active:isMain}:{});
+        tx.set(ref,{users,updatedAt:new Date().toISOString()},{merge:true});
+        return locked?{ok:false,isLockedOut:true,all:users,justLocked:true,reason:"הזנת סיסמה שגויה 5 פעמים ברציפות – החשבון נחסם אוטומטית בהתאם למדיניות האבטחה."}:{ok:false,reason:`קוד הגישה שהוזן שגוי (ניסיון ${n} מתוך ${MAX_FAILED}).`};
+      }
+      if(u.failedLoginAttempts){users[i]=Object.assign({},u,{failedLoginAttempts:0,lockedOut:false});tx.set(ref,{users,updatedAt:new Date().toISOString()},{merge:true});}
+      return{ok:true,user:users[i],all:users};
+    });
+  }catch(e){console.error("talaLogin failed",e);res.status(500).json({error:"Login failed"});return;}
+  if(!outcome.ok){
+    if(outcome.justLocked){try{await publishUsers(outcome.all,outcome.all,true);await admin.auth().revokeRefreshTokens(uidFor(email));}catch(_){}}
+    deny({reason:outcome.reason,isLockedOut:!!outcome.isLockedOut,isDisabled:!!outcome.isDisabled});return;
+  }
+  try{
+    const hasDir=(await db.collection("tala_config").doc("directory").get()).exists;
+    if(outcome.user.role==="admin"||!hasDir)await publishUsers(outcome.all,outcome.all,true);
+    else await publishUsers([outcome.user],[],false);
+  }catch(e){console.error("publishUsers on login failed",e);}
+  const token=await admin.auth().createCustomToken(uidFor(email),{email,role:outcome.user.role||"teacher"});
+  res.status(200).json({allowed:true,token,user:outcome.user});
+}
+exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaLogin);

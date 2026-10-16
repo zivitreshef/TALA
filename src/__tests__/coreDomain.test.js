@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   recordUserPresence,
-  deriveFirebaseAuthPassword,
   sanitizeForFirestore
 } from '../firebaseBackend';
 import {
@@ -446,11 +445,6 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     expect(rolled.reportsByYear[prevYear].isLocked).toBe(true);
     expect(rolled.reportsByYear[nextYear].isLocked).toBe(false);
     expect(rolled.goals[0].activityParticipation).toContain('רצף מתכנית');
-  });
-
-  it('pads short teacher access codes deterministically for Firebase Auth (>= 6 chars)', () => {
-    expect(deriveFirebaseAuthPassword('1234').length).toBeGreaterThanOrEqual(6);
-    expect(deriveFirebaseAuthPassword('StrongPass123')).toBe('StrongPass123');
   });
 
   it('returns fallback value safely when storage key is missing', () => {
