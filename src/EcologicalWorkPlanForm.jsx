@@ -27,7 +27,8 @@ import {
   X,
   Lock,
   Unlock,
-  MessageCircle
+  MessageCircle,
+  ClipboardCopy
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
@@ -97,6 +98,7 @@ import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 import ParentVoiceControl from './components/form/ParentVoiceControl';
+import MinistryCopyModal from './components/form/MinistryCopyModal';
 import { appendToFreeText } from './domain/parentInvite';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
 
@@ -413,6 +415,7 @@ export default function EcologicalWorkPlanForm({
   const [formData, setFormData] = useState(() => buildNormalizedStudentData(student));
   const savedSnapshotRef = useRef(JSON.stringify(buildNormalizedStudentData(student)));
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
+  const [showMinistryCopyModal, setShowMinistryCopyModal] = useState(false);
   const [saveBanner, setSaveBanner] = useState(false);
   const [autoSavedTime, setAutoSavedTime] = useState('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -3219,6 +3222,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="button"
               className="btn-print-doc"
               onClick={() => {
+                handleSaveProgress();
+                setShowMinistryCopyModal(true);
+              }}
+              title="העתקת סעיפי התוכנית כטקסט נקי להדבקה במנב״ס / משו״ב"
+            >
+              <ClipboardCopy size={18} />
+              <span>העתקה למנב&quot;ס</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
                 setShowEvalReportSection((prev) => {
                   const next = !prev;
                   if (next) {
@@ -5430,6 +5446,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             type="button"
             className="btn-print-doc"
             onClick={() => {
+              handleSaveProgress();
+              setShowMinistryCopyModal(true);
+            }}
+            title="העתקת סעיפי התוכנית כטקסט נקי להדבקה במנב״ס / משו״ב"
+          >
+            <ClipboardCopy size={18} />
+            <span>העתקה למנב&quot;ס</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn-print-doc"
+            onClick={() => {
               setShowEvalReportSection((prev) => {
                 const next = !prev;
                 if (next) {
@@ -6018,6 +6047,14 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </button>
           </div>
         </div>
+      )}
+      {showMinistryCopyModal && (
+        <MinistryCopyModal
+          formData={formData}
+          hideDetails={hideStudentDetailsOnPrint}
+          onToggleHideDetails={setHideStudentDetailsOnPrint}
+          onClose={() => setShowMinistryCopyModal(false)}
+        />
       )}
     </div>
   );
