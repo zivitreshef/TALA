@@ -592,6 +592,10 @@ export function attachAiBaselineToGoal(goalObj) {
 export function isGoalProtectedFromAiOverwrite(goalObj) {
   if (!goalObj || isGoalEmpty(goalObj)) return false;
   if (goalObj.isTeacherModified || goalObj.isTeacherAdded) return true;
+  if (Array.isArray(goalObj.observations) && goalObj.observations.length > 0) return true;
+  if ((goalObj.midYearEvaluation || '').trim() || (goalObj.endYearEvaluation || '').trim()) {
+    return true;
+  }
   if (goalObj.aiSnapshot && typeof goalObj.aiSnapshot === 'object') {
     const compareFields = [
       'environment',

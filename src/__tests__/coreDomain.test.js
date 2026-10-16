@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { recordUserPresence } from '../firebaseBackend';
+import {
+  recordUserPresence,
+  deriveFirebaseAuthPassword,
+  sanitizeForFirestore
+} from '../firebaseBackend';
 import {
   isStudentOwnedByUser,
   isStudentSharedWithUser,
@@ -41,7 +45,6 @@ import {
   INITIAL_GOAL_BANK
 } from '../goalBankData';
 import { buildFreshReportForPlanType } from '../EcologicalWorkPlanForm';
-import { deriveFirebaseAuthPassword, sanitizeForFirestore } from '../firebaseBackend';
 import { safeGetStorageJson } from '../services/storage';
 import {
   buildWorkPlanPrintHtml,

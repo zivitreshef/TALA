@@ -1,7 +1,8 @@
 import { initializeApp, getApps } from 'firebase/app';
 import {
   getAuth,
-  signInWithCustomToken,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut
 } from 'firebase/auth';
 import {
@@ -146,43 +147,60 @@ export function getFirebaseAuth() {
 }
 
 /**
- * Server-verified login: the `talaLogin` Cloud Function checks the password
- * (and lockout), then returns a Firebase custom token + the user record.
- * Resolves to `{ allowed, user?, reason?, isLockedOut?, isDisabled? }`.
+ * Ensures any teacher access code meets Firebase Auth's 6-character minimum
+ * deterministically without altering the teacher's login UX.
  */
-export async function loginWithTala(email, accessCode) {
-  const auth = getFirebaseAuth();
-  if (!auth) return { allowed: false, reason: 'שרת ההתחברות אינו זמין. נסו שוב מאוחר יותר.' };
-  const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
-  const url =
-    import.meta.env?.VITE_TALA_LOGIN_URL ||
-    `https://us-central1-${projectId}.cloudfunctions.net/talaLogin`;
-  let data;
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, accessCode })
-    });
-    data = await res.json();
-  } catch (err) {
-    console.warn('[talaLogin] request failed:', err);
-    return { allowed: false, reason: 'שרת ההתחברות אינו זמין. נסו שוב מאוחר יותר.' };
-  }
-  if (!data?.allowed || !data.token) return { ...data, allowed: false };
-  await signInWithCustomToken(auth, data.token);
-  return { allowed: true, user: data.user };
+export function deriveFirebaseAuthPassword(accessCode = '') {
+  const raw = String(accessCode || '').trim();
+  if (!raw) return 'Tala#DefaultAuth2026';
+  return raw.length >= 6 ? raw : `Tala#${raw}#2026`;
 }
 
 /**
- * Returns the already-signed-in Firebase user (Firebase persists the session).
- * Sign-in itself only happens via loginWithTala.
+ * Seamlessly signs the teacher into Firebase Auth (or auto-provisions their account
+ * on first login) so Firestore Security Rules receive a verified `request.auth.token.email`.
+ * Never blocks login if Email/Password provider is not yet enabled in Firebase Console.
  */
-export async function ensureFirebaseAuthSession() {
+let firebaseAuthConfigNotFound = false;
+
+export async function ensureFirebaseAuthSession(email) {
+  if (firebaseAuthConfigNotFound) return null;
   const auth = getFirebaseAuth();
-  if (!auth) return null;
-  await auth.authStateReady?.();
-  return auth.currentUser;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!auth || !normalizedEmail) return null;
+
+  // Stable per-email credential. It must NOT depend on the teacher's TALA password:
+  // that password can change, and its plaintext is unavailable when a session is restored.
+  // NOTE: this identifies the teacher to Firestore rules but is derivable client-side,
+  // so it is not a strong secret (see server-side token minting for a real fix).
+  const password = deriveFirebaseAuthPassword(`tala-fb:${normalizedEmail}`);
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+    return cred.user;
+  } catch (signInErr) {
+    const code = signInErr?.code || '';
+    if (code === 'auth/configuration-not-found') {
+      firebaseAuthConfigNotFound = true;
+      return null;
+    }
+    if (
+      code === 'auth/user-not-found' ||
+      code === 'auth/invalid-credential' ||
+      code === 'auth/invalid-login-credentials'
+    ) {
+      try {
+        const created = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+        return created.user;
+      } catch (createErr) {
+        if (createErr?.code === 'auth/configuration-not-found') {
+          firebaseAuthConfigNotFound = true;
+        }
+        return null;
+      }
+    }
+    return null;
+  }
 }
 
 export async function signOutFirebaseAuthSession() {
