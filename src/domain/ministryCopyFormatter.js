@@ -115,6 +115,9 @@ export function buildMinistryCopyBlocks(formData = {}, hideDetails = false) {
     const accomm = cleanLine(g.learningAccommodations, formData, hideDetails);
 
     const lines = [`תחום / סביבה: ${env}`];
+    if (g.leadProfessional && g.leadProfessional !== 'צוות משותף') {
+      lines.push(`מוביל/ת המטרה: ${g.leadProfessional}`);
+    }
     if (activity) lines.push(`תיאור תפקוד ופעילות: ${activity}`);
     if (title) lines.push(`מטרה: ${title}`);
     if (objectives) lines.push(`יעדים אופרטיביים:\n${objectives}`);

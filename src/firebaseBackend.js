@@ -16,9 +16,11 @@ import {
   query,
   where,
   updateDoc,
-  deleteField
+  deleteField,
+  runTransaction
 } from 'firebase/firestore';
 import { ensureUsersListPasswordsHashed } from './allowedUsers.js';
+import { mergeStudentSnapshots } from './domain/studentSyncMerge.js';
 
 const PRIMARY_ADMIN_EMAIL = 'zivit.reshef@gmail.com';
 // Must match emailKey() in functions/index.js
@@ -553,16 +555,48 @@ export async function saveSettingsToCloud(settingsObj) {
 export async function saveStudentToCloud(studentObj) {
   const db = getFirestoreDb();
   if (!db || !studentObj || !studentObj.id) return false;
+  const docRef = doc(db, 'tala_students', studentObj.id);
+  const cleanStudent = sanitizeForFirestore(studentObj);
+
   try {
-    const cleanStudent = sanitizeForFirestore(studentObj);
-    await setDoc(doc(db, 'tala_students', studentObj.id), {
-      ...cleanStudent,
-      updatedAt: new Date().toISOString()
+    // Non-destructive concurrent reconciliation if document already exists
+    await runTransaction(db, async (transaction) => {
+      const serverSnap = await transaction.get(docRef);
+      let payload = {
+        ...cleanStudent,
+        updatedAt: new Date().toISOString()
+      };
+      if (serverSnap.exists()) {
+        const serverData = serverSnap.data();
+        if (serverData && serverData.updatedAt && serverData.updatedAt !== studentObj.lastLoadedAt) {
+          payload = sanitizeForFirestore(
+            mergeStudentSnapshots({
+              localStudent: payload,
+              serverStudent: serverData,
+              baseSnapshot: studentObj._baseSnapshot || {}
+            })
+          );
+        }
+      }
+      transaction.set(docRef, payload);
     });
     return true;
   } catch (err) {
-    console.error('Failed to save student to Firestore:', err);
-    return false;
+    // Fallback for offline, network partitions, or environments without active transactions
+    try {
+      await setDoc(
+        docRef,
+        {
+          ...cleanStudent,
+          updatedAt: new Date().toISOString()
+        },
+        { merge: true }
+      );
+      return true;
+    } catch (fallbackErr) {
+      console.error('Failed to save student to Firestore:', fallbackErr);
+      return false;
+    }
   }
 }
 

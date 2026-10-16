@@ -102,6 +102,7 @@ import MinistryCopyModal from './components/form/MinistryCopyModal';
 import QuickObservationModal from './components/form/QuickObservationModal';
 import { appendToFreeText } from './domain/parentInvite';
 import { addObservationToGoal } from './domain/goalObservations';
+import { DISCIPLINE_LEAD_OPTIONS } from './domain/studentSyncMerge';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
 
 // NEW: Firebase Functions imports
@@ -4372,6 +4373,30 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       placeholder="הקלד סביבה..."
                       className="env-text-input"
                     />
+
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginRight: '6px' }}>
+                      <label style={{ fontWeight: 600, fontSize: '12.5px', color: '#475569' }}>מוביל/ת מטרה:</label>
+                      <select
+                        disabled={isReportLocked}
+                        value={goalRow.leadProfessional || 'צוות משותף'}
+                        onChange={(e) => handleGoalChange(goalRow.id, 'leadProfessional', e.target.value)}
+                        style={{
+                          padding: '3px 8px',
+                          fontSize: '12px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: goalRow.leadProfessional && goalRow.leadProfessional !== 'צוות משותף' ? '#eff6ff' : '#ffffff',
+                          color: goalRow.leadProfessional && goalRow.leadProfessional !== 'צוות משותף' ? '#1d4ed8' : '#334155',
+                          fontWeight: goalRow.leadProfessional && goalRow.leadProfessional !== 'צוות משותף' ? 700 : 500
+                        }}
+                      >
+                        {DISCIPLINE_LEAD_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
