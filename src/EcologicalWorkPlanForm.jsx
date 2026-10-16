@@ -100,6 +100,7 @@ import ShareTeamModal from './components/form/ShareTeamModal';
 import ParentVoiceControl from './components/form/ParentVoiceControl';
 import MinistryCopyModal from './components/form/MinistryCopyModal';
 import QuickObservationModal from './components/form/QuickObservationModal';
+import DiagnosticIntakeModal from './components/form/DiagnosticIntakeModal';
 import { appendToFreeText } from './domain/parentInvite';
 import { addObservationToGoal } from './domain/goalObservations';
 import { DISCIPLINE_LEAD_OPTIONS } from './domain/studentSyncMerge';
@@ -420,6 +421,7 @@ export default function EcologicalWorkPlanForm({
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
   const [showMinistryCopyModal, setShowMinistryCopyModal] = useState(false);
   const [observationModalGoalId, setObservationModalGoalId] = useState(null);
+  const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState(false);
   const [saveBanner, setSaveBanner] = useState(false);
   const [autoSavedTime, setAutoSavedTime] = useState('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -3798,28 +3800,54 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               )}
             </label>
 
-            {((formData.teacherFreeText || '').trim() || isRawFreeTextAlreadyAnalyzed(formData)) && (
-              <button
-                type="button"
-                onClick={() => setIsFreeTextCollapsed((prev) => !prev)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  background: '#ffffff',
-                  color: '#4c1d95',
-                  border: '1px solid #c4b5fd',
-                  borderRadius: '6px',
-                  padding: '4px 10px',
-                  fontSize: '12.5px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                {isFreeTextCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
-                <span>{isFreeTextCollapsed ? 'הצג / ערוך תיאור חופשי' : 'הסתר תיאור חופשי'}</span>
-              </button>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {!isReportLocked && (
+                <button
+                  type="button"
+                  onClick={() => setShowDiagnosticIntakeModal(true)}
+                  title="קליטת דו״ח אבחון פסיכודידקטי או סיכום ועדת זכאות וגזירת רקע ומטרות ב-AI"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '6px',
+                    padding: '4px 11px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>קליטת אבחון ב-AI</span>
+                </button>
+              )}
+
+              {((formData.teacherFreeText || '').trim() || isRawFreeTextAlreadyAnalyzed(formData)) && (
+                <button
+                  type="button"
+                  onClick={() => setIsFreeTextCollapsed((prev) => !prev)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: '#ffffff',
+                    color: '#4c1d95',
+                    border: '1px solid #c4b5fd',
+                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isFreeTextCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+                  <span>{isFreeTextCollapsed ? 'הצג / ערוך תיאור חופשי' : 'הסתר תיאור חופשי'}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {!isFreeTextCollapsed && (
@@ -6157,6 +6185,17 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             />
           );
         })()}
+      {showDiagnosticIntakeModal && (
+        <DiagnosticIntakeModal
+          formData={formData}
+          onApplyIntake={(updatedStudent) => {
+            setFormData(updatedStudent);
+            onSaveStudentPlan?.(updatedStudent);
+            setShowDiagnosticIntakeModal(false);
+          }}
+          onClose={() => setShowDiagnosticIntakeModal(false)}
+        />
+      )}
     </div>
   );
 }
