@@ -63,6 +63,48 @@ service cloud.firestore {
       allow delete: if !isSignedIn() || isOwnerOfResource(resource.data);
     }
 
+    // Parent / student input invites. The doc ID is a 128-bit random token (capability URL).
+    function answerOk(responses, key) {
+      return !(key in responses) ||
+        (responses[key] is string && responses[key].size() <= 1500);
+    }
+
+    function isInviteOwner(data) {
+      return isPrimaryAdmin() || (isSignedIn() && data.ownerEmail == currentEmail());
+    }
+
+    match /tala_invites/{token} {
+      // Anyone holding the exact token can read that single doc; listing is owner-only.
+      allow get: if true;
+      allow list: if isInviteOwner(resource.data);
+
+      allow create: if isSignedIn() &&
+        token.size() == 22 &&
+        request.resource.data.ownerEmail == currentEmail() &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.expiresAt is timestamp &&
+        request.resource.data.expiresAt <= request.time + duration.value(8, 'd') &&
+        !('responses' in request.resource.data);
+
+      // Owner may manage freely. The anonymous respondent may do exactly one thing:
+      // flip a still-pending, non-expired invite to 'submitted' with bounded answers.
+      allow update: if isInviteOwner(resource.data) || (
+        resource.data.status == 'pending' &&
+        request.time < resource.data.expiresAt &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'responses', 'submittedAt']) &&
+        request.resource.data.status == 'submitted' &&
+        request.resource.data.submittedAt == request.time &&
+        request.resource.data.responses is map &&
+        request.resource.data.responses.keys().hasOnly(['strengths', 'challenges', 'goal']) &&
+        answerOk(request.resource.data.responses, 'strengths') &&
+        answerOk(request.resource.data.responses, 'challenges') &&
+        answerOk(request.resource.data.responses, 'goal')
+      );
+
+      allow delete: if isInviteOwner(resource.data);
+    }
+
     // Per-user rate limit counter — users can only touch their own doc
     match /ai_rate_limits/{userId} {
       allow read, write: if isSignedIn() && currentEmail() == userId;

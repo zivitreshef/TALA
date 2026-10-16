@@ -151,13 +151,17 @@ export function deriveFirebaseAuthPassword(accessCode = '') {
  */
 let firebaseAuthConfigNotFound = false;
 
-export async function ensureFirebaseAuthSession(email, accessCode) {
+export async function ensureFirebaseAuthSession(email) {
   if (firebaseAuthConfigNotFound) return null;
   const auth = getFirebaseAuth();
   const normalizedEmail = String(email || '').trim().toLowerCase();
   if (!auth || !normalizedEmail) return null;
 
-  const password = deriveFirebaseAuthPassword(accessCode);
+  // Stable per-email credential. It must NOT depend on the teacher's TALA password:
+  // that password can change, and its plaintext is unavailable when a session is restored.
+  // NOTE: this identifies the teacher to Firestore rules but is derivable client-side,
+  // so it is not a strong secret (see server-side token minting for a real fix).
+  const password = deriveFirebaseAuthPassword(`tala-fb:${normalizedEmail}`);
 
   try {
     const cred = await signInWithEmailAndPassword(auth, normalizedEmail, password);
