@@ -96,6 +96,8 @@ import {
 import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
+import ParentVoiceControl from './components/form/ParentVoiceControl';
+import { appendToFreeText } from './domain/parentInvite';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
 
 // NEW: Firebase Functions imports
@@ -938,6 +940,14 @@ export default function EcologicalWorkPlanForm({
       }
       return next;
     });
+  };
+
+  // Append parent / student answers to the teacher free text, then surface that section
+  const handleMergeParentVoice = (block) => {
+    if (formData.isLocked || !block) return;
+    handleFieldChange('teacherFreeText', appendToFreeText(formData.teacherFreeText, block));
+    setIsFreeTextCollapsed(false);
+    setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
   // Update a row in the 8-row functional profile table (for תל"א)
@@ -3279,6 +3289,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           <section className="form-section-card" ref={section1Ref}>
         <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <ParentVoiceControl
+            student={formData}
+            currentUser={currentUser}
+            disabled={isReportLocked}
+            onMerge={handleMergeParentVoice}
+          />
           <button
             type="button"
             disabled={isReportLocked && !userCanLockReport}
@@ -3306,6 +3323,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 : ''}
             </span>
           </button>
+          </div>
         </div>
 
         {/* Radio Buttons for תל"א OR תח"י */}

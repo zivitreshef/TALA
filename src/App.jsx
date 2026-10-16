@@ -717,10 +717,7 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser?.email) {
-      ensureFirebaseAuthSession(
-        currentUser.email,
-        currentUser.passwordHash || currentUser.accessCode
-      );
+      ensureFirebaseAuthSession(currentUser.email);
     }
   }, [currentUser?.email]);
 
@@ -958,7 +955,7 @@ export default function App() {
     const stampedUser = stampSessionUserWithDate(user);
     setCurrentUser(stampedUser);
     safeSetStorageJson(SESSION_USER_KEY, stampedUser);
-    ensureFirebaseAuthSession(user.email, user.accessCode);
+    ensureFirebaseAuthSession(user.email);
     setSurveySnoozedInSession(false);
     setSelectedStudentId(null);
     setStudentSearch('');

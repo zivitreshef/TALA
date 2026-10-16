@@ -4,5 +4,10 @@
   },
   "functions": {
     "source": "functions"
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true
+    }
   }
 }
