@@ -47,6 +47,7 @@ import {
   UserSelfPasswordModal
 } from './AllowlistAuthGate';
 import AdminAllowlistModal from './components/modals/AdminAllowlistModal';
+import UpgradeBanner from './components/UpgradeBanner';
 import {
   INITIAL_STUDENTS_DATA,
   ENVIRONMENTS_LIST,
@@ -126,6 +127,7 @@ const PASSWORD_POLICY_STORAGE_KEY = 'tala_enforce_password_policy_v1';
 const ADMIN_REQUESTS_STORAGE_KEY = 'tala_admin_requests_v1';
 const USER_USAGE_TRACKER_KEY = 'tala_user_usage_tracker_v1';
 const DISMISSED_SHARED_REPORTS_KEY = 'tala_dismissed_shared_reports_v1';
+const UPGRADE_BANNER_STORAGE_KEY = 'tala_upgrade_banner_v1';
 
 export default function App() {
   // Allowed users list
@@ -182,6 +184,48 @@ export default function App() {
 
   // Direct Background Email Engine configuration (synced across cloud for all users)
   const [emailEngineConfig, setEmailEngineConfig] = useState(() => loadEmailEngineConfig());
+
+  // Real-time upgrade & deployment warning banner (PR + merge + deploy)
+  const [upgradeBanner, setUpgradeBanner] = useState(() => {
+    try {
+      const saved = localStorage.getItem(UPGRADE_BANNER_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+
+  const handleUpdateUpgradeBanner = (nextBanner) => {
+    setUpgradeBanner(nextBanner);
+    if (nextBanner) {
+      localStorage.setItem(UPGRADE_BANNER_STORAGE_KEY, JSON.stringify(nextBanner));
+    } else {
+      localStorage.removeItem(UPGRADE_BANNER_STORAGE_KEY);
+    }
+    saveSettingsToCloud({ upgradeBanner: nextBanner });
+  };
+
+  const handleQuickSaveFromBanner = () => {
+    if (unsavedDraftState?.isDirty && unsavedDraftState?.draftData) {
+      const updated = {
+        ...unsavedDraftState.draftData,
+        lastSavedAt: new Date().toLocaleTimeString('he-IL', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      };
+      setStudents((prev) =>
+        prev.map((s) => (s.id === updated.id ? updated : s))
+      );
+      saveStudentToCloud(updated);
+      (updated.goals || []).forEach((g) => {
+        if (g.title && g.title.trim()) {
+          handleUseOrAddGoalToBank(g);
+        }
+      });
+      setUnsavedDraftState({ isDirty: false, draftData: updated });
+    }
+  };
 
   const handleUpdateEmailEngineConfig = (nextCfg) => {
     const saved = saveEmailEngineConfig(nextCfg);
@@ -456,6 +500,14 @@ export default function App() {
         if (settings?.emailEngineConfig && typeof settings.emailEngineConfig === 'object') {
           const syncedEmailCfg = saveEmailEngineConfig(settings.emailEngineConfig);
           setEmailEngineConfig(syncedEmailCfg);
+        }
+        if (settings && 'upgradeBanner' in settings) {
+          setUpgradeBanner(settings.upgradeBanner);
+          if (settings.upgradeBanner) {
+            localStorage.setItem(UPGRADE_BANNER_STORAGE_KEY, JSON.stringify(settings.upgradeBanner));
+          } else {
+            localStorage.removeItem(UPGRADE_BANNER_STORAGE_KEY);
+          }
         }
       },
       onSyncStatusChange: (statusObj) => {
@@ -1710,6 +1762,12 @@ export default function App() {
 
   return (
     <div className="tala-app-root" dir="rtl">
+      {/* Real-Time Deployment & Upgrade Warning Banner */}
+      <UpgradeBanner
+        bannerData={upgradeBanner}
+        onSaveCurrentWork={handleQuickSaveFromBanner}
+        isDirty={Boolean(unsavedDraftState?.isDirty)}
+      />
       {/* Top Stained-Glass Accent Strip */}
       <div className="stained-glass-top-strip" />
       {/* Top Header */}
@@ -2713,6 +2771,8 @@ export default function App() {
           cloudSyncState={cloudSyncState}
           emailEngineConfig={emailEngineConfig}
           students={students}
+          upgradeBanner={upgradeBanner}
+          onUpdateUpgradeBanner={handleUpdateUpgradeBanner}
         />
       )}
 

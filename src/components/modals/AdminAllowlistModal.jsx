@@ -49,6 +49,7 @@ import {
 } from '../../allowedUsers';
 import { sendUserInvitationEmailInBackground } from '../../emailService';
 import { subscribeToUserPresence } from '../../firebaseBackend';
+import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../UpgradeBanner';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -110,7 +111,9 @@ export default function AdminAllowlistModal({
   onDismissAdminRequest,
   cloudSyncState,
   emailEngineConfig,
-  students = []
+  students = [],
+  upgradeBanner,
+  onUpdateUpgradeBanner
 }) {
   const [activeTab, setActiveTab] = useState('users'); // 'users' | 'groups' | 'analytics' | 'requests' | 'settings'
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'paid' | 'trial_active' | 'trial_expired' | 'disabled'
@@ -1809,6 +1812,75 @@ export default function AdminAllowlistModal({
           {/* TAB 5: SETTINGS */}
           {activeTab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Upgrade & Deployment Warning Banner Control */}
+              <div
+                style={{
+                  background: upgradeBanner?.active
+                    ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'
+                    : '#f8fafc',
+                  border: `1.5px solid ${upgradeBanner?.active ? '#f87171' : '#e2e8f0'}`,
+                  borderRadius: '12px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertTriangle size={20} style={{ color: upgradeBanner?.active ? '#dc2626' : '#64748b' }} />
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: upgradeBanner?.active ? '#991b1b' : '#1e3a5f' }}>
+                      התרעת שדרוג מערכת פעיל (PR + Deploy)
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: upgradeBanner?.active ? '#fee2e2' : '#f1f5f9',
+                      color: upgradeBanner?.active ? '#b91c1c' : '#64748b',
+                      padding: '3px 10px',
+                      borderRadius: '999px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      border: `1px solid ${upgradeBanner?.active ? '#fca5a5' : '#cbd5e1'}`
+                    }}
+                  >
+                    <span>{upgradeBanner?.active ? '🔴 פעיל – משודר לכל המשתמשים' : '⚪ כבוי (שגרה)'}</span>
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+                  מציג פס אדום בולט בראש האתר לכל המשתמשים המחוברים כדי להנחות אותם לשמור את עבודתם מיד למניעת איבוד נתונים, ולאחר מכן לרענן את האתר בסיום הפריסה.
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextState = {
+                        active: !upgradeBanner?.active,
+                        message: upgradeBanner?.message || DEFAULT_UPGRADE_BANNER_MESSAGE,
+                        startedAt: !upgradeBanner?.active ? new Date().toISOString() : '',
+                        updatedAt: new Date().toISOString()
+                      };
+                      onUpdateUpgradeBanner && onUpdateUpgradeBanner(nextState);
+                    }}
+                    className="btn-primary-sm"
+                    style={{
+                      background: upgradeBanner?.active ? '#475569' : '#dc2626',
+                      color: '#ffffff',
+                      padding: '6px 14px',
+                      fontSize: '12px',
+                      fontWeight: 700
+                    }}
+                  >
+                    {upgradeBanner?.active ? '⏹️ כבה התרעת שדרוג (חזרה לשגרה)' : '🚀 הפעל התרעת שדרוג ופריסה (הצג פס אדום)'}
+                  </button>
+                </div>
+              </div>
+
               {/* Cloud AI Backend Status Banner */}
               <div
                 style={{

@@ -1,7 +1,7 @@
 {
   "name": "tala-ecological-work-plan",
   "private": true,
-  "version": "1.0.68",
+  "version": "1.0.69",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "check-presence": "node scripts/checkPresenceGate.js"
+    "check-presence": "node scripts/checkPresenceGate.js",
+    "upgrade:start": "node scripts/setUpgradeBanner.js --on",
+    "upgrade:end": "node scripts/setUpgradeBanner.js --off",
+    "upgrade:status": "node scripts/setUpgradeBanner.js --status"
   },
   "dependencies": {
     "firebase": "^12.19.0",
