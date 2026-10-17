@@ -2064,7 +2064,7 @@ export default function App() {
                           className={`st-lock-indicator ${isStLocked ? 'locked' : 'unlocked'}`}
                           title={
                             isStLocked
-                              ? 'הדו"ח נעול לעריכה (ניתן לעדכן הערכת מחצית / סוף שנה)'
+                              ? 'הדו"ח נעול לעריכה (הערכת מחצית/סוף שנה ותצפית מהירה זמינות ויפתחו את הנעילה אוטומטית)'
                               : 'הדו"ח פתוח לעריכה ולשיתוף'
                           }
                         >
@@ -2197,7 +2197,7 @@ export default function App() {
                                   className={`st-lock-indicator ${isStLocked ? 'locked' : 'unlocked'}`}
                                   title={
                                     isStLocked
-                                      ? 'הדו"ח נעול לעריכה (ניתן לעדכן הערכת מחצית / סוף שנה)'
+                                      ? 'הדו"ח נעול לעריכה (הערכת מחצית/סוף שנה ותצפית מהירה זמינות ויפתחו את הנעילה אוטומטית)'
                                       : 'הדו"ח פתוח לעריכה ולשיתוף'
                                   }
                                 >
@@ -2574,7 +2574,7 @@ export default function App() {
                                 className={`st-lock-indicator ${st.isLocked ? 'locked' : 'unlocked'}`}
                                 title={
                                   st.isLocked
-                                    ? 'הדו"ח נעול לעריכה (ניתן לעדכן הערכת מחצית / סוף שנה)'
+                                    ? 'הדו"ח נעול לעריכה (הערכת מחצית/סוף שנה ותצפית מהירה זמינות ויפתחו את הנעילה אוטומטית)'
                                     : 'הדו"ח פתוח לעריכה ולשיתוף'
                                 }
                               >

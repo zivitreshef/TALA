@@ -429,9 +429,7 @@ export default function EcologicalWorkPlanForm({
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerStepIdx, setReverseEngineerStepIdx] = useState(0);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
-  const [showFullDocPreview, setShowFullDocPreview] = useState(() =>
-    Boolean(student?.isLocked)
-  );
+  const [showFullDocPreview, setShowFullDocPreview] = useState(false);
   const [isFreeTextCollapsed, setIsFreeTextCollapsed] = useState(() =>
     isRawFreeTextAlreadyAnalyzed(student)
   );
@@ -524,7 +522,7 @@ export default function EcologicalWorkPlanForm({
     const normalized = buildNormalizedStudentData(student);
     savedSnapshotRef.current = JSON.stringify(normalized);
     setFormData(normalized);
-    setShowFullDocPreview(Boolean(normalized.isLocked));
+    setShowFullDocPreview(false);
     setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(normalized));
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
@@ -661,7 +659,6 @@ export default function EcologicalWorkPlanForm({
     if (nextLocked) {
       setOpenPickerGoalId(null);
       setActiveAiGoalId(null);
-      setShowFullDocPreview(true);
     } else {
       setShowFullDocPreview(false);
     }
@@ -674,6 +671,48 @@ export default function EcologicalWorkPlanForm({
     }
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 2500);
+  };
+
+  // Automatically unlock report when teacher accesses evaluation or quick observation on a locked report
+  const handleAutoUnlockReport = (triggerReason = '') => {
+    if (!formData.isLocked) return formData;
+    const nowTime = new Date().toLocaleTimeString('he-IL', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
+
+    const updatedWithLock = {
+      ...formData,
+      isLocked: false,
+      lockedAt: '',
+      lockedBy: '',
+      lastSavedAt: nowTime
+    };
+    const lockSnapshot = extractYearReportFromFormData(updatedWithLock);
+    const updated = {
+      ...updatedWithLock,
+      reportsByYear: {
+        ...(formData.reportsByYear || {}),
+        [activeYear]: lockSnapshot
+      },
+      reportsByPlanType: {
+        ...(formData.reportsByPlanType || {}),
+        [activePlanKey]: lockSnapshot
+      }
+    };
+
+    setShowFullDocPreview(false);
+    savedSnapshotRef.current = JSON.stringify(updated);
+    setFormData(updated);
+    onSaveStudentPlan?.(updated);
+    if (onDraftStateChange) {
+      onDraftStateChange({ isDirty: false, draftData: updated });
+    }
+    setSaveBanner(true);
+    setTimeout(() => setSaveBanner(false), 2500);
+    return updated;
   };
 
   // Rollover current student's plan into the next school year (Option D)
@@ -702,7 +741,7 @@ export default function EcologicalWorkPlanForm({
     const rolled = buildRolloverStudentForNextYear(syncedCurrent, currentYear, nextYear);
     savedSnapshotRef.current = JSON.stringify(rolled);
     setFormData(rolled);
-    setShowFullDocPreview(Boolean(rolled.isLocked));
+    setShowFullDocPreview(false);
     onSaveStudentPlan(rolled);
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 2500);
@@ -805,7 +844,7 @@ export default function EcologicalWorkPlanForm({
         }
       };
 
-      setShowFullDocPreview(Boolean(targetReportToLoad.isLocked));
+      setShowFullDocPreview(false);
       setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
       return nextData;
     });
@@ -887,7 +926,7 @@ export default function EcologicalWorkPlanForm({
           reportsByYear: updatedReportsByYear,
           reportsByPlanType: updatedReportsByPlanType
         };
-        setShowFullDocPreview(Boolean(existingTargetReport.isLocked));
+        setShowFullDocPreview(false);
         setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
         return nextData;
       }
@@ -1012,7 +1051,13 @@ export default function EcologicalWorkPlanForm({
       'endYearEvaluation'
     ]);
     const isEvalField = allowedEvalFields.has(field);
-    if (formData.isLocked && !isEvalField) return;
+    if (formData.isLocked) {
+      if (isEvalField) {
+        handleAutoUnlockReport('evalEdit');
+      } else {
+        return;
+      }
+    }
     setFormData((prev) => ({
       ...prev,
       goals: (prev.goals || []).map((g) =>
@@ -2596,10 +2641,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               title={
                 isReportLocked
                   ? userCanLockReport
-                    ? 'הדו"ח נעול לעריכה (מוסכם וסגור). לא ניתן לערוך את סעיפי התכנית והמטרות, למעט הוספה ועדכון של "הערכת מחצית / סוף שנה". לחצי לפתיחת הנעילה.'
-                    : 'הדו"ח נעול לעריכה על ידי המורה האחראי/ת. ניתן להוסיף ולעדכן את "הערכת מחצית / סוף שנה" בלבד.'
+                    ? 'הדו"ח נעול לעריכה (מוסכם וסגור). כפתורי "הערכת מחצית / סוף שנה" ו"תצפית מהירה" זמינים לשימוש – לחיצה עליהם תפתח את הדו"ח לעריכה באופן אוטומטי.'
+                    : 'הדו"ח נעול לעריכה. כפתורי "הערכת מחצית / סוף שנה" ו"תצפית מהירה" זמינים לשימוש – לחיצה עליהם תפתח את הדו"ח לעריכה באופן אוטומטי.'
                   : userCanLockReport
-                    ? 'הדו"ח פתוח לעריכה ולסקירה משותפת. לחצי לנעילת הדו"ח לאחר הסכמת הצוות (גם במצב נעול ניתן להוסיף ולעדכן "הערכת מחצית / סוף שנה").'
+                    ? 'הדו"ח פתוח לעריכה ולסקירה משותפת. לחצי לנעילת הדו"ח לאחר הסכמת הצוות (גם במצב נעול "הערכת מחצית / סוף שנה" ו"תצפית מהירה" זמינות ויפתחו את הנעילה).'
                     : 'הדו"ח פתוח לעריכה משותפת. רק המורה האחראי/ת על הדו"ח יכול/ה לנעול אותו.'
               }
             >
@@ -2610,8 +2655,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <>
                   <strong>🔒 הדו"ח נעול לעריכה</strong>
                   <span>
-                    תכנית העבודה אושרה וננעלה כך שלא ניתן לערוך את סעיפיה או מטרותיה, למעט הוספה ועדכון של{' '}
-                    <strong>"הערכת מחצית / סוף שנה"</strong>.
+                    תכנית העבודה אושרה וננעלה. כפתורי{' '}
+                    <strong>"הערכת מחצית / סוף שנה"</strong> ו<strong>"תצפית מהירה"</strong>{' '}
+                    נותרים זמינים לשימוש, ולחיצה עליהם תפתח את הדו"ח לעריכה באופן אוטומטי.
                     {userCanLockReport
                       ? ' לחצי על הסמל לפתיחת הנעילה.'
                       : ' רק המורה האחראי/ת על הדו"ח יכול/ה לפתוח או לנעול אותו.'}
@@ -2749,6 +2795,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           type="button"
           className="section-nav-pill"
           onClick={() => {
+            if (formData.isLocked) {
+              handleAutoUnlockReport('evalSectionPill');
+            }
             setShowEvalReportSection(true);
             setTimeout(() => {
               evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -3286,6 +3335,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="button"
               className="btn-print-doc"
               onClick={() => {
+                if (formData.isLocked) {
+                  handleAutoUnlockReport('evalSectionDocPreview');
+                }
                 setShowEvalReportSection((prev) => {
                   const next = !prev;
                   if (next) {
@@ -5284,12 +5336,15 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
+                          if (formData.isLocked) {
+                            handleAutoUnlockReport('evalToggle');
+                          }
                           setExpandedEvalMap((prev) => ({
                             ...prev,
                             [goalRow.id]: !prev[goalRow.id]
-                          }))
-                        }
+                          }));
+                        }}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -5312,34 +5367,37 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         </span>
                       </button>
 
-                      {!isReportLocked && (
-                        <button
-                          type="button"
-                          onClick={() => setObservationModalGoalId(goalRow.id)}
-                          title="תיעוד תצפית מהירה מהשטח ושילוב בהערכת מחצית/סוף שנה"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            background: '#f0f9ff',
-                            color: '#0369a1',
-                            border: '1px solid #bae6fd',
-                            borderRadius: '6px',
-                            padding: '5px 11px',
-                            fontSize: '12.5px',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Plus size={14} />
-                          <span>
-                            תצפית מהירה
-                            {Array.isArray(goalRow.observations) && goalRow.observations.length > 0
-                              ? ` (${goalRow.observations.length})`
-                              : ''}
-                          </span>
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (formData.isLocked) {
+                            handleAutoUnlockReport('observation');
+                          }
+                          setObservationModalGoalId(goalRow.id);
+                        }}
+                        title="תיעוד תצפית מהירה מהשטח ושילוב בהערכת מחצית/סוף שנה"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          background: '#f0f9ff',
+                          color: '#0369a1',
+                          border: '1px solid #bae6fd',
+                          borderRadius: '6px',
+                          padding: '5px 11px',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Plus size={14} />
+                        <span>
+                          תצפית מהירה
+                          {Array.isArray(goalRow.observations) && goalRow.observations.length > 0
+                            ? ` (${goalRow.observations.length})`
+                            : ''}
+                        </span>
+                      </button>
                     </div>
 
                     {(goalRow.achievementStatus || goalRow.midYearEvaluation || goalRow.endYearEvaluation) && !expandedEvalMap[goalRow.id] && (
@@ -5591,6 +5649,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             type="button"
             className="btn-print-doc"
             onClick={() => {
+              if (formData.isLocked) {
+                handleAutoUnlockReport('evalSectionBottom');
+              }
               setShowEvalReportSection((prev) => {
                 const next = !prev;
                 if (next) {
@@ -6203,11 +6264,17 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 );
                 const nextData = {
                   ...formData,
+                  isLocked: false,
+                  lockedAt: '',
+                  lockedBy: '',
                   goals: nextGoals,
                   lastSavedAt: new Date().toISOString()
                 };
                 setFormData(nextData);
                 onSaveStudentPlan?.(nextData);
+                if (onDraftStateChange) {
+                  onDraftStateChange({ isDirty: false, draftData: nextData });
+                }
               }}
               onDeleteObservation={(obsId) => {
                 const nextGoals = (formData.goals || []).map((g) =>
