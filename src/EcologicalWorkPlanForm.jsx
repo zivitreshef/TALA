@@ -270,6 +270,7 @@ export default function EcologicalWorkPlanForm({
   const section1Ref = useRef(null);
   const section2Ref = useRef(null);
   const section3Ref = useRef(null);
+  const section4Ref = useRef(null);
   const saveProgressRef = useRef(null);
   const evalReportSectionRef = useRef(null);
   const statusReportSectionRef = useRef(null);
@@ -2714,6 +2715,50 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       </div>
 
+      {/* Mobile-Friendly Quick Section Navigator Bar */}
+      <nav className="form-section-nav-bar" aria-label="ניווט מהיר בין סעיפי התוכנית">
+        <button
+          type="button"
+          className="section-nav-pill"
+          onClick={() => section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        >
+          1. פרטים
+        </button>
+        <button
+          type="button"
+          className="section-nav-pill"
+          onClick={() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        >
+          2. תיאור ומוקדי כוח
+        </button>
+        <button
+          type="button"
+          className="section-nav-pill"
+          onClick={() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        >
+          3. מטרות ({(formData.goals || []).filter((g) => g.title).length})
+        </button>
+        <button
+          type="button"
+          className="section-nav-pill"
+          onClick={() => section4Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        >
+          4. המלצות
+        </button>
+        <button
+          type="button"
+          className="section-nav-pill"
+          onClick={() => {
+            setShowEvalReportSection(true);
+            setTimeout(() => {
+              evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+          }}
+        >
+          5. הערכת מחצית/שנה
+        </button>
+      </nav>
+
       {/* Document Title Banner */}
       <div className="document-title-card">
         <div className="doc-title-top-row">
@@ -4195,7 +4240,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       </section>
 
       {/* Section 3: Goals & Environments Interactive Builder */}
-      <section className="form-section-card">
+      <section className="form-section-card" ref={section3Ref}>
         <div className="section-header-line">
           <div>
             <h3>
@@ -5471,7 +5516,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       </section>
 
       {/* Section 4: Recommendations & Bottom Actions */}
-      <section className="form-section-card">
+      <section className="form-section-card" ref={section4Ref}>
         <div className="section-header-line">
           <h3>4. המלצות</h3>
         </div>

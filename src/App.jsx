@@ -28,7 +28,8 @@ import {
   GraduationCap,
   UserPlus,
   Bell,
-  MessageCircle
+  MessageCircle,
+  ArrowRight
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -1290,6 +1291,14 @@ export default function App() {
     saveStudentToCloud(updatedStudent);
   };
 
+  const handleNavigateBackToStudents = () => {
+    if (unsavedDraftState.isDirty && unsavedDraftState.draftData) {
+      handleSaveStudentPlan(unsavedDraftState.draftData);
+      setUnsavedDraftState({ isDirty: false, draftData: null });
+    }
+    setSelectedStudentId(null);
+  };
+
   const handleUseOrAddGoalToBank = (goalData) => {
     const nextBank = recordGoalUsageOrAdd(goalData, goalBank);
     setGoalBank(nextBank);
@@ -1984,7 +1993,7 @@ export default function App() {
       )}
 
       {/* Main Workspace: Student Roster Sidebar + Interactive Ecological Form */}
-      <div className="tala-workspace-layout">
+      <div className={`tala-workspace-layout ${selectedStudent ? 'has-selected-student' : 'no-selected-student'}`}>
         {/* Right Sidebar: Students List */}
         <aside className="tala-students-sidebar">
           <div className="sidebar-top-row">
@@ -2275,6 +2284,24 @@ export default function App() {
         <main className="tala-main-form-area">
           {selectedStudent ? (
             <ErrorBoundary key={selectedStudent.id}>
+              {/* Mobile Navigation Header for Mobile Phones */}
+              <div className="mobile-student-top-nav">
+                <button
+                  type="button"
+                  className="btn-mobile-back-roster"
+                  onClick={handleNavigateBackToStudents}
+                  title="חזרה לרשימת התלמידים"
+                >
+                  <ArrowRight size={18} />
+                  <span>רשימת תלמידים</span>
+                </button>
+                <div className="mobile-student-nav-title">
+                  <strong className="mobile-student-name">{selectedStudent.name || 'ללא שם'}</strong>
+                  <span className="mobile-student-nav-badge">
+                    {selectedStudent.planType?.includes('תח"י') ? 'תח"י' : 'תל"א'}
+                  </span>
+                </div>
+              </div>
               <EcologicalWorkPlanForm
                 student={selectedStudent}
                 externalRevision={externalGoalsRevision}
