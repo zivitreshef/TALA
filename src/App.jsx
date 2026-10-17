@@ -404,25 +404,27 @@ export default function App() {
         saveAllowedUsers(mergedUsers);
       },
       onGoalBankChange: (cloudGoals) => {
-        const cleanedGoals = deduplicateAndNormalizeGoalBank(cloudGoals || []);
+        if (!Array.isArray(cloudGoals) || cloudGoals.length === 0) return;
+        const currentLocal = loadGoalBank();
+        const merged = deduplicateAndNormalizeGoalBank([...(cloudGoals || []), ...(currentLocal || [])]);
         const hasOldTestingWeights =
           localStorage.getItem('tala_cloud_goal_weights_zeroed_v1') !== 'true' &&
-          Array.isArray(cleanedGoals) &&
-          cleanedGoals.some((g) => Number(g.usageCount) > 0);
+          Array.isArray(merged) &&
+          merged.some((g) => Number(g.usageCount) > 0);
 
         if (hasOldTestingWeights) {
-          const zeroedGoals = cleanedGoals.map((g) => ({ ...g, usageCount: 0 }));
+          const zeroedGoals = merged.map((g) => ({ ...g, usageCount: 0 }));
           localStorage.setItem('tala_cloud_goal_weights_zeroed_v1', 'true');
           setGoalBank(zeroedGoals);
           saveGoalBank(zeroedGoals);
-          saveGoalBankToCloud(zeroedGoals);
+          saveGoalBankToCloud(zeroedGoals).catch(() => {});
         } else {
           localStorage.setItem('tala_cloud_goal_weights_zeroed_v1', 'true');
-          setGoalBank(cleanedGoals);
-          saveGoalBank(cleanedGoals);
-          // If deduplication removed messy items or normalized composite environments, sync back to cloud
-          if (Array.isArray(cloudGoals) && cleanedGoals.length !== cloudGoals.length) {
-            saveGoalBankToCloud(cleanedGoals);
+          setGoalBank(merged);
+          saveGoalBank(merged);
+          // If local had additions or normalization that cloud lacked, sync back to cloud
+          if (merged.length !== cloudGoals.length) {
+            saveGoalBankToCloud(merged).catch(() => {});
           }
         }
       },
@@ -1289,11 +1291,10 @@ export default function App() {
   };
 
   const handleUseOrAddGoalToBank = (goalData) => {
-    setGoalBank((prevBank) => {
-      const nextBank = recordGoalUsageOrAdd(goalData, prevBank);
-      saveGoalBankToCloud(nextBank);
-      return nextBank;
-    });
+    const nextBank = recordGoalUsageOrAdd(goalData, goalBank);
+    setGoalBank(nextBank);
+    saveGoalBank(nextBank);
+    saveGoalBankToCloud(nextBank).catch(() => {});
   };
 
   const handleAddBankGoalToStudent = (bankItem, targetStudentObj) => {
@@ -1482,60 +1483,76 @@ export default function App() {
       ? editingBankGoal.stages
       : ['kindergarten'];
 
+    const targetTitle = editingBankGoal.title.trim();
+    const rawEnv = (editingBankGoal.environment || '').trim() || KINDERGARTEN_ENVIRONMENTS[0];
+    const targetEnv = canonicalizeEnvironment(rawEnv) || KINDERGARTEN_ENVIRONMENTS[0];
+
+    let nextBank;
     if (editingBankGoal.mode === 'add') {
-      setGoalBank((prev) => {
-        const nextBank = addGoalByAdmin(
-          {
-            title: editingBankGoal.title,
-            stages: resolvedStages,
-            environment: editingBankGoal.environment,
-            usageCount: editingBankGoal.usageCount,
-            defaultActivity: editingBankGoal.defaultActivity,
-            suggestedObjectives: editingBankGoal.suggestedObjectivesText,
-            defaultOpportunities: editingBankGoal.defaultOpportunities,
-            defaultPartners: editingBankGoal.defaultPartners,
-            defaultDuration: editingBankGoal.defaultDuration,
-            defaultEvaluation: editingBankGoal.defaultEvaluation
-          },
-          prev
-        );
-        saveGoalBankToCloud(nextBank);
-        return nextBank;
-      });
+      nextBank = addGoalByAdmin(
+        {
+          title: targetTitle,
+          stages: resolvedStages,
+          environment: targetEnv,
+          usageCount: editingBankGoal.usageCount,
+          defaultActivity: editingBankGoal.defaultActivity,
+          suggestedObjectives: editingBankGoal.suggestedObjectivesText,
+          defaultOpportunities: editingBankGoal.defaultOpportunities,
+          defaultPartners: editingBankGoal.defaultPartners,
+          defaultDuration: editingBankGoal.defaultDuration,
+          defaultEvaluation: editingBankGoal.defaultEvaluation
+        },
+        goalBank
+      );
+      setBankAddToast(`✅ המטרה "${targetTitle}" נוספה בהצלחה למאגר!`);
     } else {
-      setGoalBank((prev) => {
-        const nextBank = updateGoalByAdmin(
-          editingBankGoal.id,
-          {
-            title: editingBankGoal.title,
-            stages: resolvedStages,
-            environment: editingBankGoal.environment,
-            usageCount: editingBankGoal.usageCount,
-            defaultActivity: editingBankGoal.defaultActivity,
-            suggestedObjectives: editingBankGoal.suggestedObjectivesText,
-            defaultOpportunities: editingBankGoal.defaultOpportunities,
-            defaultPartners: editingBankGoal.defaultPartners,
-            defaultDuration: editingBankGoal.defaultDuration,
-            defaultEvaluation: editingBankGoal.defaultEvaluation
-          },
-          prev
-        );
-        saveGoalBankToCloud(nextBank);
-        return nextBank;
-      });
+      nextBank = updateGoalByAdmin(
+        editingBankGoal.id,
+        {
+          title: targetTitle,
+          stages: resolvedStages,
+          environment: targetEnv,
+          usageCount: editingBankGoal.usageCount,
+          defaultActivity: editingBankGoal.defaultActivity,
+          suggestedObjectives: editingBankGoal.suggestedObjectivesText,
+          defaultOpportunities: editingBankGoal.defaultOpportunities,
+          defaultPartners: editingBankGoal.defaultPartners,
+          defaultDuration: editingBankGoal.defaultDuration,
+          defaultEvaluation: editingBankGoal.defaultEvaluation
+        },
+        goalBank
+      );
+      setBankAddToast(`✅ השינויים במטרה "${targetTitle}" נשמרו בהצלחה!`);
     }
+
+    setGoalBank(nextBank);
+    saveGoalBank(nextBank);
+    saveGoalBankToCloud(nextBank).catch(() => {});
+
+    // Navigate user directly to the domain and search for the goal so they see it immediately
+    setSelectedHlDomain(targetEnv);
+    setGoalBankEnvFilter(targetEnv);
+    if (goalBankStageFilter !== 'all' && goalBankStageFilter !== null) {
+      const isVisibleInCurrentStage = resolvedStages.includes(goalBankStageFilter);
+      if (!isVisibleInCurrentStage) {
+        setGoalBankStageFilter('all');
+      }
+    }
+    setGoalBankSearch(targetTitle);
     setEditingBankGoal(null);
+    setTimeout(() => setBankAddToast(''), 4500);
   };
 
   const handleDeleteAdminBankGoal = (goalItem) => {
     if (!window.confirm(`האם למחוק את המטרה "${goalItem.title}" ממאגר המטרות הדינמי?`)) {
       return;
     }
-    setGoalBank((prev) => {
-      const nextBank = deleteGoalByAdmin(goalItem.id, prev);
-      saveGoalBankToCloud(nextBank);
-      return nextBank;
-    });
+    const nextBank = deleteGoalByAdmin(goalItem.id, goalBank);
+    setGoalBank(nextBank);
+    saveGoalBank(nextBank);
+    saveGoalBankToCloud(nextBank).catch(() => {});
+    setBankAddToast(`🗑️ המטרה "${goalItem.title}" נמחקה מהמאגר.`);
+    setTimeout(() => setBankAddToast(''), 3500);
     if (editingBankGoal?.id === goalItem.id) {
       setEditingBankGoal(null);
     }

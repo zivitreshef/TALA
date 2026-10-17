@@ -392,14 +392,14 @@
     <div class="cover-body">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span class="slide-badge">מסמך ארכיטקטורה ואבטחת מידע • System Architecture &amp; Security Whitepaper</span>
-        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;" dir="ltr">TALA v3.0 • Security-First Design • 2026</span>
+        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;" dir="ltr">TALA v1.0.65 • Security-First Design • 2026</span>
       </div>
 
       <div class="cover-hero">
         <img src="./public/tala-logo.png" alt="TALA Logo" class="cover-logo" />
         <div class="cover-titles">
           <h1>מערכת TALA – ארכיטקטורת מערכת ואבטחת מידע</h1>
-          <h3>סקירה טכנולוגית מקיפה: תשתית ענן מאובטחת (GitHub SSL/TLS &amp; Firebase), הצפנת סיסמאות, בקרת הרשאות, הגנת פרטיות (PII) ופיתוח קוד מאובטח (Secured Code Attitude)</h3>
+          <h3>סקירה טכנולוגית מקיפה: תשתית ענן מאובטחת (GitHub SSL/TLS &amp; Firebase Cloud Functions), אימות שרת, פרוקסי AI מוגן, הגנת פרטיות (PII), תמיכת Offline PWA ופיתוח קוד מאובטח</h3>
         </div>
       </div>
 
@@ -407,34 +407,34 @@
         <div class="pillar-card">
           <span class="pillar-icon">🌐</span>
           <h4>GitHub SSL/TLS &amp; CDN</h4>
-          <p>תעודת SSL/TLS אוטומטית (HTTPS בלבד), רשת הפצה גלובלית מוגנת DDoS, ופריסת CI/CD מאובטחת ב-OIDC עם הרשאות מינימליות.</p>
+          <p>תעודת SSL/TLS אוטומטית (HTTPS בלבד), פריסת CI/CD ב-OIDC, שער בדיקת נוכחות (<span dir="ltr">Presence Gate</span>) ו-105 בדיקות יחידה.</p>
         </div>
         <div class="pillar-card p-purple">
           <span class="pillar-icon">🔐</span>
-          <h4>הצפנת סיסמאות ואימות בשרת</h4>
-          <p>אימות סיסמה מבוסס פונקציית ענן (<span dir="ltr">talaLogin</span>) עם הנפקת Custom Token, גיבוב <span dir="ltr">SHA-256 (256 rounds + Salt)</span>, ונעילת מאגר המשתמשים.</p>
+          <h4>אימות שרת ופרוקסי AI מוגן</h4>
+          <p>אימות סיסמה בענן (<span dir="ltr">talaLogin</span> + Custom Token), גיבוב <span dir="ltr">SHA-256 (256 rounds + Salt)</span>, ופרוקסי <span dir="ltr">aiGenerateV2</span> המסתיר מפתחות API.</p>
         </div>
         <div class="pillar-card p-emerald">
           <span class="pillar-icon">🛡️</span>
           <h4>בקרת גישה ובידוד נתונים</h4>
-          <p>אימות מלא ב-Firebase Auth ואכיפת שרת (<span dir="ltr">firestore.rules</span>): חסימת גישה אנונימית (403), בידוד תיקי תלמידים לפי <span dir="ltr">ownerEmail</span> ושיתוף מבוקר.</p>
+          <p>אכיפת שרת (<span dir="ltr">firestore.rules</span>): חסימת גישה אנונימית (403), בידוד לפי <span dir="ltr">ownerEmail</span>, שיתוף צוותי מבוקר וטוקן חד-פעמי ממודר להורים.</p>
         </div>
         <div class="pillar-card p-amber">
           <span class="pillar-icon">🕵️‍♀️</span>
           <h4>הגנת פרטיות הקטין (PII)</h4>
-          <p>המרה אוטומטית לראשי תיבות (<span dir="ltr">נ.י.</span>) בכל הטקסטים והשחרת ת.ז/טלפון/כתובת (<span dir="ltr">████████</span>) בהדפסה, ב-Word, ב-PDF ובמייל.</p>
+          <p>המרה אוטומטית לראשי תיבות (<span dir="ltr">נ.י.</span>) והשחרת ת.ז/טלפון/כתובת (<span dir="ltr">████████</span>) בהדפסה, ב-Word, ב-PDF, במייל ובהעתקה למנב"ס.</p>
         </div>
         <div class="pillar-card p-rose">
           <span class="pillar-icon">💻</span>
-          <h4>Secured Code Attitude</h4>
-          <p>קוד מודולרי מבוסס Domain, סניטציית קלטים, אחסון מוגן שגיאות, הפקת מסמכים מקומית בדפדפן, ובדיקות אוטומטיות ב-CI.</p>
+          <h4>Secured Code &amp; Offline PWA</h4>
+          <p>עבודה רציפה אופליין (<span dir="ltr">IndexedDB + sw.js</span>), מיזוג ענן ברמת שדה ללא דריסות הדדיות, וחילוץ אבחונים מקומי בזיכרון הדפדפן.</p>
         </div>
       </div>
 
       <div style="background: rgba(15, 23, 42, 0.55); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;">
         <div style="font-size: 13px; color: #e2e8f0; line-height: 1.5;">
           <strong style="color: #38bdf8;">עקרון מנחה – הגנה רב-שכבתית (Defense-in-Depth):</strong>
-          אבטחת המערכת אינה נשענת על שכבה בודדת, אלא משלבת הצפנת תשתית ותקשורת (<span dir="ltr">TLS 1.3</span>), הצפנה קריפטוגרפית בצד הלקוח, אכיפת חוקים בצד השרת (<span dir="ltr">Firestore Rules</span>), והנדסת קוד הגנתית השומרת על פרטיות הקטין בכל שלב.
+          אבטחת המערכת משלבת הצפנת תקשורת (<span dir="ltr">TLS 1.3</span>), אימות ופרוקסי AI בפונקציות ענן (<span dir="ltr">Cloud Functions</span>), אכיפת חוקים בשרת (<span dir="ltr">Firestore Rules</span>), סנכרון טרנזקציוני ברמת שדה והנדסת פרטיות השומרת על הקטין בכל שלב.
         </div>
         <span class="slide-badge" style="background: #0284c7; border-color: #7dd3fc;">עמוד 1 מתוך 6</span>
       </div>
@@ -451,7 +451,7 @@
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
           <h2>1. ארכיטקטורת המערכת מקצה לקצה (High-Level System Architecture Diagram)</h2>
-          <p>ארכיטקטורת Serverless SPA מודרנית המפרידה בין שכבת התצוגה הסטטית, שכבת הענן המאובטחת ושירותי ה-AI והדיוור</p>
+          <p>ארכיטקטורת Serverless SPA ו-Offline PWA המפרידה בין שכבת הלקוח, פונקציות הענן המאובטחות, מסד הנתונים ושירותי ה-AI</p>
         </div>
       </div>
       <span class="slide-badge">System Architecture Diagram</span>
@@ -499,14 +499,14 @@
 
           <rect x="780" y="52" width="215" height="68" rx="8" fill="#ffffff" stroke="#86efac" stroke-width="1.5" />
           <text x="887" y="72" fill="#14532d" font-size="12" font-weight="700" text-anchor="middle">GitHub Actions CI/CD Pipeline</text>
-          <text x="887" y="89" fill="#334155" font-size="10.5" text-anchor="middle">• בדיקות אוטומטיות (Vitest Gate)</text>
-          <text x="887" y="105" fill="#334155" font-size="10.5" text-anchor="middle">• אימות OIDC ללא מפתחות קבועים</text>
+          <text x="887" y="89" fill="#334155" font-size="10.5" text-anchor="middle">• 105 בדיקות יחידה (Vitest Gate)</text>
+          <text x="887" y="105" fill="#334155" font-size="10.5" text-anchor="middle">• שער נוכחות (Presence Gate) + OIDC</text>
 
           <line x1="887" y1="120" x2="887" y2="142" stroke="#047857" stroke-width="2" marker-end="url(#arrowGreen)" />
 
           <rect x="780" y="145" width="215" height="72" rx="8" fill="#ffffff" stroke="#86efac" stroke-width="1.5" />
           <text x="887" y="165" fill="#14532d" font-size="12" font-weight="700" text-anchor="middle">GitHub Pages + Fastly CDN</text>
-          <text x="887" y="182" fill="#334155" font-size="10.5" text-anchor="middle">• קבצים סטטיים חתומים (Immutable)</text>
+          <text x="887" y="182" fill="#334155" font-size="10.5" text-anchor="middle">• קבצים סטטיים חתומים + PWA Shell</text>
           <text x="887" y="198" fill="#334155" font-size="10.5" text-anchor="middle">• הגנת DDoS ובידוד מוחלט משרת</text>
 
           <rect x="780" y="228" width="215" height="56" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5" />
@@ -517,7 +517,7 @@
           <!-- ZONE 2: CLIENT APPLICATION TIER (CENTER-RIGHT) -->
           <rect x="385" y="8" width="315" height="288" rx="12" fill="url(#gradClient)" stroke="#2563eb" stroke-width="2" />
           <rect x="385" y="8" width="315" height="32" rx="12" fill="#1d4ed8" />
-          <text x="542" y="29" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">2. שכבת לקוח – TALA Client SPA (React 19)</text>
+          <text x="542" y="29" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">2. שכבת לקוח – TALA Client SPA &amp; PWA</text>
 
           <!-- Arrow from GitHub CDN to Client -->
           <line x1="765" y1="180" x2="703" y2="180" stroke="#047857" stroke-width="2.2" marker-end="url(#arrowGreen)" />
@@ -526,22 +526,22 @@
 
           <rect x="400" y="50" width="285" height="54" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5" />
           <text x="542" y="69" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">שער אימות ואבטחה (AllowlistAuthGate)</text>
-          <text x="542" y="85" fill="#334155" font-size="10" text-anchor="middle">PBKDF SHA-256 (256 rounds + Salt) • Lockout (5 tries)</text>
-          <text x="542" y="98" fill="#334155" font-size="10" text-anchor="middle">חובת החלפת סיסמה זמנית • חתימת NDA דיגיטלית</text>
+          <text x="542" y="85" fill="#334155" font-size="10" text-anchor="middle">אימות שרת (talaLogin) • Custom Token • Lockout (5 tries)</text>
+          <text x="542" y="98" fill="#334155" font-size="10" text-anchor="middle">חובת החלפת סיסמה זמנית • חתימת NDA • טוקן קול ההורים</text>
 
           <rect x="400" y="112" width="285" height="54" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5" />
-          <text x="542" y="131" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">ליבת Domain ובקרת הרשאות (RBAC Engine)</text>
-          <text x="542" y="147" fill="#334155" font-size="10" text-anchor="middle">permissions.js • בדיקת ownerEmail מול sharedWith</text>
-          <text x="542" y="160" fill="#334155" font-size="10" text-anchor="middle">איפוס חיבור יומי אוטומטי (Daily Session Reset)</text>
+          <text x="542" y="131" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">ליבת Domain, הרשאות ומיזוג רב-מקצועי</text>
+          <text x="542" y="147" fill="#334155" font-size="10" text-anchor="middle">permissions.js • מיזוג ברמת שדה (studentSyncMerge.js)</text>
+          <text x="542" y="160" fill="#334155" font-size="10" text-anchor="middle">שיוך מוביל/ת מטרה • מיקרו-תצפיות • קליטת אבחון ב-AI</text>
 
           <rect x="400" y="174" width="285" height="54" rx="8" fill="#ffffff" stroke="#93c5fd" stroke-width="1.5" />
-          <text x="542" y="193" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">מנוע פרטיות והפקת דוחות מקומית (PII Redactor)</text>
+          <text x="542" y="193" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">מנוע פרטיות, הפקת דוחות וגשר מנב"ס (PII Redactor)</text>
           <text x="542" y="209" fill="#334155" font-size="10" text-anchor="middle">ראשי תיבות אוטומטיים (נ.י.) + השחרת שדות (████████)</text>
-          <text x="542" y="222" fill="#334155" font-size="10" text-anchor="middle">הפקת PDF/Word בזיכרון הדפדפן (html2pdf.js)</text>
+          <text x="542" y="222" fill="#334155" font-size="10" text-anchor="middle">הפקת PDF/Word מקומית + העתקה נקייה למנב"ס/משו"ב</text>
 
           <rect x="400" y="236" width="285" height="48" rx="8" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" />
-          <text x="542" y="255" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">מעטפת הגנת קוד (ErrorBoundary &amp; safeStorage)</text>
-          <text x="542" y="272" fill="#1e40af" font-size="10" text-anchor="middle">Cache מקומי מוגן + sanitizeForFirestore לפני שידור</text>
+          <text x="542" y="255" fill="#1e3a8a" font-size="11.5" font-weight="700" text-anchor="middle">עמידות Offline PWA ומעטפת הגנת קוד</text>
+          <text x="542" y="272" fill="#1e40af" font-size="10" text-anchor="middle">IndexedDB persistentLocalCache + sw.js + ErrorBoundary</text>
 
           <!-- ZONE 3: FIREBASE CLOUD BACKEND (TOP-LEFT) -->
           <rect x="10" y="8" width="300" height="168" rx="12" fill="url(#gradFirebase)" stroke="#7c3aed" stroke-width="2" />
@@ -549,12 +549,12 @@
           <text x="160" y="29" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">3. ענן Google Firebase Backend</text>
 
           <rect x="24" y="48" width="272" height="48" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.5" />
-          <text x="160" y="67" fill="#4c1d95" font-size="11.5" font-weight="700" text-anchor="middle">Firebase Authentication + Security Rules</text>
-          <text x="160" y="84" fill="#334155" font-size="10" text-anchor="middle">JWT אימות • אכיפת בעלות ומניעת מחיקה בשרת</text>
+          <text x="160" y="67" fill="#4c1d95" font-size="11.5" font-weight="700" text-anchor="middle">Firebase Auth + Cloud Functions (Gen 2)</text>
+          <text x="160" y="84" fill="#334155" font-size="10" text-anchor="middle">talaLogin (Custom Token) • aiGenerateV2 (AI Proxy)</text>
 
           <rect x="24" y="104" width="272" height="58" rx="8" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.5" />
           <text x="160" y="122" fill="#4c1d95" font-size="11.5" font-weight="700" text-anchor="middle">Cloud Firestore (NoSQL Real-Time DB)</text>
-          <text x="160" y="138" fill="#334155" font-size="10" text-anchor="middle">• tala_students/{id} (מופרד לפי ownerEmail)</text>
+          <text x="160" y="138" fill="#334155" font-size="10" text-anchor="middle">• tala_students (ownerEmail) + tala_invites (טוקן הורים)</text>
           <text x="160" y="152" fill="#334155" font-size="10" text-anchor="middle">• tala_config (נעול; allowed_users למנהלים בלבד)</text>
 
           <!-- Bi-directional arrow Client <-> Firebase -->
@@ -569,8 +569,8 @@
 
           <rect x="22" y="226" width="134" height="58" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.5" />
           <text x="89" y="244" fill="#78350f" font-size="11" font-weight="700" text-anchor="middle">Google Gemini AI</text>
-          <text x="89" y="259" fill="#334155" font-size="9.5" text-anchor="middle">עיבוד פדגוגי ב-HTTPS</text>
-          <text x="89" y="273" fill="#334155" font-size="9.5" text-anchor="middle">ללא שמירת PII חיצונית</text>
+          <text x="89" y="259" fill="#334155" font-size="9.5" text-anchor="middle">דרך פרוקסי aiGenerateV2</text>
+          <text x="89" y="273" fill="#334155" font-size="9.5" text-anchor="middle">Bearer JWT + בקרת מכסות</text>
 
           <rect x="164" y="226" width="134" height="58" rx="8" fill="#ffffff" stroke="#fcd34d" stroke-width="1.5" />
           <text x="231" y="244" fill="#78350f" font-size="11" font-weight="700" text-anchor="middle">Apps Script Relay</text>
@@ -588,19 +588,19 @@
       <div class="grid-4">
         <div class="feature-card emerald" style="padding: 10px 12px;">
           <h3 style="font-size: 13.5px;">1. שכבת GitHub &amp; SSL Edge</h3>
-          <p style="font-size: 11.5px;">אירוח סטטי על גבי <strong>GitHub Pages CDN</strong>. כל תעבורה מוצפנת ב-<strong>SSL/TLS 1.3</strong>. פריסה אוטומטית דרך GitHub Actions רק לאחר מעבר בדיקות יחידה.</p>
+          <p style="font-size: 11.5px;">אירוח סטטי על <strong>GitHub Pages CDN</strong> ב-<strong>SSL/TLS 1.3</strong>. פריסה אוטומטית רק לאחר מעבר <strong>105 בדיקות יחידה</strong> ובדיקת <strong>Presence Gate</strong> (אפס משתמשים פעילים).</p>
         </div>
         <div class="feature-card" style="padding: 10px 12px;">
-          <h3 style="font-size: 13.5px;">2. שכבת לקוח (React SPA)</h3>
-          <p style="font-size: 11.5px;">מבצעת גיבוב סיסמאות מקומי, אכיפת הרשאות, השחרת פרטים מזהים והפקת קבצי PDF/Word בזיכרון הדפדפן ללא שרת צד-שלישי.</p>
+          <h3 style="font-size: 13.5px;">2. שכבת לקוח ו-Offline PWA</h3>
+          <p style="font-size: 11.5px;">אפליקציית React 19 עם <strong>IndexedDB Offline Cache</strong>, חילוץ אבחונים מקומי בדפדפן, השחרת PII אוטומטית, הפקת PDF/Word וגשר העתקה למנב"ס/משו"ב.</p>
         </div>
         <div class="feature-card purple" style="padding: 10px 12px;">
           <h3 style="font-size: 13.5px;">3. שכבת ענן (Firebase)</h3>
-          <p style="font-size: 11.5px;">סנכרון בזמן אמת מול <strong>Cloud Firestore</strong> על גבי WebSockets מוצפנים, מוגן ע"י <strong>Firebase Auth</strong> וחוקי <code>firestore.rules</code>.</p>
+          <p style="font-size: 11.5px;">אימות שרת ב-<code>talaLogin</code>, סנכרון טרנזקציוני ברמת שדה ב-<strong>Firestore</strong> ללא דריסת עבודת עמיתים, וטוקן חד-פעמי ממודר ל<strong>קול ההורים</strong> (<code>tala_invites</code>).</p>
         </div>
         <div class="feature-card amber" style="padding: 10px 12px;">
-          <h3 style="font-size: 13.5px;">4. שירותי AI ודיוור מבוקרים</h3>
-          <p style="font-size: 11.5px;">קריאות HTTPS יוצאות בלבד אל <strong>Gemini API</strong> (לניסוח מטרות ומוקדי כוח) ואל <strong>Google Apps Script</strong> (למשלוח דוחות ו-NDA במייל).</p>
+          <h3 style="font-size: 13.5px;">4. פרוקסי AI ודיוור מבוקרים</h3>
+          <p style="font-size: 11.5px;">קריאות AI מנותבות דרך פונקציית ענן <code>aiGenerateV2</code> המאמתת <strong>Firebase ID Token</strong> ומגבילה מכסות יומיות, ללא חשיפת מפתח Gemini בדפדפן.</p>
         </div>
       </div>
     </div>
@@ -730,18 +730,18 @@
         </svg>
       </div>
 
-      <div class="grid-3">
+          <div class="grid-3">
         <div class="feature-card purple" style="padding: 10px 14px;">
-          <h3 style="font-size: 14px;">🔑 גיבוב קריפטוגרפי רב-סבבי (PBKDF)</h3>
-          <p style="font-size: 11.8px;">במקום לשמור סיסמאות גלויות, הפונקציה <span class="code-tag purple">hashPasswordWithSalt</span> מייצרת <span dir="ltr">128-bit Salt</span> אקראי לכל משתמש ומבצעת <strong>256 סבבי SHA-256</strong> עם הפרדת דומיין (<span class="code-tag">TALA_PBKDF_V1</span>).</p>
+          <h3 style="font-size: 14px;">🔑 אימות שרת וגיבוב רב-סבבי (talaLogin + PBKDF)</h3>
+          <p style="font-size: 11.8px;">פונקציית הענן <span class="code-tag purple">talaLogin</span> מאמתת את קוד הגישה בשרת עם <span dir="ltr">128-bit Salt</span> ו-<strong>256 סבבי SHA-256</strong> (<span class="code-tag">TALA_PBKDF_V1</span>) ומנפיקה <strong>Firebase Custom Token</strong> מבלי לחשוף את מאגר המשתמשים לדפדפן.</p>
         </div>
         <div class="feature-card amber" style="padding: 10px 14px;">
-          <h3 style="font-size: 14px;">✍️ חתימה דיגיטלית על NDA למשתמשי ניסיון</h3>
-          <p style="font-size: 11.8px;">משתמש ניסיון (<span class="code-tag">isTrialUser</span>) מחויב לחתום על גבי משטח חתימה דיגיטלי. החתימה מוטמעת כקובץ PDF רשמי וכטבלת פיקסלים חסינת חסימות ונשלחת אוטומטית למנהלת המערכת.</p>
+          <h3 style="font-size: 14px;">✍️ חתימה על NDA וטוקן חד-פעמי לקול ההורים</h3>
+          <p style="font-size: 11.8px;">משתמש ניסיון מחויב בחתימה דיגיטלית על NDA הנשלחת כ-PDF למנהלת. להורים מונפק קישור חד-פעמי ממודר (<span class="code-tag">tala_invites/{token}</span>) המאפשר הזנת משוב ללא גישה לתיק התלמיד.</p>
         </div>
         <div class="feature-card emerald" style="padding: 10px 14px;">
-          <h3 style="font-size: 14px;">🛡️ הגנה על מחשבים משותפים בגן ובבית הספר</h3>
-          <p style="font-size: 11.8px;">מנגנון <span class="code-tag emerald">isSessionUserValidForToday</span> מוודא כי חיבור שנשאר פתוח במחשב הגן או חדר המורים מתנתק אוטומטית עם התחלפות יום הלוח (תוך שמירת טיוטות לא שמורות).</p>
+          <h3 style="font-size: 14px;">🛡️ הגנה על מחשבים משותפים ו-Offline PWA</h3>
+          <p style="font-size: 11.8px;">מנגנון <span class="code-tag emerald">isSessionUserValidForToday</span> מנתק אוטומטית חיבור שנשאר פתוח בחצות (תוך שמירת טיוטה), ומנוע <strong>IndexedDB Offline Cache</strong> שומר על רציפות העבודה בניתוקי רשת.</p>
         </div>
       </div>
     </div>
@@ -782,7 +782,7 @@
           <ul class="feature-list">
             <li><strong>תעודת X.509 SSL מנוהלת ומתחדשת אוטומטית:</strong> מונפקת ע"י רשות אישורים מוסמכת (Let's Encrypt / DigiCert) ומותקנת אוטומטית על הדומיין <span class="code-tag">zivitreshef.github.io</span>.</li>
             <li><strong>כפיית HTTPS מוחלטת (Enforce HTTPS):</strong> כל פנייה ב-HTTP מופנית אוטומטית (<span dir="ltr">301 Redirect</span>) לערוץ מוצפן ב-<strong>TLS 1.2 / TLS 1.3</strong>, כולל כותרות <strong>HSTS</strong> למניעת מתקפות SSL Stripping ו-MITM.</li>
-            <li><strong>אפס משטח תקיפה צד-שרת:</strong> מכיוון שהאתר מוגש כנכסים סטטיים חתומים בלבד (Immutable Static Bundle), לא קיים שרת אפליקטיבי החשוף ל-SQL Injection או הרצת קוד מרחוק (RCE).</li>
+            <li><strong>אפס משטח תקיפה צד-שרת:</strong> מכיוון שהאתר מוגש כנכסים סטטיים חתומים בלבד (Immutable Static Bundle + PWA Service Worker), לא קיים שרת אפליקטיבי החשוף ל-SQL Injection או RCE.</li>
           </ul>
         </div>
 
@@ -796,25 +796,25 @@
             תהליך הפריסה מוגדר בקובץ <span class="code-tag">.github/workflows/deploy.yml</span> ופועל לפי עקרונות <strong>Zero-Trust CI/CD</strong>:
           </p>
           <ul class="feature-list">
-            <li><strong>הרשאות מינימליות (Least Privilege Token):</strong> ה-Workflow מצהיר במפורש על <span class="code-tag">contents: read</span>, <span class="code-tag">pages: write</span> ו-<span class="code-tag">id-token: write</span> בלבד – ללא יכולת שינוי קוד המקור.</li>
-            <li><strong>אימות OIDC ללא סודות קבועים:</strong> הפריסה מתבצעת באמצעות טוקן זמני (OpenID Connect) מול סביבת <span class="code-tag">github-pages</span> מוגנת, ללא שמירת מפתחות SSH או טוקנים ארוכי-טווח.</li>
-            <li><strong>שער איכות ובדיקות אוטומטי (Quality Gate):</strong> הפקודה <span class="code-tag">npm run test:run</span> מריצה את מערך הבדיקות (<span dir="ltr">Vitest</span>) לפני בניית האתר; כישלון בבדיקת אבטחה או הרשאות עוצר את הפריסה מיידית.</li>
+            <li><strong>הרשאות מינימליות ואימות OIDC:</strong> ה-Workflow פועל עם טוקן זמני (OpenID Connect) והרשאות <span class="code-tag">contents: read</span> ו-<span class="code-tag">pages: write</span> בלבד – ללא סודות קבועים.</li>
+            <li><strong>שער בדיקת נוכחות פעילה (Presence Safety Gate):</strong> הסקריפט <span class="code-tag">npm run check-presence</span> בודק מול הענן שאין אנשי צוות פעילים ב-15 הדקות האחרונות לפני ביצוע מיזוג ופריסה.</li>
+            <li><strong>שער איכות אוטומטי (105 בדיקות יחידה):</strong> הפקודה <span class="code-tag">npm run test:run</span> מריצה <strong>105 בדיקות אוטומטיות</strong> ב-10 חבילות בדיקה (<span dir="ltr">Vitest</span>); כישלון בבדיקה עוצר את הפריסה מיידית.</li>
           </ul>
         </div>
 
         <!-- Card 3: Cloud Firestore Security Rules -->
         <div class="feature-card purple">
           <h3>
-            <span>☁️ אכיפת הרשאות בענן (Firestore Rules)</span>
+            <span>☁️ פונקציות ענן וחוקי אבטחה (Cloud &amp; Rules)</span>
             <span class="code-tag purple">firestore.rules</span>
           </h3>
           <p>
-            בסיס הנתונים בענן של Google מוגן בשתי שכבות: הצפנת <strong>AES-256 במנוחה</strong> (Encryption at Rest) וחוקי גישה בשרת:
+            בסיס הנתונים ושירותי ה-AI מוגנים בשכבת שרת ב-Google Cloud (<strong>AES-256 במנוחה</strong> + אימות חוקים):
           </p>
           <ul class="feature-list">
-            <li><strong>אימות זהות מבוסס שרת (Server-Side Custom Token):</strong> אימות הסיסמה מבוצע כולו ב-Cloud Function (<span class="code-tag purple">talaLogin</span>) המאמתת את הגיבוב המוצפן ומנפיקה Firebase Custom Token מאומת. אין גזירת סיסמאות בדפדפן.</li>
-            <li><strong>נעילת הגדרות ומשתמשים (<span dir="ltr">tala_config Lockdown</span>):</strong> קובץ המשתמשים והסיסמאות <span class="code-tag">tala_config/allowed_users</span> חסום לחלוטין לקריאה ולכתיבה ללקוח (Admin בלבד). מורים מקבלים תצוגת אינדקס מוגנת (<span class="code-tag">directory</span>) ופרופיל אישי בלבד (<span class="code-tag">tala_profiles</span>).</li>
-            <li><strong>בידוד בעלות מלא (<span dir="ltr">Zero Anonymous Access</span>):</strong> כל גישה אנונימית ל-Firestore חסומה (403 Forbidden). כרטיסי תלמידים ב-<span class="code-tag">tala_students</span> נגישים אך ורק לבעל הכרטיס (<span class="code-tag">ownerEmail</span>) או לשותפי צוות מאומתים ב-<span class="code-tag">sharedWith</span>.</li>
+            <li><strong>אימות שרת ופרוקסי AI מוגן (<span dir="ltr">talaLogin &amp; aiGenerateV2</span>):</strong> אימות הסיסמאות והנפקת Custom Token מתבצעים בשרת. קריאות ל-Gemini עוברות דרך <span class="code-tag purple">aiGenerateV2</span> עם אימות Bearer JWT ובקרת מכסות ללא חשיפת מפתח ה-API.</li>
+            <li><strong>נעילת הגדרות ומשתמשים (<span dir="ltr">tala_config Lockdown</span>):</strong> קובץ <span class="code-tag">tala_config/allowed_users</span> נעול לקריאה ולכתיבה בצד הלקוח (Admin בלבד).</li>
+            <li><strong>בידוד תיקי תלמידים וטוקן הורים (<span dir="ltr">Scoped Access</span>):</strong> כרטיסי <span class="code-tag">tala_students</span> נגישים רק ל-<span class="code-tag">ownerEmail</span> או ל-<span class="code-tag">sharedWith</span>. אוסף <span class="code-tag">tala_invites</span> מאפשר להורים גישה נקודתית לטוקן חד-פעמי בלבד.</li>
           </ul>
         </div>
       </div>
@@ -822,7 +822,7 @@
       <div class="highlight-banner">
         <div>
           <strong>🔒 הצפנה מקצה לקצה בכל ערוצי התקשורת (End-to-End Encrypted Channels):</strong>
-          <span>בין דפדפן המורה ל-GitHub Pages (<strong>HTTPS TLS 1.3</strong>) • בין הדפדפן ל-Cloud Firestore (<strong>Encrypted gRPC/WebSockets over TLS</strong>) • בין הדפדפן ל-Gemini AI ול-Google Apps Script (<strong>HTTPS TLS</strong>).</span>
+          <span>בין דפדפן המורה ל-GitHub Pages (<strong>HTTPS TLS 1.3</strong>) • בין הדפדפן ל-Cloud Firestore ול-Cloud Functions (<strong>Encrypted gRPC/HTTPS over TLS</strong>) • בין פרוקסי הענן ל-Gemini AI (<strong>Server-to-Server TLS</strong>).</span>
         </div>
         <span class="code-tag emerald" style="font-size: 12px; padding: 4px 10px;">100% HTTPS / TLS Enforced</span>
       </div>
@@ -844,7 +844,7 @@
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
           <h2>4. גישת פיתוח קוד מאובטח והנדסת פרטיות (Secured Code Attitude)</h2>
-          <p>עקרונות כתיבת קוד הגנתי (Defensive Programming), הפרדת אחריות, הגנה מפני דליפת מידע והשחרת PII אוטומטית</p>
+          <p>עקרונות כתיבת קוד הגנתי (Defensive Programming), פרוקסי AI, מיזוג רב-מקצועי ברמת שדה והשחרת PII אוטומטית</p>
         </div>
       </div>
       <span class="slide-badge">Secured Code Attitude &amp; Privacy by Design</span>
@@ -852,55 +852,55 @@
 
     <div class="slide-body">
       <div class="grid-2">
-        <!-- Card 1: Cryptographic & Credential Hygiene -->
+        <!-- Card 1: Cryptographic & AI Proxy Hygiene -->
         <div class="feature-card purple">
           <h3>
-            <span>1. היגיינת סיסמאות והסרת טקסט גלוי אוטומטית</span>
-            <span class="code-tag purple">src/allowedUsers.js</span>
+            <span>1. אימות שרת, פרוקסי AI מוגן והיגיינת סיסמאות</span>
+            <span class="code-tag purple">functions/index.js</span>
           </h3>
           <ul class="feature-list">
-            <li><strong>מימוש קריפטוגרפי עצמאי ללא תלות בספריות חיצוניות פגיעות:</strong> מימוש תקן <span dir="ltr">FIPS 180-4 SHA-256</span> טהור (<span class="code-tag">sha256Hex</span>) כדי למנוע מתקפות שרשרת אספקה (Supply-Chain Attacks) מחבילות צד-שלישי.</li>
-            <li><strong>הגירה ושדרוג אוטומטי (Self-Healing Credential Migration):</strong> הפונקציה <span class="code-tag">ensureUsersListPasswordsHashed</span> סורקת כל רשימת משתמשים (מקומית או מהענן), ממירה כל קוד גישה ל-<span class="code-tag">{ passwordSalt, passwordHash }</span> ומוחקת פיזית את המאפיין <span class="code-tag">accessCode</span> מהאובייקט לפני השמירה.</li>
-            <li><strong>הגנה על מפתחות API מפני סורקים:</strong> קבצי <span class="code-tag">.env.local</span> מוחרגים ב-<span class="code-tag">.gitignore</span>, ומפתחות ברירת מחדל מורכבים בזמן ריצה ממערך בתים (<span class="code-tag">String.fromCharCode</span>) למניעת חשיפה בסריקות טקסט סטטיות.</li>
+            <li><strong>פרוקסי AI מאובטח בענן (<span dir="ltr">aiProxyClient.js + aiGenerateV2</span>):</strong> מפתח ה-Gemini נשמר ב-Secret Manager בשרת בלבד. כל בקשה מאומתת עם Firebase ID Token (Bearer JWT) ועוברת בקרת מכסה יומית ומצטברת.</li>
+            <li><strong>גיבוב קריפטוגרפי תקני (<span dir="ltr">FIPS 180-4 SHA-256</span>):</strong> מימוש עצמאי של 256 סבבי גיבוב עם Salt ייחודי והגירה אוטומטית (<span class="code-tag">ensureUsersListPasswordsHashed</span>) המסירה כל טקסט גלוי.</li>
+            <li><strong>טוקנים חד-פעמיים לקול ההורים (<span dir="ltr">parentInvite.js</span>):</strong> יצירת טוקן אקראי קריפטוגרפי (<span dir="ltr">16-char Hex</span>) המופרד לחלוטין מתיק התלמיד וננעל אוטומטית לאחר שליחת שאלון ההורים.</li>
           </ul>
         </div>
 
         <!-- Card 2: Privacy by Design & PII Masking -->
         <div class="feature-card emerald">
           <h3>
-            <span>2. הנדסת פרטיות והשחרת פרטים מזהים (PII Redaction)</span>
-            <span class="code-tag emerald">src/domain/privacyAndAcronyms.js</span>
+            <span>2. הנדסת פרטיות, גשר מנב"ס וקליטת אבחונים מקומית</span>
+            <span class="code-tag emerald">privacyAndAcronyms.js</span>
           </h3>
           <ul class="feature-list">
-            <li><strong>ברירת מחדל מחמירה (Secure by Default):</strong> הדגל <span class="code-tag emerald">hideDetailsInPrint = true</span> מופעל אוטומטית בכל שלושת הדוחות (תל"א/תח"י, דוח הערכה, ודו"ח מצב חינוכי-תפקודי).</li>
-            <li><strong>סריקה והחלפה חכמה בתוך טקסט חופשי:</strong> הפונקציה <span class="code-tag">redactStudentNameInText</span> מזהה את שמו המלא ושמו הפרטי של התלמיד בתוך תיאור התפקוד, המטרות ודו"ח המצב ומחליפה אותם אוטומטית בראשי תיבות (<span class="code-tag">toHebrewAcronym</span>, למשל: <em>"נועם ישראלי" ⬅ "נ.י."</em>).</li>
-            <li><strong>השחרת שדות רגישים והפקה מקומית:</strong> הפונקציה <span class="code-tag">maskSensitiveValue</span> משחירה ת.ז, תאריך לידה, טלפון, כתובת ומסגרת (<span dir="ltr">████████</span>). קבצי ה-PDF וה-Word נוצרים בזיכרון הדפדפן בלבד ללא העלאה לשרת המרה חיצוני.</li>
+            <li><strong>ברירת מחדל מחמירה (<span dir="ltr">Secure by Default</span>):</strong> הדגל <span class="code-tag emerald">hideDetailsInPrint = true</span> מופעל אוטומטית בכל שלושת הדוחות וכן ב<strong>גשר ההעתקה למנב"ס/משו"ב</strong> (<span class="code-tag">ministryCopyFormatter.js</span>).</li>
+            <li><strong>סריקה והחלפה חכמה בתוך טקסט חופשי:</strong> הפונקציה <span class="code-tag">redactStudentNameInText</span> מזהה את שם התלמיד בכל הפרקים, המטרות, התצפיות ודו"ח המצב ומחליפה אותו בראשי תיבות (<span class="code-tag">נ.י.</span>) לצד השחרת ת.ז/טלפון (<span dir="ltr">████████</span>).</li>
+            <li><strong>חילוץ אבחונים בזיכרון הדפדפן (<span dir="ltr">diagnosticIntake.js</span>):</strong> קובצי PDF וטקסט של אבחונים מפוענחים מקומית בדפדפן המורה ללא שמירת הקובץ בענן, ורק טקסט פדגוגי מסונן נשלח לניתוח מטרות.</li>
           </ul>
         </div>
 
-        <!-- Card 3: Defensive Storage, Sanitization & Error Boundaries -->
+        <!-- Card 3: Offline PWA & Multi-Disciplinary Transactional Sync -->
         <div class="feature-card">
           <h3>
-            <span>3. תכנות הגנתי, סניטציה ועמידות בפני כשלים</span>
-            <span class="code-tag">src/services/storage.js</span>
+            <span>3. עמידות Offline PWA ומיזוג רב-מקצועי ברמת שדה</span>
+            <span class="code-tag">studentSyncMerge.js</span>
           </h3>
           <ul class="feature-list">
-            <li><strong>עטיפות אחסון מוגנות (<span dir="ltr">Safe Storage Wrappers</span>):</strong> קריאות וכתיבות ל-<span class="code-tag">localStorage</span> עוברות דרך <span class="code-tag">safeGetStorageJson</span> ו-<span class="code-tag">safeSetStorageJson</span> המגנות מפני <span class="code-tag">QuotaExceededError</span>, גלישה בסתר או הזרקת JSON פגום.</li>
-            <li><strong>סניטציה לפני כתיבה לענן:</strong> הפונקציה <span class="code-tag">sanitizeForFirestore</span> מנקה ערכי <span class="code-tag">undefined</span> ומבנים לא תקינים לפני כל שמירה ב-Firestore.</li>
-            <li><strong>מניעת דליפת מידע בשגיאות (<span dir="ltr">ErrorBoundary</span>):</strong> הרכיב <span class="code-tag">src/components/ErrorBoundary.jsx</span> לוכד שגיאות ריצה ומציג מסך שחזור מבוקר בעברית מבלי לחשוף פרטי קוד או נתוני תלמיד על המסך.</li>
+            <li><strong>מיזוג ענן טרנזקציוני ללא דריסות (<span dir="ltr">Field-Level Merge</span>):</strong> הפונקציה <span class="code-tag">mergeStudentRecordsForSync</span> ממזגת שינויים של אנשי צוות שונים ברמת השדה והמטרה הבודדת (כולל <span class="code-tag">leadRole</span> ותצפיות) בתוך טרנזקציית Firestore.</li>
+            <li><strong>עבודה רציפה ללא אינטרנט (<span dir="ltr">Offline-First PWA</span>):</strong> שילוב של <span class="code-tag">persistentLocalCache</span> ב-IndexedDB עם Service Worker (<span class="code-tag">public/sw.js</span>) ועטיפות <span class="code-tag">safeStorage</span> מוגנות.</li>
+            <li><strong>מניעת דליפת מידע בשגיאות (<span dir="ltr">ErrorBoundary</span>):</strong> לכידת שגיאות ריצה והצגת מסך שחזור מבוקר בעברית מבלי לחשוף נתוני תלמיד.</li>
           </ul>
         </div>
 
         <!-- Card 4: Domain Isolation, Factual AI & Automated Verification -->
         <div class="feature-card amber">
           <h3>
-            <span>4. אכיפת הרשאות ב-Domain, בקרת AI ובדיקות אוטומטיות</span>
-            <span class="code-tag">src/domain/permissions.js</span>
+            <span>4. אכיפת הרשאות ב-Domain, הגנת תצפיות ו-105 בדיקות</span>
+            <span class="code-tag">domain/permissions.js</span>
           </h3>
           <ul class="feature-list">
-            <li><strong>הפרדת הרשאות קשיחה בקוד (<span dir="ltr">Single Source of Truth</span>):</strong> פונקציות הבקרה <span class="code-tag">canViewStudent</span>, <span class="code-tag">canDeleteStudent</span>, <span class="code-tag">canArchiveStudent</span> ו-<span class="code-tag">canLockReport</span> מוודאות שרק היוצר המקורי (<span class="code-tag">ownerEmail</span>) רשאי לנעול, לארכב, לשתף או למחוק.</li>
-            <li><strong>מניעת הזיות AI ודריסת עריכות (Hallucination &amp; Overwrite Guards):</strong> דו"ח המצב מופק אך ורק מנתונים קיימים בכרטיס (סעיפים ריקים מושמטים), ומטרות שהמורה ערכה ידנית מסומנות ומוגנות מפני דריסה בעיבוד AI חוזר.</li>
-            <li><strong>כיסוי בדיקות אוטומטי (<span dir="ltr">coreDomain.test.js</span>):</strong> בדיקות יחידה מוודאות אוטומטית את תקינות הגיבוב, ההרשאות, השחרת ה-PII וגלגול השנים בכל שינוי קוד.</li>
+            <li><strong>הפרדת הרשאות קשיחה בקוד (<span dir="ltr">Single Source of Truth</span>):</strong> פונקציות <span class="code-tag">canViewStudent</span>, <span class="code-tag">canDeleteStudent</span> ו-<span class="code-tag">canLockReport</span> מוודאות שרק היוצר המקורי (<span class="code-tag">ownerEmail</span>) רשאי לנעול, לארכב, לשתף או למחוק.</li>
+            <li><strong>הגנה על עריכות ותצפיות מפני דריסת AI:</strong> מטרות שנערכו ידנית או כוללות <strong>מיקרו-תצפיות כיתתיות</strong> (<span class="code-tag">goalObservations.js</span>) מוגנות אוטומטית מפני דריסה בעיבוד AI חוזר.</li>
+            <li><strong>105 בדיקות יחידה אוטומטיות (<span dir="ltr">10 Test Suites</span>):</strong> כיסוי מלא של גיבוב, הרשאות, השחרת PII, קול ההורים, גשר מנב"ס, תצפיות, מיזוג רב-מקצועי וקליטת אבחונים.</li>
           </ul>
         </div>
       </div>
@@ -940,16 +940,16 @@
         </thead>
         <tbody>
           <tr>
-            <td class="layer-col">1. רשת ואירוח<br/><span style="font-size:10.5px; color:#64748b;">Network &amp; Hosting</span></td>
-            <td class="threat-col">האזנת סתר ברשת (MITM), זיוף אתר או תקיפת שרת</td>
-            <td class="control-col">תעודת <strong>GitHub SSL/TLS</strong> רשמית ומתחדשת אוטומטית, כפיית <strong>HTTPS (TLS 1.3)</strong> + HSTS, הפצה דרך Fastly CDN כקבצים סטטיים בלבד ללא שרת חשוף.</td>
-            <td class="code-col"><span class="code-tag emerald">GitHub Pages SSL</span><br/><span class="code-tag">.github/workflows/deploy.yml</span></td>
+            <td class="layer-col">1. רשת, אירוח ו-PWA<br/><span style="font-size:10.5px; color:#64748b;">Network, CDN &amp; PWA</span></td>
+            <td class="threat-col">האזנת סתר ברשת (MITM), ניתוקי אינטרנט או פריסה בזמן עבודה</td>
+            <td class="control-col">תעודת <strong>GitHub SSL/TLS 1.3</strong> + HSTS, הפצה כקבצים סטטיים חתומים, עבודה רציפה ב-<strong>Offline PWA (IndexedDB)</strong>, ושער <strong>Presence Gate</strong> המונע פריסה כשיש מורים פעילים.</td>
+            <td class="code-col"><span class="code-tag emerald">GitHub Pages SSL</span><br/><span class="code-tag">public/sw.js • check-presence</span></td>
           </tr>
           <tr>
-            <td class="layer-col">2. אימות וסיסמאות<br/><span style="font-size:10.5px; color:#64748b;">Authentication</span></td>
-            <td class="threat-col">חשיפת סיסמאות במאגר או מתקפת ניחוש (Brute-Force)</td>
-            <td class="control-col">אימות סיסמה בשרת ב-<strong>Cloud Function (talaLogin)</strong> עם גיבוב <strong>SHA-256 (256 סבבים) + Salt אישי</strong>; הנפקת <strong>Firebase Custom Token</strong>; נעילת <strong>allowed_users</strong> למנהלים בלבד וחסימת קריאה מהדפדפן; נעילה אוטומטית לאחר 5 ניסיונות.</td>
-            <td class="code-col"><span class="code-tag purple">functions/index.js (talaLogin)</span><br/><span class="code-tag">loginWithTala()</span></td>
+            <td class="layer-col">2. אימות ופרוקסי AI<br/><span style="font-size:10.5px; color:#64748b;">Server Auth &amp; AI Proxy</span></td>
+            <td class="threat-col">חשיפת סיסמאות או מפתחות AI בדפדפן ומתקפת Brute-Force</td>
+            <td class="control-col">אימות סיסמה ב-<strong>Cloud Function (talaLogin)</strong> עם גיבוב <strong>SHA-256 (256 סבבים + Salt)</strong> והנפקת Custom Token; ניתוב AI דרך <strong>aiGenerateV2</strong> עם אימות Bearer JWT ומכסות; נעילה לאחר 5 ניסיונות.</td>
+            <td class="code-col"><span class="code-tag purple">functions/index.js</span><br/><span class="code-tag">aiProxyClient.js</span></td>
           </tr>
           <tr>
             <td class="layer-col">3. ניהול סשן ומחשבים משותפים<br/><span style="font-size:10.5px; color:#64748b;">Session Security</span></td>
@@ -958,35 +958,35 @@
             <td class="code-col"><span class="code-tag">App.jsx</span><br/><span class="code-tag">isSessionUserValidForToday()</span></td>
           </tr>
           <tr>
-            <td class="layer-col">4. הרשאות וענן<br/><span style="font-size:10.5px; color:#64748b;">Cloud &amp; RBAC</span></td>
-            <td class="threat-col">צפייה בתיקי תלמידים של מורה אחרת או מחיקה ע"י שותף</td>
-            <td class="control-col">אכיפת <strong>Firestore Rules</strong> בשרת: חסימה מוחלטת של קריאות לא מאומתות (403); בידוד מלא לפי <span class="code-tag">ownerEmail</span>; נעילת tala_config; שותפים ב-<span class="code-tag">sharedWith</span> מנועים מלמחוק או לשנות בעלות.</td>
-            <td class="code-col"><span class="code-tag purple">firestore.rules</span><br/><span class="code-tag">domain/permissions.js</span></td>
+            <td class="layer-col">4. הרשאות, הורים וצוות<br/><span style="font-size:10.5px; color:#64748b;">RBAC, Sync &amp; Invites</span></td>
+            <td class="threat-col">חשיפת תיקים לא מורשית, דריסת עבודת עמיתים או חשיפה בקישור הורים</td>
+            <td class="control-col">אכיפת <strong>Firestore Rules</strong>: בידוד לפי <span class="code-tag">ownerEmail</span>; מיזוג טרנזקציוני ברמת שדה (<span class="code-tag">studentSyncMerge</span>) המונע דריסות בצוות; וטוקן חד-פעמי ממודר להורים ב-<span class="code-tag">tala_invites</span>.</td>
+            <td class="code-col"><span class="code-tag purple">firestore.rules</span><br/><span class="code-tag">studentSyncMerge.js • inviteService.js</span></td>
           </tr>
           <tr>
-            <td class="layer-col">5. פרטיות הקטין<br/><span style="font-size:10.5px; color:#64748b;">Student PII Privacy</span></td>
-            <td class="threat-col">חשיפת שם תלמיד, ת.ז או כתובת בהדפסה או בשליחה במייל</td>
-            <td class="control-col">מצב <strong>"הסתר פרטים מזהים" מופעל כברירת מחדל</strong>: המרת שם התלמיד לראשי תיבות (<span dir="ltr">נ.י.</span>) בכותרת ובכל הטקסטים החופשיים, והשחרת ת.ז/טלפון/כתובת (<span dir="ltr">████████</span>).</td>
-            <td class="code-col"><span class="code-tag emerald">privacyAndAcronyms.js</span><br/><span class="code-tag">redactStudentNameInText()</span></td>
+            <td class="layer-col">5. פרטיות הקטין ואבחונים<br/><span style="font-size:10.5px; color:#64748b;">Student PII &amp; Intake</span></td>
+            <td class="threat-col">חשיפת שם תלמיד/ת.ז בהדפסה, במנב"ס או בהעלאת קובצי אבחון</td>
+            <td class="control-col"><strong>הסתרת פרטים מזהים כברירת מחדל</strong> בדוחות וב<strong>גשר ההעתקה למנב"ס</strong>: המרה לראשי תיבות (<span dir="ltr">נ.י.</span>) והשחרת ת.ז/טלפון (<span dir="ltr">████████</span>); פענוח קובצי אבחון (PDF) בזיכרון הדפדפן בלבד.</td>
+            <td class="code-col"><span class="code-tag emerald">privacyAndAcronyms.js</span><br/><span class="code-tag">ministryCopyFormatter.js • diagnosticIntake.js</span></td>
           </tr>
           <tr>
             <td class="layer-col">6. קניין רוחני ואיכות קוד<br/><span style="font-size:10.5px; color:#64748b;">IP &amp; Code Integrity</span></td>
-            <td class="threat-col">הפצה לא מורשית בגרסת ניסיון או באגים/קריסות בדפדפן</td>
-            <td class="control-col">שער <strong>חתימה דיגיטלית על NDA</strong> למשתמשי ניסיון עם משלוח PDF חתום למנהלת; סניטציית נתונים (<span class="code-tag">sanitizeForFirestore</span>); <span class="code-tag">ErrorBoundary</span>; ובדיקות יחידה ב-CI.</td>
-            <td class="code-col"><span class="code-tag">TrialNdaModal.jsx</span><br/><span class="code-tag">coreDomain.test.js</span></td>
+            <td class="threat-col">הפצה לא מורשית בגרסת ניסיון, דריסת תצפיות ע"י AI או שגיאות ריצה</td>
+            <td class="control-col">שער <strong>חתימה דיגיטלית על NDA</strong> למשתמשי ניסיון; הגנה על מיקרו-תצפיות ועריכות ידניות מפני דריסת AI; <span class="code-tag">ErrorBoundary</span>; ו-<strong>105 בדיקות יחידה אוטומטיות</strong> ב-CI.</td>
+            <td class="code-col"><span class="code-tag">TrialNdaModal.jsx</span><br/><span class="code-tag">goalObservations.js • 10 Test Suites</span></td>
           </tr>
         </tbody>
       </table>
 
       <div class="highlight-banner" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #4c1d95 100%); color: #ffffff; border: none; padding: 14px 22px;">
         <div>
-          <strong style="color: #38bdf8; font-size: 15.5px;">סיכום אבטחתי (Executive Security Summary):</strong>
+          <strong style="color: #38bdf8; font-size: 15.5px;">סיכום אבטחתי (Executive Security Summary – v1.0.65):</strong>
           <div style="color: #f1f5f9; font-size: 13px; margin-top: 4px; line-height: 1.5;">
-            מערכת TALA משלבת תשתית ענן תקנית ומוצפנת (<strong style="color: #7dd3fc;">GitHub Pages SSL/TLS + Google Cloud Firestore</strong>) עם ארכיטקטורת קוד מוקפדת (<strong style="color: #c4b5fd;">Secured Code Attitude</strong>) המעניקה לצוותי החינוך והמתי"א סביבת עבודה בטוחה, ממודרת ושומרת פרטיות מקצה לקצה.
+            מערכת TALA משלבת תשתית ענן תקנית ומוצפנת (<strong style="color: #7dd3fc;">GitHub Pages SSL/TLS + Google Cloud Functions &amp; Firestore</strong>) עם ארכיטקטורת קוד מוקפדת (<strong style="color: #c4b5fd;">Secured Code Attitude &amp; 105 Unit Tests</strong>) המעניקה לצוותי החינוך, המתי"א וההורים סביבת עבודה בטוחה, ממודרת ושומרת פרטיות מקצה לקצה.
           </div>
         </div>
         <span class="slide-badge" style="background: #ffffff; color: #0f172a; font-weight: 800;">
-          TALA • Security &amp; Architecture Verified
+          TALA v1.0.65 • Verified
         </span>
       </div>
     </div>
