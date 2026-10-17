@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AlertTriangle, Save, RefreshCw, X, CheckCircle2 } from 'lucide-react';
 
 export const DEFAULT_UPGRADE_BANNER_MESSAGE =
-  'המערכת עוברת כעת שדרוג ועדכון גרסה! אנא שמרו את עבודתכם באופן מיידי כדי למנוע אובדן נתונים ושמירה על תקינות המידע. בסיום העדכון, יש לרענן את האתר (F5 / רענן) כדי ליהנות מהתכונות והשיפורים החדשים.';
+  'המערכת עוברת כעת שדרוג ועדכון גרסה! אנא שמרו את עבודתכם באופן מיידי כדי למנוע אובדן נתונים ושמירה על תקינות המידע. בסיום העדכון, יש לרענן את האתר כדי ליהנות מהתכונות והשיפורים החדשים.';
 
 export default function UpgradeBanner({
   bannerData,
@@ -48,7 +48,7 @@ export default function UpgradeBanner({
 
           <div className="tala-upgrade-banner-text">
             <span className="tala-upgrade-banner-title">
-              הודעת שדרוג מערכת פעיל (PR + Deploy):
+              הודעת שדרוג מערכת:
             </span>{' '}
             <span className="tala-upgrade-banner-desc">{message}</span>
           </div>

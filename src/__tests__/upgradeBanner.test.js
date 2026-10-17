@@ -7,7 +7,8 @@ describe('UpgradeBanner Component & Real-Time Sync Logic', () => {
     expect(DEFAULT_UPGRADE_BANNER_MESSAGE).toContain('שמרו את עבודתכם באופן מיידי');
     expect(DEFAULT_UPGRADE_BANNER_MESSAGE).toContain('תקינות המידע');
     expect(DEFAULT_UPGRADE_BANNER_MESSAGE).toContain('לרענן את האתר');
-    expect(DEFAULT_UPGRADE_BANNER_MESSAGE).toContain('F5');
+    expect(DEFAULT_UPGRADE_BANNER_MESSAGE).not.toContain('(');
+    expect(DEFAULT_UPGRADE_BANNER_MESSAGE).not.toContain(')');
   });
 
   it('determines visibility based on active flag and dismiss state', () => {

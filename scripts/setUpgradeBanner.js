@@ -13,7 +13,7 @@ const PROJECT_ID = 'tala-d9aaa';
 const SETTINGS_DOC_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/tala_config/settings`;
 
 const DEFAULT_BANNER_MESSAGE =
-  'המערכת עוברת כעת שדרוג ועדכון גרסה! אנא שמרו את עבודתכם באופן מיידי כדי למנוע אובדן נתונים ושמירה על תקינות המידע. בסיום העדכון, יש לרענן את האתר (F5 / רענן) כדי ליהנות מהתכונות והשיפורים החדשים.';
+  'המערכת עוברת כעת שדרוג ועדכון גרסה! אנא שמרו את עבודתכם באופן מיידי כדי למנוע אובדן נתונים ושמירה על תקינות המידע. בסיום העדכון, יש לרענן את האתר כדי ליהנות מהתכונות והשיפורים החדשים.';
 
 function getAccessToken() {
   if (process.env.FIREBASE_ACCESS_TOKEN) {
