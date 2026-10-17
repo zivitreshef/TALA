@@ -429,7 +429,9 @@ export default function EcologicalWorkPlanForm({
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerStepIdx, setReverseEngineerStepIdx] = useState(0);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
-  const [showFullDocPreview, setShowFullDocPreview] = useState(false);
+  const [showFullDocPreview, setShowFullDocPreview] = useState(() =>
+    Boolean(student?.isLocked)
+  );
   const [isFreeTextCollapsed, setIsFreeTextCollapsed] = useState(() =>
     isRawFreeTextAlreadyAnalyzed(student)
   );
@@ -522,7 +524,7 @@ export default function EcologicalWorkPlanForm({
     const normalized = buildNormalizedStudentData(student);
     savedSnapshotRef.current = JSON.stringify(normalized);
     setFormData(normalized);
-    setShowFullDocPreview(false);
+    setShowFullDocPreview(Boolean(normalized.isLocked));
     setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(normalized));
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
@@ -659,6 +661,7 @@ export default function EcologicalWorkPlanForm({
     if (nextLocked) {
       setOpenPickerGoalId(null);
       setActiveAiGoalId(null);
+      setShowFullDocPreview(true);
     } else {
       setShowFullDocPreview(false);
     }
@@ -741,7 +744,7 @@ export default function EcologicalWorkPlanForm({
     const rolled = buildRolloverStudentForNextYear(syncedCurrent, currentYear, nextYear);
     savedSnapshotRef.current = JSON.stringify(rolled);
     setFormData(rolled);
-    setShowFullDocPreview(false);
+    setShowFullDocPreview(Boolean(rolled.isLocked));
     onSaveStudentPlan(rolled);
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 2500);
@@ -844,7 +847,7 @@ export default function EcologicalWorkPlanForm({
         }
       };
 
-      setShowFullDocPreview(false);
+      setShowFullDocPreview(Boolean(targetReportToLoad.isLocked));
       setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
       return nextData;
     });
@@ -926,7 +929,7 @@ export default function EcologicalWorkPlanForm({
           reportsByYear: updatedReportsByYear,
           reportsByPlanType: updatedReportsByPlanType
         };
-        setShowFullDocPreview(false);
+        setShowFullDocPreview(Boolean(existingTargetReport.isLocked));
         setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
         return nextData;
       }
@@ -3210,6 +3213,64 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                   <div style={{ fontWeight: 700, color: '#0d2b56' }}>
                                     {getRedactedText(g.title)}
                                   </div>
+                                  <div style={{ marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleAutoUnlockReport('evalToggle');
+                                        setExpandedEvalMap((prev) => ({
+                                          ...prev,
+                                          [g.id]: true
+                                        }));
+                                      }}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        background: '#ede9fe',
+                                        color: '#5b21b6',
+                                        border: '1px solid #c4b5fd',
+                                        borderRadius: '6px',
+                                        padding: '4px 8px',
+                                        fontSize: '11.5px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer'
+                                      }}
+                                      title="פתיחת הדו״ח ומעבר להערכת מחצית / סוף שנה למטרה זו"
+                                    >
+                                      <ChevronDown size={13} />
+                                      <span>+ הערכת מחצית / סוף שנה</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        handleAutoUnlockReport('observation');
+                                        setObservationModalGoalId(g.id);
+                                      }}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        background: '#f0f9ff',
+                                        color: '#0369a1',
+                                        border: '1px solid #bae6fd',
+                                        borderRadius: '6px',
+                                        padding: '4px 8px',
+                                        fontSize: '11.5px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer'
+                                      }}
+                                      title="תיעוד תצפית מהירה מהשטח ושילוב בהערכת מחצית/סוף שנה"
+                                    >
+                                      <Plus size={13} />
+                                      <span>
+                                        תצפית מהירה
+                                        {Array.isArray(g.observations) && g.observations.length > 0
+                                          ? ` (${g.observations.length})`
+                                          : ''}
+                                      </span>
+                                    </button>
+                                  </div>
                                 </td>
                                 <td style={{ whiteSpace: 'pre-line' }}>{objectivesWithDuration}</td>
                                 <td style={{ whiteSpace: 'pre-line' }}>
@@ -3270,7 +3331,67 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         <td>אמות מידה להערכה</td>
                       </tr>
                       <tr>
-                        <td><strong>{getRedactedText(g.title)}</strong></td>
+                        <td>
+                          <strong>{getRedactedText(g.title)}</strong>
+                          <div style={{ marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleAutoUnlockReport('evalToggle');
+                                setExpandedEvalMap((prev) => ({
+                                  ...prev,
+                                  [g.id]: true
+                                }));
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                background: '#ede9fe',
+                                color: '#5b21b6',
+                                border: '1px solid #c4b5fd',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                              title="פתיחת הדו״ח ומעבר להערכת מחצית / סוף שנה למטרה זו"
+                            >
+                              <ChevronDown size={13} />
+                              <span>+ הערכת מחצית / סוף שנה</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleAutoUnlockReport('observation');
+                                setObservationModalGoalId(g.id);
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                background: '#f0f9ff',
+                                color: '#0369a1',
+                                border: '1px solid #bae6fd',
+                                borderRadius: '6px',
+                                padding: '4px 8px',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                              title="תיעוד תצפית מהירה מהשטח ושילוב בהערכת מחצית/סוף שנה"
+                            >
+                              <Plus size={13} />
+                              <span>
+                                תצפית מהירה
+                                {Array.isArray(g.observations) && g.observations.length > 0
+                                  ? ` (${g.observations.length})`
+                                  : ''}
+                              </span>
+                            </button>
+                          </div>
+                        </td>
                         <td>{getRedactedText(g.objectives)}</td>
                         <td>{getRedactedText(g.opportunities)}</td>
                         <td>{getRedactedText(g.partners)}</td>
@@ -3361,6 +3482,28 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             >
               <FileText size={18} />
               <span>הערכת מחצית / סוף שנה</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn-print-doc"
+              onClick={() => {
+                if (formData.isLocked) {
+                  handleAutoUnlockReport('observation');
+                }
+                const targetGoalId = (formData.goals && formData.goals[0]?.id) || 'goal-1';
+                setObservationModalGoalId(targetGoalId);
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                color: '#15803d',
+                borderColor: '#86efac',
+                fontWeight: 600
+              }}
+              title="תיעוד תצפית מהירה מהשטח"
+            >
+              <Plus size={18} />
+              <span>תצפית מהירה</span>
             </button>
 
             <button
