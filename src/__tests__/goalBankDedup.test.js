@@ -71,4 +71,31 @@ describe('Goal Bank Environment Canonicalization & Stage Filtering', () => {
     const uniqueTitles = new Set(normalizedTitles);
     expect(normalizedTitles.length).toBe(uniqueTitles.size);
   });
+
+  it('deduplicateAndNormalizeGoalBank preserves locally added custom goals when merging with cloud snapshot', () => {
+    const cloudSnapshot = [
+      {
+        id: '1',
+        title: 'ישחק במשחק משותף עם חבר בצורה מותאמת.',
+        environment: 'חצר',
+        usageCount: 1,
+        stages: ['kindergarten']
+      }
+    ];
+
+    const localWithNewCustomGoal = [
+      ...cloudSnapshot,
+      {
+        id: 'gb_admin_123',
+        title: 'יוזם ומנהל שיח ספונטני עם קבוצת השווים.',
+        environment: 'מפגש בגן',
+        usageCount: 0,
+        stages: ['kindergarten']
+      }
+    ];
+
+    const merged = deduplicateAndNormalizeGoalBank([...cloudSnapshot, ...localWithNewCustomGoal]);
+    expect(merged.length).toBe(2);
+    expect(merged.some((g) => g.title.includes('יוזם ומנהל שיח ספונטני'))).toBe(true);
+  });
 });
