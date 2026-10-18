@@ -37,7 +37,13 @@ import {
   verifyUserPassword
 } from './allowedUsers';
 import { sendUserInvitationEmailInBackground } from './emailService';
-import { loginWithTala, subscribeToUserPresence } from './firebaseBackend';
+import { loginWithTala, subscribeToUserPresence, signOutFirebaseAuthSession } from './firebaseBackend';
+import TakeoverModal from './components/modals/TakeoverModal';
+import {
+  checkActiveSession,
+  activateSession,
+  generateSessionId
+} from './services/sessionSecurity';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -101,6 +107,12 @@ export function AllowlistAuthGate({
   // Introductory Video modal state on login page
   const [showIntroVideoModal, setShowIntroVideoModal] = useState(false);
 
+  // Single session takeover state
+  const [showTakeoverModal, setShowTakeoverModal] = useState(false);
+  const [existingSession, setExistingSession] = useState(null);
+  const [pendingUser, setPendingUser] = useState(null);
+  const [takeoverLoading, setTakeoverLoading] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -117,7 +129,50 @@ export function AllowlistAuthGate({
       return;
     }
 
-    onLoginSuccess(result.user);
+    // Single active session check (no multiple logins from different hosts/IPs)
+    try {
+      const sessionId = generateSessionId();
+      const sessionCheck = await checkActiveSession(result.user.email, sessionId);
+
+      if (sessionCheck.takeoverRequired) {
+        setPendingUser({ ...result.user, sessionId, clientIp: sessionCheck.clientIp });
+        setExistingSession(sessionCheck.existingSession);
+        setShowTakeoverModal(true);
+        return;
+      }
+
+      await activateSession(result.user.email, sessionId, sessionCheck.clientIp);
+      onLoginSuccess({ ...result.user, sessionId });
+    } catch (sessionErr) {
+      console.warn('Session check exception, proceeding with login:', sessionErr);
+      onLoginSuccess(result.user);
+    }
+  };
+
+  const handleConfirmTakeover = async () => {
+    if (!pendingUser) return;
+    setTakeoverLoading(true);
+    try {
+      await activateSession(pendingUser.email, pendingUser.sessionId, pendingUser.clientIp);
+      setShowTakeoverModal(false);
+      onLoginSuccess(pendingUser);
+    } catch (err) {
+      console.error('Takeover failed:', err);
+      setShowTakeoverModal(false);
+      onLoginSuccess(pendingUser);
+    } finally {
+      setTakeoverLoading(false);
+    }
+  };
+
+  const handleCancelTakeover = async () => {
+    setShowTakeoverModal(false);
+    setPendingUser(null);
+    setExistingSession(null);
+    setErrorMsg('ההתחברות בוטלה - החיבור במכשיר האחר נשמר.');
+    try {
+      await signOutFirebaseAuthSession();
+    } catch (e) {}
   };
 
   const handleOpenContactAdmin = (defaultTopic = 'שחרור חסימה / איפוס סיסמה') => {
@@ -156,6 +211,14 @@ export function AllowlistAuthGate({
 
   return (
     <div className="auth-page-wrapper" dir="rtl">
+      {showTakeoverModal && (
+        <TakeoverModal
+          existingSession={existingSession}
+          onConfirmTakeover={handleConfirmTakeover}
+          onCancel={handleCancelTakeover}
+          loading={takeoverLoading}
+        />
+      )}
       <div className="auth-landing-shell">
         <div className="auth-stained-glass-bar" />
 

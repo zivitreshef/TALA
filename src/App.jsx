@@ -48,6 +48,14 @@ import {
 } from './AllowlistAuthGate';
 import AdminAllowlistModal from './components/modals/AdminAllowlistModal';
 import UpgradeBanner from './components/UpgradeBanner';
+import SessionEvictedModal from './components/modals/SessionEvictedModal';
+import {
+  subscribeToSession,
+  sendSessionHeartbeat,
+  clearSession,
+  activateSession,
+  generateSessionId
+} from './services/sessionSecurity';
 import {
   INITIAL_STUDENTS_DATA,
   ENVIRONMENTS_LIST,
@@ -277,7 +285,8 @@ export default function App() {
         return {
           ...stillAllowed,
           sessionDate: parsed.sessionDate,
-          loginAt: parsed.loginAt
+          loginAt: parsed.loginAt,
+          sessionId: parsed.sessionId
         };
       }
     } catch (e) {
@@ -285,6 +294,9 @@ export default function App() {
     }
     return null;
   });
+
+  // Eviction modal state when account is logged into from another host/IP
+  const [evictionModalInfo, setEvictionModalInfo] = useState(null);
 
   // All students across users (each student is strictly scoped by ownerEmail)
   const [students, setStudents] = useState(() => {
@@ -1028,6 +1040,41 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Real-time single session enforcement & heartbeat
+  useEffect(() => {
+    if (!currentUser || !currentUser.email) return;
+
+    const email = currentUser.email.toLowerCase();
+    const sessionId = currentUser.sessionId || generateSessionId();
+
+    if (!currentUser.sessionId) {
+      const updatedUser = { ...currentUser, sessionId };
+      setCurrentUser(updatedUser);
+      safeSetStorageJson(SESSION_USER_KEY, updatedUser);
+      activateSession(email, sessionId);
+    }
+
+    // Realtime eviction listener (cross-host / cross-tab)
+    const unsubscribe = subscribeToSession(email, sessionId, (evictionData) => {
+      console.warn('[SessionSecurity] Local session was evicted by another login:', evictionData);
+      setEvictionModalInfo(evictionData);
+      setCurrentUser(null);
+      safeRemoveStorageItem(SESSION_USER_KEY);
+      signOutFirebaseAuthSession();
+    });
+
+    // 2-minute presence & session heartbeat
+    sendSessionHeartbeat(email, sessionId);
+    const heartbeatInterval = setInterval(() => {
+      sendSessionHeartbeat(email, sessionId);
+    }, 2 * 60 * 1000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(heartbeatInterval);
+    };
+  }, [currentUser?.email, currentUser?.sessionId]);
+
   const handleLoginSuccess = (user) => {
     const stampedUser = stampSessionUserWithDate(user);
     setCurrentUser(stampedUser);
@@ -1040,6 +1087,9 @@ export default function App() {
   };
 
   const performLogout = () => {
+    if (currentUser?.email && currentUser?.sessionId) {
+      clearSession(currentUser.email, currentUser.sessionId);
+    }
     setShowLogoutUnsavedModal(false);
     setShowFeedbackSurveyModal(false);
     setUnsavedDraftState({ isDirty: false, draftData: null });
@@ -1622,14 +1672,22 @@ export default function App() {
   // Gate the entire app if user is not authenticated in the Allowed Users List
   if (!currentUser) {
     return (
-      <AllowlistAuthGate
-        allowedUsers={allowedUsers}
-        onLoginSuccess={handleLoginSuccess}
-        onUpdateAllowedUsers={handleUpdateAllowedUsers}
-        onSubmitAdminRequest={handleSubmitAdminRequest}
-        enforcePasswordPolicy={enforcePasswordPolicy}
-        onChangeEnforcePasswordPolicy={handleChangeEnforcePasswordPolicy}
-      />
+      <>
+        {evictionModalInfo && (
+          <SessionEvictedModal
+            evictionInfo={evictionModalInfo}
+            onAcknowledge={() => setEvictionModalInfo(null)}
+          />
+        )}
+        <AllowlistAuthGate
+          allowedUsers={allowedUsers}
+          onLoginSuccess={handleLoginSuccess}
+          onUpdateAllowedUsers={handleUpdateAllowedUsers}
+          onSubmitAdminRequest={handleSubmitAdminRequest}
+          enforcePasswordPolicy={enforcePasswordPolicy}
+          onChangeEnforcePasswordPolicy={handleChangeEnforcePasswordPolicy}
+        />
+      </>
     );
   }
 

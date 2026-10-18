@@ -63,6 +63,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSignedIn();
     }
+    match /tala_sessions/{key} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
     match /tala_config/students_migration_meta {
       allow read, write: if isPrimaryAdmin();
     }
