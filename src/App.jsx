@@ -29,7 +29,8 @@ import {
   UserPlus,
   Bell,
   MessageCircle,
-  ArrowRight
+  ArrowRight,
+  Home
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -1857,6 +1858,27 @@ export default function App() {
         </div>
 
         <div className="tala-header-controls">
+          {/* Clear Home Button */}
+          <button
+            type="button"
+            className={`btn-header-bank ${selectedStudentId === null ? 'btn-header-home-active' : ''}`}
+            onClick={() => setSelectedStudentId(null)}
+            title="חזרה לדף הבית (הוספת תלמיד/ה חדש/ה או פתיחת דוח קיים)"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 700,
+              background: selectedStudentId === null ? '#eff6ff' : '#ffffff',
+              borderColor: selectedStudentId === null ? '#2563eb' : '#cbd5e1',
+              color: selectedStudentId === null ? '#1d4ed8' : '#1e293b',
+              boxShadow: selectedStudentId === null ? '0 0 0 2px #bfdbfe' : 'none'
+            }}
+          >
+            <Home size={16} style={{ color: '#2563eb' }} />
+            <span>דף הבית</span>
+          </button>
+
           <button
             type="button"
             className={`btn-header-bank ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
@@ -2112,6 +2134,33 @@ export default function App() {
       <div className={`tala-workspace-layout ${selectedStudent ? 'has-selected-student' : 'no-selected-student'}`}>
         {/* Right Sidebar: Students List */}
         <aside className="tala-students-sidebar">
+          {/* Sidebar Home Navigation Button */}
+          <button
+            type="button"
+            className={`sidebar-home-btn ${selectedStudentId === null ? 'active' : ''}`}
+            onClick={() => setSelectedStudentId(null)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              width: '100%',
+              padding: '9px 14px',
+              borderRadius: '8px',
+              border: selectedStudentId === null ? '2px solid #2563eb' : '1px solid #e2e8f0',
+              background: selectedStudentId === null ? '#eff6ff' : '#ffffff',
+              color: selectedStudentId === null ? '#1d4ed8' : '#334155',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              marginBottom: '10px',
+              boxShadow: selectedStudentId === null ? '0 1px 3px rgba(37,99,235,0.15)' : 'none'
+            }}
+            title="מעבר לדף הבית (הוספת תלמיד/ה חדש/ה או פתיחת דוח קיים)"
+          >
+            <Home size={17} style={{ color: '#2563eb' }} />
+            <span>דף הבית (הוספת תלמיד/ה / פתיחת דוח)</span>
+          </button>
+
           <div className="sidebar-top-row">
             <div className="sidebar-title-group">
               <Users size={19} />
@@ -2405,6 +2454,15 @@ export default function App() {
                 <button
                   type="button"
                   className="btn-mobile-back-roster"
+                  onClick={() => setSelectedStudentId(null)}
+                  title="חזרה לדף הבית"
+                >
+                  <Home size={17} />
+                  <span>דף הבית</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn-mobile-back-roster"
                   onClick={handleNavigateBackToStudents}
                   title="חזרה לרשימת התלמידים"
                 >
@@ -2437,6 +2495,7 @@ export default function App() {
                 onNotifySharedColleague={handleNotifySharedColleague}
                 onboardingTourStep={onboardingTourStep}
                 setOnboardingTourStep={setOnboardingTourStep}
+                onGoHome={() => setSelectedStudentId(null)}
               />
             </ErrorBoundary>
           ) : (

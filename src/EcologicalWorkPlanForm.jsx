@@ -28,7 +28,8 @@ import {
   Lock,
   Unlock,
   MessageCircle,
-  ClipboardCopy
+  ClipboardCopy,
+  Home
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
@@ -264,7 +265,8 @@ export default function EcologicalWorkPlanForm({
   emailEngineConfig,
   onUpdateEmailEngineConfig,
   onboardingTourStep = 0,
-  setOnboardingTourStep
+  setOnboardingTourStep,
+  onGoHome
 }) {
   const containerRef = useRef(null);
   const section1Ref = useRef(null);
@@ -2631,6 +2633,30 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       {/* Sticky Top Action & Print Privacy Toolbar */}
       <div className="sticky-action-bar">
         <div className="action-bar-right">
+          {onGoHome && (
+            <button
+              type="button"
+              className="btn-print-doc btn-home-nav-form"
+              onClick={onGoHome}
+              title="חזרה לדף הבית (הוספת תלמיד/ה חדש/ה או פתיחת דוח קיים)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#1e293b',
+                fontWeight: 700,
+                cursor: 'pointer',
+                borderRadius: '8px',
+                padding: '6px 12px'
+              }}
+            >
+              <Home size={16} style={{ color: '#2563eb' }} />
+              <span>דף הבית</span>
+            </button>
+          )}
+
           {/* Yellow Lock / Unlocked Icon at Top of Report (No Labels, Hover Explanation Tooltip) */}
           <div className="report-lock-toggle-wrapper">
             <button
