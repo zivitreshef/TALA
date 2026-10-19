@@ -90,8 +90,11 @@ import {
   deleteStudentFromCloud,
   recordUserPresence,
   ensureFirebaseAuthSession,
-  signOutFirebaseAuthSession
+  signOutFirebaseAuthSession,
+  subscribeToHealthEvents,
+  clearHealthEventsInCloud
 } from './firebaseBackend';
+import { countUnreviewedHealthEvents } from './domain/healthEvents.js';
 import {
   loadEmailEngineConfig,
   saveEmailEngineConfig,
@@ -532,6 +535,32 @@ export default function App() {
       if (unsubscribe) unsubscribe();
     };
   }, [currentUser?.email, currentUser?.role]);
+
+  // System-health events (AI failures / local-engine fallbacks) – admin only
+  const HEALTH_REVIEWED_STORAGE_KEY = 'tala_health_reviewed_ms';
+  const [healthEvents, setHealthEvents] = useState([]);
+  const [healthReviewedMs, setHealthReviewedMs] = useState(() => {
+    const stored = Number(localStorage.getItem(HEALTH_REVIEWED_STORAGE_KEY));
+    return Number.isFinite(stored) ? stored : 0;
+  });
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') {
+      setHealthEvents([]);
+      return undefined;
+    }
+    return subscribeToHealthEvents((events) => setHealthEvents(events));
+  }, [currentUser?.email, currentUser?.role]);
+
+  const handleMarkHealthReviewed = () => {
+    const now = Date.now();
+    localStorage.setItem(HEALTH_REVIEWED_STORAGE_KEY, String(now));
+    setHealthReviewedMs(now);
+  };
+  const handleClearHealthEvents = async () => {
+    const ok = await clearHealthEventsInCloud();
+    if (ok) handleMarkHealthReviewed();
+    return ok;
+  };
 
   // Local dismissed shared report IDs per teacher email
   const [dismissedSharedByEmail, setDismissedSharedByEmail] = useState(() =>
@@ -1745,7 +1774,9 @@ export default function App() {
   }
 
   const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
-  const totalAdminAlerts = lockedOutUsers.length + (adminRequests || []).length;
+  const unreviewedHealthEventsCount = countUnreviewedHealthEvents(healthEvents, healthReviewedMs);
+  const totalAdminAlerts =
+    lockedOutUsers.length + (adminRequests || []).length + unreviewedHealthEventsCount;
   const trialRemainingDays = currentUser?.isTrialUser ? getTrialRemainingDays(currentUser) : null;
 
   const userStudents = getStudentsForUser(students, currentUser);
@@ -2108,7 +2139,9 @@ export default function App() {
                   .map((u) => u.name)
                   .join(', ')}). `}
               {adminRequests.length > 0 &&
-                `קיימות ${adminRequests.length} פניות חדשות מדף הכניסה הממתינות לטיפולך.`}
+                `קיימות ${adminRequests.length} פניות חדשות מדף הכניסה הממתינות לטיפולך. `}
+              {unreviewedHealthEventsCount > 0 &&
+                `⚠️ בריאות המערכת: ${unreviewedHealthEventsCount} תקלות AI / מעברים למנוע מקומי ב-24 השעות האחרונות טרם נסקרו.`}
             </span>
           </div>
           <button
@@ -2863,6 +2896,10 @@ export default function App() {
           students={students}
           upgradeBanner={upgradeBanner}
           onUpdateUpgradeBanner={handleUpdateUpgradeBanner}
+          healthEvents={healthEvents}
+          healthReviewedMs={healthReviewedMs}
+          onMarkHealthReviewed={handleMarkHealthReviewed}
+          onClearHealthEvents={handleClearHealthEvents}
         />
       )}
 

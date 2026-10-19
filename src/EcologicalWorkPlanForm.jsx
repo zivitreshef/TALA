@@ -119,6 +119,8 @@ import { appendToFreeText } from './domain/parentInvite';
 import { addObservationToGoal } from './domain/goalObservations';
 import { DISCIPLINE_LEAD_OPTIONS } from './domain/studentSyncMerge';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
+import { reportHealthEvent } from './services/healthTelemetry';
+import { HEALTH_EVENT_KINDS } from './domain/healthEvents.js';
 
 // NEW: Firebase Functions imports
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -1842,6 +1844,13 @@ ${rawText}
             `[StageGuard] stage=${currentStage}: dropped ${stageCheck.droppedCount}, corrected ${stageCheck.correctedCount} AI goals.`
           );
         }
+        if (candidateGoals.length === 0 && stageCheck.droppedCount > 0) {
+          reportHealthEvent({
+            kind: HEALTH_EVENT_KINDS.AI_EMPTY_RESPONSE,
+            operation: 'reverseEngineerFullReport',
+            extra: { reason: 'stage_guard_dropped_all_goals', stage: currentStage }
+          });
+        }
         // An empty AI list with protected goals means "all topics already covered". But if the stage
         // guard removed every AI goal, fall back to the local engine instead of wiping unprotected goals.
         if (candidateGoals.length > 0 || (protectedGoals.length > 0 && stageCheck.droppedCount === 0)) {
@@ -1936,6 +1945,17 @@ ${rawText}
     // 2. Coherent Built-in Hebrew Pedagogical NLP & Synthesis Engine
     // Give the busy indicator time to display clearly so the teacher sees the analysis in progress
     await new Promise((resolve) => setTimeout(resolve, 1400));
+
+    reportHealthEvent({
+      kind: HEALTH_EVENT_KINDS.AI_LOCAL_FALLBACK,
+      operation: 'reverseEngineerFullReport',
+      extra: {
+        reason: 'local_engine_used',
+        stage: currentStage,
+        promptLength: rawText.length,
+        category: 'unknown'
+      }
+    });
 
     const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
     if (engineered) {

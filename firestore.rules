@@ -70,6 +70,25 @@ service cloud.firestore {
     match /tala_config/students_migration_meta {
       allow read, write: if isPrimaryAdmin();
     }
+
+    // System-health telemetry (AI failures / local-engine fallbacks). Any signed-in client may
+    // append a small, immutable event for itself; only admins can read or purge them.
+    match /tala_health_events/{eventId} {
+      allow read, delete: if isAdmin();
+      allow update: if false;
+      allow create: if isSignedIn() &&
+        request.resource.data.keys().hasOnly([
+          'kind', 'operation', 'category', 'status', 'message', 'userEmail',
+          'createdAtMs', 'createdAtIso', 'promptLength', 'stage', 'reason', 'viaDirectKey'
+        ]) &&
+        request.resource.data.kind is string && request.resource.data.kind.size() <= 40 &&
+        request.resource.data.createdAtMs is number &&
+        (!('message' in request.resource.data) ||
+          (request.resource.data.message is string && request.resource.data.message.size() <= 300)) &&
+        (!('userEmail' in request.resource.data) ||
+          request.resource.data.userEmail == '' ||
+          request.resource.data.userEmail == currentEmail());
+    }
     // Any other tala_config doc: denied by default.
 
     // Student plans & status reports. Owner, shared teachers and the primary admin only.
