@@ -4,20 +4,30 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isSignedIn() {
-      return request.auth != null && request.auth.token.email != null;
+      return request.auth != null && (
+        (request.auth.token.email != null && request.auth.token.email != '') ||
+        (request.auth.token.role != null) ||
+        (request.auth.uid != null && request.auth.uid.matches('^tala_.*'))
+      );
     }
 
     function currentEmail() {
-      return isSignedIn() ? request.auth.token.email.lower() : '';
+      return request.auth != null && request.auth.token.email != null
+        ? request.auth.token.email.lower()
+        : '';
     }
 
     function isPrimaryAdmin() {
-      return currentEmail() == 'zivit.reshef@gmail.com';
+      return currentEmail() == 'zivit.reshef@gmail.com' ||
+        (request.auth != null && request.auth.uid == 'tala_ccd05b8d703389243cd80ff9');
     }
 
     function isOwnerOfResource(data) {
       return isPrimaryAdmin() ||
-        (isSignedIn() && data.ownerEmail != null && data.ownerEmail.lower() == currentEmail());
+        (isSignedIn() && data.ownerEmail != null && (
+          (currentEmail() != '' && data.ownerEmail.lower() == currentEmail()) ||
+          (data.ownerUid != null && request.auth.uid == data.ownerUid)
+        ));
     }
 
     function isSharedOnResource(data) {
@@ -27,7 +37,7 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isPrimaryAdmin() || (isSignedIn() && request.auth.token.role == 'admin');
+      return isPrimaryAdmin() || (isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.isAdmin == true));
     }
 
     // Users list: admin read only. All writes go through the talaConfigWrite /

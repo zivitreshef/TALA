@@ -24,7 +24,29 @@ async function handleAiGenerate(req,res){
   if(req.method==="OPTIONS"){res.status(204).end();return;}
   if(req.method!=="POST"){res.status(405).json({error:"Method not allowed"});return;}
   let email="";let uid="";
-  try{const authHeader=req.headers.authorization||"";const m=authHeader.match(/^Bearer\s+(.+)$/i);if(!m)throw new Error("Missing Authorization Bearer token");const decoded=await admin.auth().verifyIdToken(m[1],true);email=(decoded.email||"").toLowerCase();uid=decoded.uid||"";if(!email)throw new Error("Token has no email");}catch(e){res.status(401).json({error:"Unauthorized",details:e.message});return;}
+  try{
+    const authHeader=req.headers.authorization||"";
+    const m=authHeader.match(/^Bearer\s+(.+)$/i);
+    if(!m)throw new Error("Missing Authorization Bearer token");
+    const decoded=await admin.auth().verifyIdToken(m[1],true);
+    email=(decoded.email||(decoded.claims&&decoded.claims.email)||"").toLowerCase();
+    uid=decoded.uid||"";
+    if(!email&&uid){
+      try{const u=await admin.auth().getUser(uid);email=(u.email||"").toLowerCase();}catch(_){}
+    }
+    if(!email&&uid&&uid.startsWith("tala_")){
+      try{
+        const snap=await admin.firestore().collection("tala_config").doc("allowed_users").get();
+        const users=(snap.exists&&snap.data().users)||[];
+        const match=users.find((u)=>uidFor(u.email)===uid);
+        if(match&&match.email){
+          email=match.email.toLowerCase();
+          try{await admin.auth().updateUser(uid,{email,displayName:match.name||undefined});}catch(_){}
+        }
+      }catch(_){}
+    }
+    if(!email)throw new Error("Token has no email");
+  }catch(e){res.status(401).json({error:"Unauthorized",details:e.message});return;}
   let body=req.body;if(typeof body==="string"){try{body=JSON.parse(body);}catch(_){}}const operation=body&&body.operation;const payload=body&&body.payload||{};const requestedModel=body&&body.model;const hints=body&&body.hints||{};if(!operation||!ALLOWED_OPERATIONS.has(operation)){res.status(400).json({error:"Invalid operation"});return;}const model=ALLOWED_MODELS.has(requestedModel)?requestedModel:"gemini-2.5-flash";const validationError=validatePayload(operation,payload);if(validationError){res.status(400).json({error:validationError});return;}const injectionCandidate=JSON.stringify(payload);if(containsInjection(injectionCandidate)){try{await admin.firestore().collection("ai_audit_logs").add({email,operation,model,status:"blocked_injection",createdAt:admin.firestore.FieldValue.serverTimestamp(),payloadKeys:Object.keys(payload)});}catch(_){}res.status(400).json({error:"Prompt injection detected"});return;}const rl=await checkRateLimit(email,operation);if(rl.limited){res.setHeader("Retry-After",String(rl.retryAfter));res.setHeader("X-RateLimit-Limit",String(OPERATION_LIMITS[operation].rpm));res.setHeader("X-RateLimit-Remaining","0");res.status(429).json({error:"Rate limit exceeded",retryAfterSeconds:rl.retryAfter,limited:rl.limited});return;}
   let promptToSend=null;let systemInstruction=buildSystemInstruction(operation);
   if(operation==="rawPrompt"){promptToSend=buildPromptForOperation(operation,payload,hints);}else if(operation==="facilitate"||operation==="applyAnswers"){promptToSend=buildPromptForOperation(operation,payload,hints);}else{if(!payload.prompt||typeof payload.prompt!=="string"){res.status(400).json({error:"Missing prompt for operation"});return;}let p=maskKnownDetailsServer(sanitizeText(payload.prompt,15000),hints);if(containsInjection(p)){res.status(400).json({error:"Prompt injection detected in prompt"});return;}promptToSend=p;if(payload.systemInstruction)systemInstruction+=" "+sanitizeText(payload.systemInstruction,1000);}
@@ -47,7 +69,26 @@ const SELF_FIELDS=["passwordHash","passwordSalt","mustChangePassword","mustSignN
 const OTHER_FIELDS=["dismissedSharedReportIds"]; // any signed-in user may re-notify a colleague
 const pick=(o,keys)=>{const r={};for(const k of keys)if(o&&k in o)r[k]=o[k];return r;};
 const lc=(s)=>String(s||"").trim().toLowerCase();
-async function callerEmail(req){const m=(req.headers.authorization||"").match(/^Bearer\s+(.+)$/i);if(!m)return"";try{return lc((await admin.auth().verifyIdToken(m[1])).email);}catch(_){return"";}}
+async function callerEmail(req){
+  const m=(req.headers.authorization||"").match(/^Bearer\s+(.+)$/i);
+  if(!m)return"";
+  try{
+    const decoded=await admin.auth().verifyIdToken(m[1]);
+    let email=lc(decoded.email||(decoded.claims&&decoded.claims.email));
+    if(!email&&decoded.uid){
+      try{const u=await admin.auth().getUser(decoded.uid);email=lc(u.email);}catch(_){}
+    }
+    if(!email&&decoded.uid&&decoded.uid.startsWith("tala_")){
+      try{
+        const snap=await admin.firestore().collection("tala_config").doc("allowed_users").get();
+        const users=(snap.exists&&snap.data().users)||[];
+        const match=users.find((u)=>uidFor(u.email)===decoded.uid);
+        if(match&&match.email)email=lc(match.email);
+      }catch(_){}
+    }
+    return email;
+  }catch(_){return"";}
+}
 async function handleTalaConfigWrite(req,res){
   const origin=req.headers.origin||"";
   const allowedOrigins=["https://zivitreshef.github.io","https://tala-d9aaa.web.app","https://tala-d9aaa.firebaseapp.com","http://localhost:5173","http://localhost:3000","http://localhost:5000"];
@@ -158,7 +199,19 @@ async function handleTalaLogin(req,res){
     if(outcome.user.role==="admin"||!hasDir)await publishUsers(outcome.all,outcome.all,true);
     else await publishUsers([outcome.user],[],false);
   }catch(e){console.error("publishUsers on login failed",e);}
-  const token=await admin.auth().createCustomToken(uidFor(email),{email,role:outcome.user.role||"teacher"});
+  const targetUid=uidFor(email);
+  try{
+    const existing=await admin.auth().getUserByEmail(email);
+    if(existing.uid!==targetUid)await admin.auth().deleteUser(existing.uid);
+  }catch(err){if(err.code!=="auth/user-not-found")console.warn("getUserByEmail check:",err.message);}
+  try{
+    await admin.auth().updateUser(targetUid,{email,displayName:outcome.user.name||undefined});
+  }catch(err){
+    if(err.code==="auth/user-not-found"){
+      try{await admin.auth().createUser({uid:targetUid,email,displayName:outcome.user.name||undefined});}catch(ce){console.warn("createUser failed:",ce.message);}
+    }else{console.warn("updateUser failed:",err.message);}
+  }
+  const token=await admin.auth().createCustomToken(targetUid,{email,role:outcome.user.role||"teacher"});
   res.status(200).json({allowed:true,token,user:outcome.user});
 }
 exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaLogin);
