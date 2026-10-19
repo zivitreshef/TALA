@@ -1547,6 +1547,19 @@ export default function EcologicalWorkPlanForm({
         payload: { prompt: maskedPromptClientSide },
         hints
       });
+      if (result && !result.goals && typeof result.raw === 'string') {
+        try {
+          const direct = JSON.parse(result.raw);
+          if (direct && typeof direct === 'object') return direct;
+        } catch (_) {}
+        const m = result.raw.match(/[\{\[][\s\S]*[\}\]]/);
+        if (m) {
+          try {
+            const parsed = JSON.parse(m[0]);
+            if (parsed && typeof parsed === 'object') return parsed;
+          } catch (_) {}
+        }
+      }
       return result;
     } catch (error) {
       console.warn('Backend AI Proxy request failed, falling back to local processing:', error);
@@ -1689,6 +1702,7 @@ ${goalsSummary}
     const removedGoals = Array.isArray(formData.removedAiGoals) ? formData.removedAiGoals : [];
 
     // 1. Try Live Gemini AI via backend proxy (with local synthesis fallback)
+    let aiParsedResult = null;
     if (rawText) {
 
       const protectedGoalsPromptBlock =
@@ -1810,6 +1824,7 @@ ${rawText}
       const prompt = buildPrompt(bankReference);
 
       const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
+      aiParsedResult = parsed;
       if (parsed && Array.isArray(parsed.goals)) {
         const rawCandidateGoals = parsed.goals.map((g, i) => {
           const rawCandidate = {
@@ -1950,10 +1965,10 @@ ${rawText}
       kind: HEALTH_EVENT_KINDS.AI_LOCAL_FALLBACK,
       operation: 'reverseEngineerFullReport',
       extra: {
-        reason: 'local_engine_used',
+        reason: aiParsedResult ? (aiParsedResult.raw ? 'ai_raw_output_not_json' : 'ai_missing_goals') : 'local_engine_used',
         stage: currentStage,
         promptLength: rawText.length,
-        category: 'unknown'
+        category: aiParsedResult ? 'empty_response' : 'unknown'
       }
     });
 
