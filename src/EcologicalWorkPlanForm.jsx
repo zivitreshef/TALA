@@ -95,6 +95,19 @@ import {
   getEffectiveStudentStage,
   isGoalRelevantForStage
 } from './studentStage.js';
+import {
+  buildBankReferenceForPrompt,
+  buildStageRulesBlock,
+  enforceGoalStage,
+  getCuratedTitlesExclusiveToStage,
+  getDefaultEnvironmentForStage,
+  getDefaultPartnersForStage,
+  resolveGoalStageForBank,
+  getStageLabelHe,
+  textHasKindergartenMarker,
+  adaptTextToSchoolStage
+} from './domain/stageGuard.js';
+import { INITIAL_GOAL_BANK } from './goalBankData';
 import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
@@ -125,12 +138,13 @@ const getPlanTypeStorageKey = (schoolYear, planType) => {
   return `${yr}__${typeKey}`;
 };
 
-export const buildFreshReportForPlanType = (planType) => {
+export const buildFreshReportForPlanType = (planType, stage) => {
   const resolvedPlanType = planType || 'תל"א (תוכנית לימודים אישית)';
   const isTala = isTalaPlanType(resolvedPlanType);
+  const isSchoolStage = stage === 'school';
   const freshGoal = {
     id: 'g_init_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-    environment: ENVIRONMENTS_LIST[0],
+    environment: isSchoolStage ? getDefaultEnvironmentForStage('school') : ENVIRONMENTS_LIST[0],
     activityParticipation: '',
     title: '',
     objectives: '',
@@ -138,7 +152,11 @@ export const buildFreshReportForPlanType = (planType) => {
     opportunitiesIntegration: '',
     opportunitiesTherapist: '',
     learningAccommodations: '',
-    partners: isTala ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות הגן, סייעת אישית',
+    partners: isTala
+      ? 'מחנכת, מורת שילוב, מטפלת באומנויות'
+      : isSchoolStage
+      ? getDefaultPartnersForStage('school')
+      : 'צוות הגן, סייעת אישית',
     duration: '',
     evaluationCriteria: ''
   };
@@ -381,7 +399,7 @@ export default function EcologicalWorkPlanForm({
       };
       const emptyTalaReport =
         existingReportsByPlanType[talaKey] ||
-        buildFreshReportForPlanType('תל"א (תוכנית לימודים אישית)');
+        buildFreshReportForPlanType('תל"א (תוכנית לימודים אישית)', resolvedStage);
       existingReportsByPlanType[talaKey] = emptyTalaReport;
       existingReports[currentYear] = emptyTalaReport;
 
@@ -628,6 +646,44 @@ export default function EcologicalWorkPlanForm({
   const userCanLockReport = canLockReport(formData, currentUser);
   const isTalaMode = isTalaPlanType(formData.planType);
 
+  // === Stage guard helpers (the student's stage is chosen explicitly by the teacher) ===
+  // Every write to the shared goal bank carries the stage the goal actually belongs to.
+  const recordGoalInBank = (goal) => {
+    if (!goal) return;
+    onUseOrAddGoalToBank({ ...goal, stage: resolveGoalStageForBank(goal, currentStage) });
+  };
+
+  // Validates AI / local generated goals against the student's stage. Teacher-protected goals are
+  // returned untouched; corrected goals are re-baselined so they are not mistaken for teacher edits.
+  const enforceStageOnGeneratedGoals = (goals) => {
+    const curatedOtherStageTitles = getCuratedTitlesExclusiveToStage(
+      INITIAL_GOAL_BANK,
+      currentStage === 'school' ? 'kindergarten' : 'school'
+    );
+    let droppedCount = 0;
+    let correctedCount = 0;
+    const kept = [];
+    (goals || []).forEach((g) => {
+      if (isGoalProtectedFromAiOverwrite(g)) {
+        kept.push(g);
+        return;
+      }
+      const r = enforceGoalStage(g, currentStage, {
+        curatedOtherStageTitles,
+        isTalaMode,
+        // If the teacher mentions kindergarten (e.g. the child's history), keep "בגן/מהגן" wording as-is.
+        includeBarePlaceWords: !textHasKindergartenMarker(formData.teacherFreeText)
+      });
+      if (r.dropped) {
+        droppedCount += 1;
+        return;
+      }
+      if (r.corrected) correctedCount += 1;
+      kept.push(r.corrected && r.goal.aiSnapshot ? attachAiBaselineToGoal(r.goal) : r.goal);
+    });
+    return { goals: kept, droppedCount, correctedCount };
+  };
+
   // Toggle report lock (only owning teacher can lock/unlock; when locked, only Mid-Year/End-Year Evaluation remains editable)
   const handleToggleReportLock = () => {
     if (!userCanLockReport) return;
@@ -833,7 +889,7 @@ export default function EcologicalWorkPlanForm({
                 adaptGoalToGender(g, genderToUse)
               )
             }
-          : buildFreshReportForPlanType(newPlanType);
+          : buildFreshReportForPlanType(newPlanType, prev.stage);
 
       const nextData = {
         ...prev,
@@ -937,7 +993,8 @@ export default function EcologicalWorkPlanForm({
       }
 
       const freshReport = buildFreshReportForPlanType(
-        prev.planType || 'תל"א (תוכנית לימודים אישית)'
+        prev.planType || 'תל"א (תוכנית לימודים אישית)',
+        prev.stage
       );
 
       setShowFullDocPreview(false);
@@ -1098,7 +1155,7 @@ export default function EcologicalWorkPlanForm({
     const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
     const newGoalObj = {
       id: newId,
-      environment: ENVIRONMENTS_LIST[0],
+      environment: getDefaultEnvironmentForStage(currentStage),
       activityParticipation: '',
       title: '',
       objectives: '',
@@ -1106,7 +1163,11 @@ export default function EcologicalWorkPlanForm({
       opportunitiesIntegration: '',
       opportunitiesTherapist: '',
       learningAccommodations: '',
-      partners: isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות הגן, סייעת אישית',
+      partners: isTalaMode
+        ? 'מחנכת, מורת שילוב, מטפלת באומנויות'
+        : isKindergarten
+        ? 'צוות הגן, סייעת אישית'
+        : getDefaultPartnersForStage('school'),
       duration: `3 חודשים (עד ${dateInfo.plus3Months})`,
       evaluationCriteria: '',
       isTeacherAdded: true,
@@ -1209,7 +1270,7 @@ export default function EcologicalWorkPlanForm({
     }));
 
     // Increment usage count in global bank
-    onUseOrAddGoalToBank({
+    recordGoalInBank({
       title: bankItem.title,
       environment: bankItem.environment
     });
@@ -1241,7 +1302,7 @@ export default function EcologicalWorkPlanForm({
     }));
 
     // Save to global Goal Bank for future usage
-    onUseOrAddGoalToBank(goalRow);
+    recordGoalInBank(goalRow);
     setOpenPickerGoalId(null);
 
     // Open AI Facilitating Questions panel and generate up to 3 tailored questions
@@ -1292,7 +1353,7 @@ export default function EcologicalWorkPlanForm({
         operation: 'facilitate',
         payload: {
           goalTitle,
-          environment: goalRow.environment || 'מרחב הגן / הכיתה',
+          environment: goalRow.environment || (isKindergarten ? 'מרחב הגן' : 'הכיתה בבית הספר'),
           teacherFreeText: formData.teacherFreeText || '',
           gender: currentGender,
           ageDescription: dateInfo.ageDescription,
@@ -1424,7 +1485,7 @@ export default function EcologicalWorkPlanForm({
           opportunitiesIntegration: g.opportunitiesIntegration || `• מורת השילוב תחזק מיומנויות תומכות בקבוצה קטנה.`,
           opportunitiesTherapist: g.opportunitiesTherapist || `• עיבוד חווית ההצלחה וחיזוק הוויסות בחדר הטיפולים.`,
           learningAccommodations: g.learningAccommodations || `• תיווך מילאי, חלוקת משימות לצעדים קטנים והארכת זמן.`,
-          partners: ans3 ? ans3 : g.partners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות הגן / הכיתה, סייעת אישית, הורים'),
+          partners: ans3 ? ans3 : g.partners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : isKindergarten ? 'צוות הגן, סייעת אישית, הורים' : getDefaultPartnersForStage('school')),
           duration: ans3 && /\d|חודש|שבוע|שנה/.test(ans3) ? ans3 : g.duration || '',
           evaluationCriteria:
             ans3 && ans3.length > 15
@@ -1531,7 +1592,7 @@ ${goalsSummary}
 החזר JSON בלבד:
 {
   "strengthsExisting": "• תחום אישיותי-רגשי: תמצית קצרה\\n• תחום קוגניטיבי ושפתי: תמצית קצרה",
-  "strengthsToEmpower": "• משחקי שולחן וקופסא: תמצית קצרה\\n• מפגש ושיח: תמצית קצרה",
+  "strengthsToEmpower": "• ${isKindergarten ? 'משחקי שולחן וקופסא' : 'קריאה והפקת משמעות'}: תמצית קצרה\\n• ${isKindergarten ? 'מפגש ושיח' : 'ניהול עצמי'}: תמצית קצרה",
   "studentGeneralBackground": "רקע על התלמיד...",
   "studentSupportReceived": "התמיכה שמקבל התלמיד...",
   "studentMainGoal": "מטרות התלמיד...",
@@ -1627,13 +1688,6 @@ ${goalsSummary}
 
     // 1. Try Live Gemini AI via backend proxy (with local synthesis fallback)
     if (rawText) {
-      const bankReference = sortedGoals
-        .slice(0, 20)
-        .map(
-          (b) =>
-            `- סביבת השתתפות: "${b.environment}" | מטרה: "${adaptTextToGender(b.title, genderToUse)}" | יעדים אפשריים: ${(b.suggestedObjectives || []).map((o) => adaptTextToGender(o, genderToUse)).join(' ; ')}`
-        )
-        .join('\n');
 
       const protectedGoalsPromptBlock =
         protectedGoals.length > 0
@@ -1670,12 +1724,15 @@ ${unprotectedGoals
   .join('\n')}\n`
           : '';
 
-      const prompt = `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
+      const buildPrompt = (bankReference) => `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
 המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות.
 מין הילד/ה שהוגדר בטופס: ${genderInstruction}
 גיל הילד/ה: ${dateInfo.ageDescription}
 מסגרת חינוכית: ${formData.educationalFramework || 'לא צוין'}
+שלב חינוכי: ${getStageLabelHe(currentStage)}
 תאריך הזנת המטרות (תאריך ייחוס לחישוב משך הזמן): ${dateInfo.entryDateFormatted}
+
+${buildStageRulesBlock(currentStage)}
 
 הנחיות קריטיות לעיבוד המידע:
 1. אל תעתיק משפטים גולמיים מהטקסט "As-Is"! פרש את המשמעות מתוך ההקשר, תקן כל שגיאת כתיב או דקדוק, ונסח מחדש בעברית פדגוגית מקצועית, רהוטה ותקנית המותאמת למין הילד/ה (${genderToUse === 'girl' ? 'לשון נקבה' : 'לשון זכר'}).
@@ -1695,7 +1752,7 @@ ${unprotectedGoals
    - "learningAccommodations": התאמות ללמידה ובדרכי ההיבחנות
 ${protectedGoalsPromptBlock}${removedGoalsPromptBlock}${unprotectedGoalsPromptBlock}
 
-מאגר סביבות ומטרות:
+מאגר סביבות ומטרות (דוגמאות המותאמות לשלב החינוכי של התלמיד/ה בלבד):
 ${bankReference}
 
 טקסט גולמי של המורה:
@@ -1738,16 +1795,24 @@ ${rawText}
       // Yield briefly so the busy indicator renders immediately
       await new Promise((resolve) => setTimeout(resolve, 60));
 
+      // The AI proxy rejects prompts longer than 15,000 chars, which silently triggers the local
+      // fallback engine. Keep a safety margin for privacy masking and size the bank examples to fit.
+      const AI_PROMPT_BUDGET_CHARS = 14000;
+      const promptBaseLength = maskPromptForAi(
+        formatPromptWithStudentContext(buildPrompt(''), formData),
+        formData
+      ).length;
+      const bankReference = buildBankReferenceForPrompt(sortedGoals, currentStage, genderToUse, {
+        maxChars: Math.max(0, AI_PROMPT_BUDGET_CHARS - promptBaseLength)
+      });
+      const prompt = buildPrompt(bankReference);
+
       const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
-      if (
-        parsed &&
-        Array.isArray(parsed.goals) &&
-        (parsed.goals.length > 0 || protectedGoals.length > 0)
-      ) {
-        const candidateGoals = parsed.goals.map((g, i) => {
+      if (parsed && Array.isArray(parsed.goals)) {
+        const rawCandidateGoals = parsed.goals.map((g, i) => {
           const rawCandidate = {
             id: 'g_airev_' + Date.now() + '_' + i,
-            environment: g.environment || ENVIRONMENTS_LIST[0],
+            environment: g.environment || getDefaultEnvironmentForStage(currentStage),
             activityParticipation: g.activityParticipation || '',
             title: g.title || '',
             objectives: g.objectives || '',
@@ -1755,7 +1820,7 @@ ${rawText}
             opportunitiesIntegration: g.opportunitiesIntegration || '',
             opportunitiesTherapist: g.opportunitiesTherapist || '',
             learningAccommodations: g.learningAccommodations || '',
-            partners: g.partners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות הגן, הורים'),
+            partners: g.partners || getDefaultPartnersForStage(currentStage, isTalaMode),
             tShirtSize: g.tShirtSize || '',
             duration: g.duration || '',
             evaluationCriteria: g.evaluationCriteria || ''
@@ -1769,82 +1834,102 @@ ${rawText}
           return attachAiBaselineToGoal(adaptGoalToGender(rawCandidate, genderToUse));
         });
 
-        const mergedGoals = mergeReanalyzedGoals({
-          existingGoals,
-          candidateNewGoals: candidateGoals,
-          removedGoals,
-          gender: genderToUse
-        });
+        // Stage guard: drop / correct any goal that does not match the teacher-selected stage.
+        const stageCheck = enforceStageOnGeneratedGoals(rawCandidateGoals);
+        const candidateGoals = stageCheck.goals;
+        if (stageCheck.droppedCount > 0 || stageCheck.correctedCount > 0) {
+          console.warn(
+            `[StageGuard] stage=${currentStage}: dropped ${stageCheck.droppedCount}, corrected ${stageCheck.correctedCount} AI goals.`
+          );
+        }
+        // An empty AI list with protected goals means "all topics already covered". But if the stage
+        // guard removed every AI goal, fall back to the local engine instead of wiping unprotected goals.
+        if (candidateGoals.length > 0 || (protectedGoals.length > 0 && stageCheck.droppedCount === 0)) {
+          const mergedGoals = mergeReanalyzedGoals({
+            existingGoals,
+            candidateNewGoals: candidateGoals,
+            removedGoals,
+            gender: genderToUse
+          });
 
-        const nextExisting = parsed.strengthsExisting || formData.strengthsExisting;
-        const nextEmpower = parsed.strengthsToEmpower || formData.strengthsToEmpower;
-        const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
-        const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
+          const nextExisting = parsed.strengthsExisting || formData.strengthsExisting;
+          const nextEmpower = parsed.strengthsToEmpower || formData.strengthsToEmpower;
+          const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+          const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
 
-        const updatedBase = {
-          ...formData,
-          freeTextAnalyzed: true,
-          name:
-            parsed.name && (!formData.name || formData.name === 'תלמיד/ה חדש/ה')
-              ? parsed.name
-              : formData.name,
-          educationalFramework:
-            parsed.educationalFramework && !formData.educationalFramework
-              ? parsed.educationalFramework
-              : formData.educationalFramework,
-          strengthsExisting: isTalaMode ? '' : nextExisting,
-          strengthsToEmpower: isTalaMode ? '' : nextEmpower,
-          studentGeneralBackground: isTalaMode
-            ? parsed.studentGeneralBackground || formData.studentGeneralBackground
-            : '',
-          studentSupportReceived: isTalaMode
-            ? parsed.studentSupportReceived || formData.studentSupportReceived
-            : '',
-          studentMainGoal: isTalaMode
-            ? parsed.studentMainGoal || formData.studentMainGoal
-            : '',
-          talaProfileRows: isTalaMode
-            ? buildDefaultTalaProfileRows(parsed.talaProfileRows || formData.talaProfileRows)
-            : formData.talaProfileRows,
-          talaFocusDomains: isTalaMode && Array.isArray(parsed.talaFocusDomains) && parsed.talaFocusDomains.length > 0
-            ? parsed.talaFocusDomains
-            : formData.talaFocusDomains,
-          goals: mergedGoals,
-          recommendations: parsed.recommendations || formData.recommendations,
-          status: 'מוכן להדפסה',
-          lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-        };
-        const aiSnapshot = extractYearReportFromFormData(updatedBase);
-        const updated = {
-          ...updatedBase,
-          reportsByYear: {
-            ...(formData.reportsByYear || {}),
-            [activeYear]: aiSnapshot
-          },
-          reportsByPlanType: {
-            ...(formData.reportsByPlanType || {}),
-            [activePlanKey]: aiSnapshot
-          }
-        };
+          const updatedBase = {
+            ...formData,
+            freeTextAnalyzed: true,
+            name:
+              parsed.name && (!formData.name || formData.name === 'תלמיד/ה חדש/ה')
+                ? parsed.name
+                : formData.name,
+            educationalFramework:
+              parsed.educationalFramework && !formData.educationalFramework
+                ? parsed.educationalFramework
+                : formData.educationalFramework,
+            strengthsExisting: isTalaMode ? '' : nextExisting,
+            strengthsToEmpower: isTalaMode ? '' : nextEmpower,
+            studentGeneralBackground: isTalaMode
+              ? parsed.studentGeneralBackground || formData.studentGeneralBackground
+              : '',
+            studentSupportReceived: isTalaMode
+              ? parsed.studentSupportReceived || formData.studentSupportReceived
+              : '',
+            studentMainGoal: isTalaMode
+              ? parsed.studentMainGoal || formData.studentMainGoal
+              : '',
+            talaProfileRows: isTalaMode
+              ? buildDefaultTalaProfileRows(parsed.talaProfileRows || formData.talaProfileRows)
+              : formData.talaProfileRows,
+            talaFocusDomains: isTalaMode && Array.isArray(parsed.talaFocusDomains) && parsed.talaFocusDomains.length > 0
+              ? parsed.talaFocusDomains
+              : formData.talaFocusDomains,
+            goals: mergedGoals,
+            recommendations: parsed.recommendations
+              ? isKindergarten
+                ? parsed.recommendations
+                : adaptTextToSchoolStage(parsed.recommendations, { includeBarePlaceWords: false })
+              : formData.recommendations,
+            status: 'מוכן להדפסה',
+            lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+          };
+          const aiSnapshot = extractYearReportFromFormData(updatedBase);
+          const updated = {
+            ...updatedBase,
+            reportsByYear: {
+              ...(formData.reportsByYear || {}),
+              [activeYear]: aiSnapshot
+            },
+            reportsByPlanType: {
+              ...(formData.reportsByPlanType || {}),
+              [activePlanKey]: aiSnapshot
+            }
+          };
 
-        savedSnapshotRef.current = JSON.stringify(updated);
-        setFormData(updated);
-        onSaveStudentPlan(updated);
-        mergedGoals.forEach((g) => {
-          if (g.title) onUseOrAddGoalToBank(g);
-        });
-        setIsReverseEngineering(false);
-        setIsFreeTextCollapsed(true);
-        const preservedNote =
-          protectedGoals.length > 0
-            ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
-            : '';
-        setReverseEngineerBanner(
-          `✨ הדוח הרשמי הופק בהצלחה ב-Gemini AI מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו פרופיל התלמיד/ה, ${mergedGoals.length} מטרות${preservedNote} ופרק ההמלצות.`
-        );
-        setSaveBanner(true);
-        setTimeout(() => setSaveBanner(false), 3500);
-        return;
+          savedSnapshotRef.current = JSON.stringify(updated);
+          setFormData(updated);
+          onSaveStudentPlan(updated);
+          mergedGoals.forEach((g) => {
+            if (g.title) recordGoalInBank(g);
+          });
+          setIsReverseEngineering(false);
+          setIsFreeTextCollapsed(true);
+          const preservedNote =
+            protectedGoals.length > 0
+              ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
+              : '';
+          const stageNote =
+            stageCheck.droppedCount > 0 || stageCheck.correctedCount > 0
+              ? ` 🎯 אימות שלב חינוכי (${getStageLabelHe(currentStage)}): הוסרו ${stageCheck.droppedCount} מטרות לא מתאימות, תוקנו ${stageCheck.correctedCount}.`
+              : '';
+          setReverseEngineerBanner(
+            `✨ הדוח הרשמי הופק בהצלחה ב-Gemini AI מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו פרופיל התלמיד/ה, ${mergedGoals.length} מטרות${preservedNote} ופרק ההמלצות.${stageNote}`
+          );
+          setSaveBanner(true);
+          setTimeout(() => setSaveBanner(false), 3500);
+          return;
+        }
       }
     }
 
@@ -1854,6 +1939,8 @@ ${rawText}
 
     const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
     if (engineered) {
+      // Safety net: the local engine is stage-aware, but every goal still passes the stage guard.
+      engineered.goals = enforceStageOnGeneratedGoals(engineered.goals).goals;
       const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
       const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
       const updatedBase = {
@@ -1891,7 +1978,7 @@ ${rawText}
       setFormData(updated);
       onSaveStudentPlan(updated);
       (engineered.goals || []).forEach((g) => {
-        if (g.title) onUseOrAddGoalToBank(g);
+        if (g.title) recordGoalInBank(g);
       });
       setIsFreeTextCollapsed(true);
       const preservedNote =
@@ -1899,7 +1986,7 @@ ${rawText}
           ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
           : '';
       setReverseEngineerBanner(
-        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו ${isTalaMode ? 'פרופיל התלמיד/ה' : 'טבלת מוקדי הכוח'}, ${engineered.goals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות.`
+        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו ${isTalaMode ? 'פרופיל התלמיד/ה' : 'טבלת מוקדי הכוח'}, ${engineered.goals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות. (שירות ה-AI לא היה זמין – הדוח הופק במנוע המקומי, מותאם לשלב החינוכי: ${getStageLabelHe(currentStage)}. ניתן לנסות שוב מאוחר יותר.)`
       );
       setSaveBanner(true);
       setTimeout(() => setSaveBanner(false), 3500);
@@ -1941,7 +2028,7 @@ ${rawText}
     // Also record usage for all defined goals
     (updated.goals || []).forEach((g) => {
       if (g.title && g.title.trim()) {
-        onUseOrAddGoalToBank(g);
+        recordGoalInBank(g);
       }
     });
     setSaveBanner(true);
@@ -4603,7 +4690,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             const currentQuestions =
               aiQuestionsMap[goalRow.id] ||
               matchedBankItem?.facilitatingQuestions?.slice(0, 3) ||
-              generateDefaultQuestionsForCustomGoal(goalRow.title, goalRow.environment);
+              generateDefaultQuestionsForCustomGoal(goalRow.title, goalRow.environment, formData);
 
             // Determine effective student stage and filter goals in picker
             const effectiveStage = getEffectiveStudentStage(formData);
