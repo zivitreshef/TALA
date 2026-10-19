@@ -50,6 +50,8 @@ import {
 import { sendUserInvitationEmailInBackground } from '../../emailService';
 import { subscribeToUserPresence } from '../../firebaseBackend';
 import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../UpgradeBanner';
+import SystemHealthPanel from './SystemHealthPanel';
+import { countUnreviewedHealthEvents } from '../../domain/healthEvents.js';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -113,7 +115,11 @@ export default function AdminAllowlistModal({
   emailEngineConfig,
   students = [],
   upgradeBanner,
-  onUpdateUpgradeBanner
+  onUpdateUpgradeBanner,
+  healthEvents = [],
+  healthReviewedMs = 0,
+  onMarkHealthReviewed,
+  onClearHealthEvents
 }) {
   const [activeTab, setActiveTab] = useState('users'); // 'users' | 'groups' | 'analytics' | 'requests' | 'settings'
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'paid' | 'trial_active' | 'trial_expired' | 'disabled'
@@ -611,7 +617,10 @@ export default function AdminAllowlistModal({
     }
   };
 
-  const totalAlertsCount = lockedOutUsers.length + (adminRequests || []).length;
+  const totalAlertsCount =
+    lockedOutUsers.length +
+    (adminRequests || []).length +
+    countUnreviewedHealthEvents(healthEvents, healthReviewedMs);
 
   return (
     <div className="modal-backdrop" onClick={onClose} dir="rtl" style={{ zIndex: 2500, padding: '16px' }}>
@@ -1711,6 +1720,14 @@ export default function AdminAllowlistModal({
           {/* TAB 4: REQUESTS & ALERTS */}
           {activeTab === 'requests' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <SystemHealthPanel
+                healthEvents={healthEvents}
+                healthReviewedMs={healthReviewedMs}
+                onMarkHealthReviewed={onMarkHealthReviewed}
+                onClearHealthEvents={onClearHealthEvents}
+                cloudSyncState={cloudSyncState}
+              />
+
               {/* Security Lockout Section */}
               {lockedOutUsers.length > 0 && (
                 <div

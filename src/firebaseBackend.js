@@ -15,6 +15,8 @@ import {
   writeBatch,
   query,
   where,
+  orderBy,
+  limit,
   updateDoc,
   deleteField,
   runTransaction
@@ -659,6 +661,74 @@ export function subscribeToUserPresence(onPresenceChange) {
   } catch (err) {
     console.warn('Failed to subscribe to user presence:', err);
     return () => {};
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// System health events (admin control center). Teachers write, only admins read / delete.
+// ---------------------------------------------------------------------------------------------
+const HEALTH_EVENTS_COLLECTION = 'tala_health_events';
+
+/** Best-effort write; never throws (telemetry must never break the teacher's workflow). */
+export async function reportHealthEventToCloud(event) {
+  const db = getFirestoreDb();
+  if (!db || !event) return false;
+  try {
+    await setDoc(doc(collection(db, HEALTH_EVENTS_COLLECTION)), sanitizeForFirestore(event));
+    return true;
+  } catch (err) {
+    console.warn('Failed to report health event:', err);
+    return false;
+  }
+}
+
+/** Admin only (enforced by Firestore rules). Delivers the newest events, capped at `maxEvents`. */
+export function subscribeToHealthEvents(onEvents, maxEvents = 100) {
+  const db = getFirestoreDb();
+  if (!db) return () => {};
+  try {
+    const q = query(
+      collection(db, HEALTH_EVENTS_COLLECTION),
+      orderBy('createdAtMs', 'desc'),
+      limit(maxEvents)
+    );
+    return onSnapshot(
+      q,
+      (snap) => onEvents?.(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => console.warn('Firestore health events listener warning:', err)
+    );
+  } catch (err) {
+    console.warn('Failed to subscribe to health events:', err);
+    return () => {};
+  }
+}
+
+/** Admin only. Deletes every event currently in the collection. */
+export async function clearHealthEventsInCloud() {
+  const db = getFirestoreDb();
+  if (!db) return false;
+  try {
+    const snap = await getDocs(collection(db, HEALTH_EVENTS_COLLECTION));
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+    return true;
+  } catch (err) {
+    console.warn('Failed to clear health events:', err);
+    return false;
+  }
+}
+
+/** Live probe: one small Firestore read; resolves { ok, latencyMs, message }. */
+export async function pingFirestore() {
+  const db = getFirestoreDb();
+  const started = Date.now();
+  if (!db) return { ok: false, latencyMs: 0, message: 'Firestore לא מאותחל' };
+  try {
+    await getDoc(doc(db, 'tala_config', 'settings'));
+    return { ok: true, latencyMs: Date.now() - started, message: '' };
+  } catch (err) {
+    return { ok: false, latencyMs: Date.now() - started, message: String(err?.message || err).slice(0, 200) };
   }
 }
 

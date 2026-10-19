@@ -1,5 +1,7 @@
 import { getActiveFirebaseConfig, getFirebaseAuth } from '../firebaseBackend';
 import { incrementDailyQuotaCount } from '../allowedUsers';
+import { reportHealthEvent } from './healthTelemetry';
+import { HEALTH_EVENT_KINDS, buildPingResult } from '../domain/healthEvents.js';
 
 async function callDirectGeminiApi({ prompt, model = 'gemini-2.5-flash', apiKey }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -96,6 +98,15 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
     return data.data; // The returned structured JSON or fallback object
   } catch (proxyError) {
     console.warn('[aiProxyClient] Proxy endpoint unavailable or failed:', proxyError.message);
+    reportHealthEvent({
+      kind: HEALTH_EVENT_KINDS.AI_PROXY_ERROR,
+      operation,
+      error: proxyError,
+      extra: {
+        promptLength: typeof payload?.prompt === 'string' ? payload.prompt.length : undefined,
+        viaDirectKey: Boolean(localApiKey)
+      }
+    });
     if (localApiKey) {
       console.info('[aiProxyClient] Using direct Gemini API call via saved Admin key...');
       const promptToUse = payload?.prompt || JSON.stringify(payload);
@@ -106,3 +117,45 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
     throw proxyError;
   }
 }
+
+/**
+ * Admin live probe: sends a tiny prompt through the real cloud proxy (no direct-key rescue, so
+ * the result reflects the proxy itself). Resolves { name, ok, latencyMs, category, status, message }.
+ */
+export async function pingAiProxy() {
+  const started = Date.now();
+  try {
+    const auth = getFirebaseAuth();
+    const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : '';
+    const config = getActiveFirebaseConfig();
+    const projectId = config?.projectId || 'tala-d9aaa';
+    const functionUrl =
+      import.meta.env?.VITE_AI_PROXY_URL ||
+      `https://us-central1-${projectId}.cloudfunctions.net/aiGenerateV2`;
+    const res = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+      },
+      body: JSON.stringify({
+        operation: 'rawPrompt',
+        payload: { prompt: 'החזר JSON תקין בלבד: {"ok": true}' },
+        hints: {}
+      })
+    });
+    if (!res.ok) {
+      let errData = {};
+      try {
+        errData = await res.json();
+      } catch (_) {}
+      const err = new Error(errData.error || `AI proxy request failed with status ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return buildPingResult('ai', started, Date.now());
+  } catch (error) {
+    return buildPingResult('ai', started, Date.now(), error);
+  }
+}
+
