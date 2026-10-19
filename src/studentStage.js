@@ -187,13 +187,25 @@ export function parseAgeFromFreeText(rawText = '') {
   return null;
 }
 
+// Mandatory stage rule appended to every AI prompt (English so it survives Hebrew privacy masking).
+function getStageRuleLine(stage) {
+  if (stage === 'school') {
+    return 'stage_rule: SCHOOL student (teacher-selected). Never use kindergarten goals, kindergarten environments or kindergarten staff.';
+  }
+  if (stage === 'kindergarten') {
+    return 'stage_rule: KINDERGARTEN child (teacher-selected). Use kindergarten environments only; never school subject areas as environments.';
+  }
+  return 'stage_rule: none';
+}
+
 export function formatPromptWithStudentContext(prompt, formData = {}) {
   const stageContext = `
 [STUDENT_CONTEXT]
 stage: ${formData.stage || 'unknown'}
 stage_source: ${formData.stageSource || 'no_data'}
-stage_reason: ${formData.stageReason || 'no unambiguous signal'}
+stage_reason: ${String(formData.stageReason || 'no unambiguous signal').slice(0, 160)}
 stage_updated_at: ${formData.stageUpdatedAt || new Date().toISOString()}
+${getStageRuleLine(formData.stage)}
 [/STUDENT_CONTEXT]
 `.trim();
 

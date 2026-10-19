@@ -1,22 +1,19 @@
 // מאגר מטרות ויעדים דינמי (מבוסס על סביבות ההשתתפות בגן)
 
-export const KINDERGARTEN_ENVIRONMENTS = [
-  'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה',
-  'מפגש בגן',
-  'משחק במרחב הגן',
-  'סדנא / יצירה',
-  'חצר',
-  'שירותים',
-  'אוכל',
-  'פעילות שאינה בשגרה'
-];
+import {
+  KINDERGARTEN_ENVIRONMENTS,
+  SCHOOL_ENVIRONMENTS
+} from './domain/stageEnvironments.js';
+import {
+  normalizeStage,
+  inferStagesFromEnvironment,
+  adaptTextToSchoolStage,
+  getDefaultPartnersForStage,
+  textHasKindergartenMarker,
+  remapEnvironmentForStage
+} from './domain/stageGuard.js';
 
-export const SCHOOL_ENVIRONMENTS = [
-  'האזנה ודיבור – כשירות תקשורתית',
-  'כתיבה',
-  'קריאה והפקת משמעות',
-  'כשירות לשונית – ידע לשוני'
-];
+export { KINDERGARTEN_ENVIRONMENTS, SCHOOL_ENVIRONMENTS };
 
 export const ENVIRONMENTS_LIST = [
   ...KINDERGARTEN_ENVIRONMENTS,
@@ -1083,7 +1080,7 @@ export function deduplicateAndNormalizeGoalBank(rawBank = []) {
 
     const stages = Array.isArray(g.stages) && g.stages.length > 0
       ? g.stages
-      : (g.stage ? [g.stage] : ['kindergarten']);
+      : (g.stage ? [g.stage] : inferStagesFromEnvironment(canonicalEnv));
 
     const objectives = Array.isArray(g.suggestedObjectives)
       ? g.suggestedObjectives
@@ -1145,7 +1142,7 @@ export function loadGoalBank() {
           if (!g.stages || !Array.isArray(g.stages) || g.stages.length === 0) {
             return {
               ...g,
-              stages: g.stage ? [g.stage] : ['kindergarten']
+              stages: g.stage ? [g.stage] : inferStagesFromEnvironment(canonicalizeEnvironment(g.environment))
             };
           }
           return g;
@@ -1196,15 +1193,21 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
   const rawTitle = (goalData.title || '').trim();
   if (!rawTitle) return bank;
   const canonicalTitle = adaptTextToGender(rawTitle, 'boy').trim();
-  const canonicalEnv = canonicalizeEnvironment(goalData.environment);
+
+  const explicitStages = Array.isArray(goalData.stages) && goalData.stages.length > 0
+    ? goalData.stages
+    : (goalData.stage ? [goalData.stage] : null);
+  const isSchoolOnly = Array.isArray(explicitStages) && explicitStages.every((s) => s === 'school');
+  const rawEnv = (goalData.environment || '').trim();
+  const canonicalEnv = rawEnv
+    ? canonicalizeEnvironment(rawEnv)
+    : (isSchoolOnly ? SCHOOL_ENVIRONMENTS[0] : KINDERGARTEN_ENVIRONMENTS[0]);
 
   const existingIndex = bank.findIndex(
     (item) => adaptTextToGender((item.title || '').trim(), 'boy') === canonicalTitle
   );
 
-  const goalStages = Array.isArray(goalData.stages) && goalData.stages.length > 0
-    ? goalData.stages
-    : (goalData.stage ? [goalData.stage] : ['kindergarten']);
+  const goalStages = explicitStages || inferStagesFromEnvironment(canonicalEnv);
 
   if (existingIndex >= 0) {
     const existing = bank[existingIndex];
@@ -1221,9 +1224,14 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
       });
     }
 
+    // Only widen an existing item's stages when the caller explicitly states the stage
+    // (a bare usage increment must never re-tag a school goal as kindergarten or vice versa).
+    const existingStages = Array.isArray(existing.stages) && existing.stages.length > 0
+      ? existing.stages
+      : inferStagesFromEnvironment(canonicalizeEnvironment(existing.environment));
     const mergedStages = Array.from(new Set([
-      ...(Array.isArray(existing.stages) ? existing.stages : ['kindergarten']),
-      ...goalStages
+      ...existingStages,
+      ...(explicitStages || [])
     ]));
 
     bank[existingIndex] = {
@@ -1231,7 +1239,10 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
       title: canonicalTitle,
       stages: mergedStages,
       usageCount: (Number(existing.usageCount) || 0) + 1,
-      environment: canonicalEnv || canonicalizeEnvironment(existing.environment),
+      environment:
+        rawEnv && mergedStages.length === existingStages.length
+          ? canonicalEnv
+          : canonicalizeEnvironment(existing.environment),
       defaultActivity: existing.defaultActivity || goalData.activityParticipation || '',
       suggestedObjectives: newObjList,
       defaultOpportunities: existing.defaultOpportunities || goalData.opportunities || '',
@@ -1244,6 +1255,7 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
       .split('\n')
       .map((l) => l.replace(/^[•\-*]\s*/, '').trim())
       .filter(Boolean);
+    const newEntryStage = goalStages.length === 1 ? goalStages[0] : null;
 
     const newEntry = {
       id: 'gb_custom_' + Date.now(),
@@ -1254,10 +1266,12 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
       defaultActivity: goalData.activityParticipation || '',
       suggestedObjectives: objLines.length > 0 ? objLines : ['יישום המטרה בהדרגה בסביבה הטבעית תוך תיווך מותאם.'],
       defaultOpportunities: goalData.opportunities || '',
-      defaultPartners: goalData.partners || 'צוות הגן, הורים',
+      defaultPartners: goalData.partners || getDefaultPartnersForStage(newEntryStage),
       defaultDuration: goalData.duration || 'עד סוף השנה',
       defaultEvaluation: goalData.evaluationCriteria || '',
-      facilitatingQuestions: generateDefaultQuestionsForCustomGoal(canonicalTitle, canonicalEnv)
+      facilitatingQuestions: generateDefaultQuestionsForCustomGoal(canonicalTitle, canonicalEnv, {
+        stage: newEntryStage
+      })
     };
     bank.push(newEntry);
   }
@@ -1282,7 +1296,7 @@ export function addGoalByAdmin(goalInput, currentBank) {
 
   const goalStages = Array.isArray(goalInput.stages) && goalInput.stages.length > 0
     ? goalInput.stages
-    : ['kindergarten'];
+    : inferStagesFromEnvironment(canonicalizeEnvironment(goalInput.environment));
 
   const newEntry = {
     id: 'gb_admin_' + Date.now(),
@@ -1327,7 +1341,9 @@ export function updateGoalByAdmin(goalId, updatedFields, currentBank) {
   const updatedEnv = canonicalizeEnvironment(updatedFields.environment ?? existing.environment);
   const updatedStages = Array.isArray(updatedFields.stages) && updatedFields.stages.length > 0
     ? updatedFields.stages
-    : (existing.stages || ['kindergarten']);
+    : (Array.isArray(existing.stages) && existing.stages.length > 0
+        ? existing.stages
+        : inferStagesFromEnvironment(updatedEnv));
 
   bank[idx] = {
     ...existing,
@@ -1365,6 +1381,8 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
   const text = normalizeHebrewTextForContext(rawTrimmed);
   const bank = getSortedGoalBank(goalBank);
   const dateInfo = resolveStudentAgeAndDateInfo(currentFormData, rawTrimmed);
+  // The teacher-selected stage drives which goal templates are allowed (never kindergarten goals for school students).
+  const isSchool = normalizeStage(currentFormData?.stage) === 'school';
 
   // 1. זיהוי מין הילד/ה (זכר/נקבה) לפי בחירת המורה בטופס או מתוך ההקשר בטקסט
   const femaleWords = [
@@ -1497,6 +1515,13 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
         ? '• קשר ושיתוף פעולה: מגיבה היטב לחיזוקים חיוביים, לעידוד ולתיווך אישי של צוות הגן'
         : '• קשר ושיתוף פעולה: מגיב היטב לחיזוקים חיוביים, לעידוד ולתיווך אישי של צוות הגן'
     );
+  }
+
+  // תלמיד/ת בית ספר: תבניות מוקדי הכוח הן טקסט קבוע של גן – המרה מלאה לניסוח בית-ספרי
+  if (isSchool) {
+    executiveStrengths.forEach((s, i) => {
+      executiveStrengths[i] = adaptTextToSchoolStage(s);
+    });
   }
 
   // 4. זיהוי משפטים או הקשרים המתארים אתגר/קושי בטקסט
@@ -1783,30 +1808,134 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     }
   ];
 
+  // 5ב. תבניות בית ספר – נבנות מתוך מטרות בית הספר שבמאגר (לעולם לא מטרות גן עבור תלמיד/ת בית ספר!)
+  const schoolBankPool = [...bank, ...INITIAL_GOAL_BANK].filter(
+    (item) =>
+      item &&
+      item.title &&
+      Array.isArray(item.stages) &&
+      item.stages.includes('school') &&
+      !textHasKindergartenMarker(item.title)
+  );
+  const pickSchoolBankGoal = (environment, preferences, ctx) => {
+    const inEnv = schoolBankPool.filter((item) => item.environment === environment);
+    if (inEnv.length === 0) return null;
+    for (const [ctxRx, titleRx] of preferences) {
+      if (ctxRx.test(ctx)) {
+        const found = inEnv.find((item) => titleRx.test(item.title));
+        if (found) return found;
+      }
+    }
+    return inEnv[0];
+  };
+  const buildGoalFromSchoolBankItem = (item) => {
+    const activity = adaptTextToGender(item.defaultActivity || '', resolvedGender).trim();
+    return {
+      environment: item.environment,
+      activityParticipation: activity
+        ? `${firstName} ${activity}`
+        : `${firstName} ${g.needs} לתיווך מותאם בתחום ${item.environment}.`,
+      title: adaptTextToGender(item.title, resolvedGender),
+      objectives: (item.suggestedObjectives || [])
+        .slice(0, 5)
+        .map((o) => `• ${adaptTextToGender(o, resolvedGender)}`)
+        .join('\n'),
+      opportunities: item.defaultOpportunities || '',
+      partners: item.defaultPartners || 'מחנכת, מורת שילוב',
+      tShirtSize: 'M',
+      duration: '',
+      evaluationCriteria: adaptTextToGender(item.defaultEvaluation || '', resolvedGender)
+    };
+  };
+
+  const schoolInterpreters = [
+    {
+      id: 'school_listening_speaking',
+      environment: 'האזנה ודיבור – כשירות תקשורתית',
+      triggerRx: /האזנה|הקשב|מקשיב|הוראות|שיח|שיחה|דיבור|מדבר|הבעה|מילולי|תקשורת|שואל|עונה|בעל פה/,
+      executiveEmpowerBullet:
+        '• האזנה ודיבור: הבנת הוראות ומסרים מילוליים, הבעה בעל פה והשתתפות בשיח הכיתתי',
+      preferences: [
+        [/שיח|שיחה|תור|חברים|אינטראקציה|יוזמ/, /שיח ואינטראקציה/],
+        [/הוראות|הבנה|מבין|מקשיב|הקשב/, /הבנת שפה דבורה/],
+        [/הבעה|מדבר|משפטים|לספר|בעל פה/, /הרחבת ההבעה|הבעה מילולית/]
+      ]
+    },
+    {
+      id: 'school_writing',
+      environment: 'כתיבה',
+      triggerRx: /כתיב|כותב|לכתוב|כתב יד|העתק|מחברת|חיבור|איות/,
+      executiveEmpowerBullet:
+        '• כתיבה: ביסוס מיומנויות כתיבה, ארגון רעיונות ועצמאות בתהליך הכתיבה',
+      preferences: [
+        [/כתב יד|העתק|אותיות|גרפו|יסוד/, /מיומנויות יסוד בכתיבה/],
+        [/ארגון|רצף|חיבור|רעיונות/, /ארגון ורצף בכתיבה/],
+        [/עצמא|יוזמ|להתחיל/, /עצמאות בתהליך הכתיבה/]
+      ]
+    },
+    {
+      id: 'school_reading',
+      environment: 'קריאה והפקת משמעות',
+      triggerRx: /קריא|קורא|לקרוא|פענוח|שטף|הבנת הנקרא|טקסט|ניקוד/,
+      executiveEmpowerBullet: '• קריאה והפקת משמעות: חיזוק דיוק ושטף הקריאה והבנת הנקרא',
+      preferences: [
+        [/פענוח|ניקוד|אותיות|צירופ|יסוד/, /יסודות הקריאה|פענוח/],
+        [/שטף|איטי|דיוק|שגיאות/, /דיוק ושטף/],
+        [/הסק|מסקנ|מעמיק|משמעות/, /הבנה מעמיקה/],
+        [/הבנת הנקרא|הבנה|מבין/, /מידע מפורש/]
+      ]
+    },
+    {
+      id: 'school_linguistic_knowledge',
+      environment: 'כשירות לשונית – ידע לשוני',
+      triggerRx: /אוצר מילים|תחביר|מורפולוג|פונולוג|דקדוק|לשון|הברות|הברה|חריז|מבנה המשפט|פיסוק|אותיות סופיות/,
+      executiveEmpowerBullet:
+        '• ידע לשוני: הרחבת אוצר המילים וביסוס הידע הלשוני (מבנה המילה והמשפט)',
+      preferences: [
+        [/אוצר מילים|סמנטי/, /אוצר המילים/],
+        [/פונולוג|הברות|הברה|חריז|צליל/, /מודעות פונולוגית/],
+        [/תחביר|מבנה המשפט|משפטים/, /ידע תחבירי/],
+        [/פיסוק|אותיות סופיות|מוסכמות/, /מוסכמות הלשון/],
+        [/מורפולוג|שורש|מבנה המילה/, /מורפולוגי/]
+      ]
+    }
+  ].map((dom) => ({
+    ...dom,
+    buildGoal: (ctx) => {
+      const item = pickSchoolBankGoal(dom.environment, dom.preferences, ctx);
+      return item ? buildGoalFromSchoolBankItem(item) : null;
+    }
+  }));
+
+  const activeInterpreters = isSchool ? schoolInterpreters : domainInterpreters;
+
   const matchedGoals = [];
   const executiveEmpowerBullets = [];
 
   const challengeClausesList = rawClauses.filter((c) => challengeMarkerRx.test(c));
   const unmatchedClauses = [];
 
-  domainInterpreters.forEach((dom) => {
+  activeInterpreters.forEach((dom) => {
     if (dom.triggerRx.test(challengeContextText)) {
-      executiveEmpowerBullets.push(dom.executiveEmpowerBullet);
       if (matchedGoals.length < 4) {
         const built = dom.buildGoal(challengeContextText);
+        if (!built) return;
+        executiveEmpowerBullets.push(dom.executiveEmpowerBullet);
         const sizedDuration = normalizeAndSizeGoalDuration(built, rawTrimmed, currentFormData, dateInfo);
         matchedGoals.push({
           id: 'g_rev_' + Date.now() + '_' + matchedGoals.length,
           ...built,
           duration: sizedDuration
         });
+      } else {
+        executiveEmpowerBullets.push(dom.executiveEmpowerBullet);
       }
     }
   });
 
   // בדיקה האם יש משפט קושי בטקסט שלא קיבל מענה מאף תבנית קיימת במאגר
   challengeClausesList.forEach((clause) => {
-    const coveredByDomain = domainInterpreters.some((dom) => dom.triggerRx.test(clause));
+    const coveredByDomain = activeInterpreters.some((dom) => dom.triggerRx.test(clause));
     if (!coveredByDomain) {
       unmatchedClauses.push(clause);
     }
@@ -1825,10 +1954,14 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     const coreSubject =
       cleanedTopic && cleanedTopic.length >= 3 && cleanedTopic.length <= 55
         ? cleanedTopic
+        : isSchool
+        ? 'התנהלות עצמאית ומווסתת בשגרת הכיתה'
         : 'התנהלות עצמאית ומווסתת בפעילויות הגן';
 
     let inferredEnv = 'משחק במרחב הגן';
-    if (/מפגש|מליאה|ריכוז|שיר|סיפור/.test(clauseText)) inferredEnv = 'מפגש בגן';
+    if (isSchool) {
+      inferredEnv = remapEnvironmentForStage('', 'school', { title: clauseText });
+    } else if (/מפגש|מליאה|ריכוז|שיר|סיפור/.test(clauseText)) inferredEnv = 'מפגש בגן';
     else if (/חצר|בחוץ|מתקנים/.test(clauseText)) inferredEnv = 'חצר';
     else if (/אוכל|ארוחה|בוקר|צהריים/.test(clauseText)) inferredEnv = 'אוכל';
     else if (/שירותים|ניקיון|היגיינה|לבוש/.test(clauseText)) inferredEnv = 'שירותים';
@@ -1842,7 +1975,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     const draftGoal = {
       id: 'g_rev_custom_' + Date.now() + '_' + idx,
       environment: inferredEnv,
-      activityParticipation: `בסביבת ${inferredEnv}, ${firstName} ${g.needs} לתיווך מותאם, הטרמה וליווי הדרגתי של הצוות לשם חיזוק התפקוד בתחום ${coreSubject}.`,
+      activityParticipation: `${isSchool ? 'בתחום' : 'בסביבת'} ${inferredEnv}, ${firstName} ${g.needs} לתיווך מותאם, הטרמה וליווי הדרגתי של הצוות לשם חיזוק התפקוד בתחום ${coreSubject}.`,
       title: newGoalTitle,
       objectives: [
         `• ${isFemale ? 'תשתתף' : 'ישתתף'} באופן פעיל ומווסת בפעילות הקשורה ל${coreSubject} בתיווך מבוגר`,
@@ -1850,7 +1983,9 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
         `• ${isFemale ? 'תפנה' : 'יפנה'} למבוגר בבקשת עזרה או תיווך מילולי בעת קושי`
       ].join('\n'),
       opportunities: `• הטרמה מראש ופירוק הפעילות לשלבים ברורים ומדורגים עבור ${firstName}.\n• תיווך אישי, עידוד ומתן חיזוקים חיוביים על התקדמות בתחום ${coreSubject}.`,
-      partners: 'צוות הגן, סייעת אישית, צוות פרא-רפואי והורים',
+      partners: isSchool
+        ? 'מחנכת, מורת שילוב, יועצת והורים'
+        : 'צוות הגן, סייעת אישית, צוות פרא-רפואי והורים',
       tShirtSize: inferredEnv === 'אוכל' || inferredEnv === 'שירותים' ? 'S' : 'M',
       duration: '',
       evaluationCriteria: `תפקוד עצמאי, עקבי ומותאם של ${firstName} בתחום ${coreSubject} בתיווך מופחת.`
@@ -1878,7 +2013,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     const customGoal = synthesizeCustomGoalFromClause(challengeContextText, 0);
     matchedGoals.push(customGoal);
     executiveEmpowerBullets.push(
-      `• התאמה אישית (${customGoal.environment}): פיתוח עצמאות, השתתפות פעילה והסתגלות מותאמת במרחב הגן`
+      `• התאמה אישית (${customGoal.environment}): פיתוח עצמאות, השתתפות פעילה והסתגלות מותאמת ${isSchool ? 'בכיתה' : 'במרחב הגן'}`
     );
   }
 
@@ -1929,6 +2064,12 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
       `פירוק מטלות לשלבים, הטרמה חזותית ומילולית, הארכת זמן ותיווך פרטני בהתאם לצורך.`
   }));
 
+  // תלמיד/ת בית ספר: המרת ניסוחי תבנית של גן (צוות הגן, בגן, מרחב הגן...) לניסוח בית-ספרי
+  // Teacher-derived fragments may mention the child's past ("עבר מהגן") – keep bare place words then.
+  const teacherMentionsKindergarten = textHasKindergartenMarker(rawTrimmed);
+  const S = (txt) =>
+    isSchool ? adaptTextToSchoolStage(txt, { includeBarePlaceWords: !teacherMentionsKindergarten }) : txt;
+
   const synthesizedProfileRows = buildDefaultTalaProfileRows(
     currentFormData?.talaProfileRows || []
   ).map((row) => {
@@ -1940,23 +2081,27 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     if (row.id === 'prof_self_management') {
       return {
         ...row,
-        strengthsAndFacilitators:
+        strengthsAndFacilitators: S(
           executiveStrengths[0]?.replace(/^•\s*/, '') ||
-          `נעזר/ת בהטרמה, סדר יום מובנה וחיזוקים חיוביים מצד הצוות.`,
-        areasToStrengthenAndBarriers:
+          `נעזר/ת בהטרמה, סדר יום מובנה וחיזוקים חיוביים מצד הצוות.`
+        ),
+        areasToStrengthenAndBarriers: S(
           executiveEmpowerBullets[0]?.replace(/^•\s*/, '') ||
           `חיזוק התארגנות עצמאית, ויסות והתמדה במטלות.`
+        )
       };
     }
     if (row.id === 'prof_communication') {
       return {
         ...row,
-        strengthsAndFacilitators:
+        strengthsAndFacilitators: S(
           executiveStrengths[1]?.replace(/^•\s*/, '') ||
-          `יוצר/ת קשר חיובי עם מבוגר משמעותי ומגלה עניין באינטראקציה חברתית.`,
-        areasToStrengthenAndBarriers:
+          `יוצר/ת קשר חיובי עם מבוגר משמעותי ומגלה עניין באינטראקציה חברתית.`
+        ),
+        areasToStrengthenAndBarriers: S(
           executiveEmpowerBullets[1]?.replace(/^•\s*/, '') ||
           `הרחבת יוזמות לתקשורת הדדית, שמירה על כללי שיח ומשחק משותף.`
+        )
       };
     }
     if (row.id === 'prof_listening_speaking') {
@@ -1987,21 +2132,50 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     name: detectedName || currentFormData.name,
     gender: resolvedGender,
     educationalFramework: detectedFramework || currentFormData.educationalFramework,
-    strengthsExisting: formattedExisting,
-    strengthsToEmpower: formattedEmpower,
-    studentGeneralBackground,
+    strengthsExisting: S(formattedExisting),
+    strengthsToEmpower: S(formattedEmpower),
+    studentGeneralBackground: S(studentGeneralBackground),
     studentSupportReceived,
     studentMainGoal,
     talaProfileRows: synthesizedProfileRows,
     talaFocusDomains: [...new Set(inferredFocusDomains)],
     goals: enrichedGoals,
-    recommendations: formalRecommendations
+    recommendations: S(formalRecommendations)
   };
 }
 
 export function generateDefaultQuestionsForCustomGoal(goalTitle, environment, formData = {}) {
-  const envLabel = environment || 'סביבת הגן';
+  const isSchoolStage = normalizeStage(formData?.stage) === 'school';
+  const envLabel = environment || (isSchoolStage ? 'הכיתה' : 'סביבת הגן');
   const dateInfo = resolveStudentAgeAndDateInfo(formData, '');
+  if (isSchoolStage) {
+    return [
+      {
+        q: `1. כיצד התלמיד/ה מתפקד/ת כיום בתחום "${envLabel}" ביחס למטרה "${goalTitle}"?`,
+        suggestions: [
+          'זקוק/ה לתיווך של המורה כדי להתחיל במשימה',
+          'מגלה עניין אך מתקשה בהתארגנות, בהתמדה או בהשלמת המשימה',
+          'משתתף/ת באופן חלקי וזקוק/ה להטרמה ולעבודה בקבוצה קטנה'
+        ]
+      },
+      {
+        q: '2. אילו יעדים אופרטיביים ואמצעי תיווך יומיומיים בכיתה יעזרו להשיג את המטרה?',
+        suggestions: [
+          'עבודה פרטנית או בקבוצה קטנה עם מורת השילוב',
+          'פירוק המשימה לשלבים ברורים ושימוש בעזרים חזותיים',
+          'חיזוק חיובי ומשוב מיידי על התקדמות'
+        ]
+      },
+      {
+        q: '3. מי השותפים לתהליך (מחנכת, מורת שילוב, מטפלים, הורים), מה משך הזמן המשוער (לפי גודל המטרה), וכיצד נמדוד הצלחה?',
+        suggestions: [
+          `מחנכת, מורת שילוב והורים | חודש (עד ${dateInfo.plus1Month})`,
+          `מורת שילוב, קלינאית תקשורת ומרפאה בעיסוק | 3 חודשים (עד ${dateInfo.plus3Months})`,
+          `מחנכת, יועצת והורים | חצי שנה (עד ${dateInfo.plus6Months})`
+        ]
+      }
+    ];
+  }
   return [
     {
       q: `1. כיצד הילד/ה מתפקד/ת כיום בסביבת "${envLabel}" ביחס למטרה "${goalTitle}"?`,
