@@ -24,7 +24,8 @@ import {
   Clock,
   FileSignature,
   Edit2,
-  Users
+  Users,
+  Loader2
 } from 'lucide-react';
 import {
   validatePasswordPolicy,
@@ -42,7 +43,8 @@ import TakeoverModal from './components/modals/TakeoverModal';
 import {
   checkActiveSession,
   activateSession,
-  generateSessionId
+  generateSessionId,
+  getClientIp
 } from './services/sessionSecurity';
 
 function PasswordPolicyChecklist({ password }) {
@@ -112,40 +114,56 @@ export function AllowlistAuthGate({
   const [existingSession, setExistingSession] = useState(null);
   const [pendingUser, setPendingUser] = useState(null);
   const [takeoverLoading, setTakeoverLoading] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Pre-fetch client IP in background while teacher views the login screen
+  useEffect(() => {
+    getClientIp().catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoggingIn) return;
     setErrorMsg('');
     setIsAccountLockedError(false);
+    setIsLoggingIn(true);
 
-    // Password check + lockout run server-side (talaLogin Cloud Function).
-    const result = await loginWithTala(email, accessCode);
-
-    if (!result.allowed) {
-      setErrorMsg(result.reason || 'ההתחברות נכשלה.');
-      if (result.isLockedOut || result.isDisabled) {
-        setIsAccountLockedError(true);
-      }
-      return;
-    }
-
-    // Single active session check (no multiple logins from different hosts/IPs)
     try {
-      const sessionId = generateSessionId();
-      const sessionCheck = await checkActiveSession(result.user.email, sessionId);
+      // Password check + lockout run server-side (talaLogin Cloud Function).
+      const result = await loginWithTala(email, accessCode);
 
-      if (sessionCheck.takeoverRequired) {
-        setPendingUser({ ...result.user, sessionId, clientIp: sessionCheck.clientIp });
-        setExistingSession(sessionCheck.existingSession);
-        setShowTakeoverModal(true);
+      if (!result.allowed) {
+        setErrorMsg(result.reason || 'ההתחברות נכשלה.');
+        if (result.isLockedOut || result.isDisabled) {
+          setIsAccountLockedError(true);
+        }
+        setIsLoggingIn(false);
         return;
       }
 
-      await activateSession(result.user.email, sessionId, sessionCheck.clientIp);
-      onLoginSuccess({ ...result.user, sessionId });
-    } catch (sessionErr) {
-      console.warn('Session check exception, proceeding with login:', sessionErr);
-      onLoginSuccess(result.user);
+      // Single active session check (no multiple logins from different hosts/IPs)
+      try {
+        const sessionId = generateSessionId();
+        const sessionCheck = await checkActiveSession(result.user.email, sessionId);
+
+        if (sessionCheck.takeoverRequired) {
+          setPendingUser({ ...result.user, sessionId, clientIp: sessionCheck.clientIp });
+          setExistingSession(sessionCheck.existingSession);
+          setShowTakeoverModal(true);
+          setIsLoggingIn(false);
+          return;
+        }
+
+        await activateSession(result.user.email, sessionId, sessionCheck.clientIp);
+        onLoginSuccess({ ...result.user, sessionId });
+      } catch (sessionErr) {
+        console.warn('Session check exception, proceeding with login:', sessionErr);
+        onLoginSuccess(result.user);
+      }
+    } catch (err) {
+      console.error('Login exception:', err);
+      setErrorMsg('שגיאה בתקשורת עם השרת בעת ההתחברות. אנא נסו שוב.');
+      setIsLoggingIn(false);
     }
   };
 
@@ -169,6 +187,7 @@ export function AllowlistAuthGate({
     setShowTakeoverModal(false);
     setPendingUser(null);
     setExistingSession(null);
+    setIsLoggingIn(false);
     setErrorMsg('ההתחברות בוטלה - החיבור במכשיר האחר נשמר.');
     try {
       await signOutFirebaseAuthSession();
@@ -360,6 +379,7 @@ export function AllowlistAuthGate({
                   spellCheck={false}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoggingIn}
                   dir="ltr"
                   style={{ textAlign: 'right' }}
                 />
@@ -378,11 +398,13 @@ export function AllowlistAuthGate({
                   spellCheck={false}
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
+                  disabled={isLoggingIn}
                   style={{ paddingLeft: '40px', paddingRight: '36px' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowLoginPassword((prev) => !prev)}
+                  disabled={isLoggingIn}
                   title={showLoginPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
                   aria-label={showLoginPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
                   className="password-eye-toggle-btn"
@@ -392,9 +414,23 @@ export function AllowlistAuthGate({
               </div>
             </div>
 
-            <button type="submit" className="btn-auth-submit">
-              <UserCheck size={18} />
-              <span>כניסה למערכת TALA</span>
+            <button
+              type="submit"
+              className="btn-auth-submit"
+              disabled={isLoggingIn}
+              aria-busy={isLoggingIn}
+            >
+              {isLoggingIn ? (
+                <>
+                  <Loader2 size={18} className="tala-spin-icon" />
+                  <span>מתחבר למערכת...</span>
+                </>
+              ) : (
+                <>
+                  <UserCheck size={18} />
+                  <span>כניסה למערכת TALA</span>
+                </>
+              )}
             </button>
           </form>
 

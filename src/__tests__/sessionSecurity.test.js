@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   sessionDocKey,
   generateSessionId,
+  getClientIp,
   checkActiveSession,
   activateSession,
   clearSession,
@@ -20,6 +21,16 @@ describe('TALA Single Session Security & Takeover Tests', () => {
       setItem: (key, val) => { memoryStorage[key] = String(val); },
       removeItem: (key) => { delete memoryStorage[key]; },
       clear: () => { memoryStorage = {}; }
+    });
+  });
+
+  describe('getClientIp', () => {
+    it('returns a valid string and caches subsequent lookups', async () => {
+      const ip1 = await getClientIp();
+      expect(typeof ip1).toBe('string');
+      expect(ip1.length).toBeGreaterThan(0);
+      const ip2 = await getClientIp();
+      expect(ip2).toBe(ip1);
     });
   });
 

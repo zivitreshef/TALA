@@ -522,9 +522,22 @@ input, textarea, select, button {
   transition: transform 0.12s, box-shadow 0.12s;
 }
 
-.btn-auth-submit:hover {
+.btn-auth-submit:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 10px 26px rgba(124, 101, 184, 0.36);
+}
+
+.btn-auth-submit:disabled {
+  opacity: 0.82;
+  cursor: wait;
+  transform: none;
+  box-shadow: 0 4px 12px rgba(74, 136, 199, 0.2);
+}
+
+.auth-form .input-with-icon input:disabled {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  opacity: 0.8;
 }
 
 .auth-contact-admin-footer {

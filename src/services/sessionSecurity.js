@@ -17,20 +17,35 @@ export function generateSessionId() {
   return 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
 }
 
-// Lightweight public IP detection with quick timeout and local fallback
+let cachedClientIp = null;
+let clientIpPromise = null;
+
+// Lightweight public IP detection with quick timeout, in-memory caching and local fallback
 export async function getClientIp() {
-  try {
-    const res = await fetch('https://api.ipify.org?format=json', {
-      signal: AbortSignal.timeout(2500)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.ip) return data.ip;
+  if (cachedClientIp) return cachedClientIp;
+  if (clientIpPromise) return clientIpPromise;
+
+  clientIpPromise = (async () => {
+    try {
+      const res = await fetch('https://api.ipify.org?format=json', {
+        signal: AbortSignal.timeout(2000)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.ip) {
+          cachedClientIp = data.ip;
+          return data.ip;
+        }
+      }
+    } catch (e) {
+      // Fallback if offline or blocked by ad-blocker
+    } finally {
+      clientIpPromise = null;
     }
-  } catch (e) {
-    // Fallback if offline or blocked by ad-blocker
-  }
-  return 'IP לא זמין / רשת מקומית';
+    return 'IP לא זמין / רשת מקומית';
+  })();
+
+  return clientIpPromise;
 }
 
 /**
@@ -38,37 +53,38 @@ export async function getClientIp() {
  */
 export async function checkActiveSession(email, currentSessionId) {
   const key = sessionDocKey(email);
-  const clientIp = await getClientIp();
   const db = getFirestoreDb();
 
-  if (db) {
-    try {
-      const sessionRef = doc(db, 'tala_sessions', key);
-      const snap = await getDoc(sessionRef);
+  // Parallelize IP resolution and Firestore session lookup to cut login latency
+  const [clientIp, snap] = await Promise.all([
+    getClientIp(),
+    db
+      ? getDoc(doc(db, 'tala_sessions', key)).catch((err) => {
+          console.warn('Firestore active session check warning:', err);
+          return null;
+        })
+      : Promise.resolve(null)
+  ]);
 
-      if (snap.exists()) {
-        const data = snap.data();
-        const now = Date.now();
-        const lastActiveTime = data.lastActiveIso
-          ? new Date(data.lastActiveIso).getTime()
-          : data.lastActiveMs || 0;
-        const isStillActive = (now - lastActiveTime) < SESSION_INACTIVITY_LIMIT_MS;
+  if (snap && snap.exists()) {
+    const data = snap.data();
+    const now = Date.now();
+    const lastActiveTime = data.lastActiveIso
+      ? new Date(data.lastActiveIso).getTime()
+      : data.lastActiveMs || 0;
+    const isStillActive = (now - lastActiveTime) < SESSION_INACTIVITY_LIMIT_MS;
 
-        if (isStillActive && data.sessionId && data.sessionId !== currentSessionId) {
-          return {
-            takeoverRequired: true,
-            clientIp,
-            existingSession: {
-              sessionId: data.sessionId,
-              ipAddress: data.ipAddress || 'לא ידועה',
-              lastActiveIso: data.lastActiveIso || new Date(lastActiveTime).toISOString(),
-              userAgent: data.userAgent || ''
-            }
-          };
+    if (isStillActive && data.sessionId && data.sessionId !== currentSessionId) {
+      return {
+        takeoverRequired: true,
+        clientIp,
+        existingSession: {
+          sessionId: data.sessionId,
+          ipAddress: data.ipAddress || 'לא ידועה',
+          lastActiveIso: data.lastActiveIso || new Date(lastActiveTime).toISOString(),
+          userAgent: data.userAgent || ''
         }
-      }
-    } catch (err) {
-      console.warn('Firestore active session check warning:', err);
+      };
     }
   }
 
@@ -128,12 +144,14 @@ export async function activateSession(email, sessionId, clientIp) {
     }
   } catch (e) {}
 
-  // Sync to Firestore
+  // Sync to Firestore (parallelize doc write and user presence)
   const db = getFirestoreDb();
   if (db) {
     try {
-      await setDoc(doc(db, 'tala_sessions', key), payload, { merge: true });
-      await recordUserPresence({ email, sessionId, ipAddress: ip });
+      await Promise.all([
+        setDoc(doc(db, 'tala_sessions', key), payload, { merge: true }),
+        recordUserPresence({ email, sessionId, ipAddress: ip })
+      ]);
     } catch (err) {
       console.warn('Failed to record session activation in Firestore:', err);
     }
