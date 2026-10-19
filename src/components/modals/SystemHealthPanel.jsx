@@ -68,7 +68,11 @@ export default function SystemHealthPanel({
         title: 'סנכרון ענן בדפדפן זה',
         ok: Boolean(cloudSyncState?.connected),
         latencyMs: null,
-        detail: cloudSyncState?.connected ? '' : 'הדפדפן עובד במצב מקומי – אין סנכרון ענן'
+        detail: cloudSyncState?.connected
+          ? ''
+          : cloudSyncState?.status === 'error'
+            ? `שגיאת האזנה ל-Firestore${cloudSyncState?.error ? `: ${cloudSyncState.error}` : ''}`
+            : 'הדפדפן עובד במצב מקומי – אין סנכרון ענן (לא זוהתה התחברות Firebase)'
       }
     ]);
     setIsPinging(false);
