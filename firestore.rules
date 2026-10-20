@@ -19,13 +19,17 @@ service cloud.firestore {
 
     function isPrimaryAdmin() {
       return currentEmail() == 'zivit.reshef@gmail.com' ||
-        (request.auth != null && request.auth.uid == 'tala_ccd05b8d703389243cd80ff9');
+        currentEmail() == 'moti_reshef@bmc.com' ||
+        (request.auth != null && (
+          request.auth.uid == 'tala_ccd05b8d703389243cd80ff9' ||
+          request.auth.uid == 'tala_5599a5e99afe3b3f4e1e8514'
+        ));
     }
 
     function isOwnerOfResource(data) {
       return isPrimaryAdmin() ||
         (isSignedIn() && data.ownerEmail != null && (
-          (currentEmail() != '' && data.ownerEmail.lower() == currentEmail()) ||
+          (currentEmail() != '' && data.ownerEmail == currentEmail()) ||
           (data.ownerUid != null && request.auth.uid == data.ownerUid)
         ));
     }
@@ -38,8 +42,6 @@ service cloud.firestore {
 
     function isAdmin() {
       return isPrimaryAdmin() ||
-        currentEmail() == 'moti_reshef@bmc.com' ||
-        (request.auth != null && request.auth.uid == 'tala_5599a5e99afe3b3f4e1e8514') ||
         (isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.isAdmin == true));
     }
 
