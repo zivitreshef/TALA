@@ -27,7 +27,7 @@ service cloud.firestore {
     }
 
     function isOwnerOfResource(data) {
-      return isPrimaryAdmin() ||
+      return isAdmin() ||
         (isSignedIn() && data.ownerEmail != null && (
           (currentEmail() != '' && data.ownerEmail == currentEmail()) ||
           (data.ownerUid != null && request.auth.uid == data.ownerUid)
@@ -62,7 +62,7 @@ service cloud.firestore {
       allow write: if false;
     }
     match /tala_profiles/{key} {
-      allow read: if isPrimaryAdmin() ||
+      allow read: if isAdmin() ||
         (isSignedIn() && resource.data.email.lower() == currentEmail());
       allow write: if false;
     }
@@ -83,7 +83,7 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
     match /tala_config/students_migration_meta {
-      allow read, write: if isPrimaryAdmin();
+      allow read, write: if isAdmin();
     }
 
     // System-health telemetry (AI failures / local-engine fallbacks). Any signed-in client may
@@ -111,7 +111,7 @@ service cloud.firestore {
       allow read: if isOwnerOfResource(resource.data) || isSharedOnResource(resource.data);
 
       allow create: if isSignedIn() &&
-        (isPrimaryAdmin() || request.resource.data.ownerEmail.lower() == currentEmail());
+        (isAdmin() || request.resource.data.ownerEmail == currentEmail());
 
       // Prevent non-owners from hijacking ownerEmail or archiving a shared student
       allow update: if (
@@ -134,7 +134,7 @@ service cloud.firestore {
     }
 
     function isInviteOwner(data) {
-      return isPrimaryAdmin() || (isSignedIn() && data.ownerEmail == currentEmail());
+      return isAdmin() || (isSignedIn() && data.ownerEmail == currentEmail());
     }
 
     match /tala_invites/{token} {
