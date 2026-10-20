@@ -191,6 +191,11 @@ export async function ensureFirebaseAuthSession() {
   const auth = getFirebaseAuth();
   if (!auth) return null;
   await auth.authStateReady?.();
+  if (auth.currentUser) {
+    try {
+      await auth.currentUser.getIdToken(true);
+    } catch (_) {}
+  }
   return auth.currentUser;
 }
 
@@ -238,13 +243,14 @@ export function subscribeToTalaBackend({
   }
 
   const me = String(email || '').trim().toLowerCase();
-  const sawAll = me === PRIMARY_ADMIN_EMAIL;
+  const PRIMARY_ADMIN_EMAILS = [PRIMARY_ADMIN_EMAIL, 'moti_reshef@bmc.com'];
+  const sawAll = Boolean(isAdmin) || PRIMARY_ADMIN_EMAILS.includes(me);
   const unsubscribers = [];
   let cancelled = false;
   const listenError = (label, report) => (err) => {
     console.error(`Firestore ${label} listener error:`, err);
     if (report) {
-      onSyncStatusChange?.({ connected: false, status: 'error', error: err.message });
+      onSyncStatusChange?.({ connected: false, status: 'error', error: `[${label}] ${err.message}` });
     }
   };
 
@@ -255,6 +261,9 @@ export function subscribeToTalaBackend({
       onSyncStatusChange?.({ connected: false, status: 'local_only' });
       return;
     }
+    try {
+      await auth.currentUser.getIdToken(true);
+    } catch (_) {}
     onSyncStatusChange?.({ connected: true, status: 'connecting' });
 
     if (isAdmin) {
