@@ -211,6 +211,9 @@ async function handleTalaLogin(req,res){
       try{await admin.auth().createUser({uid:targetUid,email,displayName:outcome.user.name||undefined});}catch(ce){console.warn("createUser failed:",ce.message);}
     }else{console.warn("updateUser failed:",err.message);}
   }
+  try{
+    await admin.auth().setCustomUserClaims(targetUid,{email,role:outcome.user.role||"teacher"});
+  }catch(ce){console.warn("setCustomUserClaims failed:",ce.message);}
   const token=await admin.auth().createCustomToken(targetUid,{email,role:outcome.user.role||"teacher"});
   res.status(200).json({allowed:true,token,user:outcome.user});
 }

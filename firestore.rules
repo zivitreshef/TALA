@@ -37,7 +37,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isPrimaryAdmin() || (isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.isAdmin == true));
+      return isPrimaryAdmin() ||
+        currentEmail() == 'moti_reshef@bmc.com' ||
+        (request.auth != null && request.auth.uid == 'tala_5599a5e99afe3b3f4e1e8514') ||
+        (isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.isAdmin == true));
     }
 
     // Users list: admin read only. All writes go through the talaConfigWrite /
