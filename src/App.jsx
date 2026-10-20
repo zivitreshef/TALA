@@ -145,6 +145,7 @@ export default function App() {
   // Allowed users list
   const [allowedUsers, setAllowedUsers] = useState(() => loadAllowedUsers());
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminModalInitialTab, setAdminModalInitialTab] = useState('users');
   const [showSelfPasswordModal, setShowSelfPasswordModal] = useState(false);
   const [showFeedbackSurveyModal, setShowFeedbackSurveyModal] = useState(false);
   const [showTrialUpgradeModal, setShowTrialUpgradeModal] = useState(false);
@@ -2041,7 +2042,10 @@ export default function App() {
             <button
               type="button"
               className="btn-header-admin"
-              onClick={() => setShowAdminModal(true)}
+              onClick={() => {
+                setAdminModalInitialTab('users');
+                setShowAdminModal(true);
+              }}
               style={{ position: 'relative' }}
             >
               <ShieldCheck size={16} />
@@ -2146,7 +2150,16 @@ export default function App() {
           </div>
           <button
             type="button"
-            onClick={() => setShowAdminModal(true)}
+            onClick={() => {
+              if (unreviewedHealthEventsCount > 0 && lockedOutUsers.length === 0 && adminRequests.length === 0) {
+                setAdminModalInitialTab('health');
+              } else if (lockedOutUsers.length > 0 || adminRequests.length > 0) {
+                setAdminModalInitialTab('requests');
+              } else {
+                setAdminModalInitialTab('users');
+              }
+              setShowAdminModal(true);
+            }}
             style={{
               background: '#dc2626',
               color: '#ffffff',
@@ -2158,7 +2171,11 @@ export default function App() {
               cursor: 'pointer'
             }}
           >
-            לצפייה ושחרור חסימה בניהול משתמשים
+            {lockedOutUsers.length > 0
+              ? 'לצפייה ושחרור חסימה בניהול משתמשים'
+              : unreviewedHealthEventsCount > 0 && adminRequests.length === 0
+              ? 'לצפייה ביומן בריאות המערכת'
+              : 'לצפייה בפניות ובניהול משתמשים'}
           </button>
         </div>
       )}
@@ -2881,6 +2898,7 @@ export default function App() {
       {currentUser.role === 'admin' && (
         <AdminAllowlistModal
           isOpen={showAdminModal}
+          initialTab={adminModalInitialTab}
           onClose={() => setShowAdminModal(false)}
           allowedUsers={allowedUsers}
           onUpdateAllowedUsers={handleUpdateAllowedUsers}

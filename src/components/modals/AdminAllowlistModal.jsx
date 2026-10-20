@@ -29,7 +29,8 @@ import {
   MessageSquareHeart,
   Calendar,
   AlertTriangle,
-  Award
+  Award,
+  Activity
 } from 'lucide-react';
 import {
   createPasswordCredentials,
@@ -103,6 +104,7 @@ const generateRandomTempPassword = () => {
 export default function AdminAllowlistModal({
   isOpen,
   onClose,
+  initialTab = 'users',
   allowedUsers = [],
   onUpdateAllowedUsers,
   enforcePasswordPolicy,
@@ -121,7 +123,13 @@ export default function AdminAllowlistModal({
   onMarkHealthReviewed,
   onClearHealthEvents
 }) {
-  const [activeTab, setActiveTab] = useState('users'); // 'users' | 'groups' | 'analytics' | 'requests' | 'settings'
+  const [activeTab, setActiveTab] = useState(initialTab || 'users'); // 'users' | 'groups' | 'analytics' | 'requests' | 'health' | 'settings'
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'paid' | 'trial_active' | 'trial_expired' | 'disabled'
   const [groupFilter, setGroupFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -617,10 +625,8 @@ export default function AdminAllowlistModal({
     }
   };
 
-  const totalAlertsCount =
-    lockedOutUsers.length +
-    (adminRequests || []).length +
-    countUnreviewedHealthEvents(healthEvents, healthReviewedMs);
+  const unreviewedHealthEventsCount = countUnreviewedHealthEvents(healthEvents, healthReviewedMs);
+  const userAlertsCount = lockedOutUsers.length + (adminRequests || []).length;
 
   return (
     <div className="modal-backdrop" onClick={onClose} dir="rtl" style={{ zIndex: 2500, padding: '16px' }}>
@@ -813,7 +819,7 @@ export default function AdminAllowlistModal({
           >
             <Bell size={16} />
             <span>פניות והתראות</span>
-            {totalAlertsCount > 0 && (
+            {userAlertsCount > 0 && (
               <span
                 style={{
                   background: '#dc2626',
@@ -825,7 +831,44 @@ export default function AdminAllowlistModal({
                   marginRight: '2px'
                 }}
               >
-                {totalAlertsCount}
+                {userAlertsCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('health')}
+            style={{
+              padding: '12px 16px',
+              border: 'none',
+              background: 'transparent',
+              fontSize: '13.5px',
+              fontWeight: activeTab === 'health' ? 800 : 600,
+              color: activeTab === 'health' ? '#2563eb' : '#64748b',
+              borderBottom: activeTab === 'health' ? '3px solid #2563eb' : '3px solid transparent',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px',
+              position: 'relative'
+            }}
+          >
+            <Activity size={16} />
+            <span>בריאות המערכת</span>
+            {unreviewedHealthEventsCount > 0 && (
+              <span
+                style={{
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  fontSize: '10.5px',
+                  fontWeight: 800,
+                  padding: '1px 6px',
+                  borderRadius: '999px',
+                  marginRight: '2px'
+                }}
+              >
+                {unreviewedHealthEventsCount}
               </span>
             )}
           </button>
@@ -1720,14 +1763,6 @@ export default function AdminAllowlistModal({
           {/* TAB 4: REQUESTS & ALERTS */}
           {activeTab === 'requests' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <SystemHealthPanel
-                healthEvents={healthEvents}
-                healthReviewedMs={healthReviewedMs}
-                onMarkHealthReviewed={onMarkHealthReviewed}
-                onClearHealthEvents={onClearHealthEvents}
-                cloudSyncState={cloudSyncState}
-              />
-
               {/* Security Lockout Section */}
               {lockedOutUsers.length > 0 && (
                 <div
@@ -1826,7 +1861,20 @@ export default function AdminAllowlistModal({
             </div>
           )}
 
-          {/* TAB 5: SETTINGS */}
+          {/* TAB 5: SYSTEM HEALTH */}
+          {activeTab === 'health' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <SystemHealthPanel
+                healthEvents={healthEvents}
+                healthReviewedMs={healthReviewedMs}
+                onMarkHealthReviewed={onMarkHealthReviewed}
+                onClearHealthEvents={onClearHealthEvents}
+                cloudSyncState={cloudSyncState}
+              />
+            </div>
+          )}
+
+          {/* TAB 6: SETTINGS */}
           {activeTab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Upgrade & Deployment Warning Banner Control */}
