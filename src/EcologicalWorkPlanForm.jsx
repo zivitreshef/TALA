@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Save,
   Printer,
@@ -68,6 +68,7 @@ import {
   generatePdfBlobFromHtml,
   sendReportEmailInBackground
 } from './emailService';
+import { extractCoworkerSuggestions, getStudentsWithTeamData, extractTeamDataFromStudent } from './domain/coworkerSuggestions';
 import {
   getFullDocTitle as buildFullDocTitle,
   getEvalReportTitle as buildEvalReportTitle,
@@ -271,6 +272,7 @@ const hasContentInYearReport = (rep) => {
 
 export default function EcologicalWorkPlanForm({
   student,
+  allStudents = [],
   externalRevision = 0,
   goalBank,
   geminiApiKey,
@@ -458,6 +460,17 @@ export default function EcologicalWorkPlanForm({
     isRawFreeTextAlreadyAnalyzed(student)
   );
   const [isAdditionalInfoOpen, setIsAdditionalInfoOpen] = useState(false); // Collapsed by default ("מידע נוסף")
+  const [copyTeamSuccessMsg, setCopyTeamSuccessMsg] = useState('');
+
+  const coworkerSuggestions = useMemo(
+    () => extractCoworkerSuggestions(allStudents, allowedUsers, currentUser),
+    [allStudents, allowedUsers, currentUser]
+  );
+
+  const studentsWithTeam = useMemo(
+    () => getStudentsWithTeamData(allStudents, student?.id),
+    [allStudents, student?.id]
+  );
 
   const AI_BUSY_STEPS = [
     'שלב 1/3: מנתח את התיאור החופשי ומזהה מוקדי כוח, תחומי תפקוד ואתגרים של הילד/ה...',
@@ -4014,6 +4027,68 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   ? 'פרטי מסגרת, צוות הגן ושותפים חינוכיים לתהליך (אופציונלי):'
                   : 'פרטי מסגרת, צוות כיתה ושותפים חינוכיים לתהליך (אופציונלי):'}
               </div>
+              {studentsWithTeam.length > 0 && !isReportLocked && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    marginBottom: '14px',
+                    padding: '9px 13px',
+                    background: '#ede9fe',
+                    border: '1px solid #c4b5fd',
+                    borderRadius: '8px',
+                    fontSize: '13px'
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: '#4c1d95', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Users size={16} />
+                    <span>שכפול פרטי צוות ומסגרת מתלמיד/ה קיים/ת:</span>
+                  </span>
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      const sourceId = e.target.value;
+                      if (!sourceId) return;
+                      const sourceStudent = allStudents.find((s) => s.id === sourceId);
+                      if (!sourceStudent) return;
+                      const teamData = extractTeamDataFromStudent(sourceStudent);
+                      setFormData((prev) => ({
+                        ...prev,
+                        ...teamData
+                      }));
+                      setCopyTeamSuccessMsg(`פרטי הצוות והמסגרת שוכפלו בהצלחה מ-${sourceStudent.name || 'התלמיד/ה'}`);
+                      setTimeout(() => setCopyTeamSuccessMsg(''), 4000);
+                      e.target.value = '';
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      border: '1px solid #a78bfa',
+                      fontSize: '12.5px',
+                      background: '#ffffff',
+                      color: '#1e1b4b',
+                      cursor: 'pointer',
+                      minWidth: '220px'
+                    }}
+                  >
+                    <option value="">-- בחר/י תלמיד/ה לשכפול צוות --</option>
+                    {studentsWithTeam.map((cand) => (
+                      <option key={cand.id} value={cand.id}>
+                        {cand.name} {cand.schoolName ? `(${cand.schoolName})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {copyTeamSuccessMsg && (
+                    <span style={{ color: '#15803d', fontWeight: 600, fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Check size={14} />
+                      {copyTeamSuccessMsg}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="personal-details-grid">
                 <div className="form-field">
                   <label>{isKindergarten ? 'גן:' : 'בית הספר:'}</label>
@@ -4023,7 +4098,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.schoolName || ''}
                     onChange={(e) => handleFieldChange('schoolName', e.target.value)}
                     placeholder={isKindergarten ? 'שם הגן' : 'שם בית הספר / המוסד החינוכי'}
+                    list="tala-suggestions-schoolName"
                   />
+                  <datalist id="tala-suggestions-schoolName">
+                    {(coworkerSuggestions.schoolName || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>{isKindergarten ? 'שלב גן:' : 'כיתה:'}</label>
@@ -4043,13 +4124,21 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         )}
                     </select>
                   ) : (
-                    <input
-                      type="text"
-                      disabled={isReportLocked}
-                      value={formData.gradeClass || ''}
-                      onChange={(e) => handleFieldChange('gradeClass', e.target.value)}
-                      placeholder="למשל: א׳1 / גן שקד"
-                    />
+                    <>
+                      <input
+                        type="text"
+                        disabled={isReportLocked}
+                        value={formData.gradeClass || ''}
+                        onChange={(e) => handleFieldChange('gradeClass', e.target.value)}
+                        placeholder="למשל: א׳1 / גן שקד"
+                        list="tala-suggestions-gradeClass"
+                      />
+                      <datalist id="tala-suggestions-gradeClass">
+                        {(coworkerSuggestions.gradeClass || []).map((val) => (
+                          <option key={val} value={val} />
+                        ))}
+                      </datalist>
+                    </>
                   )}
                 </div>
                 <div className="form-field">
@@ -4060,7 +4149,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.homeroomTeacher || ''}
                     onChange={(e) => handleFieldChange('homeroomTeacher', e.target.value)}
                     placeholder={isKindergarten ? 'שם הגננת' : 'שם מחנכת הכיתה / הגננת'}
+                    list="tala-suggestions-homeroomTeacher"
                   />
+                  <datalist id="tala-suggestions-homeroomTeacher">
+                    {(coworkerSuggestions.homeroomTeacher || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>{isKindergarten ? 'גננת שילוב:' : 'מורת שילוב:'}</label>
@@ -4070,7 +4165,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.integrationTeacher || ''}
                     onChange={(e) => handleFieldChange('integrationTeacher', e.target.value)}
                     placeholder={isKindergarten ? 'שם גננת השילוב' : 'שם מורת השילוב'}
+                    list="tala-suggestions-integrationTeacher"
                   />
+                  <datalist id="tala-suggestions-integrationTeacher">
+                    {(coworkerSuggestions.integrationTeacher || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>תומכת למידה:</label>
@@ -4080,7 +4181,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.learningSupportAssistant || ''}
                     onChange={(e) => handleFieldChange('learningSupportAssistant', e.target.value)}
                     placeholder="שם תומכת הלמידה / סייעת"
+                    list="tala-suggestions-learningSupportAssistant"
                   />
+                  <datalist id="tala-suggestions-learningSupportAssistant">
+                    {(coworkerSuggestions.learningSupportAssistant || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>יועצת:</label>
@@ -4090,7 +4197,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.counselorName || ''}
                     onChange={(e) => handleFieldChange('counselorName', e.target.value)}
                     placeholder="שם היועצת החינוכית"
+                    list="tala-suggestions-counselorName"
                   />
+                  <datalist id="tala-suggestions-counselorName">
+                    {(coworkerSuggestions.counselorName || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>פסיכולוגית:</label>
@@ -4100,7 +4213,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.psychologistName || ''}
                     onChange={(e) => handleFieldChange('psychologistName', e.target.value)}
                     placeholder="שם הפסיכולוג/ית"
+                    list="tala-suggestions-psychologistName"
                   />
+                  <datalist id="tala-suggestions-psychologistName">
+                    {(coworkerSuggestions.psychologistName || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>מתכללת מטעם המתי"א:</label>
@@ -4110,7 +4229,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.matyaCoordinator || ''}
                     onChange={(e) => handleFieldChange('matyaCoordinator', e.target.value)}
                     placeholder="שם מתכללת המתי״א"
+                    list="tala-suggestions-matyaCoordinator"
                   />
+                  <datalist id="tala-suggestions-matyaCoordinator">
+                    {(coworkerSuggestions.matyaCoordinator || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>מטפלת רגשית / באומנויות:</label>
@@ -4120,7 +4245,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.emotionalTherapist || ''}
                     onChange={(e) => handleFieldChange('emotionalTherapist', e.target.value)}
                     placeholder="שם המטפל/ת הרגשי/ת או באומנויות"
+                    list="tala-suggestions-emotionalTherapist"
                   />
+                  <datalist id="tala-suggestions-emotionalTherapist">
+                    {(coworkerSuggestions.emotionalTherapist || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>צוות פרא רפואי:</label>
@@ -4130,7 +4261,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.paraMedicalTeam || ''}
                     onChange={(e) => handleFieldChange('paraMedicalTeam', e.target.value)}
                     placeholder="קלינאית תקשורת, מרפאה בעיסוק..."
+                    list="tala-suggestions-paraMedicalTeam"
                   />
+                  <datalist id="tala-suggestions-paraMedicalTeam">
+                    {(coworkerSuggestions.paraMedicalTeam || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-field">
                   <label>שותפים נוספים לכתיבת התוכנית:</label>
@@ -4140,7 +4277,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     value={formData.additionalPartners || ''}
                     onChange={(e) => handleFieldChange('additionalPartners', e.target.value)}
                     placeholder="מורים מקצועיים, הורים, גורמי חוץ..."
+                    list="tala-suggestions-additionalPartners"
                   />
+                  <datalist id="tala-suggestions-additionalPartners">
+                    {(coworkerSuggestions.additionalPartners || []).map((val) => (
+                      <option key={val} value={val} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
             </div>

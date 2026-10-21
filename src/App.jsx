@@ -2501,6 +2501,7 @@ export default function App() {
               </div>
               <EcologicalWorkPlanForm
                 student={selectedStudent}
+                allStudents={students}
                 externalRevision={externalGoalsRevision}
                 goalBank={goalBank}
                 isAdmin={currentUser.role === 'admin'}
