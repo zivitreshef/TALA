@@ -26,9 +26,18 @@ export async function getClientIp() {
   if (clientIpPromise) return clientIpPromise;
 
   clientIpPromise = (async () => {
+    let timer = null;
     try {
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      if (controller) {
+        timer = setTimeout(() => {
+          try {
+            controller.abort();
+          } catch (_) {}
+        }, 2000);
+      }
       const res = await fetch('https://api.ipify.org?format=json', {
-        signal: AbortSignal.timeout(2000)
+        signal: controller ? controller.signal : undefined
       });
       if (res.ok) {
         const data = await res.json();
@@ -38,8 +47,9 @@ export async function getClientIp() {
         }
       }
     } catch (e) {
-      // Fallback if offline or blocked by ad-blocker
+      // Fallback if offline, ad-blocker, or unsupported
     } finally {
+      if (timer) clearTimeout(timer);
       clientIpPromise = null;
     }
     return 'IP לא זמין / רשת מקומית';

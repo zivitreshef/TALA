@@ -211,9 +211,9 @@ export default function App() {
   const handleUpdateUpgradeBanner = (nextBanner) => {
     setUpgradeBanner(nextBanner);
     if (nextBanner) {
-      localStorage.setItem(UPGRADE_BANNER_STORAGE_KEY, JSON.stringify(nextBanner));
+      safeSetStorageJson(UPGRADE_BANNER_STORAGE_KEY, nextBanner);
     } else {
-      localStorage.removeItem(UPGRADE_BANNER_STORAGE_KEY);
+      safeRemoveStorageItem(UPGRADE_BANNER_STORAGE_KEY);
     }
     saveSettingsToCloud({ upgradeBanner: nextBanner });
   };
@@ -249,14 +249,14 @@ export default function App() {
   const handleChangeEnforcePasswordPolicy = (enabled) => {
     const nextVal = Boolean(enabled);
     setEnforcePasswordPolicy(nextVal);
-    localStorage.setItem(PASSWORD_POLICY_STORAGE_KEY, String(nextVal));
+    safeSetStorageItem(PASSWORD_POLICY_STORAGE_KEY, String(nextVal));
     saveSettingsToCloud({ enforcePasswordPolicy: nextVal });
   };
 
   const handleSubmitAdminRequest = (newReq) => {
     setAdminRequests((prev) => {
       const next = [newReq, ...prev];
-      localStorage.setItem(ADMIN_REQUESTS_STORAGE_KEY, JSON.stringify(next));
+      safeSetStorageJson(ADMIN_REQUESTS_STORAGE_KEY, next);
       return next;
     });
     submitAdminRequestToCloud(newReq);
@@ -265,7 +265,7 @@ export default function App() {
   const handleDismissAdminRequest = (reqId) => {
     setAdminRequests((prev) => {
       const next = prev.filter((r) => r.id !== reqId);
-      localStorage.setItem(ADMIN_REQUESTS_STORAGE_KEY, JSON.stringify(next));
+      safeSetStorageJson(ADMIN_REQUESTS_STORAGE_KEY, next);
       saveAdminRequestsToCloud(next);
       return next;
     });
@@ -390,7 +390,7 @@ export default function App() {
 
 
   useEffect(() => {
-    localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(students));
+    safeSetStorageJson(STUDENTS_STORAGE_KEY, students);
   }, [students]);
 
   // Real-time Cloud Firestore Backend Subscription
@@ -496,22 +496,22 @@ export default function App() {
           ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
         }));
         setStudents(normalized);
-        localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify(normalized));
+        safeSetStorageJson(STUDENTS_STORAGE_KEY, normalized);
       },
       onSettingsChange: (settings) => {
 
         if (typeof settings?.enforcePasswordPolicy === 'boolean') {
           setEnforcePasswordPolicy(settings.enforcePasswordPolicy);
-          localStorage.setItem(
+          safeSetStorageItem(
             PASSWORD_POLICY_STORAGE_KEY,
             String(settings.enforcePasswordPolicy)
           );
         }
         if (Array.isArray(settings?.adminRequests)) {
           setAdminRequests(settings.adminRequests);
-          localStorage.setItem(
+          safeSetStorageJson(
             ADMIN_REQUESTS_STORAGE_KEY,
-            JSON.stringify(settings.adminRequests)
+            settings.adminRequests
           );
         }
         if (settings?.emailEngineConfig && typeof settings.emailEngineConfig === 'object') {
@@ -521,9 +521,9 @@ export default function App() {
         if (settings && 'upgradeBanner' in settings) {
           setUpgradeBanner(settings.upgradeBanner);
           if (settings.upgradeBanner) {
-            localStorage.setItem(UPGRADE_BANNER_STORAGE_KEY, JSON.stringify(settings.upgradeBanner));
+            safeSetStorageJson(UPGRADE_BANNER_STORAGE_KEY, settings.upgradeBanner);
           } else {
-            localStorage.removeItem(UPGRADE_BANNER_STORAGE_KEY);
+            safeRemoveStorageItem(UPGRADE_BANNER_STORAGE_KEY);
           }
         }
       },
@@ -653,7 +653,7 @@ export default function App() {
             : currentUser.dismissedSharedReportIds || []
         };
         setCurrentUser(syncedUser);
-        localStorage.setItem(SESSION_USER_KEY, JSON.stringify(syncedUser));
+        safeSetStorageJson(SESSION_USER_KEY, syncedUser);
       }
     }
   }, [allowedUsers]);
@@ -1151,9 +1151,9 @@ export default function App() {
         s.id === updated.id ? updated : s
       );
       setStudents(updatedStudents);
-      localStorage.setItem(
+      safeSetStorageJson(
         STUDENTS_STORAGE_KEY,
-        JSON.stringify(updatedStudents)
+        updatedStudents
       );
       saveStudentToCloud(updated);
       (updated.goals || []).forEach((g) => {
