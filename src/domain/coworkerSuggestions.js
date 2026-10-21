@@ -19,8 +19,50 @@ export const COWORKER_FIELDS = [
 ];
 
 /**
+ * Builds a fast lookup map of user emails to their lowercase trimmed groups.
+ */
+function buildUserGroupMap(allowedUsers = []) {
+  const map = new Map();
+  if (Array.isArray(allowedUsers)) {
+    for (const u of allowedUsers) {
+      if (!u || !u.email) continue;
+      map.set(String(u.email).trim().toLowerCase(), String(u.group || '').trim().toLowerCase());
+    }
+  }
+  return map;
+}
+
+/**
+ * Checks if a student falls within the authorized scope of the current user:
+ * - If user has a group (e.g. מתי"א קרית שמונה): includes their own students + students from same group.
+ * - If user has NO group (independent teacher or unassigned): strictly includes ONLY their own or shared students.
+ */
+function isStudentInUserScope(st, currentUser, userGroupMap) {
+  if (!st) return false;
+  const myEmail = String(currentUser?.email || '').trim().toLowerCase();
+  const myGroup = String(currentUser?.group || '').trim().toLowerCase();
+
+  // If no user context provided (e.g. standalone test), accept all
+  if (!myEmail) return true;
+
+  const owner = String(st.ownerEmail || '').trim().toLowerCase();
+  const isMine =
+    (owner && owner === myEmail) ||
+    (Array.isArray(st.sharedWith) && st.sharedWith.some((e) => String(e).trim().toLowerCase() === myEmail));
+
+  if (myGroup) {
+    const ownerGroup = userGroupMap?.get(owner);
+    const inSameGroup = Boolean(ownerGroup && ownerGroup === myGroup);
+    return isMine || inSameGroup;
+  }
+
+  // Without a group, strictly limit to the user's own/shared students
+  return isMine;
+}
+
+/**
  * Extracts distinct coworker and educational framework suggestions per field
- * across all students of the teacher, and optionally matching colleagues from the same group.
+ * across authorized students of the teacher, and matching colleagues from the same group.
  *
  * @param {Array} allStudents - Roster of students available to the teacher
  * @param {Array} allowedUsers - Active directory users in the system
@@ -33,10 +75,12 @@ export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], 
     suggestions[field] = new Set();
   }
 
-  // 1. Harvest from all students (root + year reports + planType reports)
+  const userGroupMap = buildUserGroupMap(allowedUsers);
+
+  // 1. Harvest from students strictly scoped to this user and their group
   if (Array.isArray(allStudents)) {
     for (const st of allStudents) {
-      if (!st) continue;
+      if (!isStudentInUserScope(st, currentUser, userGroupMap)) continue;
 
       // Root fields
       for (const field of COWORKER_FIELDS) {
@@ -68,30 +112,31 @@ export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], 
     }
   }
 
-  // 2. Add registered colleagues from the same group/Matya to relevant role fields
+  // 2. Add registered colleagues from the SAME group/Matya to relevant role fields
   if (Array.isArray(allowedUsers)) {
     const myGroup = String(currentUser?.group || '').trim().toLowerCase();
-    const relevantUsers = allowedUsers.filter((u) => {
-      if (u.active === false) return false;
-      const uGroup = String(u.group || '').trim().toLowerCase();
-      // If current user belongs to a group, match strictly on group
-      return myGroup ? uGroup === myGroup : true;
-    });
+    // Only suggest registered directory users if the current user belongs to that group
+    if (myGroup) {
+      const relevantUsers = allowedUsers.filter((u) => {
+        if (u.active === false) return false;
+        const uGroup = String(u.group || '').trim().toLowerCase();
+        return uGroup === myGroup;
+      });
 
-    for (const u of relevantUsers) {
-      const name = String(u.name || '').trim();
-      const title = String(u.title || '').trim();
-      if (!name) continue;
+      for (const u of relevantUsers) {
+        const name = String(u.name || '').trim();
+        const title = String(u.title || '').trim();
+        if (!name) continue;
 
-      // Suggest for relevant specialized roles
-      if (title.includes('מתי"א') || title.includes('מתכלל') || title.includes('רכז')) {
-        suggestions.matyaCoordinator.add(name);
-      }
-      if (title.includes('שילוב') || title.includes('הוראה')) {
-        suggestions.integrationTeacher.add(name);
-      }
-      if (title.includes('מחנכ') || title.includes('גננת')) {
-        suggestions.homeroomTeacher.add(name);
+        if (title.includes('מתי"א') || title.includes('מתכלל') || title.includes('רכז')) {
+          suggestions.matyaCoordinator.add(name);
+        }
+        if (title.includes('שילוב') || title.includes('הוראה')) {
+          suggestions.integrationTeacher.add(name);
+        }
+        if (title.includes('מחנכ') || title.includes('גננת')) {
+          suggestions.homeroomTeacher.add(name);
+        }
       }
     }
   }
@@ -106,17 +151,23 @@ export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], 
 
 /**
  * Returns candidate students that have at least one coworker/framework field populated,
- * excluding the currently active student.
+ * strictly filtered by the current user's ownership and group scope.
  *
  * @param {Array} allStudents
  * @param {string|null} currentStudentId
+ * @param {Object|null} currentUser
+ * @param {Array} allowedUsers
  * @returns {Array<{id: string, name: string, schoolName: string, gradeClass: string}>}
  */
-export function getStudentsWithTeamData(allStudents = [], currentStudentId = null) {
+export function getStudentsWithTeamData(allStudents = [], currentStudentId = null, currentUser = null, allowedUsers = []) {
   if (!Array.isArray(allStudents)) return [];
+  const userGroupMap = buildUserGroupMap(allowedUsers);
+
   return allStudents
     .filter((st) => {
       if (!st || st.id === currentStudentId) return false;
+      if (!isStudentInUserScope(st, currentUser, userGroupMap)) return false;
+
       return COWORKER_FIELDS.some((field) => {
         const val = typeof st[field] === 'string' ? st[field].trim() : '';
         return Boolean(val);

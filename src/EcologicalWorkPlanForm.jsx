@@ -468,8 +468,8 @@ export default function EcologicalWorkPlanForm({
   );
 
   const studentsWithTeam = useMemo(
-    () => getStudentsWithTeamData(allStudents, student?.id),
-    [allStudents, student?.id]
+    () => getStudentsWithTeamData(allStudents, student?.id, currentUser, allowedUsers),
+    [allStudents, student?.id, currentUser, allowedUsers]
   );
 
   const AI_BUSY_STEPS = [
