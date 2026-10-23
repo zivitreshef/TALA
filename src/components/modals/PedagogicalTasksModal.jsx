@@ -158,8 +158,8 @@ ${studentsContext}
 ]`;
 
       const response = await callAiProxyEndpoint({
-        operation: 'customPrompt',
-        payload: { prompt, selectedDate },
+        operation: 'rawPrompt',
+        payload: { prompt },
         hints: { model: 'gemini-2.5-flash' }
       });
 
@@ -170,7 +170,14 @@ ${studentsContext}
         parsed = response.tasks;
       } else if (response?.raw) {
         const cleaned = response.raw.replace(/```json/gi, '').replace(/```/g, '').trim();
-        parsed = JSON.parse(cleaned);
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch (_) {}
+      } else if (typeof response === 'string') {
+        const cleaned = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch (_) {}
       }
 
       if (Array.isArray(parsed) && parsed.length > 0) {
