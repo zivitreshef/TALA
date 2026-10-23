@@ -107,19 +107,6 @@
   transform: translateY(-1px);
 }
 
-.btn-cal-outlook {
-  color: #0078d4;
-  border-color: #c7e0f4;
-  background: #fdfefe;
-}
-
-.btn-cal-outlook:hover {
-  background: #eff6fc;
-}
-
-.btn-cal-google {
-  color: #2b4c73;
-}
 
 .btn-cal-ics {
   background: #f3eefc;
@@ -1249,10 +1236,17 @@
   background: #3872ad;
 }
 
-/* Compact Collapse / Expand Button (+ / -) */
+/* Compact Collapse / Expand Button (+ / -) & Header Actions */
+.cal-header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .cal-collapse-btn-compact {
   width: 32px;
   height: 32px;
+  min-width: 32px;
   border-radius: 8px;
   background: #f4f7fc;
   border: 1px solid var(--border, #d3dff0);
