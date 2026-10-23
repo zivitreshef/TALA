@@ -7,7 +7,9 @@ import {
   buildAiGoalMatchPrompt,
   parseAiGoalMatchResponse,
   getIsraeliHolidayOrVacation,
-  getIsraeliHolidayInfo
+  getIsraeliHolidayInfo,
+  calculateDurationMinutes,
+  getEventBarThickness
 } from '../domain/dailyPedagogicalTracking.js';
 
 describe('dailyPedagogicalTracking domain tests', () => {
@@ -246,6 +248,31 @@ describe('dailyPedagogicalTracking domain tests', () => {
 
     it('returns null for standard school days', () => {
       expect(getIsraeliHolidayInfo('2026-11-15')).toBeNull();
+    });
+  });
+
+  describe('Duration and Event Bar Thickness calculation', () => {
+    it('calculates duration in minutes correctly', () => {
+      expect(calculateDurationMinutes('09:30', '10:15')).toBe(45);
+      expect(calculateDurationMinutes('10:00', '11:00')).toBe(60);
+      expect(calculateDurationMinutes('14:00', '14:30')).toBe(30);
+      expect(calculateDurationMinutes('15:00', '21:00')).toBe(360);
+    });
+
+    it('calculates proportional bar thickness based on timeframe', () => {
+      // <= 30 min -> 3px
+      expect(getEventBarThickness('10:00', '10:30')).toBe(3);
+      // 31-60 min -> 4.5px
+      expect(getEventBarThickness('09:30', '10:15')).toBe(4.5);
+      expect(getEventBarThickness('10:00', '11:00')).toBe(4.5);
+      // > 60 min -> 6px
+      expect(getEventBarThickness('15:00', '18:00')).toBe(6);
+      expect(getEventBarThickness('15:00', '21:00')).toBe(6);
+    });
+
+    it('defaults gracefully on empty or invalid inputs', () => {
+      expect(calculateDurationMinutes('', '')).toBe(45);
+      expect(getEventBarThickness('', '')).toBe(4.5);
     });
   });
 });

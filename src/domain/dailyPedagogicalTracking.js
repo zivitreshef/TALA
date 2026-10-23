@@ -293,3 +293,32 @@ export function parseAiGoalMatchResponse(aiResult) {
     explanation: raw.explanation || ''
   };
 }
+
+
+/**
+ * Calculates meeting/event duration in minutes from HH:mm start and end strings.
+ */
+export function calculateDurationMinutes(startTime = '', endTime = '') {
+  if (!startTime || !endTime) return 45;
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) return 45;
+  const startTotal = sh * 60 + sm;
+  let endTotal = eh * 60 + em;
+  if (endTotal < startTotal) {
+    endTotal += 24 * 60;
+  }
+  const diff = endTotal - startTotal;
+  return diff > 0 ? diff : 45;
+}
+
+/**
+ * Returns thickness in pixels (3 to 6px) for an event bar on the calendar day cell
+ * proportionally based on the meeting timeframe.
+ */
+export function getEventBarThickness(startTime = '', endTime = '') {
+  const duration = calculateDurationMinutes(startTime, endTime);
+  if (duration <= 30) return 3;
+  if (duration <= 60) return 4.5;
+  return 6;
+}
