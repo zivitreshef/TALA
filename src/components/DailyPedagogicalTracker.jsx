@@ -9,15 +9,11 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
-  ArrowRight,
-  ExternalLink,
   Download,
   X,
   Target,
-  FileText,
   UserCheck,
   ClipboardList,
-  Flame,
   Check
 } from 'lucide-react';
 import {
@@ -29,6 +25,7 @@ import {
   parseAiGoalMatchResponse
 } from '../domain/dailyPedagogicalTracking';
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
+import './DailyPedagogicalTracker.css';
 
 const ISRAELI_HOLIDAYS_2026 = {
   '2026-03-03': 'חופשת פורים',
@@ -286,13 +283,11 @@ export default function DailyPedagogicalTracker({
 
       const parsed = parseAiGoalMatchResponse(response);
       if (!parsed.matchedGoalId && activeStudentGoals.length > 0) {
-        // Fallback match to first goal if AI couldn't find exact id
         parsed.matchedGoalId = activeStudentGoals[0].id;
         parsed.matchedGoalTitle = activeStudentGoals[0].title;
       }
       setAiAnalysisResult(parsed);
     } catch (err) {
-      // Local graceful fallback if cloud proxy is offline
       const fallbackGoal = activeStudentGoals[0] || { id: 'g_default', title: 'התקדמות כללית' };
       setAiAnalysisResult({
         matchedGoalId: fallbackGoal.id,
@@ -426,31 +421,32 @@ export default function DailyPedagogicalTracker({
   const filteredEvents = events.filter((ev) => ev.date === selectedDate);
 
   return (
-    <div className="daily-pedagogical-tracker-view space-y-6" dir="rtl">
+    <div className="daily-tracker-container" dir="rtl">
       
       {/* Top Header & Fast Sync Toolbar */}
-      <div className="bg-white rounded-2xl p-4 md:p-5 border border-[#d3dff0] shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4a88c7] to-[#8b6fc0] text-white flex items-center justify-center font-bold text-lg shadow-sm">
+      <div className="tracker-top-header">
+        <div className="tracker-header-info">
+          <div className="tracker-header-avatar">
             ת
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-[#2b4c73]">מעקב יומי, משימות ולוח שנה</h1>
-              <span className="text-[11px] bg-purple-50 text-[#563d82] border border-[#b8a2e3] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+          <div className="tracker-header-title-box">
+            <h1>
+              <span>מעקב יומי, משימות ולוח שנה</span>
+              <span className="tracker-ai-pill">
                 <Sparkles size={12} />
                 שיוך יעדים ב-AI
               </span>
-            </div>
-            <p className="text-xs text-[#5c6f8c]">
+            </h1>
+            <p className="tracker-header-date">
               היום: {new Date().toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           </div>
         </div>
 
         {/* Calendar Sync Actions */}
-        <div className="flex items-center flex-wrap gap-2 text-xs">
+        <div className="tracker-header-actions">
           <button
+            type="button"
             onClick={() => {
               const url = createOutlook365CalendarUrl({
                 title: 'ועדת תל"א שנתית',
@@ -460,13 +456,14 @@ export default function DailyPedagogicalTracker({
               });
               window.open(url, '_blank');
             }}
-            className="bg-white hover:bg-slate-50 text-[#0078d4] border border-[#d3dff0] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all"
+            className="btn-cal-sync btn-cal-outlook"
             title="פתיחה מהירה בחשבון משרד החינוך"
           >
             Outlook 365
           </button>
 
           <button
+            type="button"
             onClick={() => {
               const url = createGoogleCalendarUrl({
                 title: 'שיעור פרטני תל"א',
@@ -476,14 +473,15 @@ export default function DailyPedagogicalTracker({
               });
               window.open(url, '_blank');
             }}
-            className="bg-white hover:bg-slate-50 text-[#2b4c73] border border-[#d3dff0] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all"
+            className="btn-cal-sync btn-cal-google"
           >
             Google Calendar
           </button>
 
           <button
+            type="button"
             onClick={handleDownloadIcs}
-            className="bg-[#f3eefc] hover:bg-[#e9e0f9] text-[#563d82] border border-[#b8a2e3] font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all"
+            className="btn-cal-sync btn-cal-ics"
           >
             <Download size={13} />
             קובץ .ics
@@ -491,8 +489,9 @@ export default function DailyPedagogicalTracker({
 
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl font-bold transition-all"
+              className="btn-cal-close"
             >
               חזרה לתיקי תלמידים
             </button>
@@ -501,100 +500,104 @@ export default function DailyPedagogicalTracker({
       </div>
 
       {/* Daily Pulse Scorecards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-[#d3dff0] shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs text-[#5c6f8c] font-medium block">משימות פדגוגיות להיום</span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-2xl font-bold text-[#2b4c73] num-tabular">
+      <div className="tracker-scorecards-grid">
+        <div className="tracker-scorecard">
+          <div className="scorecard-meta">
+            <span className="scorecard-label">משימות פדגוגיות להיום</span>
+            <div className="scorecard-stats-row">
+              <span className="scorecard-val">
                 {todos.filter((t) => t.date === todayStr && t.completed).length}
               </span>
-              <span className="text-xs text-[#5c6f8c]">
+              <span className="scorecard-sub">
                 מתוך {todos.filter((t) => t.date === todayStr).length} הושלמו
               </span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-[#eaf3fc] text-[#4a88c7] flex items-center justify-center font-bold">
-            <CheckCircle2 size={20} />
+          <div className="scorecard-icon-box icon-box-blue">
+            <CheckCircle2 size={22} />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#d3dff0] shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs text-[#5c6f8c] font-medium block">אירועים ביומן ליום הנבחר</span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-2xl font-bold text-emerald-600 num-tabular">
+        <div className="tracker-scorecard">
+          <div className="scorecard-meta">
+            <span className="scorecard-label">אירועים ביומן ליום הנבחר</span>
+            <div className="scorecard-stats-row">
+              <span className="scorecard-val" style={{ color: '#059669' }}>
                 {filteredEvents.length}
               </span>
-              <span className="text-xs text-emerald-700 font-semibold">
+              <span className="scorecard-sub" style={{ color: '#047857', fontWeight: 700 }}>
                 {selectedDate === todayStr ? 'היום' : selectedDate}
               </span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            <Clock size={20} />
+          <div className="scorecard-icon-box icon-box-green">
+            <Clock size={22} />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#d3dff0] shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs text-[#5c6f8c] font-medium block">פערי תצפית מעל 21 יום</span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-2xl font-bold text-amber-600 num-tabular">
+        <div className="tracker-scorecard">
+          <div className="scorecard-meta">
+            <span className="scorecard-label">פערי תצפית מעל 21 יום</span>
+            <div className="scorecard-stats-row">
+              <span className="scorecard-val" style={{ color: '#d97706' }}>
                 {observationGaps.length}
               </span>
-              <span className="text-xs text-amber-700 font-semibold">יעדים הדורשים תיעוד</span>
+              <span className="scorecard-sub" style={{ color: '#b45309', fontWeight: 700 }}>
+                יעדים הדורשים תיעוד
+              </span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-            <AlertTriangle size={20} />
+          <div className="scorecard-icon-box icon-box-amber">
+            <AlertTriangle size={22} />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-[#d3dff0] shadow-sm flex items-center justify-between">
-          <div>
-            <span className="text-xs text-[#5c6f8c] font-medium block">תלמידי שילוב פעילים</span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-2xl font-bold text-[#8b6fc0] num-tabular">
+        <div className="tracker-scorecard">
+          <div className="scorecard-meta">
+            <span className="scorecard-label">תלמידי שילוב פעילים</span>
+            <div className="scorecard-stats-row">
+              <span className="scorecard-val" style={{ color: '#8b6fc0' }}>
                 {students.length}
               </span>
-              <span className="text-xs text-[#563d82] font-semibold">בטיפולי השנה</span>
+              <span className="scorecard-sub" style={{ color: '#563d82', fontWeight: 700 }}>
+                בטיפולי השנה
+              </span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-[#f3eefc] text-[#8b6fc0] flex items-center justify-center font-bold">
-            <UserCheck size={20} />
+          <div className="scorecard-icon-box icon-box-purple">
+            <UserCheck size={22} />
           </div>
         </div>
       </div>
 
-      {/* Main 2-Column Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Main 2-Column Workspace Grid */}
+      <div className="tracker-main-grid">
         
-        {/* Left Column: Calendar & Agenda (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
+        {/* Column 1: Calendar & Agenda (5 cols) */}
+        <div className="tracker-column">
           
           {/* Calendar Card (Collapsible) */}
-          <div className="bg-white rounded-2xl p-5 border border-[#d3dff0] shadow-sm space-y-4">
+          <div className="tracker-card">
             
-            <div className="flex items-center justify-between pb-2 border-b border-[#e4ecf7]">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-[#2b4c73] flex items-center gap-1.5">
-                  <CalendarIcon size={16} className="text-[#4a88c7]" />
-                  {monthName} {calYear}
+            <div className="tracker-card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2 className="tracker-card-header-title">
+                  <CalendarIcon size={17} style={{ color: '#4a88c7' }} />
+                  <span>{monthName} {calYear}</span>
                 </h2>
                 {ISRAELI_HOLIDAYS_2026[selectedDate] && (
-                  <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+                  <span className="tracker-holiday-badge">
                     {ISRAELI_HOLIDAYS_2026[selectedDate]}
                   </span>
                 )}
               </div>
 
-              {/* Collapse / Expand Toggle Button */}
-              <div className="flex items-center gap-1.5">
+              {/* Collapse / Expand Toggle Button & Nav */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   type="button"
                   onClick={handleToggleCalendarCollapse}
-                  className="text-xs bg-[#f4f7fc] hover:bg-[#eaf3fc] text-[#2b4c73] font-bold px-2.5 py-1 rounded-lg border border-[#d3dff0] flex items-center gap-1 transition-all"
+                  className="cal-collapse-btn"
                   title="קפל או הרחב לוח שנה חודשי"
                 >
                   {isCalendarCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -602,25 +605,28 @@ export default function DailyPedagogicalTracker({
                 </button>
 
                 {!isCalendarCollapsed && (
-                  <div className="flex items-center gap-1">
+                  <div className="cal-month-nav">
                     <button
+                      type="button"
                       onClick={() => setCurrentMonthDate(new Date(calYear, calMonth - 1, 1))}
-                      className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs"
+                      className="cal-nav-arrow"
                     >
                       ›
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         setCurrentMonthDate(new Date());
                         setSelectedDate(todayStr);
                       }}
-                      className="text-xs bg-[#eaf3fc] text-[#4a88c7] font-bold px-2 py-1 rounded-lg"
+                      className="cal-nav-today"
                     >
                       היום
                     </button>
                     <button
+                      type="button"
                       onClick={() => setCurrentMonthDate(new Date(calYear, calMonth + 1, 1))}
-                      className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs"
+                      className="cal-nav-arrow"
                     >
                       ‹
                     </button>
@@ -629,16 +635,15 @@ export default function DailyPedagogicalTracker({
               </div>
             </div>
 
-            {/* Collapsed State: Sleek Weekly Focus Strip */}
+            {/* Collapsed State: Weekly Focus Strip */}
             {isCalendarCollapsed ? (
-              <div className="p-2.5 bg-[#f8fafc] border border-[#d3dff0] rounded-xl flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-medium">מיקוד ביום:</span>
-                <div className="flex items-center gap-1.5 font-bold">
+              <div className="cal-collapsed-strip">
+                <span className="strip-label">מיקוד ביום:</span>
+                <div className="strip-actions">
                   <button
+                    type="button"
                     onClick={() => setSelectedDate(todayStr)}
-                    className={`px-3 py-1 rounded-lg transition-all ${
-                      selectedDate === todayStr ? 'bg-[#2b4c73] text-white shadow-2xs' : 'bg-white text-slate-700 border'
-                    }`}
+                    className={`strip-today-btn ${selectedDate === todayStr ? 'active' : ''}`}
                   >
                     היום {todayStr.slice(8)}
                   </button>
@@ -646,14 +651,14 @@ export default function DailyPedagogicalTracker({
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="p-1 bg-white border border-[#d3dff0] rounded-lg text-xs font-bold text-[#2b4c73]"
+                    className="strip-date-picker"
                   />
                 </div>
               </div>
             ) : (
               /* Expanded State: Full Month Grid */
-              <div className="space-y-4">
-                <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-[#5c6f8c] pb-1">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="cal-weekdays-grid">
                   <span>א'</span>
                   <span>ב'</span>
                   <span>ג'</span>
@@ -663,11 +668,9 @@ export default function DailyPedagogicalTracker({
                   <span>ש'</span>
                 </div>
 
-                <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                <div className="cal-days-grid">
                   {Array.from({ length: firstDayOfWeek }).map((_, idx) => (
-                    <span key={`empty_${idx}`} className="p-2 text-slate-300">
-                      -
-                    </span>
+                    <div key={`empty_${idx}`} className="cal-day-cell day-empty" />
                   ))}
                   {Array.from({ length: daysInMonth }).map((_, idx) => {
                     const dayNum = idx + 1;
@@ -678,20 +681,13 @@ export default function DailyPedagogicalTracker({
 
                     return (
                       <button
+                        type="button"
                         key={dayStr}
                         onClick={() => setSelectedDate(dayStr)}
-                        className={`p-2 rounded-xl transition-all cursor-pointer relative flex flex-col items-center justify-center ${
-                          isSelected
-                            ? 'bg-[#2b4c73] text-white font-bold shadow-sm'
-                            : isToday
-                            ? 'bg-[#eaf3fc] text-[#4a88c7] font-bold'
-                            : 'hover:bg-slate-100 text-slate-700'
-                        }`}
+                        className={`cal-day-cell ${isSelected ? 'day-selected' : ''} ${isToday && !isSelected ? 'day-today' : ''}`}
                       >
                         <span>{dayNum}</span>
-                        {dayEvents.length > 0 && (
-                          <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isSelected ? 'bg-amber-300' : 'bg-[#4a88c7]'}`} />
-                        )}
+                        {dayEvents.length > 0 && <span className="cal-event-dot" />}
                       </button>
                     );
                   })}
@@ -700,54 +696,48 @@ export default function DailyPedagogicalTracker({
                 <button
                   type="button"
                   onClick={() => setShowScheduleModal(true)}
-                  className="w-full bg-[#f4f7fc] hover:bg-[#eaf3fc] text-[#2b4c73] border border-[#d3dff0] text-xs font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all"
+                  className="btn-open-schedule-modal"
                 >
-                  <Plus size={14} className="text-[#4a88c7]" />
-                  קבע פגישה / ועדת תל"א בלוח השנה
+                  <Plus size={15} style={{ color: '#4a88c7' }} />
+                  <span>קבע פגישה / ועדת תל"א בלוח השנה</span>
                 </button>
               </div>
             )}
           </div>
 
           {/* Agenda for Selected Date */}
-          <div className="bg-white rounded-2xl p-5 border border-[#d3dff0] shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-[#2b4c73] flex items-center gap-1.5 uppercase tracking-wider">
-                <Clock size={14} className="text-[#4a88c7]" />
-                לוח זמנים לתאריך: {selectedDate}
+          <div className="tracker-card">
+            <div className="tracker-card-header">
+              <h3 className="tracker-card-header-title">
+                <Clock size={16} style={{ color: '#4a88c7' }} />
+                <span>לוח זמנים לתאריך: {selectedDate}</span>
               </h3>
-              <span className="text-xs font-semibold text-[#4a88c7]">
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#4a88c7' }}>
                 {filteredEvents.length} אירועים
               </span>
             </div>
 
             {filteredEvents.length === 0 ? (
-              <p className="text-xs text-slate-400 p-2 text-center">אין אירועים מתוזמנים לתאריך זה.</p>
+              <div className="agenda-empty">אין אירועים מתוזמנים לתאריך זה.</div>
             ) : (
-              <div className="space-y-2.5 text-xs">
+              <div className="agenda-list">
                 {filteredEvents.map((ev) => (
-                  <div
-                    key={ev.id}
-                    className="p-3 bg-white border border-[#d3dff0] rounded-xl flex items-start justify-between gap-3 shadow-2xs"
-                  >
-                    <div className="flex items-start gap-2.5">
-                      <span
-                        className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                          ev.type === 'committee' ? 'bg-[#8b6fc0]' : 'bg-[#4a88c7]'
-                        }`}
-                      />
+                  <div key={ev.id} className="agenda-item">
+                    <div className="agenda-item-main">
+                      <span className={`agenda-type-dot ${ev.type === 'committee' ? 'type-committee' : 'type-lesson'}`} />
                       <div>
-                        <strong className="text-xs text-[#2b4c73] block leading-tight">
+                        <strong className="agenda-item-title">
                           {ev.startTime} - {ev.endTime} | {ev.title}
                         </strong>
-                        <span className="text-[11px] text-[#5c6f8c] block mt-0.5">
+                        <div className="agenda-item-sub">
                           תלמיד/ה: {ev.studentName} {ev.location ? `• ${ev.location}` : ''}
-                        </span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="agenda-sync-actions">
                       <button
+                        type="button"
                         onClick={() => {
                           const url = createOutlook365CalendarUrl({
                             title: `${ev.title} - ${ev.studentName}`,
@@ -757,12 +747,13 @@ export default function DailyPedagogicalTracker({
                           });
                           window.open(url, '_blank');
                         }}
-                        className="text-[11px] text-[#0078d4] bg-[#eaf3fc] px-2 py-1 rounded-md hover:underline font-bold whitespace-nowrap"
+                        className="btn-agenda-sync btn-agenda-outlook"
                       >
                         + Outlook 365
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => {
                           const url = createGoogleCalendarUrl({
                             title: `${ev.title} - ${ev.studentName}`,
@@ -772,7 +763,7 @@ export default function DailyPedagogicalTracker({
                           });
                           window.open(url, '_blank');
                         }}
-                        className="text-[11px] text-[#4a88c7] hover:underline font-bold whitespace-nowrap"
+                        className="btn-agenda-sync btn-agenda-google"
                       >
                         + Google
                       </button>
@@ -784,85 +775,74 @@ export default function DailyPedagogicalTracker({
           </div>
         </div>
 
-        {/* Right Column: Daily TODO + Goal Updater (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
+        {/* Column 2: Daily TODO + Goal Updater (7 cols) */}
+        <div className="tracker-column">
           
           {/* Daily TODO Checklist */}
-          <div className="bg-white rounded-2xl p-5 border border-[#d3dff0] shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="tracker-card">
+            <div className="tracker-card-header">
               <div>
-                <h2 className="text-sm font-bold text-[#2b4c73] flex items-center gap-2">
-                  <ClipboardList size={16} className="text-[#4a88c7]" />
-                  משימות TODO ליום הנבחר: {selectedDate}
+                <h2 className="tracker-card-header-title">
+                  <ClipboardList size={17} style={{ color: '#4a88c7' }} />
+                  <span>משימות TODO ליום הנבחר: {selectedDate}</span>
                 </h2>
-                <span className="text-xs text-[#5c6f8c]">המשימות מסונכרנות עם התאריכים בלוח השנה</span>
+                <p className="tracker-card-subtitle">המשימות מסונכרנות עם התאריכים בלוח השנה</p>
               </div>
-              <span className="text-xs font-bold text-[#4a88c7] bg-[#eaf3fc] px-2.5 py-1 rounded-lg">
+              <span className="todo-count-badge">
                 {filteredTodos.filter((t) => !t.completed).length} פתוחות
               </span>
             </div>
 
             {/* Add Task Form */}
-            <form onSubmit={handleAddTodo} className="flex items-center gap-2">
+            <form onSubmit={handleAddTodo} className="todo-add-form">
               <input
                 type="text"
                 placeholder="הוסיפי משימה פדגוגית..."
                 value={newTodoText}
                 onChange={(e) => setNewTodoText(e.target.value)}
-                className="w-full text-xs bg-[#f4f7fc] border border-[#d3dff0] rounded-xl px-3 py-2.5 focus:bg-white focus:outline-[#4a88c7] transition-all"
+                className="todo-input-text"
               />
               <input
                 type="date"
                 value={newTodoDate}
                 onChange={(e) => setNewTodoDate(e.target.value)}
-                className="text-xs bg-[#f4f7fc] border border-[#d3dff0] rounded-xl px-2 py-2 text-[#2b4c73] font-bold"
+                className="todo-input-date"
               />
-              <button
-                type="submit"
-                className="bg-[#4a88c7] text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shrink-0 hover:bg-[#3872ad]"
-              >
+              <button type="submit" className="btn-todo-add">
                 הוסף
               </button>
             </form>
 
             {/* Task Items */}
-            <div className="space-y-2 pt-1">
+            <div className="todo-list-items">
               {filteredTodos.length === 0 ? (
-                <p className="text-xs text-slate-400 p-2 text-center">אין משימות מתוזמנות ליום זה.</p>
+                <div className="agenda-empty">אין משימות מתוזמנות ליום זה.</div>
               ) : (
                 filteredTodos.map((todo) => (
-                  <div
-                    key={todo.id}
-                    className="p-3 bg-white border border-[#d3dff0] rounded-xl flex items-center justify-between text-xs"
-                  >
-                    <label className="flex items-center gap-2.5 cursor-pointer flex-grow">
+                  <div key={todo.id} className="todo-row">
+                    <label className="todo-label-group">
                       <input
                         type="checkbox"
                         checked={todo.completed}
                         onChange={() => handleToggleTodo(todo.id)}
-                        className="w-4 h-4 text-[#4a88c7] rounded border-slate-300"
+                        className="todo-checkbox"
                       />
-                      <span
-                        className={`font-bold ${
-                          todo.completed ? 'line-through text-slate-400' : 'text-[#24344d]'
-                        }`}
-                      >
+                      <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>
                         {todo.text}
                       </span>
                     </label>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="todo-meta-group">
                       {todo.time && (
-                        <span className="text-[10px] text-[#5c6f8c] bg-slate-100 px-2 py-0.5 rounded">
-                          {todo.time}
-                        </span>
+                        <span className="todo-time-pill">{todo.time}</span>
                       )}
                       <button
+                        type="button"
                         onClick={() => handleDeleteTodo(todo.id)}
-                        className="text-slate-400 hover:text-rose-500 p-1"
+                        className="btn-todo-delete"
                         title="מחק משימה"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
@@ -872,39 +852,30 @@ export default function DailyPedagogicalTracker({
           </div>
 
           {/* Dual-Mode Goal Updating & AI Free Text Note */}
-          <div className="bg-white rounded-2xl p-5 border border-[#d3dff0] shadow-sm space-y-4">
-            
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#e4ecf7]">
+          <div className="tracker-card">
+            <div className="tracker-card-header">
               <div>
-                <h3 className="text-sm font-bold text-[#2b4c73] flex items-center gap-1.5">
-                  <Target size={16} className="text-emerald-600" />
-                  עדכון יעדים ומעקב תצפיות יומי
+                <h3 className="tracker-card-header-title">
+                  <Target size={17} style={{ color: '#16a34a' }} />
+                  <span>עדכון יעדים ומעקב תצפיות יומי</span>
                 </h3>
-                <p className="text-xs text-[#5c6f8c]">עדכון ישיר של יעדי תל"א ללא צורך בכניסה לטופס המלא</p>
+                <p className="tracker-card-subtitle">עדכון ישיר של יעדי תל"א ללא צורך בכניסה לטופס המלא</p>
               </div>
 
               {/* Updater Mode Switcher */}
-              <div className="flex items-center bg-[#f4f7fc] p-1 rounded-xl border border-[#d3dff0] text-xs font-semibold">
+              <div className="mode-toggle-group">
                 <button
                   type="button"
                   onClick={() => setUpdaterMode('ai')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    updaterMode === 'ai'
-                      ? 'bg-white text-[#2b4c73] shadow-xs font-bold border border-[#d3dff0]'
-                      : 'text-[#5c6f8c]'
-                  }`}
+                  className={`btn-mode-toggle ${updaterMode === 'ai' ? 'active' : ''}`}
                 >
-                  <Sparkles size={12} className="inline ml-1" />
-                  תיעוד חופשי + AI
+                  <Sparkles size={13} />
+                  <span>תיעוד חופשי ב-AI</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setUpdaterMode('manual')}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    updaterMode === 'manual'
-                      ? 'bg-white text-[#2b4c73] shadow-xs font-bold border border-[#d3dff0]'
-                      : 'text-[#5c6f8c]'
-                  }`}
+                  className={`btn-mode-toggle ${updaterMode === 'manual' ? 'active' : ''}`}
                 >
                   יעד ממוקד ידני
                 </button>
@@ -912,15 +883,15 @@ export default function DailyPedagogicalTracker({
             </div>
 
             {/* Target Student Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#5c6f8c]">תלמיד/ה לעדכון:</span>
+            <div className="student-select-row">
+              <span className="student-select-label">תלמיד/ה לעדכון:</span>
               <select
                 value={targetStudentId}
                 onChange={(e) => {
                   setTargetBankStudentId(e.target.value);
                   setSelectedGoalId('');
                 }}
-                className="text-xs bg-[#f4f7fc] border border-[#d3dff0] rounded-xl px-3 py-1.5 font-bold text-[#2b4c73]"
+                className="student-dropdown"
               >
                 {students.map((st) => (
                   <option key={st.id} value={st.id}>
@@ -932,11 +903,11 @@ export default function DailyPedagogicalTracker({
 
             {/* MODE 1: AI FREE-TEXT OBSERVATION */}
             {updaterMode === 'ai' && (
-              <div className="space-y-3">
-                <div className="bg-gradient-to-br from-[#faf8ff] to-[#f3eefc] border border-[#b8a2e3] rounded-2xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <strong className="text-xs text-[#563d82]">תיעוד חופשי • ניתוח ושיוך אוטומטי ליעד</strong>
-                    <span className="text-[11px] text-[#5c6f8c]">כתבי מה קרה במפגש, ה-AI ידאג לשאר</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="ai-note-box">
+                  <div className="ai-note-header">
+                    <strong className="ai-note-title">תיעוד חופשי • ניתוח ושיוך אוטומטי ליעד</strong>
+                    <span className="ai-note-sub">כתבי מה קרה במפגש, ה-AI ידאג לשאר</span>
                   </div>
 
                   <textarea
@@ -944,18 +915,22 @@ export default function DailyPedagogicalTracker({
                     value={aiNoteText}
                     onChange={(e) => setAiNoteText(e.target.value)}
                     placeholder="למשל: היום בחצר איתי ניגש מיוזמתו לשחק בכדור עם שני חברים, והמתין לתורו ללא התפרצות..."
-                    className="w-full text-xs p-3 rounded-xl bg-white border border-[#d3dff0] focus:outline-[#8b6fc0] leading-relaxed"
+                    className="ai-note-textarea"
                   />
 
-                  {aiAnalysisError && <p className="text-xs text-rose-600 font-bold">{aiAnalysisError}</p>}
+                  {aiAnalysisError && (
+                    <div style={{ fontSize: '12px', color: '#dc2626', fontWeight: 700 }}>
+                      {aiAnalysisError}
+                    </div>
+                  )}
 
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-[11px] text-[#5c6f8c]">התצפית תיכנס ישירות להערכת המחצית של התלמיד</span>
+                  <div className="ai-note-footer">
+                    <span className="ai-note-tip">התצפית תיכנס ישירות להערכת המחצית של התלמיד</span>
                     <button
                       type="button"
                       disabled={isAnalyzingAi}
                       onClick={handleRunAiAnalysis}
-                      className="bg-gradient-to-r from-[#8b6fc0] to-[#7c65b8] hover:from-[#7c65b8] hover:to-[#6d56a8] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 shadow-sm transition-all disabled:opacity-50"
+                      className="btn-ai-analyze"
                     >
                       <Sparkles size={14} />
                       <span>{isAnalyzingAi ? 'מנתח ב-AI...' : 'נתח ושייך ליעד ב-AI'}</span>
@@ -965,47 +940,45 @@ export default function DailyPedagogicalTracker({
 
                 {/* AI Extracted Match Preview Card */}
                 {aiAnalysisResult && (
-                  <div className="bg-white border-2 border-emerald-400 rounded-2xl p-4 space-y-3 shadow-sm animate-fade-in">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">
-                          ✓
-                        </span>
+                  <div className="ai-match-card">
+                    <div className="ai-match-header">
+                      <div className="ai-match-success-badge">
+                        <span className="match-check-icon">✓</span>
                         <div>
-                          <span className="text-[11px] text-emerald-700 font-bold block">שויך בהצלחה ליעד:</span>
-                          <strong className="text-xs text-[#2b4c73]">
+                          <span style={{ fontSize: '11px', color: '#15803d', fontWeight: 700, display: 'block' }}>
+                            שויך בהצלחה ליעד:
+                          </span>
+                          <strong className="match-title">
                             {aiAnalysisResult.environment} • {aiAnalysisResult.matchedGoalTitle}
                           </strong>
                         </div>
                       </div>
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-bold">
-                        דיוק גבוה
-                      </span>
+                      <span className="match-confidence-badge">דיוק גבוה</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs bg-[#f8fafc] p-3 rounded-xl border border-slate-200">
+                    <div className="ai-match-details-grid">
                       <div>
-                        <span className="text-[#5c6f8c] block text-[11px]">רמת תיווך:</span>
-                        <strong className="text-[#2b4c73]">{aiAnalysisResult.observedSupportLevel}</strong>
+                        <span className="match-detail-label">רמת תיווך:</span>
+                        <strong className="match-detail-val">{aiAnalysisResult.observedSupportLevel}</strong>
                       </div>
                       <div>
-                        <span className="text-[#5c6f8c] block text-[11px]">המלצת התקדמות:</span>
-                        <strong className="text-emerald-600">+{aiAnalysisResult.suggestedProgressDelta}%</strong>
+                        <span className="match-detail-label">המלצת התקדמות:</span>
+                        <strong className="match-detail-val delta">+{aiAnalysisResult.suggestedProgressDelta}%</strong>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 pt-1">
+                    <div className="ai-match-actions">
                       <button
                         type="button"
                         onClick={() => setAiAnalysisResult(null)}
-                        className="text-xs text-slate-500 hover:text-slate-700 px-3 py-1.5"
+                        className="btn-match-cancel"
                       >
                         ביטול
                       </button>
                       <button
                         type="button"
                         onClick={handleApproveAiResult}
-                        className="bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs"
+                        className="btn-match-approve"
                       >
                         אישור ושמירה בתיק התלמיד ✓
                       </button>
@@ -1017,14 +990,16 @@ export default function DailyPedagogicalTracker({
 
             {/* MODE 2: MANUAL TARGET GOAL UPDATER */}
             {updaterMode === 'manual' && selectedGoal && (
-              <form onSubmit={handleSaveManualGoal} className="space-y-3 bg-[#faf8ff] rounded-2xl p-4 border border-[#b8a2e3]">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[11px] text-[#5c6f8c] block">יעד אקולוגי לבחירה:</span>
+              <form onSubmit={handleSaveManualGoal} className="manual-goal-form">
+                <div className="manual-goal-top-row">
+                  <div style={{ flexGrow: 1 }}>
+                    <span style={{ fontSize: '11.5px', color: '#5c6f8c', display: 'block', marginBottom: '3px' }}>
+                      יעד אקולוגי לבחירה:
+                    </span>
                     <select
                       value={selectedGoalId}
                       onChange={(e) => setSelectedGoalId(e.target.value)}
-                      className="text-xs bg-white border border-[#d3dff0] rounded-xl px-2.5 py-1.5 font-bold text-[#2b4c73] mt-1"
+                      className="manual-goal-select"
                     >
                       {activeStudentGoals.map((g) => (
                         <option key={g.id} value={g.id}>
@@ -1033,52 +1008,51 @@ export default function DailyPedagogicalTracker({
                       ))}
                     </select>
                   </div>
-                  <div className="text-left font-bold text-[#4a88c7]">
-                    <span className="text-sm num-tabular">{manualProgress}%</span>
-                    <span className="text-[11px] text-slate-400"> / {selectedGoal.targetProgress || 80}%</span>
+                  <div className="manual-progress-indicator">
+                    <span>{manualProgress}%</span>
+                    <span style={{ fontSize: '11.5px', color: '#94a3b8' }}> / {selectedGoal.targetProgress || 80}%</span>
                   </div>
                 </div>
 
                 {/* Progress Quick Increments */}
-                <div className="flex items-center gap-2">
+                <div className="manual-progress-track-row">
                   <button
                     type="button"
                     onClick={() => setManualProgress((p) => Math.max(0, p - 5))}
-                    className="px-2 py-1 bg-white text-slate-700 text-xs font-bold rounded-lg border border-[#d3dff0]"
+                    className="btn-progress-step"
                   >
                     -5%
                   </button>
-                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#4a88c7] rounded-full transition-all" style={{ width: `${manualProgress}%` }} />
+                  <div className="manual-progress-bar-bg">
+                    <div
+                      className="manual-progress-bar-fill"
+                      style={{ width: `${manualProgress}%` }}
+                    />
                   </div>
                   <button
                     type="button"
                     onClick={() => setManualProgress((p) => Math.min(100, p + 5))}
-                    className="px-2 py-1 bg-[#eaf3fc] text-[#4a88c7] text-xs font-bold rounded-lg border border-[#d3dff0]"
+                    className="btn-progress-step"
                   >
                     +5%
                   </button>
                   <button
                     type="button"
                     onClick={() => setManualProgress((p) => Math.min(100, p + 10))}
-                    className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200"
+                    className="btn-progress-step step-plus-green"
                   >
                     +10%
                   </button>
                 </div>
 
                 {/* Support Level Chips */}
-                <div className="flex flex-wrap gap-1.5 text-xs pt-1">
+                <div className="support-chips-row">
                   {SUPPORT_LEVELS.map((lvl) => (
                     <button
                       key={lvl}
                       type="button"
                       onClick={() => setManualSupportLevel(lvl)}
-                      className={`px-2.5 py-1 rounded-lg border transition-all ${
-                        manualSupportLevel === lvl
-                          ? 'border-[#4a88c7] bg-[#4a88c7] text-white font-bold'
-                          : 'border-[#d3dff0] bg-white text-[#5c6f8c]'
-                      }`}
+                      className={`support-chip ${manualSupportLevel === lvl ? 'active' : ''}`}
                     >
                       {lvl}
                     </button>
@@ -1086,18 +1060,15 @@ export default function DailyPedagogicalTracker({
                 </div>
 
                 {/* Note & Save */}
-                <div className="flex gap-2 pt-1">
+                <div className="manual-goal-save-row">
                   <input
                     type="text"
                     placeholder="הערת תצפית מהירה..."
                     value={manualNote}
                     onChange={(e) => setManualNote(e.target.value)}
-                    className="w-full text-xs bg-white border border-[#d3dff0] rounded-xl px-3 py-2"
+                    className="manual-note-input"
                   />
-                  <button
-                    type="submit"
-                    className="bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold px-4 py-2 rounded-xl shrink-0 shadow-xs"
-                  >
+                  <button type="submit" className="btn-manual-save">
                     שמור תיעוד
                   </button>
                 </div>
@@ -1106,8 +1077,8 @@ export default function DailyPedagogicalTracker({
 
             {/* Save Toast Feedback */}
             {saveToast && (
-              <div className="p-3 bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2 animate-fade-in">
-                <Check size={16} className="text-emerald-600" />
+              <div className="tracker-save-toast">
+                <Check size={17} style={{ color: '#16a34a' }} />
                 <span>{saveToast}</span>
               </div>
             )}
@@ -1117,25 +1088,28 @@ export default function DailyPedagogicalTracker({
 
       {/* Modal: Schedule Event / Meeting */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-xl border border-[#d3dff0]" dir="rtl">
-            <div className="flex items-center justify-between pb-2 border-b border-[#e4ecf7]">
-              <h3 className="text-sm font-bold text-[#2b4c73] flex items-center gap-1.5">
-                <CalendarIcon size={16} className="text-[#4a88c7]" />
-                קביעת אירוע חדש בלוח השנה
+        <div className="tracker-modal-overlay">
+          <div className="tracker-modal-card" dir="rtl">
+            <div className="modal-header-row">
+              <h3 className="modal-header-title">
+                <CalendarIcon size={17} style={{ color: '#4a88c7' }} />
+                <span>קביעת אירוע חדש בלוח השנה</span>
               </h3>
-              <button onClick={() => setShowScheduleModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button
+                type="button"
+                onClick={() => setShowScheduleModal(false)}
+                className="btn-modal-close"
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveScheduledEvent} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-[#5c6f8c] mb-1">סוג האירוע:</label>
+            <form onSubmit={handleSaveScheduledEvent} className="modal-form-fields">
+              <div className="modal-field-group">
+                <label>סוג האירוע:</label>
                 <select
                   value={newEventForm.type}
                   onChange={(e) => setNewEventForm({ ...newEventForm, type: e.target.value })}
-                  className="w-full p-2 bg-[#f4f7fc] border border-[#d3dff0] rounded-xl font-bold text-[#2b4c73]"
                 >
                   <option value="committee">ועדת תל"א / ועדת שילוב</option>
                   <option value="lesson">שיעור פרטני / תצפית שטח</option>
@@ -1143,22 +1117,20 @@ export default function DailyPedagogicalTracker({
                 </select>
               </div>
 
-              <div>
-                <label className="block font-bold text-[#5c6f8c] mb-1">כותרת האירוע:</label>
+              <div className="modal-field-group">
+                <label>כותרת האירוע:</label>
                 <input
                   type="text"
                   value={newEventForm.title}
                   onChange={(e) => setNewEventForm({ ...newEventForm, title: e.target.value })}
-                  className="w-full p-2 bg-[#f4f7fc] border border-[#d3dff0] rounded-xl text-[#2b4c73] font-bold"
                 />
               </div>
 
-              <div>
-                <label className="block font-bold text-[#5c6f8c] mb-1">תלמיד/ה משויך/ת:</label>
+              <div className="modal-field-group">
+                <label>תלמיד/ה משויך/ת:</label>
                 <select
                   value={newEventForm.studentId}
                   onChange={(e) => setNewEventForm({ ...newEventForm, studentId: e.target.value })}
-                  className="w-full p-2 bg-[#f4f7fc] border border-[#d3dff0] rounded-xl text-[#2b4c73]"
                 >
                   {students.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -1168,47 +1140,44 @@ export default function DailyPedagogicalTracker({
                 </select>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block font-bold text-[#5c6f8c] mb-1">תאריך:</label>
+              <div className="modal-grid-3">
+                <div className="modal-field-group">
+                  <label>תאריך:</label>
                   <input
                     type="date"
                     value={newEventForm.date}
                     onChange={(e) => setNewEventForm({ ...newEventForm, date: e.target.value })}
-                    className="w-full p-2 bg-[#f4f7fc] border border-[#d3dff0] rounded-xl text-[#2b4c73] font-bold"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-[#5c6f8c] mb-1">שעת התחלה:</label>
+                <div className="modal-field-group">
+                  <label>שעת התחלה:</label>
                   <input
                     type="time"
                     value={newEventForm.startTime}
                     onChange={(e) => setNewEventForm({ ...newEventForm, startTime: e.target.value })}
-                    className="w-full p-2 bg-[#f4f7fc] border border-[#d3dff0] rounded-xl text-[#2b4c73] font-bold"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-[#5c6f8c] mb-1">שעת סיום:</label>
+                <div className="modal-field-group">
+                  <label>שעת סיום:</label>
                   <input
                     type="time"
                     value={newEventForm.endTime}
                     onChange={(e) => setNewEventForm({ ...newEventForm, endTime: e.target.value })}
-                    className="w-full p-2 bg-[#f4f7fc] border border-[#d3dff0] rounded-xl text-[#2b4c73] font-bold"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#e4ecf7]">
+              <div className="modal-footer-row">
                 <button
                   type="button"
                   onClick={() => setShowScheduleModal(false)}
-                  className="px-3 py-1.5 text-xs text-slate-500"
+                  className="btn-modal-cancel"
                 >
                   ביטול
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#4a88c7] hover:bg-[#3872ad] text-white text-xs font-bold rounded-xl shadow-xs"
+                  className="btn-modal-submit"
                 >
                   שמור וקבע בלוח השנה ✓
                 </button>
