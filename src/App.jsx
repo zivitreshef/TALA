@@ -1900,258 +1900,177 @@ export default function App() {
         </div>
 
         <div className="tala-header-controls">
-          {/* Clear Home Button */}
-          <button
-            type="button"
-            className={`btn-header-bank ${selectedStudentId === null && !showDailyTracker ? 'btn-header-home-active' : ''}`}
-            onClick={() => {
-              setSelectedStudentId(null);
-              setShowDailyTracker(false);
-            }}
-            title="חזרה לדף הבית"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: 700,
-              background: selectedStudentId === null && !showDailyTracker ? '#eff6ff' : '#ffffff',
-              borderColor: selectedStudentId === null && !showDailyTracker ? '#2563eb' : '#cbd5e1',
-              color: selectedStudentId === null && !showDailyTracker ? '#1d4ed8' : '#1e293b',
-              boxShadow: selectedStudentId === null && !showDailyTracker ? '0 0 0 2px #bfdbfe' : 'none'
-            }}
-          >
-            <Home size={16} style={{ color: '#2563eb' }} />
-            <span>דף הבית</span>
-          </button>
-
-          {/* Daily Tracker Button */}
-          <button
-            type="button"
-            className={`btn-header-bank ${showDailyTracker && selectedStudentId === null ? 'btn-header-home-active' : ''}`}
-            onClick={() => {
-              setSelectedStudentId(null);
-              setShowDailyTracker(true);
-            }}
-            title="מעקב יומי, משימות פדגוגיות ולוח שנה"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontWeight: 700,
-              background: showDailyTracker && selectedStudentId === null ? '#f3eefc' : '#ffffff',
-              borderColor: showDailyTracker && selectedStudentId === null ? '#8b6fc0' : '#cbd5e1',
-              color: showDailyTracker && selectedStudentId === null ? '#563d82' : '#1e293b',
-              boxShadow: showDailyTracker && selectedStudentId === null ? '0 0 0 2px #d8b4fe' : 'none'
-            }}
-          >
-            <ClipboardList size={16} style={{ color: '#8b6fc0' }} />
-            <span>מעקב יומי ו-TODO</span>
-          </button>
-
-          <button
-            type="button"
-            className={`btn-header-bank ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
-            onClick={() => {
-              setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
-              setShowGoalBankOverview(true);
-              if (onboardingTourStep === 5) {
-                setOnboardingTourStep(6);
-              }
-            }}
-            style={{ position: 'relative' }}
-            title="צפה בדירוג שכיחות המטרות במאגר והוסף מטרות לתכנית התלמיד/ה"
-          >
-            {onboardingTourStep === 5 && (
-              <div className="onboarding-tour-arrow-box" style={{ top: '42px', right: '0' }}>
-                <span className="tour-arrow-anim">☝️</span>
-                <span>צעד 5: לחצי כאן לפתיחת מאגר המטרות הדינמי</span>
-              </div>
-            )}
-            <TrendingUp size={16} />
-            <span>מאגר מטרות דינמי</span>
-          </button>
-
-          <button
-            type="button"
-            className={`btn-header-bank ${
-              archivedUserStudents.length === 0 ? 'btn-header-disabled' : ''
-            }`}
-            disabled={archivedUserStudents.length === 0}
-            onClick={() => {
-              if (archivedUserStudents.length === 0) return;
-              if (!selectedArchivedStudentId && archivedUserStudents.length > 0) {
-                setSelectedArchivedStudentId(archivedUserStudents[0].id);
-              }
-              setShowArchiveModal(true);
-            }}
-            style={
-              archivedUserStudents.length === 0
-                ? { opacity: 0.45, cursor: 'not-allowed', filter: 'grayscale(1)' }
-                : undefined
-            }
-            title={
-              archivedUserStudents.length === 0
-                ? 'הארכיון ריק – אין תלמידים בארכיון'
-                : 'צפה בתלמידים שהועברו לארכיון ובדוחות שלהם'
-            }
-          >
-            <Archive size={16} />
-            <span>ארכיון ({archivedUserStudents.length})</span>
-          </button>
-
-          {currentUser.isTrialUser && (
+          {/* Zone 1: Main Workspaces Segmented Nav Bar */}
+          <nav className="header-nav-segment" aria-label="ניווט ראשי">
             <button
               type="button"
-              className="btn-header-bank"
-              onClick={() => setShowTrialUpgradeModal(true)}
-              title="מידע על תקופת הניסיון והסדרת מנוי שנתי (150 ₪ לשנה)"
-              style={{
-                position: 'relative',
-                background:
-                  trialRemainingDays !== null && trialRemainingDays <= 2
-                    ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
-                    : 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
-                color:
-                  trialRemainingDays !== null && trialRemainingDays <= 2
-                    ? '#92400e'
-                    : '#5b21b6',
-                borderColor:
-                  trialRemainingDays !== null && trialRemainingDays <= 2
-                    ? '#f59e0b'
-                    : '#8b5cf6',
-                fontWeight: 600
-              }}
-            >
-              <Sparkles size={16} />
-              <span>רכישת מנוי שנתי</span>
-              {trialRemainingDays !== null && trialRemainingDays <= 2 && (
-                <span
-                  style={{
-                    background: '#dc2626',
-                    color: '#ffffff',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    padding: '1px 6px',
-                    borderRadius: '999px',
-                    marginRight: '6px'
-                  }}
-                >
-                  {trialRemainingDays === 0
-                    ? 'היום!'
-                    : `נותרו ${trialRemainingDays} ימים`}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Unified Help & Support Hub */}
-          <button
-            type="button"
-            className="btn-header-bank"
-            onClick={() => setShowTrialUpgradeModal(true)}
-            title="מרכז עזרה, סרטון הדרכה, וואטסאפ ומשוב"
-            style={{
-              position: 'relative',
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-              color: '#166534',
-              borderColor: '#86efac',
-              fontWeight: 600
-            }}
-          >
-            <MessageCircle size={16} />
-            <span>עזרה</span>
-            {!currentUser.surveyCompleted && !currentUser.surveyDismissed && currentUser.role !== 'admin' && (
-              <span
-                style={{
-                  width: '7px',
-                  height: '7px',
-                  borderRadius: '50%',
-                  background: '#16a34a',
-                  display: 'inline-block',
-                  marginRight: '4px'
-                }}
-                title="ישנו שאלון משוב פתוח"
-              />
-            )}
-          </button>
-
-          {currentUser.role === 'admin' && (
-            <button
-              type="button"
-              className="btn-header-admin"
+              className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker ? 'active' : ''}`}
               onClick={() => {
-                setAdminModalInitialTab('users');
-                setShowAdminModal(true);
+                setSelectedStudentId(null);
+                setShowDailyTracker(false);
+              }}
+              title="חזרה לדף הבית"
+            >
+              <Home size={15} />
+              <span>דף הבית</span>
+            </button>
+
+            <button
+              type="button"
+              className={`header-nav-btn ${showDailyTracker && selectedStudentId === null ? 'active' : ''}`}
+              onClick={() => {
+                setSelectedStudentId(null);
+                setShowDailyTracker(true);
+              }}
+              title="מעקב יומי פדגוגי ולוח שנה"
+            >
+              <ClipboardList size={15} />
+              <span>מעקב יומי</span>
+            </button>
+
+            <button
+              type="button"
+              className={`header-nav-btn ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
+              onClick={() => {
+                setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
+                setShowGoalBankOverview(true);
+                if (onboardingTourStep === 5) {
+                  setOnboardingTourStep(6);
+                }
               }}
               style={{ position: 'relative' }}
+              title="מאגר מטרות דינמי"
             >
-              <ShieldCheck size={16} />
-              <span>ניהול משתמשים מורשים ({allowedUsers.filter((u) => u.active).length})</span>
-              {totalAdminAlerts > 0 && (
-                <span
-                  style={{
-                    background: '#dc2626',
-                    color: '#ffffff',
-                    borderRadius: '999px',
-                    padding: '1px 7px',
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    marginRight: '4px'
-                  }}
-                >
-                  🚨 {totalAdminAlerts}
-                </span>
+              {onboardingTourStep === 5 && (
+                <div className="onboarding-tour-arrow-box" style={{ top: '42px', right: '0' }}>
+                  <span className="tour-arrow-anim">☝️</span>
+                  <span>צעד 5: לחצי כאן לפתיחת מאגר המטרות הדינמי</span>
+                </div>
+              )}
+              <TrendingUp size={15} />
+              <span>מאגר מטרות</span>
+            </button>
+          </nav>
+
+          {/* Zone 2: Secondary Utilities (Archive, Help, Trial) */}
+          <div className="header-tools-group">
+            <button
+              type="button"
+              className={`header-tool-btn ${
+                archivedUserStudents.length === 0 ? 'disabled' : ''
+              }`}
+              disabled={archivedUserStudents.length === 0}
+              onClick={() => {
+                if (archivedUserStudents.length === 0) return;
+                if (!selectedArchivedStudentId && archivedUserStudents.length > 0) {
+                  setSelectedArchivedStudentId(archivedUserStudents[0].id);
+                }
+                setShowArchiveModal(true);
+              }}
+              title={
+                archivedUserStudents.length === 0
+                  ? 'הארכיון ריק – אין תלמידים בארכיון'
+                  : 'צפה בתלמידים שהועברו לארכיון'
+              }
+            >
+              <Archive size={15} />
+              <span>ארכיון</span>
+              <span className="header-badge-count">{archivedUserStudents.length}</span>
+            </button>
+
+            <button
+              type="button"
+              className="header-tool-btn"
+              onClick={() => setShowTrialUpgradeModal(true)}
+              title="מרכז עזרה, סרטון הדרכה, וואטסאפ ומשוב"
+            >
+              <MessageCircle size={15} />
+              <span>עזרה</span>
+              {!currentUser.surveyCompleted && !currentUser.surveyDismissed && currentUser.role !== 'admin' && (
+                <span className="header-alert-dot" title="ישנו שאלון משוב פתוח" />
               )}
             </button>
-          )}
 
-          <div
-            className="current-user-chip"
-            onClick={() => setShowSelfPasswordModal(true)}
-            title={
-              unreadSharedReports.length > 0
-                ? `יש לך ${unreadSharedReports.length} דו"חות משותפים חדשים – לחץ לצפייה ופתיחה`
-                : 'לחץ לצפייה בהתראות דו"חות משותפים ושינוי סיסמה אישית'
-            }
-            style={{ cursor: 'pointer', position: 'relative' }}
-          >
-            <UserCheck size={16} />
-            <div className="user-chip-text">
-              <strong>{currentUser.name}</strong>
-              <small>{currentUser.title}</small>
-            </div>
-            {currentUser.notifyOnSharedReport !== false && unreadSharedReports.length > 0 ? (
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  background: '#dc2626',
-                  color: '#ffffff',
-                  borderRadius: '999px',
-                  padding: '2px 7px',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  marginRight: '4px',
-                  boxShadow: '0 0 0 2px #fecaca'
-                }}
+            {currentUser.isTrialUser && (
+              <button
+                type="button"
+                className="header-tool-btn header-trial-btn"
+                onClick={() => setShowTrialUpgradeModal(true)}
+                title="מידע על תקופת הניסיון והסדרת מנוי שנתי"
               >
-                <Bell size={12} />
-                <span>{unreadSharedReports.length}</span>
-              </span>
-            ) : (
-              <KeyRound size={14} style={{ opacity: 0.75, marginRight: '4px' }} />
+                <Sparkles size={15} />
+                <span>מנוי שנתי</span>
+                {trialRemainingDays !== null && trialRemainingDays <= 2 && (
+                  <span className="header-trial-badge">
+                    {trialRemainingDays === 0
+                      ? 'היום!'
+                      : `נותרו ${trialRemainingDays} ימים`}
+                  </span>
+                )}
+              </button>
             )}
           </div>
 
-          <button
-            type="button"
-            className="btn-logout"
-            onClick={handleLogout}
-            title="התנתק מהמערכת"
-          >
-            <LogOut size={17} />
-          </button>
+          {/* Zone 3: User Profile & Admin Group */}
+          <div className="header-user-group">
+            {currentUser.role === 'admin' && (
+              <button
+                type="button"
+                className="header-tool-btn header-admin-btn"
+                onClick={() => {
+                  setAdminModalInitialTab('users');
+                  setShowAdminModal(true);
+                }}
+                title="ניהול משתמשים והרשאות מערכת"
+              >
+                <ShieldCheck size={15} />
+                <span>ניהול</span>
+                <span className="header-badge-count">{allowedUsers.filter((u) => u.active).length}</span>
+                {totalAdminAlerts > 0 && (
+                  <span className="header-admin-alert-badge">
+                    🚨 {totalAdminAlerts}
+                  </span>
+                )}
+              </button>
+            )}
+
+            <div
+              className="header-user-chip"
+              onClick={() => setShowSelfPasswordModal(true)}
+              title={
+                unreadSharedReports.length > 0
+                  ? `יש לך ${unreadSharedReports.length} דו"חות משותפים חדשים – לחץ לצפייה ופתיחה`
+                  : 'לחץ לצפייה בהתראות דו"חות משותפים ושינוי סיסמה אישית'
+              }
+              role="button"
+              tabIndex={0}
+            >
+              <div className="header-user-avatar">
+                {currentUser.name ? currentUser.name.trim().charAt(0) : <UserCheck size={13} />}
+              </div>
+              <div className="header-user-meta">
+                <strong className="header-user-name">{currentUser.name}</strong>
+                <span className="header-user-role">{currentUser.title || 'משתמש'}</span>
+              </div>
+              {currentUser.notifyOnSharedReport !== false && unreadSharedReports.length > 0 ? (
+                <span className="header-unread-badge">
+                  <Bell size={11} />
+                  <span>{unreadSharedReports.length}</span>
+                </span>
+              ) : (
+                <KeyRound size={13} className="header-key-icon" />
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="header-logout-btn"
+              onClick={handleLogout}
+              title="התנתק מהמערכת"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
       </header>
 
