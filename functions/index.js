@@ -4,7 +4,28 @@ if (!admin.apps.length) admin.initializeApp();
 const ALLOWED_OPERATIONS = new Set(["facilitate","applyAnswers","reverseEngineer","summary","eval","evalFull","statusReport","rawPrompt"]);
 const ALLOWED_MODELS = new Set(["gemini-2.5-flash","gemini-2.0-flash","gemini-1.5-flash"]);
 const OPERATION_LIMITS = {facilitate:{rpm:20,tpmWeight:1},applyAnswers:{rpm:20,tpmWeight:1},reverseEngineer:{rpm:6,tpmWeight:3},summary:{rpm:10,tpmWeight:2},eval:{rpm:20,tpmWeight:1},evalFull:{rpm:10,tpmWeight:2},statusReport:{rpm:6,tpmWeight:3},rawPrompt:{rpm:10,tpmWeight:1}};
-const INJECTION_PATTERNS=[/ignore\s+previous\s+instructions/i,/ignore\s+all\s+instructions/i,/disregard\s+previous/i,/you\s+are\s+now/i,/forget\s+your\s+instructions/i,/system\s*:\s*/i,/assistant\s*:\s*/i,/jailbreak/i,/role\s*=\s*(system|assistant|user)/i,/reveal\s+(system\s+prompt|api\s+key|secret)/i,/print\s+system\s+prompt/i,/output\s+raw/i,/<\s*script/i,/javascript\s*:/i,/data\s*:\s*text\/html/i];
+const INJECTION_PATTERNS=[
+  /ignore\s+(?:all\s+|previous\s+|system\s+)?instructions/i,
+  /disregard\s+(?:all\s+|previous\s+)?instructions/i,
+  /you\s+are\s+now\s+(?:a|an)?/i,
+  /forget\s+(?:all\s+|your\s+)?instructions/i,
+  /system\s*:\s*/i,
+  /assistant\s*:\s*/i,
+  /jailbreak/i,
+  /role\s*=\s*(?:system|assistant|user)/i,
+  /reveal\s+(?:system\s+prompt|api\s+key|secret|hidden)/i,
+  /print\s+(?:the\s+)?system\s+prompt/i,
+  /output\s+raw\s+prompt/i,
+  /output\s+raw/i,
+  /<\s*script/i,
+  /javascript\s*:/i,
+  /data\s*:\s*text\/html/i,
+  /התעלם\s+מ(?:כל\s+)?ההוראות\s+(?:הקודמות|הבסיסיות|של\s+המערכת)/i,
+  /(?:מחק|שכח)\s+את\s+(?:כל\s+)?(?:ההנחיות|ההוראות|הפרומפט)/i,
+  /(?:אתה\s+מעכשיו|פעל\s+כעת\s+בתור|הגדר\s+את\s+עצמך\s+כ)/i,
+  /(?:חשוף|הדפס|הצג)\s+את\s+(?:פרומפט\s+המערכת|הוראות\s+המערכת|מפתח\s+ה-?API)/i,
+  /עקוף\s+את\s+(?:ההגבלות|כללי\s+הבטיחות)/i
+];
 const PII_PATTERNS=[/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/,/05\d[-\s]?\d{7}/,/\b\d{9}\b/];
 function sanitizeText(input,maxLen){if(typeof input!=="string")return"";let s=input.replace(/\u0000/g,"").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,"");s=s.trim();if(maxLen&&s.length>maxLen)s=s.slice(0,maxLen);return s;}
 function containsInjection(text){if(!text)return false;return INJECTION_PATTERNS.some((re)=>re.test(text));}
