@@ -34,6 +34,7 @@ import {
   getEventBarThickness
 } from '../domain/dailyPedagogicalTracking';
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
+import HebrewDatePicker from './HebrewDatePicker';
 import './DailyPedagogicalTracker.css';
 
 const TIME_SLOTS = [
@@ -746,18 +747,11 @@ export default function DailyPedagogicalTracker({
               <div className="cal-collapsed-strip">
                 <span className="strip-label">מיקוד ביום:</span>
                 <div className="strip-actions">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDate(todayStr)}
-                    className={`strip-today-btn ${selectedDate === todayStr ? 'active' : ''}`}
-                  >
-                    היום {todayStr.slice(8)}
-                  </button>
-                  <input
-                    type="date"
+                  <HebrewDatePicker
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="strip-date-picker"
+                    onChange={setSelectedDate}
+                    showDayNav={true}
+                    ariaLabel="בחירת יום למיקוד"
                   />
                 </div>
               </div>
@@ -1032,11 +1026,11 @@ export default function DailyPedagogicalTracker({
                 onChange={(e) => setNewTodoText(e.target.value)}
                 className="todo-input-text"
               />
-              <input
-                type="date"
+              <HebrewDatePicker
                 value={newTodoDate}
-                onChange={(e) => setNewTodoDate(e.target.value)}
-                className="todo-input-date"
+                onChange={setNewTodoDate}
+                compact={true}
+                ariaLabel="בחירת תאריך למשימה"
               />
               <button type="submit" className="btn-todo-add">
                 הוסף
@@ -1447,11 +1441,10 @@ export default function DailyPedagogicalTracker({
               <div className="modal-date-and-time-section">
                 <div className="modal-field-group">
                   <label>תאריך הפגישה:</label>
-                  <input
-                    type="date"
+                  <HebrewDatePicker
                     value={newEventForm.date}
-                    onChange={(e) => setNewEventForm({ ...newEventForm, date: e.target.value })}
-                    className="modal-date-input"
+                    onChange={(d) => setNewEventForm({ ...newEventForm, date: d })}
+                    ariaLabel="בחירת תאריך לפגישה"
                   />
                 </div>
 

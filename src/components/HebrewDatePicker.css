@@ -1,0 +1,338 @@
+/* Hebrew Date Picker Styles */
+.hdp-root {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  font-family: inherit;
+}
+
+.hdp-nav-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 2px 4px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.hdp-step-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.hdp-step-btn:hover {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.hdp-today-chip {
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hdp-today-chip:hover {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.hdp-today-chip.is-active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.25);
+}
+
+.hdp-trigger-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.hdp-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.hdp-trigger-btn:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.hdp-trigger-btn.is-open {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  background: #ffffff;
+}
+
+.hdp-cal-icon {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.hdp-date-text {
+  white-space: nowrap;
+}
+
+.hdp-holiday-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.hdp-holiday-pill.pill-vacation {
+  background: #faf5ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+}
+
+.hdp-holiday-pill.pill-observance {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fef3c7;
+}
+
+.hdp-chevron-icon {
+  color: #94a3b8;
+  margin-inline-start: 4px;
+}
+
+/* Backdrop */
+.hdp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: transparent;
+}
+
+/* Floating Popover */
+.hdp-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1000;
+  width: 270px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.15), 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+  padding: 12px;
+  animation: hdpFadeIn 0.15s ease-out;
+}
+
+@keyframes hdpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.hdp-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.hdp-month-title {
+  font-size: 13.5px;
+  color: #1e293b;
+}
+
+.hdp-month-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.hdp-month-arrow:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Weekdays */
+.hdp-weekdays-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.hdp-weekday-col {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  padding: 3px 0;
+}
+
+.hdp-weekday-col.is-weekend {
+  color: #b45309;
+}
+
+/* Days Grid */
+.hdp-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.hdp-day-empty {
+  height: 28px;
+}
+
+.hdp-day-cell {
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.12s ease;
+  padding: 0;
+}
+
+.hdp-day-cell:hover:not(.is-selected) {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.hdp-day-cell.is-selected {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.hdp-day-cell.is-today:not(.is-selected) {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.hdp-day-cell.is-weekend:not(.is-selected):not(.is-today) {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.hdp-day-cell.is-vacation:not(.is-selected) {
+  background: #faf5ff;
+}
+
+.hdp-day-holiday-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 2px;
+}
+
+.hdp-day-holiday-dot.dot-vacation {
+  background: #a855f7;
+}
+
+.hdp-day-holiday-dot.dot-observance {
+  background: #f59e0b;
+}
+
+/* Popover Footer */
+.hdp-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.hdp-footer-today-btn {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #2563eb;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.hdp-footer-today-btn:hover {
+  background: #eff6ff;
+}
+
+.hdp-footer-close-btn {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.hdp-footer-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Compact mode */
+.hdp-compact .hdp-trigger-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+}
