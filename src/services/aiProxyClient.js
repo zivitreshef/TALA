@@ -2,6 +2,7 @@ import { getActiveFirebaseConfig, getFirebaseAuth } from '../firebaseBackend';
 import { incrementDailyQuotaCount } from '../allowedUsers';
 import { reportHealthEvent } from './healthTelemetry';
 import { HEALTH_EVENT_KINDS, buildPingResult } from '../domain/healthEvents.js';
+import { containsInjection } from '../domain/aiSecurityGuards.js';
 
 async function callDirectGeminiApi({ prompt, model = 'gemini-2.5-flash', apiKey }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -40,7 +41,7 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
   const localApiKey =
     typeof window !== 'undefined'
       ? localStorage.getItem('tala_gemini_api_key') || import.meta.env?.VITE_GEMINI_API_KEY
-      : '';
+      : (typeof globalThis !== 'undefined' && globalThis.localStorage ? globalThis.localStorage.getItem('tala_gemini_api_key') : '');
 
   const auth = getFirebaseAuth();
   const currentUser = auth?.currentUser;
@@ -108,8 +109,13 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
       }
     });
     if (localApiKey) {
-      console.info('[aiProxyClient] Using direct Gemini API call via saved Admin key...');
       const promptToUse = payload?.prompt || JSON.stringify(payload);
+      if (containsInjection(promptToUse)) {
+        const err = new Error('Prompt injection detected');
+        err.status = 400;
+        throw err;
+      }
+      console.info('[aiProxyClient] Using direct Gemini API call via saved Admin key...');
       const directResult = await callDirectGeminiApi({ prompt: promptToUse, model, apiKey: localApiKey });
       incrementDailyQuotaCount('ai');
       return directResult;
@@ -159,3 +165,24 @@ export async function pingAiProxy() {
   }
 }
 
+/**
+ * Starts scheduled client-side keep-alive pings to keep the Cloud Function warm
+ * without baseline static infrastructure costs ($0 baseline).
+ * Automatically pings once on call, then every `intervalMs`.
+ * @param {number} [intervalMs=540000] - Interval between pings in ms (default 9 min)
+ * @returns {Function} Cleanup function to stop keep-alive pings
+ */
+export function startAiProxyKeepAlive(intervalMs = 9 * 60 * 1000) {
+  // Fire once immediately
+  pingAiProxy().catch(() => {});
+
+  const intervalId = setInterval(() => {
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+      pingAiProxy().catch(() => {});
+    }
+  }, intervalMs);
+
+  return () => {
+    clearInterval(intervalId);
+  };
+}

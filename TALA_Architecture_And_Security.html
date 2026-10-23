@@ -392,7 +392,7 @@
     <div class="cover-body">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span class="slide-badge">מסמך ארכיטקטורה ואבטחת מידע • System Architecture &amp; Security Whitepaper</span>
-        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;" dir="ltr">TALA v1.0.65 • Security-First Design • 2026</span>
+        <span style="font-size: 13px; color: #94a3b8; font-weight: 600;" dir="ltr">TALA v2.0.1 • Security-First Design • 2026</span>
       </div>
 
       <div class="cover-hero">
@@ -407,7 +407,7 @@
         <div class="pillar-card">
           <span class="pillar-icon">🌐</span>
           <h4>GitHub SSL/TLS &amp; CDN</h4>
-          <p>תעודת SSL/TLS אוטומטית (HTTPS בלבד), פריסת CI/CD ב-OIDC, שער בדיקת נוכחות (<span dir="ltr">Presence Gate</span>) ו-105 בדיקות יחידה.</p>
+          <p>תעודת SSL/TLS אוטומטית (HTTPS בלבד), פריסת CI/CD ב-OIDC, שער בדיקת נוכחות (<span dir="ltr">Presence Gate</span>) ו-232 בדיקות יחידה אוטומטיות (22 סוויטות).</p>
         </div>
         <div class="pillar-card p-purple">
           <span class="pillar-icon">🔐</span>
@@ -499,7 +499,7 @@
 
           <rect x="780" y="52" width="215" height="68" rx="8" fill="#ffffff" stroke="#86efac" stroke-width="1.5" />
           <text x="887" y="72" fill="#14532d" font-size="12" font-weight="700" text-anchor="middle">GitHub Actions CI/CD Pipeline</text>
-          <text x="887" y="89" fill="#334155" font-size="10.5" text-anchor="middle">• 105 בדיקות יחידה (Vitest Gate)</text>
+          <text x="887" y="89" fill="#334155" font-size="10.5" text-anchor="middle">• 232 בדיקות יחידה (Vitest Gate)</text>
           <text x="887" y="105" fill="#334155" font-size="10.5" text-anchor="middle">• שער נוכחות (Presence Gate) + OIDC</text>
 
           <line x1="887" y1="120" x2="887" y2="142" stroke="#047857" stroke-width="2" marker-end="url(#arrowGreen)" />
@@ -588,7 +588,7 @@
       <div class="grid-4">
         <div class="feature-card emerald" style="padding: 10px 12px;">
           <h3 style="font-size: 13.5px;">1. שכבת GitHub &amp; SSL Edge</h3>
-          <p style="font-size: 11.5px;">אירוח סטטי על <strong>GitHub Pages CDN</strong> ב-<strong>SSL/TLS 1.3</strong>. פריסה אוטומטית רק לאחר מעבר <strong>105 בדיקות יחידה</strong> ובדיקת <strong>Presence Gate</strong> (אפס משתמשים פעילים).</p>
+          <p style="font-size: 11.5px;">אירוח סטטי על <strong>GitHub Pages CDN</strong> ב-<strong>SSL/TLS 1.3</strong>. פריסה אוטומטית רק לאחר מעבר <strong>232 בדיקות יחידה</strong> ובדיקת <strong>Presence Gate</strong> (אפס משתמשים פעילים).</p>
         </div>
         <div class="feature-card" style="padding: 10px 12px;">
           <h3 style="font-size: 13.5px;">2. שכבת לקוח ו-Offline PWA</h3>
@@ -798,23 +798,21 @@
           <ul class="feature-list">
             <li><strong>הרשאות מינימליות ואימות OIDC:</strong> ה-Workflow פועל עם טוקן זמני (OpenID Connect) והרשאות <span class="code-tag">contents: read</span> ו-<span class="code-tag">pages: write</span> בלבד – ללא סודות קבועים.</li>
             <li><strong>שער בדיקת נוכחות פעילה (Presence Safety Gate):</strong> הסקריפט <span class="code-tag">npm run check-presence</span> בודק מול הענן שאין אנשי צוות פעילים ב-15 הדקות האחרונות לפני ביצוע מיזוג ופריסה.</li>
-            <li><strong>שער איכות אוטומטי (105 בדיקות יחידה):</strong> הפקודה <span class="code-tag">npm run test:run</span> מריצה <strong>105 בדיקות אוטומטיות</strong> ב-10 חבילות בדיקה (<span dir="ltr">Vitest</span>); כישלון בבדיקה עוצר את הפריסה מיידית.</li>
+            <li><strong>שער איכות אוטומטי (232 בדיקות יחידה):</strong> הפקודה <span class="code-tag">npm run test:run</span> מריצה <strong>232 בדיקות אוטומטיות</strong> ב-22 חבילות בדיקה (<span dir="ltr">Vitest</span>); כישלון בבדיקה עוצר את הפריסה מיידית.</li>
           </ul>
         </div>
 
         <!-- Card 3: Cloud Firestore Security Rules -->
         <div class="feature-card purple">
           <h3>
-            <span>☁️ פונקציות ענן וחוקי אבטחה (Cloud &amp; Rules)</span>
-            <span class="code-tag purple">firestore.rules</span>
+            <span>1. אימות שרת, פרוקסי AI, הגנת הזרקות ו-XSS (v2.0.1)</span>
+            <span class="code-tag purple">aiSecurityGuards.js</span>
           </h3>
-          <p>
-            בסיס הנתונים ושירותי ה-AI מוגנים בשכבת שרת ב-Google Cloud (<strong>AES-256 במנוחה</strong> + אימות חוקים):
-          </p>
           <ul class="feature-list">
-            <li><strong>אימות שרת ופרוקסי AI מוגן (<span dir="ltr">talaLogin &amp; aiGenerateV2</span>):</strong> אימות הסיסמאות והנפקת Custom Token מתבצעים בשרת. קריאות ל-Gemini עוברות דרך <span class="code-tag purple">aiGenerateV2</span> עם אימות Bearer JWT ובקרת מכסות ללא חשיפת מפתח ה-API.</li>
-            <li><strong>נעילת הגדרות ומשתמשים (<span dir="ltr">tala_config Lockdown</span>):</strong> קובץ <span class="code-tag">tala_config/allowed_users</span> נעול לקריאה ולכתיבה בצד הלקוח (Admin בלבד).</li>
-            <li><strong>בידוד תיקי תלמידים וטוקן הורים (<span dir="ltr">Scoped Access</span>):</strong> כרטיסי <span class="code-tag">tala_students</span> נגישים רק ל-<span class="code-tag">ownerEmail</span> או ל-<span class="code-tag">sharedWith</span>. אוסף <span class="code-tag">tala_invites</span> מאפשר להורים גישה נקודתית לטוקן חד-פעמי בלבד.</li>
+            <li><strong>סינון הזרקות פקודות AI דו-לשוני (<span dir="ltr">aiSecurityGuards.js</span>):</strong> מנוע רגקס קונטקסטואלי החוסם עקיפות מטא-הוראות בעברית ובאנגלית, תוך אפס התראות שווא על ניסוחי התנהגות כיתתיים ("הילד מתעלם מהוראות הצוות").</li>
+            <li><strong>בידוד קלטים בתגיות מבניות (<span dir="ltr">&lt;untrusted_teacher_notes&gt;</span>):</strong> תצפיות המורה נאטמות בתוך תגיות ייעודיות עם הנחיית פענוח פסיבי בלבד למניעת השפעה על פרומפט המערכת.</li>
+            <li><strong>חיטוי XSS בדוחות תל"א (<span dir="ltr">DOMPurify</span>):</strong> ניקוי קפדני של פלט HTML המחולל על ידי AI המגן מפני סקריפטים ו-XSS תוך שימור 100% מעיצובי ה-CSS המודפסים וגרפיקת SVG.</li>
+            <li><strong>פרוקסי AI מאובטח ושמירת חום (<span dir="ltr">aiProxyClient.js</span>):</strong> מפתח מוסתר ב-Secret Manager, אימות Bearer JWT, מכסות שימוש, ושמירת חום Client-side Pings ללא עלות ענן קבועה ($0).</li>
           </ul>
         </div>
       </div>
@@ -894,13 +892,13 @@
         <!-- Card 4: Domain Isolation, Factual AI & Automated Verification -->
         <div class="feature-card amber">
           <h3>
-            <span>4. אכיפת הרשאות ב-Domain, הגנת תצפיות ו-105 בדיקות</span>
+            <span>4. אכיפת הרשאות ב-Domain, הגנת תצפיות ו-232 בדיקות</span>
             <span class="code-tag">domain/permissions.js</span>
           </h3>
           <ul class="feature-list">
             <li><strong>הפרדת הרשאות קשיחה בקוד (<span dir="ltr">Single Source of Truth</span>):</strong> פונקציות <span class="code-tag">canViewStudent</span>, <span class="code-tag">canDeleteStudent</span> ו-<span class="code-tag">canLockReport</span> מוודאות שרק היוצר המקורי (<span class="code-tag">ownerEmail</span>) רשאי לנעול, לארכב, לשתף או למחוק.</li>
             <li><strong>הגנה על עריכות ותצפיות מפני דריסת AI:</strong> מטרות שנערכו ידנית או כוללות <strong>מיקרו-תצפיות כיתתיות</strong> (<span class="code-tag">goalObservations.js</span>) מוגנות אוטומטית מפני דריסה בעיבוד AI חוזר.</li>
-            <li><strong>105 בדיקות יחידה אוטומטיות (<span dir="ltr">10 Test Suites</span>):</strong> כיסוי מלא של גיבוב, הרשאות, השחרת PII, קול ההורים, גשר מנב"ס, תצפיות, מיזוג רב-מקצועי וקליטת אבחונים.</li>
+            <li><strong>232 בדיקות יחידה אוטומטיות (<span dir="ltr">22 Test Suites</span>):</strong> כיסוי מלא של גיבוב, הרשאות, השחרת PII, קול ההורים, גשר מנב"ס, תצפיות, מיזוג רב-מקצועי וקליטת אבחונים.</li>
           </ul>
         </div>
       </div>
@@ -972,8 +970,14 @@
           <tr>
             <td class="layer-col">6. קניין רוחני ואיכות קוד<br/><span style="font-size:10.5px; color:#64748b;">IP &amp; Code Integrity</span></td>
             <td class="threat-col">הפצה לא מורשית בגרסת ניסיון, דריסת תצפיות ע"י AI או שגיאות ריצה</td>
-            <td class="control-col">שער <strong>חתימה דיגיטלית על NDA</strong> למשתמשי ניסיון; הגנה על מיקרו-תצפיות ועריכות ידניות מפני דריסת AI; <span class="code-tag">ErrorBoundary</span>; ו-<strong>105 בדיקות יחידה אוטומטיות</strong> ב-CI.</td>
+            <td class="control-col">שער <strong>חתימה דיגיטלית על NDA</strong> למשתמשי ניסיון; הגנה על מיקרו-תצפיות ועריכות ידניות מפני דריסת AI; <span class="code-tag">ErrorBoundary</span>; ו-<strong>232 בדיקות יחידה אוטומטיות</strong> ב-CI.</td>
             <td class="code-col"><span class="code-tag">TrialNdaModal.jsx</span><br/><span class="code-tag">goalObservations.js • 10 Test Suites</span></td>
+          </tr>
+                  <tr>
+            <td class="layer-col">7. הגנת פרומפטים ופלט AI<br/><span style="font-size:10.5px; color:#64748b;">Prompt Injection &amp; XSS</span></td>
+            <td class="threat-col">הזרקת פקודות (Prompt Injection) בעברית/אנגלית, עקיפת מטרות פדגוגיות ומתקפת XSS בפלט HTML של דוחות תל"א</td>
+            <td class="control-col">בידוד קלטים בתגיות <strong>&lt;untrusted_teacher_notes&gt;</strong>, חסימת מטא-הוראות ב-<strong>aiSecurityGuards.js</strong> ללא פגיעה בתיאורי התנהגות כיתתיים, חיטוי פלט ב-<strong>DOMPurify</strong> ושמירת חום אפס-עלות ב-<strong>startAiProxyKeepAlive</strong>.</td>
+            <td class="code-col"><span class="code-tag purple">aiSecurityGuards.js</span><br/><span class="code-tag">IEPReportModal.jsx • DOMPurify</span></td>
           </tr>
         </tbody>
       </table>
@@ -986,7 +990,7 @@
           </div>
         </div>
         <span class="slide-badge" style="background: #ffffff; color: #0f172a; font-weight: 800;">
-          TALA v1.0.65 • Verified
+          TALA v2.0.1 • Verified
         </span>
       </div>
     </div>
