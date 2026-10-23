@@ -94,7 +94,7 @@ export default function HebrewDatePicker({
   return (
     <div className={`hdp-root ${compact ? 'hdp-compact' : ''}`} ref={containerRef} dir="rtl">
       {showDayNav && (
-        <div className="hdp-nav-group">
+        <div className="hdp-nav-group" dir="ltr">
           <button
             type="button"
             onClick={() => handleShiftDay(-1)}
@@ -102,7 +102,7 @@ export default function HebrewDatePicker({
             title="יום קודם"
             aria-label="יום קודם"
           >
-            <ChevronRight size={15} />
+            <ChevronLeft size={15} />
           </button>
 
           <button
@@ -121,7 +121,7 @@ export default function HebrewDatePicker({
             title="יום הבא"
             aria-label="יום הבא"
           >
-            <ChevronLeft size={15} />
+            <ChevronRight size={15} />
           </button>
         </div>
       )}
@@ -152,14 +152,15 @@ export default function HebrewDatePicker({
             <div className="hdp-backdrop" onClick={() => setIsOpen(false)} />
             <div className="hdp-popover" dir="rtl">
               {/* Header */}
-              <div className="hdp-popover-header">
+              <div className="hdp-popover-header" dir="ltr">
                 <button
                   type="button"
                   onClick={handlePrevMonth}
                   className="hdp-month-arrow"
                   title="חודש קודם"
+                  aria-label="חודש קודם"
                 >
-                  <ChevronRight size={16} />
+                  <ChevronLeft size={16} />
                 </button>
 
                 <div className="hdp-month-title">
@@ -171,8 +172,9 @@ export default function HebrewDatePicker({
                   onClick={handleNextMonth}
                   className="hdp-month-arrow"
                   title="חודש הבא"
+                  aria-label="חודש הבא"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronRight size={16} />
                 </button>
               </div>
 
