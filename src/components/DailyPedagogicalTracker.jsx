@@ -25,7 +25,8 @@ import {
   generateIcsFileContent,
   buildAiGoalMatchPrompt,
   parseAiGoalMatchResponse,
-  getIsraeliHolidayOrVacation
+  getIsraeliHolidayOrVacation,
+  getIsraeliHolidayInfo
 } from '../domain/dailyPedagogicalTracking';
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
 import './DailyPedagogicalTracker.css';
@@ -623,16 +624,22 @@ export default function DailyPedagogicalTracker({
           <div className="tracker-card">
             
             <div className="tracker-card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <h2 className="tracker-card-header-title">
                   <CalendarIcon size={17} style={{ color: '#4a88c7' }} />
                   <span>{monthName} {calYear}</span>
                 </h2>
-                {getIsraeliHolidayOrVacation(selectedDate) && (
-                  <span className="tracker-holiday-badge">
-                    {getIsraeliHolidayOrVacation(selectedDate)}
-                  </span>
-                )}
+                {(() => {
+                  const info = getIsraeliHolidayInfo(selectedDate);
+                  if (!info) return null;
+                  return (
+                    <span className={`tracker-holiday-badge ${info.isVacation ? 'badge-vacation' : 'badge-observance'}`}>
+                      <span>{info.isVacation ? '🏖️' : '🕯️'}</span>
+                      <span>{info.name}</span>
+                      <span className="badge-status-sub"> • {info.statusText}</span>
+                    </span>
+                  );
+                })()}
               </div>
 
               {/* Collapse / Expand Toggle Button & Nav */}
@@ -700,15 +707,15 @@ export default function DailyPedagogicalTracker({
               </div>
             ) : (
               /* Expanded State: Full Month Grid */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="cal-grid-wrapper" dir="ltr">
                 <div className="cal-weekdays-grid">
                   <span>א'</span>
                   <span>ב'</span>
                   <span>ג'</span>
                   <span>ד'</span>
                   <span>ה'</span>
-                  <span>ו'</span>
-                  <span>ש'</span>
+                  <span className="weekday-weekend">ו'</span>
+                  <span className="weekday-weekend">ש'</span>
                 </div>
 
                 <div className="cal-days-grid">
@@ -721,29 +728,37 @@ export default function DailyPedagogicalTracker({
                     const isSelected = dayStr === selectedDate;
                     const isToday = dayStr === todayStr;
                     const dayEvents = events.filter((e) => e.date === dayStr);
-                    const dayHoliday = getIsraeliHolidayOrVacation(dayStr);
-                    const isVacation = dayHoliday === 'החופש הגדול';
+                    const dayOfWeek = new Date(calYear, calMonth, dayNum).getDay();
+                    const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+                    const holidayInfo = getIsraeliHolidayInfo(dayStr);
+                    const isVacation = holidayInfo?.isVacation === true;
+                    const isObservance = holidayInfo && !holidayInfo.isVacation;
 
                     return (
                       <button
                         type="button"
                         key={dayStr}
                         onClick={() => setSelectedDate(dayStr)}
-                        className={`cal-day-cell ${isSelected ? 'day-selected' : ''} ${isToday && !isSelected ? 'day-today' : ''} ${dayHoliday ? 'day-holiday' : ''} ${isVacation ? 'day-vacation' : ''}`}
-                        title={dayHoliday ? `${dayStr} • ${dayHoliday}` : dayStr}
+                        className={`cal-day-cell ${isSelected ? 'day-selected' : ''} ${isToday && !isSelected ? 'day-today' : ''} ${isWeekend ? 'day-weekend' : ''} ${isVacation ? 'day-vacation' : ''} ${isObservance ? 'day-observance' : ''}`}
+                        title={holidayInfo ? `${dayStr} • ${holidayInfo.name} (${holidayInfo.statusText})` : dayStr}
                       >
-                        <span>{dayNum}</span>
-                        {dayEvents.length > 0 && (
+                        <div className="cal-day-cell-top">
+                          <span className="cal-day-num">{dayNum}</span>
+                          {dayEvents.length > 0 && (
+                            <span
+                              className="cal-event-dot"
+                              style={{ backgroundColor: dayEvents[0]?.color || '#4a88c7' }}
+                            />
+                          )}
+                        </div>
+
+                        {holidayInfo && (
                           <span
-                            className="cal-event-dot"
-                            style={{ backgroundColor: dayEvents[0]?.color || '#4a88c7' }}
-                          />
-                        )}
-                        {dayHoliday && (
-                          <span
-                            className={isVacation ? 'cal-vacation-dot' : 'cal-holiday-dot'}
-                            title={dayHoliday}
-                          />
+                            className={`cal-day-holiday-tag ${isVacation ? 'tag-vacation' : 'tag-observance'}`}
+                            title={`${holidayInfo.name} • ${holidayInfo.statusText}`}
+                          >
+                            {holidayInfo.shortName}
+                          </span>
                         )}
                       </button>
                     );

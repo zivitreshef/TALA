@@ -6,7 +6,8 @@ import {
   generateIcsFileContent,
   buildAiGoalMatchPrompt,
   parseAiGoalMatchResponse,
-  getIsraeliHolidayOrVacation
+  getIsraeliHolidayOrVacation,
+  getIsraeliHolidayInfo
 } from '../domain/dailyPedagogicalTracking.js';
 
 describe('dailyPedagogicalTracking domain tests', () => {
@@ -200,6 +201,51 @@ describe('dailyPedagogicalTracking domain tests', () => {
       expect(getIsraeliHolidayOrVacation('')).toBeNull();
       expect(getIsraeliHolidayOrVacation('invalid-date')).toBeNull();
       expect(getIsraeliHolidayOrVacation(12345)).toBeNull();
+    });
+  });
+
+  describe('getIsraeliHolidayInfo (Vacation vs Observance distinction)', () => {
+    it('accurately identifies school vacation days where students do not arrive to school', () => {
+      const sukkot = getIsraeliHolidayInfo('2026-09-28');
+      expect(sukkot).not.toBeNull();
+      expect(sukkot.isVacation).toBe(true);
+      expect(sukkot.statusText).toBe('אין לימודים');
+      expect(sukkot.shortName).toBe('סוכות');
+
+      const summer = getIsraeliHolidayInfo('2026-07-20');
+      expect(summer.isVacation).toBe(true);
+      expect(summer.statusText).toBe('אין לימודים');
+      expect(summer.shortName).toBe('חופש גדול');
+
+      const passover = getIsraeliHolidayInfo('2026-04-02');
+      expect(passover.isVacation).toBe(true);
+      expect(passover.statusText).toBe('אין לימודים');
+      expect(passover.shortName).toBe('פסח');
+
+      const independence = getIsraeliHolidayInfo('2026-04-22');
+      expect(independence.isVacation).toBe(true);
+      expect(independence.statusText).toBe('אין לימודים');
+    });
+
+    it('accurately identifies observance/memorial days where students DO arrive to school', () => {
+      const yomHaShoah = getIsraeliHolidayInfo('2026-04-14');
+      expect(yomHaShoah).not.toBeNull();
+      expect(yomHaShoah.isVacation).toBe(false);
+      expect(yomHaShoah.statusText).toBe('יש לימודים');
+      expect(yomHaShoah.shortName).toBe('יום השואה');
+
+      const tuBishvat = getIsraeliHolidayInfo('2026-02-02');
+      expect(tuBishvat.isVacation).toBe(false);
+      expect(tuBishvat.statusText).toBe('יש לימודים');
+      expect(tuBishvat.shortName).toBe('ט״ו בשבט');
+
+      const yomYerushalayim = getIsraeliHolidayInfo('2026-05-15');
+      expect(yomYerushalayim.isVacation).toBe(false);
+      expect(yomYerushalayim.statusText).toBe('יש לימודים');
+    });
+
+    it('returns null for standard school days', () => {
+      expect(getIsraeliHolidayInfo('2026-11-15')).toBeNull();
     });
   });
 });
