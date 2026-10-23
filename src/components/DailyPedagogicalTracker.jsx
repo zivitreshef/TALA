@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   Plus,
+  Minus,
   Trash2,
   Sparkles,
   ChevronDown,
@@ -22,26 +23,11 @@ import {
   createGoogleCalendarUrl,
   generateIcsFileContent,
   buildAiGoalMatchPrompt,
-  parseAiGoalMatchResponse
+  parseAiGoalMatchResponse,
+  getIsraeliHolidayOrVacation
 } from '../domain/dailyPedagogicalTracking';
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
 import './DailyPedagogicalTracker.css';
-
-const ISRAELI_HOLIDAYS_2026 = {
-  '2026-03-03': 'חופשת פורים',
-  '2026-03-04': 'חופשת פורים',
-  '2026-03-24': 'חופשת פסח',
-  '2026-04-08': 'חופשת פסח',
-  '2026-04-21': 'יום הזיכרון',
-  '2026-04-22': 'יום העצמאות',
-  '2026-05-05': 'ל"ג בעומר',
-  '2026-05-21': 'חופשת שבועות',
-  '2026-07-01': 'החופש הגדול',
-  '2026-08-31': 'החופש הגדול',
-  '2026-09-11': 'ראש השנה',
-  '2026-09-20': 'יום כיפור',
-  '2026-09-25': 'חופשת סוכות'
-};
 
 const SUPPORT_LEVELS = [
   'עצמאי לחלוטין',
@@ -585,9 +571,9 @@ export default function DailyPedagogicalTracker({
                   <CalendarIcon size={17} style={{ color: '#4a88c7' }} />
                   <span>{monthName} {calYear}</span>
                 </h2>
-                {ISRAELI_HOLIDAYS_2026[selectedDate] && (
+                {getIsraeliHolidayOrVacation(selectedDate) && (
                   <span className="tracker-holiday-badge">
-                    {ISRAELI_HOLIDAYS_2026[selectedDate]}
+                    {getIsraeliHolidayOrVacation(selectedDate)}
                   </span>
                 )}
               </div>
@@ -597,11 +583,11 @@ export default function DailyPedagogicalTracker({
                 <button
                   type="button"
                   onClick={handleToggleCalendarCollapse}
-                  className="cal-collapse-btn"
-                  title="קפל או הרחב לוח שנה חודשי"
+                  className="cal-collapse-btn-compact"
+                  title={isCalendarCollapsed ? 'הרחב לוח שנה חודשי' : 'קפל לוח שנה למיקוד יומי'}
+                  aria-label={isCalendarCollapsed ? 'הרחב לוח שנה חודשי' : 'קפל לוח שנה למיקוד יומי'}
                 >
-                  {isCalendarCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                  <span>{isCalendarCollapsed ? 'הרחב לוח מלא' : 'קפל לוח'}</span>
+                  {isCalendarCollapsed ? <Plus size={15} /> : <Minus size={15} />}
                 </button>
 
                 {!isCalendarCollapsed && (
@@ -678,16 +664,25 @@ export default function DailyPedagogicalTracker({
                     const isSelected = dayStr === selectedDate;
                     const isToday = dayStr === todayStr;
                     const dayEvents = events.filter((e) => e.date === dayStr);
+                    const dayHoliday = getIsraeliHolidayOrVacation(dayStr);
+                    const isVacation = dayHoliday === 'החופש הגדול';
 
                     return (
                       <button
                         type="button"
                         key={dayStr}
                         onClick={() => setSelectedDate(dayStr)}
-                        className={`cal-day-cell ${isSelected ? 'day-selected' : ''} ${isToday && !isSelected ? 'day-today' : ''}`}
+                        className={`cal-day-cell ${isSelected ? 'day-selected' : ''} ${isToday && !isSelected ? 'day-today' : ''} ${dayHoliday ? 'day-holiday' : ''} ${isVacation ? 'day-vacation' : ''}`}
+                        title={dayHoliday ? `${dayStr} • ${dayHoliday}` : dayStr}
                       >
                         <span>{dayNum}</span>
                         {dayEvents.length > 0 && <span className="cal-event-dot" />}
+                        {dayHoliday && (
+                          <span
+                            className={isVacation ? 'cal-vacation-dot' : 'cal-holiday-dot'}
+                            title={dayHoliday}
+                          />
+                        )}
                       </button>
                     );
                   })}

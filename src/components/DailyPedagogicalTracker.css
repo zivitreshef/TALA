@@ -1281,3 +1281,60 @@
 .btn-modal-submit:hover {
   background: #3872ad;
 }
+
+/* Compact Collapse / Expand Button (+ / -) */
+.cal-collapse-btn-compact {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f4f7fc;
+  border: 1px solid var(--border, #d3dff0);
+  color: var(--primary-deep, #2b4c73);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(43, 76, 115, 0.04);
+}
+
+.cal-collapse-btn-compact:hover {
+  background: #eaf3fc;
+  border-color: #b0c6e5;
+  color: #1e3a8a;
+  transform: translateY(-1px);
+}
+
+/* Israeli Holidays and Vacations Grid Styles */
+.cal-day-cell.day-holiday:not(.day-selected) {
+  background: #fffdf5;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.cal-day-cell.day-vacation:not(.day-selected) {
+  background: #faf5ff;
+  border-color: #f3e8ff;
+  color: #7e22ce;
+}
+
+.cal-holiday-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #d97706;
+  margin-top: 2px;
+}
+
+.cal-vacation-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #a855f7;
+  margin-top: 2px;
+}
+
+.day-selected .cal-holiday-dot,
+.day-selected .cal-vacation-dot {
+  background: #ffffff;
+}

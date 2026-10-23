@@ -3,6 +3,97 @@
  */
 
 /**
+ * Israeli Jewish and National Holidays & Vacations Registry.
+ * Covers multi-day vacations and national memorial/celebration days for 2024-2027.
+ * Annual Summer Vacation (החופש הגדול) is active every year from July 1 to August 31.
+ */
+export function getIsraeliHolidayOrVacation(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const parts = dateStr.trim().split('-');
+  if (parts.length !== 3) return null;
+
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  if (Number.isNaN(month) || Number.isNaN(day)) return null;
+
+  // 1. Summer Vacation (החופש הגדול) - July 1 to August 31 across all years
+  if (month === 7 || month === 8) {
+    return 'החופש הגדול';
+  }
+
+  // 2. Israeli Jewish and National Holidays & Vacations (2024 - 2027)
+  const holidayRanges = [
+    // 2024
+    { start: '2024-01-25', end: '2024-01-25', name: 'ט"ו בשבט' },
+    { start: '2024-03-23', end: '2024-03-25', name: 'חופשת פורים' },
+    { start: '2024-04-14', end: '2024-04-30', name: 'חופשת פסח' },
+    { start: '2024-05-06', end: '2024-05-06', name: 'יום הזיכרון לשואה ולגבורה' },
+    { start: '2024-05-13', end: '2024-05-13', name: 'יום הזיכרון לחללי צה"ל' },
+    { start: '2024-05-14', end: '2024-05-14', name: 'יום העצמאות' },
+    { start: '2024-05-26', end: '2024-05-26', name: 'ל"ג בעומר' },
+    { start: '2024-06-05', end: '2024-06-05', name: 'יום ירושלים' },
+    { start: '2024-06-11', end: '2024-06-13', name: 'חופשת שבועות' },
+    { start: '2024-10-02', end: '2024-10-04', name: 'ראש השנה' },
+    { start: '2024-10-11', end: '2024-10-12', name: 'יום כיפור' },
+    { start: '2024-10-16', end: '2024-10-25', name: 'חופשת סוכות' },
+    { start: '2024-12-26', end: '2025-01-02', name: 'חופשת חנוכה' },
+
+    // 2025
+    { start: '2025-02-13', end: '2025-02-13', name: 'ט"ו בשבט' },
+    { start: '2025-03-13', end: '2025-03-16', name: 'חופשת פורים' },
+    { start: '2025-04-05', end: '2025-04-20', name: 'חופשת פסח' },
+    { start: '2025-04-24', end: '2025-04-24', name: 'יום הזיכרון לשואה ולגבורה' },
+    { start: '2025-04-30', end: '2025-04-30', name: 'יום הזיכרון לחללי צה"ל' },
+    { start: '2025-05-01', end: '2025-05-01', name: 'יום העצמאות' },
+    { start: '2025-05-16', end: '2025-05-16', name: 'ל"ג בעומר' },
+    { start: '2025-05-26', end: '2025-05-26', name: 'יום ירושלים' },
+    { start: '2025-06-01', end: '2025-06-03', name: 'חופשת שבועות' },
+    { start: '2025-09-22', end: '2025-09-24', name: 'ראש השנה' },
+    { start: '2025-10-01', end: '2025-10-02', name: 'יום כיפור' },
+    { start: '2025-10-06', end: '2025-10-15', name: 'חופשת סוכות' },
+    { start: '2025-12-15', end: '2025-12-22', name: 'חופשת חנוכה' },
+
+    // 2026
+    { start: '2026-02-02', end: '2026-02-02', name: 'ט"ו בשבט' },
+    { start: '2026-03-02', end: '2026-03-05', name: 'חופשת פורים' },
+    { start: '2026-03-24', end: '2026-04-09', name: 'חופשת פסח' },
+    { start: '2026-04-14', end: '2026-04-14', name: 'יום הזיכרון לשואה ולגבורה' },
+    { start: '2026-04-21', end: '2026-04-21', name: 'יום הזיכרון לחללי צה"ל' },
+    { start: '2026-04-22', end: '2026-04-22', name: 'יום העצמאות' },
+    { start: '2026-05-05', end: '2026-05-05', name: 'ל"ג בעומר' },
+    { start: '2026-05-15', end: '2026-05-15', name: 'יום ירושלים' },
+    { start: '2026-05-21', end: '2026-05-23', name: 'חופשת שבועות' },
+    { start: '2026-09-11', end: '2026-09-13', name: 'ראש השנה' },
+    { start: '2026-09-20', end: '2026-09-21', name: 'יום כיפור' },
+    { start: '2026-09-25', end: '2026-10-05', name: 'חופשת סוכות' },
+    { start: '2026-12-04', end: '2026-12-12', name: 'חופשת חנוכה' },
+
+    // 2027
+    { start: '2027-01-23', end: '2027-01-23', name: 'ט"ו בשבט' },
+    { start: '2027-03-22', end: '2027-03-25', name: 'חופשת פורים' },
+    { start: '2027-04-13', end: '2027-04-29', name: 'חופשת פסח' },
+    { start: '2027-05-04', end: '2027-05-04', name: 'יום הזיכרון לשואה ולגבורה' },
+    { start: '2027-05-11', end: '2027-05-11', name: 'יום הזיכרון לחללי צה"ל' },
+    { start: '2027-05-12', end: '2027-05-12', name: 'יום העצמאות' },
+    { start: '2027-05-25', end: '2027-05-25', name: 'ל"ג בעומר' },
+    { start: '2027-06-03', end: '2027-06-03', name: 'יום ירושלים' },
+    { start: '2027-06-10', end: '2027-06-12', name: 'חופשת שבועות' },
+    { start: '2027-10-01', end: '2027-10-03', name: 'ראש השנה' },
+    { start: '2027-10-10', end: '2027-10-11', name: 'יום כיפור' },
+    { start: '2027-10-15', end: '2027-10-24', name: 'חופשת סוכות' },
+    { start: '2027-12-24', end: '2027-12-31', name: 'חופשת חנוכה' }
+  ];
+
+  for (const item of holidayRanges) {
+    if (dateStr >= item.start && dateStr <= item.end) {
+      return item.name;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Calculates observation gaps for students' active goals.
  * Returns goals that have not had an observation within the threshold days.
  */

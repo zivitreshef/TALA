@@ -646,6 +646,15 @@ export default function TrialUpgradeModal({
                     תיעוד תצפיות בלחיצה אחת, הפקת דוחות אמצע וסוף שנה למנב"ס/משו"ב, והדפסה עם <strong>הגנת פרטיות</strong> (ראשי תיבות והסתרת ת.ז.) לוועדות.
                   </div>
                 </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '13px' }}>
+                    6️⃣ מעקב יומי, משימות ויומן פדגוגי מסונכרן
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                    ניהול משימות יומיות, לוח שנה עם חופשות משרד החינוך, סנכרון מהיר ל-Outlook 365 ול-Google Calendar, ועדכון התקדמות יעדים בטקסט חופשי באמצעות AI.
+                  </div>
+                </div>
               </div>
             </div>
           )}

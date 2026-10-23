@@ -30,6 +30,8 @@ import {
   Bell,
   MessageCircle,
   ArrowRight,
+  ArrowLeft,
+  Calendar,
   Home,
   ClipboardList
 } from 'lucide-react';
@@ -2510,42 +2512,23 @@ export default function App() {
                 <p>
                   כדי להתחיל לעבוד, בחרי האם ליצור תוכנית עבודה אקולוגית לתלמיד/ה חדש/ה או לפתוח תוכנית קיימת מתוך רשימת התלמידים שלך.
                 </p>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                    padding: '12px 18px',
-                    background: '#ffffff',
-                    border: '1.5px solid #d3dff0',
-                    borderRadius: '14px',
-                    marginTop: '14px',
-                    boxShadow: '0 2px 6px rgba(43, 76, 115, 0.04)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <ClipboardList size={22} style={{ color: '#4a88c7' }} />
-                    <div>
-                      <strong style={{ fontSize: '13.5px', color: '#2b4c73', display: 'block' }}>מעקב יומי, משימות ולוח שנה</strong>
-                      <span style={{ fontSize: '12px', color: '#5c6f8c' }}>סנכרון פגישות, משימות פדגוגיות להיום, ועדכון מהיר של יעדים ב-AI</span>
+                <div className="inside-landing-tracker-strip">
+                  <div className="tracker-strip-content">
+                    <div className="tracker-strip-icon-box">
+                      <Calendar size={18} />
+                    </div>
+                    <div className="tracker-strip-texts">
+                      <strong>מעקב יומי, משימות ולוח שנה</strong>
+                      <span>סנכרון פגישות, משימות פדגוגיות להיום, ועדכון מהיר של יעדים ב-AI</span>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowDailyTracker(true)}
-                    style={{
-                      background: '#4a88c7',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '10px',
-                      fontSize: '12.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
+                    className="tracker-strip-btn"
                   >
-                    כניסה למעקב היומי ⚡
+                    <span>כניסה למעקב</span>
+                    <ArrowLeft size={14} />
                   </button>
                 </div>
               </div>
@@ -2647,6 +2630,28 @@ export default function App() {
 
                       {/* Secondary Options Group */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn-inside-landing-primary"
+                          onClick={() => setShowDailyTracker(true)}
+                          style={{
+                            background: '#ffffff',
+                            color: '#2b4c73',
+                            border: '1.5px solid #cbd5e1',
+                            borderRadius: '10px',
+                            padding: '8px 14px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                          title="פתיחת מעקב יומי, משימות ולוח שנה פדגוגי"
+                        >
+                          <Calendar size={15} style={{ color: '#4a88c7' }} />
+                          <span>מעקב יומי ויומן</span>
+                        </button>
                         <button
                           type="button"
                           className="btn-inside-landing-primary"

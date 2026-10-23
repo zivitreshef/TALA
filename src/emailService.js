@@ -299,6 +299,12 @@ export function buildOnboardingInvitationHtml({
                   <strong>הגנת פרטיות, ייצוא ושליחה במייל:</strong> הפקת דוחות רשמיים להדפסה או שליחה ישירה במייל (Word / PDF) עם השחרת פרטים מזהים וראשי תיבות, ושמירה רב-שנתית בענן.
                 </td>
               </tr>
+              <tr>
+                <td style="padding:6px 0; vertical-align:top; width:26px; font-size:16px;">📅</td>
+                <td style="padding:6px 0;">
+                  <strong>מעקב יומי, משימות ולוח שנה מסונכרן:</strong> יומן פדגוגי עם חגי ישראל וחופשות, סנכרון ל-Outlook 365 ול-Google Calendar, ועדכון יעדים מהיר ב-AI.
+                </td>
+              </tr>
             </table>
           </div>
 
