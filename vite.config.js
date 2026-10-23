@@ -4,9 +4,9 @@ import pkg from './package.json' with { type: 'json' };
 
 function resolveSiteVersionFromGit() {
   if (process.env.VITE_APP_PR_NUMBER) {
-    return `1.0.${process.env.VITE_APP_PR_NUMBER}`;
+    return `2.0.${process.env.VITE_APP_PR_NUMBER}`;
   }
-  return pkg.version || '1.0.41';
+  return pkg.version || '2.0.1';
 }
 
 export default defineConfig({
