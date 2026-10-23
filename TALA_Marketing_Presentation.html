@@ -172,37 +172,37 @@
 
     .cover-pillars-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 14px;
-      margin: 20px 0;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+      margin: 18px 0;
     }
 
     .pillar-card {
       background: rgba(255, 255, 255, 0.12);
       border: 1.5px solid rgba(255, 255, 255, 0.28);
-      border-radius: 14px;
-      padding: 18px 15px;
+      border-radius: 12px;
+      padding: 14px 10px;
       text-align: center;
     }
 
     .pillar-icon {
-      font-size: 28px;
-      margin-bottom: 8px;
+      font-size: 26px;
+      margin-bottom: 6px;
       display: block;
     }
 
     .pillar-card h4 {
-      margin: 0 0 6px 0;
-      font-size: 16.5px;
+      margin: 0 0 5px 0;
+      font-size: 14.5px;
       font-weight: 700;
       color: #ffffff;
     }
 
     .pillar-card p {
       margin: 0;
-      font-size: 12.5px;
+      font-size: 11.5px;
       color: #e2e8f0;
-      line-height: 1.4;
+      line-height: 1.35;
     }
 
     /* Content Cards & Grids */
@@ -237,6 +237,10 @@
 
     .feature-card.amber {
       border-right-color: #d97706;
+    }
+
+    .feature-card.cyan {
+      border-right-color: #0284c7;
     }
 
     .feature-card h3 {
@@ -302,7 +306,7 @@
 
     .comp-table th, .comp-table td {
       border: 1.5px solid #cbd5e1;
-      padding: 11px 16px;
+      padding: 8px 14px;
       text-align: right;
     }
 
@@ -345,18 +349,23 @@
     <div class="cover-body">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span class="slide-badge">פתרון דיגיטלי ייעודי למתי"א ולצוותי חינוך מיוחד ושילוב בגנים ובבתי הספר</span>
-        <span style="font-size: 13.5px; color: #cbd5e1;" dir="ltr">תשפ"ו • 2026 • v1.0.65</span>
+        <span style="font-size: 13.5px; color: #cbd5e1;" dir="ltr">תשפ"ו • 2026 • v1.0.87</span>
       </div>
 
       <div class="cover-hero">
         <img src="./public/tala-logo.png" alt="TALA Logo" class="cover-logo" />
         <div class="cover-titles">
           <h1>מערכת TALA – תוכנית עבודה אקולוגית</h1>
-          <h3>הפלטפורמה החכמה לגני ילדים ולבתי ספר לבנייה, ניהול ומעקב רב-שנתי של תוכניות תל"א, תח"י, קליטת אבחונים, שיתוף הורים, דוחות הערכה ודו"חות מצב</h3>
+          <h3>הפלטפורמה החכמה לגני ילדים ולבתי ספר לקוקפיט יומי, משימות AI, תוכניות תל"א ותח"י, קליטת אבחונים, שיתוף הורים, דוחות הערכה וסנכרון יומנים</h3>
         </div>
       </div>
 
       <div class="cover-pillars-grid">
+        <div class="pillar-card">
+          <span class="pillar-icon">📅</span>
+          <h4>קוקפיט יומי ו-AI</h4>
+          <p>יומן פדגוגי מובנה עם חופשות משרד החינוך, סנכרון ל-Outlook/Google ומחולל משימות יומיות ב-AI</p>
+        </div>
         <div class="pillar-card">
           <span class="pillar-icon">🧠</span>
           <h4>קליטת אבחון ומאגר ב-AI</h4>
@@ -364,17 +373,17 @@
         </div>
         <div class="pillar-card">
           <span class="pillar-icon">👨‍👩‍👧</span>
-          <h4>קול ההורים ומיקרו-תצפיות</h4>
+          <h4>קול ההורים ותצפיות</h4>
           <p>קישור חד-פעמי להורים בנייד (WhatsApp) ותיעוד תצפיות מהיר של 10 שניות בכיתה ובגן</p>
         </div>
         <div class="pillar-card">
           <span class="pillar-icon">📋</span>
           <h4>3 דוחות + גשר למנב"ס</h4>
-          <p>תל"א/תח"י, הערכת מחצית/סוף שנה ודו"ח מצב ב-Word/PDF/מייל + העתקה נקייה למנב"ס/משו"ב</p>
+          <p>תל"א/תח"י, הערכת מחצית ודו"ח מצב ב-Word/PDF/מייל + העתקה נקייה למנב"ס/משו"ב</p>
         </div>
         <div class="pillar-card">
           <span class="pillar-icon">🤝</span>
-          <h4>צוות רב-מקצועי ורצף שנתי</h4>
+          <h4>צוות ורצף שנתי</h4>
           <p>שיוך מוביל/ת מטרה, מיזוג ענן ללא דריסות הדדיות, עבודה אופליין (PWA) וגלגול לשנה הבאה</p>
         </div>
         <div class="pillar-card">
@@ -386,19 +395,88 @@
 
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.22); padding-top: 14px; font-size: 13.5px; color: #e2e8f0;">
         <span>מותאם למודל האקולוגי של משרד החינוך (גני ילדים ובתי ספר) • פועל מכל דפדפן במחשב, בטאבלט ובסמארטפון (גם אופליין)</span>
-        <strong>שקף 1 מתוך 6</strong>
+        <strong>שקף 1 מתוך 7</strong>
       </div>
     </div>
   </section>
 
-  <!-- SLIDE 2: EASE OF USE, DIAGNOSTIC INTAKE, GOAL BANK & MICRO-OBSERVATIONS -->
+  <!-- SLIDE 2: DAILY PEDAGOGICAL COCKPIT, CALENDAR & AI FOCUS TASKS -->
   <section class="slide">
     <div class="stained-strip"></div>
     <div class="slide-header">
       <div class="slide-header-brand">
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
-          <h2>1. קליטת אבחונים ב-AI, מאגר מותאם לגן/בי"ס ותצפיות מהירות</h2>
+          <h2>1. קוקפיט פדגוגי יומי, יומן מפגשים חכם ומחולל משימות ב-AI</h2>
+          <p>סדר יום פדגוגי ממוקד, לוח שנה עברי מובנה עם חופשות משרד החינוך, סנכרון יומנים (Outlook/Google) ומשימות AI אישיות</p>
+        </div>
+      </div>
+      <span class="slide-badge">חדש ב-v1.0.87 • יומן פדגוגי • משימות AI • סנכרון ענן</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="grid-3">
+        <div class="feature-card">
+          <h3>📅 יומן פדגוגי מובנה ולוח עברי מודרני</h3>
+          <p>
+            ניהול סדר יום פדגוגי ישירות מתוך המערכת ללא צורך במעבר בין אפליקציות חיצוניות:
+          </p>
+          <ul class="feature-list">
+            <li><strong>תצוגת יום, שבוע וחודש מתקפלת:</strong> צפייה נוחה במפגשים, ישיבות צוות, הדרכות ומשימות יומיות עם פסי משך אופקיים וצבעי מיתוג.</li>
+            <li><strong>לוח חופשות משרד החינוך:</strong> זיהוי אוטומטי והבחנה ויזואלית ברורה בין חופשות רשמיות של משה"ח לבין ציוני מועד וימי זיכרון.</li>
+            <li><strong>בורר תאריכים עברי מותאם (HebrewDatePicker):</strong> ניווט חודשי מהיר, שמות ימים בעברית תקנית וממשק מודרני נקי המותאם לזרימת RTL.</li>
+          </ul>
+        </div>
+
+        <div class="feature-card purple">
+          <h3>🤖 מיקוד פדגוגי יומי ומחולל משימות ב-AI</h3>
+          <p>
+            הפיכת תוכנית התל"א/תח"י לפעולות יומיומיות ממוקדות בעזרת בינה מלאכותית:
+          </p>
+          <ul class="feature-list">
+            <li><strong>בחירת תלמידי מוקד ליום הנבחר:</strong> המורה או הגננת מסמנת בלחיצה באילו תלמידים ברצונה להתמקד היום מתוך כלל תלמידי המסגרת.</li>
+            <li><strong>הפקת משימות ממוקדות ב-AI:</strong> המערכת מנתחת את יעדי התלמיד, מוקדי הכוח, האתגרים וההיסטוריה, ומייצרת משימת עבודה מותאמת ואופרטיבית להיום.</li>
+            <li><strong>אינדיקציית Busy חיה ומשוב מיידי:</strong> אנימציית טעינה מיידית, חסינות שגיאות (Heuristic Fallback) וסגירה נקייה עם הודעת הצלחה.</li>
+          </ul>
+        </div>
+
+        <div class="feature-card emerald">
+          <h3>🔄 סנכרון יומנים מהיר וניהול זמנים מתקדם</h3>
+          <p>
+            קישוריות מלאה לכל היומנים המוסדיים והאישיים בלחיצת כפתור אחת:
+          </p>
+          <ul class="feature-list">
+            <li><strong>סנכרון ישיר ל-Outlook 365 ול-Google Calendar:</strong> ייצוא מיידי של מפגשי התלמידים עם זמנים ופרטים מסודרים ליומן המורה או הגננת.</li>
+            <li><strong>ייצוא קובץ iCal / ICS:</strong> תאימות מלאה ל-Apple Calendar ולכל תוכנת יומן מקומית או ארגונית.</li>
+            <li><strong>בורר שעות 24h מודרני:</strong> צ'יפים מהירים לקביעת משך מפגש (15, 30, 45, 60 דק') ופופאובר Ghost Actions אלגנטי לשמירה על שקט ויזואלי.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="highlight-banner">
+        <div>
+          <strong>⚡ שילוב מושלם בין תכנון אסטרטגי למעשה חינוכי יומיומי:</strong>
+          <div style="margin-top: 4px;">
+            היומן הפדגוגי אינו יומן טכני מנותק – הוא שואב מידע ישירות מיעדי התל"א של התלמידים, מתחבר ללוח השנה של משרד החינוך ומספק לצוות משימות ממוקדות מבוססות AI.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
+      <span>שקף 2 מתוך 7</span>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: EASE OF USE, DIAGNOSTIC INTAKE, GOAL BANK & MICRO-OBSERVATIONS -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="slide-header">
+      <div class="slide-header-brand">
+        <img src="./public/tala-logo.png" alt="TALA Logo" />
+        <div class="slide-header-title">
+          <h2>2. קליטת אבחונים ב-AI, מאגר מותאם לגן/בי"ס ותצפיות מהירות</h2>
           <p>עבודה חלקה מכל מכשיר (גם ללא קליטת אינטרנט) – פחות שעות של עיצוב טבלאות, יותר זמן לעבודה חינוכית</p>
         </div>
       </div>
@@ -455,18 +533,18 @@
 
     <div class="slide-footer">
       <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 2 מתוך 6</span>
+      <span>שקף 3 מתוך 7</span>
     </div>
   </section>
 
-  <!-- SLIDE 3: UNIFIED FORMAT, 3 OFFICIAL REPORTS & MINISTRY CLIPBOARD BRIDGE -->
+  <!-- SLIDE 4: UNIFIED FORMAT, 3 OFFICIAL REPORTS & MINISTRY CLIPBOARD BRIDGE -->
   <section class="slide">
     <div class="stained-strip"></div>
     <div class="slide-header">
       <div class="slide-header-brand">
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
-          <h2>2. פורמט פדגוגי אחיד, 3 דוחות רשמיים וגשר העתקה למנב"ס/משו"ב</h2>
+          <h2>3. פורמט פדגוגי אחיד, 3 דוחות רשמיים וגשר העתקה למנב"ס/משו"ב</h2>
           <p>שפה ארגונית ופדגוגית אחידה במתי"א – מתוכנית תל"א/תח"י, דרך הערכת מחצית/סוף שנה ועד דו"ח מצב והדבקה במנב"ס</p>
         </div>
       </div>
@@ -520,18 +598,18 @@
 
     <div class="slide-footer">
       <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 3 מתוך 6</span>
+      <span>שקף 4 מתוך 7</span>
     </div>
   </section>
 
-  <!-- SLIDE 4: INFORMATION SECURITY & PRIVACY -->
+  <!-- SLIDE 5: INFORMATION SECURITY & PRIVACY -->
   <section class="slide">
     <div class="stained-strip"></div>
     <div class="slide-header">
       <div class="slide-header-brand">
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
-          <h2>3. אבטחת מידע ברמת שרת והגנה קפדנית על פרטיות הקטין</h2>
+          <h2>4. אבטחת מידע ברמת שרת והגנה קפדנית על פרטיות הקטין</h2>
           <p>תכנון מובנה לשמירה על חיסיון רפואי ופדגוגי בענן, בהדפסה, בהעתקה למנב"ס, בקישור להורים ובניהול המשתמשים</p>
         </div>
       </div>
@@ -567,25 +645,25 @@
       <div class="highlight-banner">
         <div>
           <strong>🔒 שקט נפשי לצוות, להורים ולמנהלים:</strong>
-          <span>מגובה ב-105 בדיקות אבטחה ואיכות אוטומטיות – ניתן להפיק דוחות, לשתף צוות ולאסוף משוב מהורים תוך שמירה מוחלטת על פרטיות הקטין.</span>
+          <span>מגובה ב-220 בדיקות אבטחה, אינטגרציה ואיכות אוטומטיות – ניתן להפיק דוחות, לשתף צוות ולאסוף משוב מהורים תוך שמירה מוחלטת על פרטיות הקטין.</span>
         </div>
       </div>
     </div>
 
     <div class="slide-footer">
       <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 4 מתוך 6</span>
+      <span>שקף 5 מתוך 7</span>
     </div>
   </section>
 
-  <!-- SLIDE 5: MULTI-YEAR TRACKING, PARENT VOICE & MULTI-DISCIPLINARY TEAM -->
+  <!-- SLIDE 6: MULTI-YEAR TRACKING, PARENT VOICE & MULTI-DISCIPLINARY TEAM -->
   <section class="slide">
     <div class="stained-strip"></div>
     <div class="slide-header">
       <div class="slide-header-brand">
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
-          <h2>4. שער "קול ההורים", צוות רב-מקצועי ומעקב רב-שנתי</h2>
+          <h2>5. שער "קול ההורים", צוות רב-מקצועי ומעקב רב-שנתי</h2>
           <p>חיבור ההורים לתהליך החינוכי, חלוקת אחריות ברורה בצוות ללא דריסת נתונים, ורצף פדגוגי משנה לשנה</p>
         </div>
       </div>
@@ -628,19 +706,19 @@
 
     <div class="slide-footer">
       <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 5 מתוך 6</span>
+      <span>שקף 6 מתוך 7</span>
     </div>
   </section>
 
-  <!-- SLIDE 6: SUMMARY & COMPARISON -->
+  <!-- SLIDE 7: SUMMARY & COMPARISON -->
   <section class="slide">
     <div class="stained-strip"></div>
     <div class="slide-header">
       <div class="slide-header-brand">
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
-          <h2>5. סיכום: קפיצת מדרגה מקצועית למתי"א ולצוותי החינוך</h2>
-          <p>השוואה בין תהליך העבודה המסורתי לבין עבודה במערכת TALA (גרסה v1.0.65)</p>
+          <h2>6. סיכום: קפיצת מדרגה מקצועית למתי"א ולצוותי החינוך</h2>
+          <p>השוואה בין תהליך העבודה המסורתי לבין עבודה במערכת TALA (גרסה v1.0.87)</p>
         </div>
       </div>
       <span class="slide-badge">סיכום והטמעה</span>
@@ -656,6 +734,11 @@
           </tr>
         </thead>
         <tbody>
+          <tr>
+            <td class="topic-col">קוקפיט יומי, יומן ומשימות ב-AI</td>
+            <td class="old-col">ניהול מפוזר ביומני נייר, תזכורות נפרדות, חוסר סנכרון עם יעדי התל"א וקושי בקביעת מיקוד יומי</td>
+            <td class="new-col">יומן פדגוגי מובנה עם חופשות משרד החינוך, סנכרון Outlook/Google, ומחולל AI למשימות יומיות ממוקדות לפי יעדי התלמיד</td>
+          </tr>
           <tr>
             <td class="topic-col">כתיבת תוכנית וקליטת אבחונים</td>
             <td class="old-col">שעות של הקלדה ידנית, העתקה מסיכומי אבחונים ועיצוב טבלאות שמתפרקות</td>
@@ -692,14 +775,14 @@
           </div>
         </div>
         <span class="slide-badge" style="background: #ffffff; color: #2b4c7e; font-weight: 800;">
-          TALA v1.0.65 • מוכנה להטמעה
+          TALA v1.0.87 • מוכנה להטמעה
         </span>
       </div>
     </div>
 
     <div class="slide-footer">
       <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 6 מתוך 6</span>
+      <span>שקף 7 מתוך 7</span>
     </div>
   </section>
 
