@@ -1589,3 +1589,195 @@
   font-weight: 600;
   opacity: 0.88;
 }
+
+/* Event Count Badge in Day Cell */
+.cal-day-event-count {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 999px;
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Horizontal Meeting Bars Crossing Date Cell */
+.cal-day-event-bars {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5px;
+  margin-top: 3px;
+  margin-bottom: 2px;
+}
+
+.cal-event-horizontal-bar {
+  width: 100%;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+.cal-event-horizontal-bar:hover {
+  transform: scaleY(1.3);
+  filter: brightness(1.1);
+}
+
+.cal-more-events-tag {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #475569;
+  text-align: center;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.day-selected .cal-more-events-tag {
+  color: #ffffff;
+}
+
+/* Modern 24-hour Time Selector & Duration Chips */
+.modal-date-and-time-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f8faff;
+  border: 1px solid #d3dff0;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.modal-time-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-time-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #d3dff0);
+  background: #ffffff;
+  color: var(--text-main, #24344d);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.modal-time-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.duration-chips-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.duration-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.duration-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.duration-chip-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.duration-chip-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* Agenda Actions: Edit, Delete, and Sync */
+.agenda-actions-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.agenda-crud-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-agenda-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.btn-agenda-edit {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+.btn-agenda-edit:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-agenda-delete {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.btn-agenda-delete:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.btn-modal-delete-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #e11d48;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-modal-delete-inline:hover {
+  background: #ffe4e6;
+  border-color: #fda4af;
+  color: #be123c;
+}

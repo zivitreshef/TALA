@@ -6,6 +6,7 @@ import {
   Clock,
   Plus,
   Minus,
+  Pencil,
   Trash2,
   Sparkles,
   ChevronDown,
@@ -26,10 +27,33 @@ import {
   buildAiGoalMatchPrompt,
   parseAiGoalMatchResponse,
   getIsraeliHolidayOrVacation,
-  getIsraeliHolidayInfo
+  getIsraeliHolidayInfo,
+  calculateDurationMinutes,
+  getEventBarThickness
 } from '../domain/dailyPedagogicalTracking';
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
 import './DailyPedagogicalTracker.css';
+
+const TIME_SLOTS = [
+  '07:30', '08:00', '08:15', '08:30', '08:45',
+  '09:00', '09:15', '09:30', '09:45',
+  '10:00', '10:15', '10:30', '10:45',
+  '11:00', '11:15', '11:30', '11:45',
+  '12:00', '12:15', '12:30', '12:45',
+  '13:00', '13:15', '13:30', '13:45',
+  '14:00', '14:15', '14:30', '14:45',
+  '15:00', '15:30', '16:00', '16:30',
+  '17:00', '17:30', '18:00', '18:30',
+  '19:00', '19:30', '20:00', '20:30', '21:00'
+];
+
+function addMinutesToTime(timeStr, minutesToAdd) {
+  const [h, m] = (timeStr || '09:00').split(':').map(Number);
+  const total = (h * 60 + m + minutesToAdd) % (24 * 60);
+  const newH = String(Math.floor(total / 60)).padStart(2, '0');
+  const newM = String(total % 60).padStart(2, '0');
+  return `${newH}:${newM}`;
+}
 
 const DEFAULT_EVENT_TYPES = [
   { name: 'שיעור פרטני', color: '#2563eb' },
@@ -208,16 +232,56 @@ export default function DailyPedagogicalTracker({
   }, [events, STORAGE_EVENTS_KEY]);
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
   const [newEventForm, setNewEventForm] = useState({
     title: '',
     type: DEFAULT_EVENT_TYPES[0].name,
     color: DEFAULT_EVENT_TYPES[0].color,
     date: selectedDate,
     startTime: '10:00',
-    endTime: '11:00',
+    endTime: '10:45',
     studentId: students[0]?.id || '',
     location: 'חדר טיפולים / כיתה'
   });
+
+  const handleOpenNewEventModal = () => {
+    setEditingEventId(null);
+    setNewEventForm({
+      title: '',
+      type: eventTypes[0]?.name || 'שיעור פרטני',
+      color: eventTypes[0]?.color || '#2563eb',
+      date: selectedDate,
+      startTime: '10:00',
+      endTime: '10:45',
+      studentId: students[0]?.id || '',
+      location: 'חדר טיפולים / כיתה'
+    });
+    setShowScheduleModal(true);
+  };
+
+  const handleEditEvent = (ev) => {
+    setEditingEventId(ev.id);
+    const matchedSt = students.find((s) => s.id === ev.studentId || s.name === ev.studentName);
+    setNewEventForm({
+      title: ev.title || '',
+      type: ev.type || 'שיעור פרטני',
+      color: ev.color || '#2563eb',
+      date: ev.date || selectedDate,
+      startTime: ev.startTime || '10:00',
+      endTime: ev.endTime || '10:45',
+      studentId: matchedSt?.id || students[0]?.id || '',
+      location: ev.location || 'חדר טיפולים / כיתה'
+    });
+    setShowScheduleModal(true);
+  };
+
+  const handleDeleteEvent = (id) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    if (editingEventId === id) {
+      setShowScheduleModal(false);
+      setEditingEventId(null);
+    }
+  };
 
   const handleSaveScheduledEvent = (e) => {
     e.preventDefault();
@@ -226,19 +290,40 @@ export default function DailyPedagogicalTracker({
     const chosenColor = newEventForm.color || '#2563eb';
     const st = students.find((s) => s.id === newEventForm.studentId);
 
-    const ev = {
-      id: `ev_${Date.now()}`,
-      title: chosenTitle,
-      type: chosenType,
-      color: chosenColor,
-      date: newEventForm.date,
-      startTime: newEventForm.startTime,
-      endTime: newEventForm.endTime,
-      studentName: st?.name || '',
-      studentId: st?.id || '',
-      location: newEventForm.location
-    };
-    setEvents((prev) => [...prev, ev]);
+    if (editingEventId) {
+      setEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === editingEventId
+            ? {
+                ...ev,
+                title: chosenTitle,
+                type: chosenType,
+                color: chosenColor,
+                date: newEventForm.date,
+                startTime: newEventForm.startTime,
+                endTime: newEventForm.endTime,
+                studentName: st?.name || ev.studentName || '',
+                studentId: st?.id || ev.studentId || '',
+                location: newEventForm.location
+              }
+            : ev
+        )
+      );
+    } else {
+      const ev = {
+        id: `ev_${Date.now()}`,
+        title: chosenTitle,
+        type: chosenType,
+        color: chosenColor,
+        date: newEventForm.date,
+        startTime: newEventForm.startTime,
+        endTime: newEventForm.endTime,
+        studentName: st?.name || '',
+        studentId: st?.id || '',
+        location: newEventForm.location
+      };
+      setEvents((prev) => [...prev, ev]);
+    }
 
     // Update teacher's custom event types history
     setEventTypes((prev) => {
@@ -254,6 +339,7 @@ export default function DailyPedagogicalTracker({
     });
 
     setShowScheduleModal(false);
+    setEditingEventId(null);
   };
 
   // Calculate Observation Gaps (>21 days)
@@ -709,13 +795,13 @@ export default function DailyPedagogicalTracker({
               /* Expanded State: Full Month Grid */
               <div className="cal-grid-wrapper" dir="ltr">
                 <div className="cal-weekdays-grid">
-                  <span>א'</span>
-                  <span>ב'</span>
-                  <span>ג'</span>
-                  <span>ד'</span>
-                  <span>ה'</span>
-                  <span className="weekday-weekend">ו'</span>
-                  <span className="weekday-weekend">ש'</span>
+                  <span dir="rtl">א׳</span>
+                  <span dir="rtl">ב׳</span>
+                  <span dir="rtl">ג׳</span>
+                  <span dir="rtl">ד׳</span>
+                  <span dir="rtl">ה׳</span>
+                  <span dir="rtl" className="weekday-weekend">ו׳</span>
+                  <span dir="rtl" className="weekday-weekend">ש׳</span>
                 </div>
 
                 <div className="cal-days-grid">
@@ -746,11 +832,36 @@ export default function DailyPedagogicalTracker({
                           <span className="cal-day-num">{dayNum}</span>
                           {dayEvents.length > 0 && (
                             <span
-                              className="cal-event-dot"
-                              style={{ backgroundColor: dayEvents[0]?.color || '#4a88c7' }}
-                            />
+                              className="cal-day-event-count"
+                              style={{
+                                backgroundColor: dayEvents[0]?.color || '#2563eb'
+                              }}
+                              title={`${dayEvents.length} פגישות ביום זה`}
+                            >
+                              {dayEvents.length}
+                            </span>
                           )}
                         </div>
+
+                        {/* Horizontal colored bars crossing date horizontally */}
+                        {dayEvents.length > 0 && (
+                          <div className="cal-day-event-bars">
+                            {dayEvents.slice(0, 4).map((ev, i) => (
+                              <div
+                                key={ev.id || i}
+                                className="cal-event-horizontal-bar"
+                                style={{
+                                  backgroundColor: ev.color || '#2563eb',
+                                  height: `${getEventBarThickness(ev.startTime, ev.endTime)}px`
+                                }}
+                                title={`${ev.startTime || ''}-${ev.endTime || ''} | ${ev.title || ev.type}`}
+                              />
+                            ))}
+                            {dayEvents.length > 4 && (
+                              <span className="cal-more-events-tag">+${dayEvents.length - 4}</span>
+                            )}
+                          </div>
+                        )}
 
                         {holidayInfo && (
                           <span
@@ -780,7 +891,7 @@ export default function DailyPedagogicalTracker({
                   className="btn-open-schedule-modal"
                 >
                   <Plus size={15} style={{ color: '#4a88c7' }} />
-                  <span>קביעת אירוע חדש בלוח השנה</span>
+                  <span>{editingEventId ? 'עריכת אירוע בלוח השנה' : 'קביעת אירוע חדש בלוח השנה'}</span>
                 </button>
               </div>
             )}
@@ -836,38 +947,61 @@ export default function DailyPedagogicalTracker({
                       </div>
                     </div>
 
-                    <div className="agenda-sync-actions">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = createOutlook365CalendarUrl({
-                            title: `${ev.title} - ${ev.studentName}`,
-                            startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
-                            endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
-                            details: `מפגש תל"א עבור ${ev.studentName}`
-                          });
-                          window.open(url, '_blank');
-                        }}
-                        className="btn-agenda-sync btn-agenda-outlook"
-                      >
-                        + Outlook 365
-                      </button>
+                    <div className="agenda-actions-cluster">
+                      <div className="agenda-crud-actions">
+                        <button
+                          type="button"
+                          onClick={() => handleEditEvent(ev)}
+                          className="btn-agenda-action btn-agenda-edit"
+                          title="עריכת פגישה / אירוע"
+                        >
+                          <Pencil size={13} />
+                          <span>עריכה</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteEvent(ev.id)}
+                          className="btn-agenda-action btn-agenda-delete"
+                          title="מחיקת אירוע זה"
+                        >
+                          <Trash2 size={13} />
+                          <span>מחיקה</span>
+                        </button>
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = createGoogleCalendarUrl({
-                            title: `${ev.title} - ${ev.studentName}`,
-                            startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
-                            endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
-                            details: `מפגש תל"א עבור ${ev.studentName}`
-                          });
-                          window.open(url, '_blank');
-                        }}
-                        className="btn-agenda-sync btn-agenda-google"
-                      >
-                        + Google
-                      </button>
+                      <div className="agenda-sync-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = createOutlook365CalendarUrl({
+                              title: `${ev.title} - ${ev.studentName}`,
+                              startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
+                              endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
+                              details: `מפגש תל"א עבור ${ev.studentName}`
+                            });
+                            window.open(url, '_blank');
+                          }}
+                          className="btn-agenda-sync btn-agenda-outlook"
+                        >
+                          + Outlook 365
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = createGoogleCalendarUrl({
+                              title: `${ev.title} - ${ev.studentName}`,
+                              startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
+                              endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
+                              details: `מפגש תל"א עבור ${ev.studentName}`
+                            });
+                            window.open(url, '_blank');
+                          }}
+                          className="btn-agenda-sync btn-agenda-google"
+                        >
+                          + Google
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1315,47 +1449,105 @@ export default function DailyPedagogicalTracker({
                 </select>
               </div>
 
-              <div className="modal-grid-3">
+              <div className="modal-date-and-time-section">
                 <div className="modal-field-group">
-                  <label>תאריך:</label>
+                  <label>תאריך הפגישה:</label>
                   <input
                     type="date"
                     value={newEventForm.date}
                     onChange={(e) => setNewEventForm({ ...newEventForm, date: e.target.value })}
+                    className="modal-date-input"
                   />
                 </div>
-                <div className="modal-field-group">
-                  <label>שעת התחלה:</label>
-                  <input
-                    type="time"
-                    value={newEventForm.startTime}
-                    onChange={(e) => setNewEventForm({ ...newEventForm, startTime: e.target.value })}
-                  />
+
+                <div className="modal-time-row">
+                  <div className="modal-field-group" style={{ flex: 1 }}>
+                    <label>שעת התחלה:</label>
+                    <select
+                      value={newEventForm.startTime}
+                      onChange={(e) => {
+                        const start = e.target.value;
+                        const duration = calculateDurationMinutes(newEventForm.startTime, newEventForm.endTime);
+                        const end = addMinutesToTime(start, duration > 0 ? duration : 45);
+                        setNewEventForm({ ...newEventForm, startTime: start, endTime: end });
+                      }}
+                      className="modal-time-select"
+                    >
+                      {TIME_SLOTS.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="modal-field-group" style={{ flex: 1 }}>
+                    <label>שעת סיום:</label>
+                    <select
+                      value={newEventForm.endTime}
+                      onChange={(e) => setNewEventForm({ ...newEventForm, endTime: e.target.value })}
+                      className="modal-time-select"
+                    >
+                      {TIME_SLOTS.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div className="modal-field-group">
-                  <label>שעת סיום:</label>
-                  <input
-                    type="time"
-                    value={newEventForm.endTime}
-                    onChange={(e) => setNewEventForm({ ...newEventForm, endTime: e.target.value })}
-                  />
+
+                {/* Duration Chips for 1-click setting */}
+                <div className="duration-chips-group">
+                  <span className="duration-label">משך זמן מהיר:</span>
+                  <div className="duration-chips-row">
+                    {[
+                      { label: '30 דק׳', mins: 30 },
+                      { label: '45 דק׳ (שיעור)', mins: 45 },
+                      { label: '60 דק׳', mins: 60 },
+                      { label: '90 דק׳', mins: 90 }
+                    ].map((d) => (
+                      <button
+                        type="button"
+                        key={d.mins}
+                        onClick={() => {
+                          const end = addMinutesToTime(newEventForm.startTime, d.mins);
+                          setNewEventForm({ ...newEventForm, endTime: end });
+                        }}
+                        className="duration-chip-btn"
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               <div className="modal-footer-row">
-                <button
-                  type="button"
-                  onClick={() => setShowScheduleModal(false)}
-                  className="btn-modal-cancel"
-                >
-                  ביטול
-                </button>
-                <button
-                  type="submit"
-                  className="btn-modal-submit"
-                >
-                  שמור וקבע בלוח השנה ✓
-                </button>
+                {editingEventId && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteEvent(editingEventId)}
+                    className="btn-modal-delete-inline"
+                  >
+                    <Trash2 size={14} />
+                    <span>מחק אירוע</span>
+                  </button>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: 'auto' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowScheduleModal(false);
+                      setEditingEventId(null);
+                    }}
+                    className="btn-modal-cancel"
+                  >
+                    ביטול
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-modal-submit"
+                  >
+                    {editingEventId ? 'עדכן אירוע ✓' : 'שמור וקבע בלוח השנה ✓'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
