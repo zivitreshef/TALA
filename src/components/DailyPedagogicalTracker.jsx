@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar as CalendarIcon,
+  CalendarDays,
   CheckCircle2,
   Clock,
   Plus,
@@ -29,6 +30,25 @@ import {
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
 import './DailyPedagogicalTracker.css';
 
+const DEFAULT_EVENT_TYPES = [
+  { name: 'שיעור פרטני', color: '#2563eb' },
+  { name: 'שיחת הורים', color: '#059669' },
+  { name: 'פגישת צוות', color: '#8b5cf6' },
+  { name: 'תצפית שטח', color: '#d97706' },
+  { name: 'ישיבת שילוב', color: '#0891b2' },
+  { name: 'טיפול פרא-רפואי', color: '#e11d48' }
+];
+
+const PRESET_EVENT_COLORS = [
+  { hex: '#2563eb', label: 'כחול ספיר' },
+  { hex: '#059669', label: 'ירוק אמרלד' },
+  { hex: '#8b5cf6', label: 'סגול לילך' },
+  { hex: '#d97706', label: 'ענבר חם' },
+  { hex: '#e11d48', label: 'קורל חי' },
+  { hex: '#0891b2', label: 'טורקיז עמוק' },
+  { hex: '#4f46e5', label: 'אינדיגו' }
+];
+
 const SUPPORT_LEVELS = [
   'עצמאי לחלוטין',
   'תזכורת מילולית',
@@ -47,6 +67,21 @@ export default function DailyPedagogicalTracker({
   const STORAGE_TODOS_KEY = `tala_daily_todos_${teacherEmail}`;
   const STORAGE_EVENTS_KEY = `tala_daily_events_${teacherEmail}`;
   const STORAGE_COLLAPSE_KEY = `tala_cal_collapsed_${teacherEmail}`;
+  const STORAGE_EVENT_TYPES_KEY = `tala_custom_event_types_${teacherEmail}`;
+
+  const [eventTypes, setEventTypes] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_EVENT_TYPES_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_EVENT_TYPES;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_EVENT_TYPES_KEY, JSON.stringify(eventTypes));
+    } catch {}
+  }, [eventTypes, STORAGE_EVENT_TYPES_KEY]);
 
   // Current Active Date State (YYYY-MM-DD)
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -154,11 +189,12 @@ export default function DailyPedagogicalTracker({
       },
       {
         id: 'ev_2',
-        title: 'ועדת תל"א שנתית',
+        title: 'פגישת מעקב תקופתית',
         date: '2026-07-30',
         startTime: '13:00',
         endTime: '14:00',
-        type: 'committee',
+        type: 'פגישת צוות',
+        color: '#8b5cf6',
         studentName: students[2]?.name || 'דניאל רז'
       }
     ];
@@ -172,29 +208,50 @@ export default function DailyPedagogicalTracker({
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [newEventForm, setNewEventForm] = useState({
-    title: 'ועדת תל"א שנתית',
-    type: 'committee',
+    title: '',
+    type: DEFAULT_EVENT_TYPES[0].name,
+    color: DEFAULT_EVENT_TYPES[0].color,
     date: selectedDate,
     startTime: '10:00',
     endTime: '11:00',
     studentId: students[0]?.id || '',
-    location: 'חדר מנהלת / גן'
+    location: 'חדר טיפולים / כיתה'
   });
 
   const handleSaveScheduledEvent = (e) => {
     e.preventDefault();
+    const chosenType = (newEventForm.type || 'פגישה').trim();
+    const chosenTitle = (newEventForm.title || chosenType).trim();
+    const chosenColor = newEventForm.color || '#2563eb';
     const st = students.find((s) => s.id === newEventForm.studentId);
+
     const ev = {
       id: `ev_${Date.now()}`,
-      title: newEventForm.title,
-      type: newEventForm.type,
+      title: chosenTitle,
+      type: chosenType,
+      color: chosenColor,
       date: newEventForm.date,
       startTime: newEventForm.startTime,
       endTime: newEventForm.endTime,
       studentName: st?.name || '',
+      studentId: st?.id || '',
       location: newEventForm.location
     };
     setEvents((prev) => [...prev, ev]);
+
+    // Update teacher's custom event types history
+    setEventTypes((prev) => {
+      const idx = prev.findIndex(
+        (t) => t.name.trim().toLowerCase() === chosenType.toLowerCase()
+      );
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { name: chosenType, color: chosenColor };
+        return next;
+      }
+      return [{ name: chosenType, color: chosenColor }, ...prev];
+    });
+
     setShowScheduleModal(false);
   };
 
@@ -412,8 +469,8 @@ export default function DailyPedagogicalTracker({
       {/* Top Header & Fast Sync Toolbar */}
       <div className="tracker-top-header">
         <div className="tracker-header-info">
-          <div className="tracker-header-avatar">
-            ת
+          <div className="tracker-header-avatar" title="מעקב יומי ויומן פדגוגי">
+            <CalendarDays size={22} color="#ffffff" strokeWidth={2.2} />
           </div>
           <div className="tracker-header-title-box">
             <h1>
@@ -435,7 +492,7 @@ export default function DailyPedagogicalTracker({
             type="button"
             onClick={() => {
               const url = createOutlook365CalendarUrl({
-                title: 'ועדת תל"א שנתית',
+                title: 'פגישה פדגוגית',
                 startIso: `${selectedDate}T09:30:00`,
                 endIso: `${selectedDate}T10:30:00`,
                 details: 'תיעוד פדגוגי מתוך מערכת תל"א'
@@ -676,7 +733,12 @@ export default function DailyPedagogicalTracker({
                         title={dayHoliday ? `${dayStr} • ${dayHoliday}` : dayStr}
                       >
                         <span>{dayNum}</span>
-                        {dayEvents.length > 0 && <span className="cal-event-dot" />}
+                        {dayEvents.length > 0 && (
+                          <span
+                            className="cal-event-dot"
+                            style={{ backgroundColor: dayEvents[0]?.color || '#4a88c7' }}
+                          />
+                        )}
                         {dayHoliday && (
                           <span
                             className={isVacation ? 'cal-vacation-dot' : 'cal-holiday-dot'}
@@ -690,11 +752,20 @@ export default function DailyPedagogicalTracker({
 
                 <button
                   type="button"
-                  onClick={() => setShowScheduleModal(true)}
+                  onClick={() => {
+                    setNewEventForm((prev) => ({
+                      ...prev,
+                      date: selectedDate,
+                      title: '',
+                      type: eventTypes[0]?.name || 'שיעור פרטני',
+                      color: eventTypes[0]?.color || '#2563eb'
+                    }));
+                    setShowScheduleModal(true);
+                  }}
                   className="btn-open-schedule-modal"
                 >
                   <Plus size={15} style={{ color: '#4a88c7' }} />
-                  <span>קבע פגישה / ועדת תל"א בלוח השנה</span>
+                  <span>קביעת אירוע חדש בלוח השנה</span>
                 </button>
               </div>
             )}
@@ -719,11 +790,31 @@ export default function DailyPedagogicalTracker({
                 {filteredEvents.map((ev) => (
                   <div key={ev.id} className="agenda-item">
                     <div className="agenda-item-main">
-                      <span className={`agenda-type-dot ${ev.type === 'committee' ? 'type-committee' : 'type-lesson'}`} />
+                      <span
+                        className="agenda-type-dot"
+                        style={{ backgroundColor: ev.color || '#2563eb' }}
+                      />
                       <div>
-                        <strong className="agenda-item-title">
-                          {ev.startTime} - {ev.endTime} | {ev.title}
-                        </strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <strong className="agenda-item-title">
+                            {ev.startTime} - {ev.endTime} | {ev.title}
+                          </strong>
+                          {ev.type && (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '999px',
+                                backgroundColor: `${ev.color || '#2563eb'}18`,
+                                color: ev.color || '#2563eb',
+                                border: `1px solid ${ev.color || '#2563eb'}40`
+                              }}
+                            >
+                              {ev.type}
+                            </span>
+                          )}
+                        </div>
                         <div className="agenda-item-sub">
                           תלמיד/ה: {ev.studentName} {ev.location ? `• ${ev.location}` : ''}
                         </div>
@@ -1101,21 +1192,95 @@ export default function DailyPedagogicalTracker({
 
             <form onSubmit={handleSaveScheduledEvent} className="modal-form-fields">
               <div className="modal-field-group">
-                <label>סוג האירוע:</label>
-                <select
-                  value={newEventForm.type}
-                  onChange={(e) => setNewEventForm({ ...newEventForm, type: e.target.value })}
-                >
-                  <option value="committee">ועדת תל"א / ועדת שילוב</option>
-                  <option value="lesson">שיעור פרטני / תצפית שטח</option>
-                  <option value="parentTalk">שיחת הורים תקופתית</option>
-                </select>
+                <label>סוג האירוע (הקלדה חופשית או בחירה מההיסטוריה):</label>
+                <div className="event-type-input-wrapper">
+                  <input
+                    type="text"
+                    list="event-types-list"
+                    value={newEventForm.type}
+                    placeholder="הקלידי סוג אירוע..."
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const matched = eventTypes.find(
+                        (t) => t.name.trim().toLowerCase() === val.trim().toLowerCase()
+                      );
+                      setNewEventForm({
+                        ...newEventForm,
+                        type: val,
+                        color: matched ? matched.color : newEventForm.color
+                      });
+                    }}
+                    className="modal-type-input"
+                  />
+                  <datalist id="event-types-list">
+                    {eventTypes.map((t, idx) => (
+                      <option key={idx} value={t.name} />
+                    ))}
+                  </datalist>
+                </div>
+
+                {/* History pills for 1-click selection */}
+                <div className="event-type-pills-row">
+                  <span className="pills-label">סוגים שנשמרו בהיסטוריה שלך:</span>
+                  <div className="pills-container">
+                    {eventTypes.map((t, idx) => {
+                      const isSelected = newEventForm.type.trim().toLowerCase() === t.name.trim().toLowerCase();
+                      return (
+                        <button
+                          type="button"
+                          key={idx}
+                          onClick={() => setNewEventForm({ ...newEventForm, type: t.name, color: t.color })}
+                          className={`event-type-pill ${isSelected ? 'active' : ''}`}
+                          style={{
+                            borderColor: isSelected ? t.color : '#e2e8f0',
+                            backgroundColor: isSelected ? `${t.color}15` : '#ffffff',
+                            color: isSelected ? t.color : '#334155'
+                          }}
+                        >
+                          <span className="pill-dot" style={{ backgroundColor: t.color }} />
+                          <span>{t.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Color Swatch Selector */}
+              <div className="modal-field-group">
+                <label>צבע האירוע בלוח השנה:</label>
+                <div className="color-swatches-grid">
+                  {PRESET_EVENT_COLORS.map((c) => {
+                    const isChosen = (newEventForm.color || '').toLowerCase() === c.hex.toLowerCase();
+                    return (
+                      <button
+                        type="button"
+                        key={c.hex}
+                        onClick={() => setNewEventForm({ ...newEventForm, color: c.hex })}
+                        className={`color-swatch-btn ${isChosen ? 'chosen' : ''}`}
+                        style={{ backgroundColor: c.hex }}
+                        title={c.label}
+                      >
+                        {isChosen && <Check size={14} color="#ffffff" strokeWidth={3} />}
+                      </button>
+                    );
+                  })}
+                  <div className="custom-color-picker-wrapper" title="בחירת צבע חופשי מותאם אישית">
+                    <input
+                      type="color"
+                      value={newEventForm.color || '#2563eb'}
+                      onChange={(e) => setNewEventForm({ ...newEventForm, color: e.target.value })}
+                      className="native-color-picker-input"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="modal-field-group">
-                <label>כותרת האירוע:</label>
+                <label>כותרת האירוע (אופציונלי):</label>
                 <input
                   type="text"
+                  placeholder="לדוגמה: דיון תוכנית עבודה, צפייה בהפסקת חצר..."
                   value={newEventForm.title}
                   onChange={(e) => setNewEventForm({ ...newEventForm, title: e.target.value })}
                 />
