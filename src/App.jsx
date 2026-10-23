@@ -39,6 +39,7 @@ import {
   isSessionUserValidForToday,
   isTrialUserExpired,
   getTrialRemainingDays,
+  getPaidRemainingDays,
   createPasswordCredentials,
   ensureUsersListPasswordsHashed,
   verifyUserPassword
@@ -628,6 +629,8 @@ export default function App() {
         Boolean(matchingUser.ndaSigned) !== Boolean(currentUser.ndaSigned) ||
         (matchingUser.trialExpiresAt || '') !== (currentUser.trialExpiresAt || '') ||
         (matchingUser.trialDays || 0) !== (currentUser.trialDays || 0) ||
+        (matchingUser.paidExpiresAt || '') !== (currentUser.paidExpiresAt || '') ||
+        (matchingUser.subscriptionType || '') !== (currentUser.subscriptionType || '') ||
         (matchingUser.notifyOnSharedReport !== false) !==
           (currentUser.notifyOnSharedReport !== false)
       ) {
@@ -643,6 +646,9 @@ export default function App() {
           trialDays: matchingUser.trialDays,
           trialStartedAt: matchingUser.trialStartedAt,
           trialExpiresAt: matchingUser.trialExpiresAt,
+          subscriptionType: matchingUser.subscriptionType || (matchingUser.isTrialUser ? 'trial' : 'annual_paid'),
+          paidExpiresAt: matchingUser.paidExpiresAt || null,
+          upgradedToPaidAt: matchingUser.upgradedToPaidAt || null,
           mustSignNda: Boolean(matchingUser.mustSignNda),
           ndaSigned: Boolean(matchingUser.ndaSigned),
           ndaSignedAt: matchingUser.ndaSignedAt,
@@ -1779,6 +1785,7 @@ export default function App() {
   const totalAdminAlerts =
     lockedOutUsers.length + (adminRequests || []).length + unreviewedHealthEventsCount;
   const trialRemainingDays = currentUser?.isTrialUser ? getTrialRemainingDays(currentUser) : null;
+  const paidRemainingDays = (!currentUser?.isTrialUser && currentUser) ? getPaidRemainingDays(currentUser) : null;
 
   const userStudents = getStudentsForUser(students, currentUser);
   const archivedUserStudents = getArchivedStudentsForUser(students, currentUser);
@@ -2872,6 +2879,7 @@ export default function App() {
         onClose={() => setShowTrialUpgradeModal(false)}
         currentUser={currentUser}
         remainingDays={trialRemainingDays}
+        paidRemainingDays={paidRemainingDays}
         onOpenSurvey={() => {
           setShowTrialUpgradeModal(false);
           setShowFeedbackSurveyModal(true);

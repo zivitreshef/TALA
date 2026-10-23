@@ -3,6 +3,7 @@ import {
   extendUserTrial,
   upgradeUserToAnnualPaid,
   isPaidUserExpired,
+  getPaidRemainingDays,
   getUserSubscriptionStatus,
   renameUserGroupInList,
   computeGroupStats,
@@ -250,6 +251,97 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
       expect(content).toContain('AI יומי:');
       expect(content).toContain('סה"כ שאילתות AI (מצטבר)');
       expect(content).toContain('שימושי AI (מצטבר)');
+    });
+
+    describe('Paying Customer Enhancements in Help Modal (TALA)', () => {
+      it('calculates getPaidRemainingDays correctly for various user states', () => {
+        const now = new Date('2026-10-23T12:00:00.000Z');
+
+        // Paid user with paidExpiresAt 60 days ahead
+        const userWithExp = {
+          isTrialUser: false,
+          subscriptionType: 'annual_paid',
+          paidExpiresAt: '2026-12-22T12:00:00.000Z'
+        };
+        expect(getPaidRemainingDays(userWithExp, now)).toBe(60);
+
+        // Admin user has Infinity
+        const adminUser = { role: 'admin', isTrialUser: false };
+        expect(getPaidRemainingDays(adminUser, now)).toBe(Infinity);
+
+        const zivitUser = { email: 'zivit.reshef@gmail.com', isTrialUser: false };
+        expect(getPaidRemainingDays(zivitUser, now)).toBe(Infinity);
+
+        // Trial user returns null
+        const trialUser = { isTrialUser: true, trialExpiresAt: '2026-10-30T00:00:00.000Z' };
+        expect(getPaidRemainingDays(trialUser, now)).toBeNull();
+
+        // Fallback for active paid user without explicit date
+        const activePaid = { isTrialUser: false, active: true };
+        expect(getPaidRemainingDays(activePaid, now)).toBe(365);
+      });
+
+      it('verifies TrialUpgradeModal includes renewal counter under active paid banner', async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const modalContent = fs.readFileSync(
+          path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+          'utf-8'
+        );
+
+        expect(modalContent).toContain('מנוי שנתי פעיל – מערכת TALA 🌷');
+        expect(modalContent).toContain('נותרו עוד ${resolvedPaidRemainingDays} ימים לחידוש המנוי');
+        expect(modalContent).toContain('חשבון מנהל (ללא הגבלת זמן)');
+      });
+
+      it('verifies TrialUpgradeModal includes minor RFE section and categories', async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const modalContent = fs.readFileSync(
+          path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+          'utf-8'
+        );
+
+        expect(modalContent).toContain('הצעות ייעול ושיפורים (RFE)');
+        expect(modalContent).toContain('קטגוריית השיפור / ההצעה:');
+        expect(modalContent).toContain('שיפור בטופס תל"א / תח"י');
+        expect(modalContent).toContain('מאגר מטרות ויעדים');
+        expect(modalContent).toContain('שליחת הצעת שיפור');
+      });
+
+      it('verifies TrialUpgradeModal includes comprehensive Fair Use policy with student and AI limits', async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const modalContent = fs.readFileSync(
+          path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+          'utf-8'
+        );
+
+        expect(modalContent).toContain('הסכם רישיון שימוש ומדיניות "שימוש נאות" (Fair Use)');
+        expect(modalContent).toContain('1. רישיון אישי למורה / גננת (פר משתמשת)');
+        expect(modalContent).toContain('איסור שיתוף פרטי גישה ואיסור אספקת דוחות לגורמי צד שלישי');
+        expect(modalContent).toContain('3. מגבלות שימוש נאות (מכסת תלמידים ומכסת בינה מלאכותית)');
+        expect(modalContent).toContain('עד 35 תלמידים פעילים בשנה');
+        expect(modalContent).toContain('עד 20 שאילתות AI לתלמיד בשנה');
+        expect(modalContent).toContain('איסור הנדסה לאחור (Reverse Engineering)');
+        expect(modalContent).toContain('זכויות יוצרים וקניין רוחני');
+      });
+
+      it('verifies TrialUpgradeModal includes iPad/iPhone shortcut guide via Safari', async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const modalContent = fs.readFileSync(
+          path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+          'utf-8'
+        );
+
+        expect(modalContent).toContain('קיצור לאייפד / אייפון');
+        expect(modalContent).toContain('איך להוסיף קיצור דרך של TALA למסך הבית באייפד ובאייפון');
+        expect(modalContent).toContain('אין צורך להתחבר מראש עם שם וסיסמה');
+        expect(modalContent).toContain('Safari');
+        expect(modalContent).toContain('שיתוף');
+        expect(modalContent).toContain('הוספה למסך הבית');
+      });
     });
   });
 });

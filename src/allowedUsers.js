@@ -571,6 +571,42 @@ export function isPaidUserExpired(user, now = new Date()) {
 }
 
 /**
+ * Returns the remaining days for a paid user's annual subscription,
+ * or null if the user is null or a trial user.
+ * For admin accounts, returns Infinity.
+ */
+export function getPaidRemainingDays(user, now = new Date()) {
+  if (!user || user.isTrialUser) return null;
+  if (user.role === 'admin' || user.email?.toLowerCase() === 'zivit.reshef@gmail.com') {
+    return Infinity;
+  }
+  const nowDate = now instanceof Date ? now : new Date(now);
+
+  if (user.paidExpiresAt) {
+    const expMs = new Date(user.paidExpiresAt).getTime();
+    if (!Number.isNaN(expMs)) {
+      const diffMs = expMs - nowDate.getTime();
+      return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+    }
+  }
+
+  if (user.upgradedToPaidAt) {
+    const startMs = new Date(user.upgradedToPaidAt).getTime();
+    if (!Number.isNaN(startMs)) {
+      const expMs = startMs + 365 * 24 * 60 * 60 * 1000;
+      const diffMs = expMs - nowDate.getTime();
+      return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+    }
+  }
+
+  if (user.subscriptionType === 'annual_paid' || user.active) {
+    return 365;
+  }
+
+  return null;
+}
+
+/**
  * Computes a standardized subscription lifecycle status for display and filtering.
  */
 export function getUserSubscriptionStatus(user, now = new Date()) {
