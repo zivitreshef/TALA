@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar as CalendarIcon,
   CalendarDays,
+  CalendarPlus,
   CheckCircle2,
   Clock,
   Plus,
@@ -17,7 +18,8 @@ import {
   Target,
   UserCheck,
   ClipboardList,
-  Check
+  Check,
+  ExternalLink
 } from 'lucide-react';
 import {
   getObservationGaps,
@@ -111,6 +113,7 @@ export default function DailyPedagogicalTracker({
   // Current Active Date State (YYYY-MM-DD)
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [openSyncMenuId, setOpenSyncMenuId] = useState(null);
 
   // Calendar Collapsible State
   const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(() => {
@@ -947,61 +950,86 @@ export default function DailyPedagogicalTracker({
                       </div>
                     </div>
 
-                    <div className="agenda-actions-cluster">
-                      <div className="agenda-crud-actions">
-                        <button
-                          type="button"
-                          onClick={() => handleEditEvent(ev)}
-                          className="btn-agenda-action btn-agenda-edit"
-                          title="עריכת פגישה / אירוע"
-                        >
-                          <Pencil size={13} />
-                          <span>עריכה</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteEvent(ev.id)}
-                          className="btn-agenda-action btn-agenda-delete"
-                          title="מחיקת אירוע זה"
-                        >
-                          <Trash2 size={13} />
-                          <span>מחיקה</span>
-                        </button>
-                      </div>
+                    <div className="agenda-ghost-toolbar">
+                      <button
+                        type="button"
+                        onClick={() => handleEditEvent(ev)}
+                        className="btn-agenda-ghost"
+                        title="עריכת מפגש"
+                        aria-label="עריכת מפגש"
+                      >
+                        <Pencil size={14} />
+                      </button>
 
-                      <div className="agenda-sync-actions">
+                      <div className="agenda-sync-wrapper">
                         <button
                           type="button"
-                          onClick={() => {
-                            const url = createOutlook365CalendarUrl({
-                              title: `${ev.title} - ${ev.studentName}`,
-                              startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
-                              endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
-                              details: `מפגש תל"א עבור ${ev.studentName}`
-                            });
-                            window.open(url, '_blank');
-                          }}
-                          className="btn-agenda-sync btn-agenda-outlook"
+                          onClick={() => setOpenSyncMenuId(openSyncMenuId === ev.id ? null : ev.id)}
+                          className={`btn-agenda-ghost ${openSyncMenuId === ev.id ? 'is-active' : ''}`}
+                          title="סנכרון ליומן חיצוני"
+                          aria-label="סנכרון ליומן חיצוני"
                         >
-                          + Outlook 365
+                          <CalendarPlus size={14} />
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const url = createGoogleCalendarUrl({
-                              title: `${ev.title} - ${ev.studentName}`,
-                              startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
-                              endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
-                              details: `מפגש תל"א עבור ${ev.studentName}`
-                            });
-                            window.open(url, '_blank');
-                          }}
-                          className="btn-agenda-sync btn-agenda-google"
-                        >
-                          + Google
-                        </button>
+                        {openSyncMenuId === ev.id && (
+                          <>
+                            <div
+                              className="agenda-sync-backdrop"
+                              onClick={() => setOpenSyncMenuId(null)}
+                            />
+                            <div className="agenda-sync-popover">
+                              <button
+                                type="button"
+                                className="agenda-sync-popover-item"
+                                onClick={() => {
+                                  setOpenSyncMenuId(null);
+                                  const url = createOutlook365CalendarUrl({
+                                    title: `${ev.title} - ${ev.studentName}`,
+                                    startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
+                                    endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
+                                    details: `מפגש תל"א עבור ${ev.studentName}`
+                                  });
+                                  window.open(url, '_blank');
+                                }}
+                              >
+                                <span className="sync-provider-dot outlook-dot" />
+                                <span>Outlook 365</span>
+                                <ExternalLink size={12} className="sync-external-icon" />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="agenda-sync-popover-item"
+                                onClick={() => {
+                                  setOpenSyncMenuId(null);
+                                  const url = createGoogleCalendarUrl({
+                                    title: `${ev.title} - ${ev.studentName}`,
+                                    startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
+                                    endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
+                                    details: `מפגש תל"א עבור ${ev.studentName}`
+                                  });
+                                  window.open(url, '_blank');
+                                }}
+                              >
+                                <span className="sync-provider-dot google-dot" />
+                                <span>Google Calendar</span>
+                                <ExternalLink size={12} className="sync-external-icon" />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEvent(ev.id)}
+                        className="btn-agenda-ghost btn-agenda-ghost-delete"
+                        title="מחיקת מפגש"
+                        aria-label="מחיקת מפגש"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 ))}

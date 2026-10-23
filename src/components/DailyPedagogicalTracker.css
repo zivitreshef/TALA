@@ -571,39 +571,6 @@
   margin-top: 2px;
 }
 
-.agenda-sync-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-agenda-sync {
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: 8px;
-  padding: 4px 8px;
-  cursor: pointer;
-  border: none;
-  white-space: nowrap;
-}
-
-.btn-agenda-outlook {
-  background: #eff6fc;
-  color: #0078d4;
-}
-
-.btn-agenda-outlook:hover {
-  background: #deecf9;
-}
-
-.btn-agenda-google {
-  background: #f1f5f9;
-  color: #2b4c73;
-}
-
-.btn-agenda-google:hover {
-  background: #e2e8f0;
-}
 
 /* --- Daily TODO Checklist Styles --- */
 .todo-count-badge {
@@ -1711,55 +1678,134 @@
   transform: translateY(-1px);
 }
 
-/* Agenda Actions: Edit, Delete, and Sync */
-.agenda-actions-cluster {
+
+/* Agenda Actions: Minimal Ghost Toolbar & Floating Sync Popover */
+.agenda-ghost-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  padding: 2px;
+  border-radius: 8px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.btn-agenda-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.btn-agenda-ghost:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
+.btn-agenda-ghost.is-active {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.btn-agenda-ghost-delete:hover {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.agenda-sync-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.agenda-sync-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: transparent;
+}
+
+.agenda-sync-popover {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 50;
+  min-width: 155px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: fadeInMenu 0.12s ease-out;
+}
+
+@keyframes fadeInMenu {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.agenda-sync-popover-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
-}
-
-.agenda-crud-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn-agenda-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border-radius: 8px;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-}
-
-.btn-agenda-edit {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
   color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: background 0.12s ease;
+  text-align: right;
 }
 
-.btn-agenda-edit:hover {
-  background: #e2e8f0;
+.agenda-sync-popover-item:hover {
+  background: #f8fafc;
   color: #0f172a;
 }
 
-.btn-agenda-delete {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #dc2626;
+.sync-provider-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.btn-agenda-delete:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-  color: #b91c1c;
+.sync-provider-dot.outlook-dot {
+  background: #0284c7;
 }
+
+.sync-provider-dot.google-dot {
+  background: #16a34a;
+}
+
+.sync-external-icon {
+  margin-inline-start: auto;
+  color: #94a3b8;
+}
+
 
 .btn-modal-delete-inline {
   display: inline-flex;
