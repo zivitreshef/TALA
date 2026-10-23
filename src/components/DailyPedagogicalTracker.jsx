@@ -37,6 +37,7 @@ import {
 } from '../domain/dailyPedagogicalTracking';
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
 import HebrewDatePicker from './HebrewDatePicker';
+import PedagogicalTasksModal from './modals/PedagogicalTasksModal';
 import './DailyPedagogicalTracker.css';
 
 const TIME_SLOTS = [
@@ -200,6 +201,21 @@ export default function DailyPedagogicalTracker({
 
   const handleDeleteTodo = (id) => {
     setTodos((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const [showAiTasksModal, setShowAiTasksModal] = useState(false);
+
+  const handleAddAiTasks = (tasksToAdd) => {
+    const formatted = tasksToAdd.map((t, idx) => ({
+      id: `todo_ai_${Date.now()}_${idx}`,
+      text: t.text,
+      date: t.date || selectedDate,
+      time: '',
+      completed: false,
+      studentId: t.studentId || null,
+      isAiGenerated: true
+    }));
+    setTodos((prev) => [...formatted, ...prev]);
   };
 
   // Calendar Scheduled Meetings/Events State
@@ -1019,9 +1035,34 @@ export default function DailyPedagogicalTracker({
                 </h2>
                 <p className="tracker-card-subtitle">המשימות מסונכרנות עם התאריכים בלוח השנה</p>
               </div>
-              <span className="todo-count-badge">
-                {filteredTodos.filter((t) => !t.completed).length} פתוחות
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAiTasksModal(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    background: 'linear-gradient(135deg, #4a88c7 0%, #8b6fc0 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(74, 136, 199, 0.25)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="חולל משימות פדגוגיות ממוקדות בעזרת AI לתלמידים שנבחרו"
+                >
+                  <Sparkles size={14} />
+                  <span>מיקוד פדגוגי עם AI</span>
+                </button>
+                <span className="todo-count-badge">
+                  {filteredTodos.filter((t) => !t.completed).length} פתוחות
+                </span>
+              </div>
             </div>
 
             {/* Add Task Form */}
@@ -1047,7 +1088,29 @@ export default function DailyPedagogicalTracker({
             {/* Task Items */}
             <div className="todo-list-items">
               {filteredTodos.length === 0 ? (
-                <div className="agenda-empty">אין משימות מתוזמנות ליום זה.</div>
+                <div className="agenda-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '16px' }}>
+                  <span>אין משימות מתוזמנות ליום זה.</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiTasksModal(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 14px',
+                      background: '#f1f7fc',
+                      color: '#2b4c73',
+                      border: '1.5px dashed #4a88c7',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Sparkles size={14} color="#4a88c7" />
+                    <span>חולל משימות AI לתלמידים להיום</span>
+                  </button>
+                </div>
               ) : (
                 filteredTodos.map((todo) => (
                   <div key={todo.id} className="todo-row">
@@ -1058,9 +1121,17 @@ export default function DailyPedagogicalTracker({
                         onChange={() => handleToggleTodo(todo.id)}
                         className="todo-checkbox"
                       />
-                      <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>
-                        {todo.text}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                        <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>
+                          {todo.text}
+                        </span>
+                        {todo.isAiGenerated && (
+                          <span style={{ fontSize: '10.5px', color: '#8b6fc0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                            <Sparkles size={10} />
+                            <span>מיקוד פדגוגי AI</span>
+                          </span>
+                        )}
+                      </div>
                     </label>
 
                     <div className="todo-meta-group">
@@ -1549,6 +1620,15 @@ export default function DailyPedagogicalTracker({
         </div>
       )}
 
+      {/* Pedagogical Tasks AI Generator Modal */}
+      <PedagogicalTasksModal
+        isOpen={showAiTasksModal}
+        onClose={() => setShowAiTasksModal(false)}
+        students={students}
+        events={events}
+        selectedDate={selectedDate}
+        onAddTasks={handleAddAiTasks}
+      />
     </div>
   );
 }
