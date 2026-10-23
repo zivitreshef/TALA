@@ -784,7 +784,7 @@ export default function DailyPedagogicalTracker({
               <div>
                 <h2 className="tracker-card-header-title">
                   <ClipboardList size={17} style={{ color: '#4a88c7' }} />
-                  <span>משימות TODO ליום הנבחר: {selectedDate}</span>
+                  <span>משימות פדגוגיות ליום הנבחר: {selectedDate}</span>
                 </h2>
                 <p className="tracker-card-subtitle">המשימות מסונכרנות עם התאריכים בלוח השנה</p>
               </div>
