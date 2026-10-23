@@ -79,6 +79,8 @@ export default function PedagogicalTasksModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [step, setStep] = useState('select'); // 'select' | 'review'
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [generatedTasks, setGeneratedTasks] = useState([]);
   const [generationError, setGenerationError] = useState('');
 
@@ -220,6 +222,11 @@ ${studentsContext}
   };
 
   const handleConfirmAddTasks = () => {
+    const selectedCount = generatedTasks.filter((t) => t.selected && t.text.trim()).length;
+    if (selectedCount === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+
     const tasksToAdd = generatedTasks
       .filter((t) => t.selected && t.text.trim())
       .map((t) => ({
@@ -229,10 +236,17 @@ ${studentsContext}
         isAiGenerated: true
       }));
 
-    if (tasksToAdd.length > 0) {
+    // Allow UI to paint busy spinner immediately before state update
+    setTimeout(() => {
       onAddTasks(tasksToAdd);
-    }
-    onClose();
+      setSubmitSuccess(true);
+      setIsSubmitting(false);
+
+      // Brief delay to display the success confirmation checkmark before closing
+      setTimeout(() => {
+        onClose();
+      }, 500);
+    }, 250);
   };
 
   const filteredStudents = students.filter(
@@ -710,24 +724,45 @@ ${studentsContext}
               <button
                 type="button"
                 onClick={handleConfirmAddTasks}
-                disabled={generatedTasks.filter((t) => t.selected).length === 0}
+                disabled={generatedTasks.filter((t) => t.selected).length === 0 || isSubmitting}
                 style={{
                   padding: '10px 22px',
                   borderRadius: '10px',
                   border: 'none',
-                  background: 'var(--primary-deep, #2b4c73)',
+                  background: submitSuccess
+                    ? '#16a34a'
+                    : isSubmitting
+                      ? '#475569'
+                      : 'var(--primary-deep, #2b4c73)',
                   color: '#ffffff',
                   fontWeight: '800',
                   fontSize: '13.5px',
-                  cursor: generatedTasks.filter((t) => t.selected).length === 0 ? 'not-allowed' : 'pointer',
+                  cursor: generatedTasks.filter((t) => t.selected).length === 0 || isSubmitting ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  boxShadow: '0 4px 12px rgba(43, 76, 115, 0.25)'
+                  boxShadow: '0 4px 12px rgba(43, 76, 115, 0.25)',
+                  transition: 'all 0.2s ease',
+                  minWidth: '185px',
+                  justifyContent: 'center'
                 }}
               >
-                <Check size={16} />
-                <span>הוסף למשימות היום ({generatedTasks.filter((t) => t.selected).length})</span>
+                {submitSuccess ? (
+                  <>
+                    <Check size={18} strokeWidth={3} />
+                    <span>נוספו בהצלחה! ✓</span>
+                  </>
+                ) : isSubmitting ? (
+                  <>
+                    <RefreshCw size={16} className="spin" style={{ animation: 'spin 0.8s linear infinite' }} />
+                    <span>מוסיף למשימות...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    <span>הוסף למשימות היום ({generatedTasks.filter((t) => t.selected).length})</span>
+                  </>
+                )}
               </button>
             </>
           )}

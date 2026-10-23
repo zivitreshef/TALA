@@ -204,6 +204,7 @@ export default function DailyPedagogicalTracker({
   };
 
   const [showAiTasksModal, setShowAiTasksModal] = useState(false);
+  const [taskToast, setTaskToast] = useState('');
 
   const handleAddAiTasks = (tasksToAdd) => {
     const formatted = tasksToAdd.map((t, idx) => ({
@@ -216,6 +217,8 @@ export default function DailyPedagogicalTracker({
       isAiGenerated: true
     }));
     setTodos((prev) => [...formatted, ...prev]);
+    setTaskToast(`✨ ${tasksToAdd.length} משימות פדגוגיות נוספו בהצלחה לרשימת היום!`);
+    setTimeout(() => setTaskToast(''), 4500);
   };
 
   // Calendar Scheduled Meetings/Events State
@@ -1064,6 +1067,29 @@ export default function DailyPedagogicalTracker({
                 </span>
               </div>
             </div>
+
+            {/* Task Toast Notification */}
+            {taskToast && (
+              <div
+                style={{
+                  margin: '10px 16px',
+                  padding: '10px 14px',
+                  backgroundColor: '#ecfdf5',
+                  border: '1.5px solid #a7f3d0',
+                  borderRadius: '10px',
+                  color: '#065f46',
+                  fontSize: '13px',
+                  fontWeight: '700',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.15)'
+                }}
+              >
+                <Check size={18} style={{ color: '#10b981' }} strokeWidth={2.5} />
+                <span>{taskToast}</span>
+              </div>
+            )}
 
             {/* Add Task Form */}
             <form onSubmit={handleAddTodo} className="todo-add-form">
