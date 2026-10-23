@@ -580,39 +580,6 @@ export default function DailyPedagogicalTracker({
         <div className="tracker-header-actions">
           <button
             type="button"
-            onClick={() => {
-              const url = createOutlook365CalendarUrl({
-                title: 'פגישה פדגוגית',
-                startIso: `${selectedDate}T09:30:00`,
-                endIso: `${selectedDate}T10:30:00`,
-                details: 'תיעוד פדגוגי מתוך מערכת תל"א'
-              });
-              window.open(url, '_blank');
-            }}
-            className="btn-cal-sync btn-cal-outlook"
-            title="פתיחה מהירה בחשבון משרד החינוך"
-          >
-            Outlook 365
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              const url = createGoogleCalendarUrl({
-                title: 'שיעור פרטני תל"א',
-                startIso: `${selectedDate}T09:30:00`,
-                endIso: `${selectedDate}T10:15:00`,
-                details: 'תוכנית עבודה אקולוגית TALA'
-              });
-              window.open(url, '_blank');
-            }}
-            className="btn-cal-sync btn-cal-google"
-          >
-            Google Calendar
-          </button>
-
-          <button
-            type="button"
             onClick={handleDownloadIcs}
             className="btn-cal-sync btn-cal-ics"
           >
@@ -732,17 +699,7 @@ export default function DailyPedagogicalTracker({
               </div>
 
               {/* Collapse / Expand Toggle Button & Nav */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={handleToggleCalendarCollapse}
-                  className="cal-collapse-btn-compact"
-                  title={isCalendarCollapsed ? 'הרחב לוח שנה חודשי' : 'קפל לוח שנה למיקוד יומי'}
-                  aria-label={isCalendarCollapsed ? 'הרחב לוח שנה חודשי' : 'קפל לוח שנה למיקוד יומי'}
-                >
-                  {isCalendarCollapsed ? <Plus size={15} /> : <Minus size={15} />}
-                </button>
-
+              <div className="cal-header-actions-group">
                 {!isCalendarCollapsed && (
                   <div className="cal-month-nav">
                     <button
@@ -771,6 +728,16 @@ export default function DailyPedagogicalTracker({
                     </button>
                   </div>
                 )}
+
+                <button
+                  type="button"
+                  onClick={handleToggleCalendarCollapse}
+                  className="cal-collapse-btn-compact"
+                  title={isCalendarCollapsed ? 'הרחב לוח שנה חודשי' : 'קפל לוח שנה למיקוד יומי'}
+                  aria-label={isCalendarCollapsed ? 'הרחב לוח שנה חודשי' : 'קפל לוח שנה למיקוד יומי'}
+                >
+                  {isCalendarCollapsed ? <Plus size={15} /> : <Minus size={15} />}
+                </button>
               </div>
             </div>
 
