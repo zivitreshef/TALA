@@ -4526,3 +4526,95 @@ body {
 
 
 
+
+/* === HERO BANNER DAILY TRACKER ACTION STRIP (ELEGANT GLASSMORPHIC) === */
+.inside-landing-tracker-strip {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  margin-top: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.inside-landing-tracker-strip:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.tracker-strip-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tracker-strip-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.tracker-strip-texts strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.tracker-strip-texts span {
+  display: block;
+  font-size: 12px;
+  color: rgba(240, 247, 255, 0.88);
+  margin-top: 2px;
+}
+
+.tracker-strip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  color: #2b4c73;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.tracker-strip-btn:hover {
+  background: #f0f7ff;
+  color: #1e3a8a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+@media (max-width: 640px) {
+  .inside-landing-tracker-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .tracker-strip-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

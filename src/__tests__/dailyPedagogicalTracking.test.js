@@ -5,7 +5,8 @@ import {
   createGoogleCalendarUrl,
   generateIcsFileContent,
   buildAiGoalMatchPrompt,
-  parseAiGoalMatchResponse
+  parseAiGoalMatchResponse,
+  getIsraeliHolidayOrVacation
 } from '../domain/dailyPedagogicalTracking.js';
 
 describe('dailyPedagogicalTracking domain tests', () => {
@@ -139,5 +140,66 @@ describe('dailyPedagogicalTracking domain tests', () => {
     expect(parsed.matchedGoalId).toBe('g_1');
     expect(parsed.observedSupportLevel).toBe('תזכורת מילולית');
     expect(parsed.suggestedProgressDelta).toBe(5);
+  });
+
+  describe('getIsraeliHolidayOrVacation', () => {
+    it('correctly identifies Summer Vacation for any year in July and August', () => {
+      expect(getIsraeliHolidayOrVacation('2024-07-01')).toBe('החופש הגדול');
+      expect(getIsraeliHolidayOrVacation('2025-07-15')).toBe('החופש הגדול');
+      expect(getIsraeliHolidayOrVacation('2026-08-01')).toBe('החופש הגדול');
+      expect(getIsraeliHolidayOrVacation('2027-08-31')).toBe('החופש הגדול');
+    });
+
+    it('correctly identifies multi-day Jewish holidays across years', () => {
+      // 2024
+      expect(getIsraeliHolidayOrVacation('2024-03-24')).toBe('חופשת פורים');
+      expect(getIsraeliHolidayOrVacation('2024-04-20')).toBe('חופשת פסח');
+      expect(getIsraeliHolidayOrVacation('2024-10-03')).toBe('ראש השנה');
+      expect(getIsraeliHolidayOrVacation('2024-10-18')).toBe('חופשת סוכות');
+      expect(getIsraeliHolidayOrVacation('2024-12-28')).toBe('חופשת חנוכה');
+
+      // 2025
+      expect(getIsraeliHolidayOrVacation('2025-03-14')).toBe('חופשת פורים');
+      expect(getIsraeliHolidayOrVacation('2025-04-10')).toBe('חופשת פסח');
+      expect(getIsraeliHolidayOrVacation('2025-10-08')).toBe('חופשת סוכות');
+      expect(getIsraeliHolidayOrVacation('2025-12-18')).toBe('חופשת חנוכה');
+
+      // 2026
+      expect(getIsraeliHolidayOrVacation('2026-03-03')).toBe('חופשת פורים');
+      expect(getIsraeliHolidayOrVacation('2026-04-02')).toBe('חופשת פסח');
+      expect(getIsraeliHolidayOrVacation('2026-09-12')).toBe('ראש השנה');
+      expect(getIsraeliHolidayOrVacation('2026-09-28')).toBe('חופשת סוכות');
+      expect(getIsraeliHolidayOrVacation('2026-12-08')).toBe('חופשת חנוכה');
+
+      // 2027
+      expect(getIsraeliHolidayOrVacation('2027-03-23')).toBe('חופשת פורים');
+      expect(getIsraeliHolidayOrVacation('2027-04-20')).toBe('חופשת פסח');
+      expect(getIsraeliHolidayOrVacation('2027-10-02')).toBe('ראש השנה');
+      expect(getIsraeliHolidayOrVacation('2027-10-18')).toBe('חופשת סוכות');
+      expect(getIsraeliHolidayOrVacation('2027-12-28')).toBe('חופשת חנוכה');
+    });
+
+    it('correctly identifies national memorial and celebration days', () => {
+      expect(getIsraeliHolidayOrVacation('2026-04-14')).toBe('יום הזיכרון לשואה ולגבורה');
+      expect(getIsraeliHolidayOrVacation('2026-04-21')).toBe('יום הזיכרון לחללי צה"ל');
+      expect(getIsraeliHolidayOrVacation('2026-04-22')).toBe('יום העצמאות');
+      expect(getIsraeliHolidayOrVacation('2026-05-05')).toBe('ל"ג בעומר');
+      expect(getIsraeliHolidayOrVacation('2026-05-15')).toBe('יום ירושלים');
+    });
+
+    it('returns null on ordinary school days', () => {
+      expect(getIsraeliHolidayOrVacation('2026-11-10')).toBeNull();
+      expect(getIsraeliHolidayOrVacation('2025-01-15')).toBeNull();
+      expect(getIsraeliHolidayOrVacation('2026-06-15')).toBeNull();
+      expect(getIsraeliHolidayOrVacation('2026-09-01')).toBeNull();
+    });
+
+    it('gracefully handles missing or malformed inputs', () => {
+      expect(getIsraeliHolidayOrVacation(null)).toBeNull();
+      expect(getIsraeliHolidayOrVacation(undefined)).toBeNull();
+      expect(getIsraeliHolidayOrVacation('')).toBeNull();
+      expect(getIsraeliHolidayOrVacation('invalid-date')).toBeNull();
+      expect(getIsraeliHolidayOrVacation(12345)).toBeNull();
+    });
   });
 });
