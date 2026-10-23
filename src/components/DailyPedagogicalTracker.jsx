@@ -11,6 +11,8 @@ import {
   Trash2,
   Sparkles,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   AlertTriangle,
   Download,
@@ -702,13 +704,15 @@ export default function DailyPedagogicalTracker({
               {/* Collapse / Expand Toggle Button & Nav */}
               <div className="cal-header-actions-group">
                 {!isCalendarCollapsed && (
-                  <div className="cal-month-nav">
+                  <div className="cal-month-nav" dir="ltr">
                     <button
                       type="button"
                       onClick={() => setCurrentMonthDate(new Date(calYear, calMonth - 1, 1))}
                       className="cal-nav-arrow"
+                      title="חודש קודם"
+                      aria-label="חודש קודם"
                     >
-                      ›
+                      <ChevronLeft size={16} />
                     </button>
                     <button
                       type="button"
@@ -717,6 +721,7 @@ export default function DailyPedagogicalTracker({
                         setSelectedDate(todayStr);
                       }}
                       className="cal-nav-today"
+                      title="עבור להיום"
                     >
                       היום
                     </button>
@@ -724,8 +729,10 @@ export default function DailyPedagogicalTracker({
                       type="button"
                       onClick={() => setCurrentMonthDate(new Date(calYear, calMonth + 1, 1))}
                       className="cal-nav-arrow"
+                      title="חודש הבא"
+                      aria-label="חודש הבא"
                     >
-                      ‹
+                      <ChevronRight size={16} />
                     </button>
                   </div>
                 )}
