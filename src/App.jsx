@@ -30,7 +30,8 @@ import {
   Bell,
   MessageCircle,
   ArrowRight,
-  Home
+  Home,
+  ClipboardList
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -132,6 +133,7 @@ import TrialNdaModal from './components/modals/TrialNdaModal';
 import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
+import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
 import './index.css';
 
 const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
@@ -330,6 +332,7 @@ export default function App() {
 
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const [showDailyTracker, setShowDailyTracker] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [insideLandingSearch, setInsideLandingSearch] = useState('');
   // Clustered by educationalFramework — collapsed by default
@@ -1900,22 +1903,49 @@ export default function App() {
           {/* Clear Home Button */}
           <button
             type="button"
-            className={`btn-header-bank ${selectedStudentId === null ? 'btn-header-home-active' : ''}`}
-            onClick={() => setSelectedStudentId(null)}
-            title="חזרה לדף הבית (הוספת תלמיד/ה חדש/ה או פתיחת דוח קיים)"
+            className={`btn-header-bank ${selectedStudentId === null && !showDailyTracker ? 'btn-header-home-active' : ''}`}
+            onClick={() => {
+              setSelectedStudentId(null);
+              setShowDailyTracker(false);
+            }}
+            title="חזרה לדף הבית"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
               fontWeight: 700,
-              background: selectedStudentId === null ? '#eff6ff' : '#ffffff',
-              borderColor: selectedStudentId === null ? '#2563eb' : '#cbd5e1',
-              color: selectedStudentId === null ? '#1d4ed8' : '#1e293b',
-              boxShadow: selectedStudentId === null ? '0 0 0 2px #bfdbfe' : 'none'
+              background: selectedStudentId === null && !showDailyTracker ? '#eff6ff' : '#ffffff',
+              borderColor: selectedStudentId === null && !showDailyTracker ? '#2563eb' : '#cbd5e1',
+              color: selectedStudentId === null && !showDailyTracker ? '#1d4ed8' : '#1e293b',
+              boxShadow: selectedStudentId === null && !showDailyTracker ? '0 0 0 2px #bfdbfe' : 'none'
             }}
           >
             <Home size={16} style={{ color: '#2563eb' }} />
             <span>דף הבית</span>
+          </button>
+
+          {/* Daily Tracker Button */}
+          <button
+            type="button"
+            className={`btn-header-bank ${showDailyTracker && selectedStudentId === null ? 'btn-header-home-active' : ''}`}
+            onClick={() => {
+              setSelectedStudentId(null);
+              setShowDailyTracker(true);
+            }}
+            title="מעקב יומי, משימות פדגוגיות ולוח שנה"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 700,
+              background: showDailyTracker && selectedStudentId === null ? '#f3eefc' : '#ffffff',
+              borderColor: showDailyTracker && selectedStudentId === null ? '#8b6fc0' : '#cbd5e1',
+              color: showDailyTracker && selectedStudentId === null ? '#563d82' : '#1e293b',
+              boxShadow: showDailyTracker && selectedStudentId === null ? '0 0 0 2px #d8b4fe' : 'none'
+            }}
+          >
+            <ClipboardList size={16} style={{ color: '#8b6fc0' }} />
+            <span>מעקב יומי ו-TODO</span>
           </button>
 
           <button
@@ -2250,7 +2280,10 @@ export default function App() {
                     className={`sidebar-student-card ${
                       selectedStudentId === st.id ? 'selected' : ''
                     }`}
-                    onClick={() => setSelectedStudentId(st.id)}
+                    onClick={() => {
+                      setSelectedStudentId(st.id);
+                      setShowDailyTracker(false);
+                    }}
                   >
                     <div className="st-card-info">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2383,7 +2416,10 @@ export default function App() {
                             className={`sidebar-student-card ${
                               selectedStudentId === st.id ? 'selected' : ''
                             }`}
-                            onClick={() => setSelectedStudentId(st.id)}
+                            onClick={() => {
+                              setSelectedStudentId(st.id);
+                              setShowDailyTracker(false);
+                            }}
                           >
                             <div className="st-card-info">
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2529,6 +2565,21 @@ export default function App() {
                 onGoHome={() => setSelectedStudentId(null)}
               />
             </ErrorBoundary>
+          ) : showDailyTracker ? (
+            <ErrorBoundary componentName="DailyPedagogicalTracker">
+              <DailyPedagogicalTracker
+                students={userStudents}
+                currentUser={currentUser}
+                onUpdateStudent={(updatedStudent) => {
+                  handleSaveStudentPlan(updatedStudent);
+                }}
+                onSelectStudent={(studentId) => {
+                  setSelectedStudentId(studentId);
+                  setShowDailyTracker(false);
+                }}
+                onClose={() => setShowDailyTracker(false)}
+              />
+            </ErrorBoundary>
           ) : (
             <div className="inside-landing-page">
               <div className="inside-landing-hero">
@@ -2540,6 +2591,44 @@ export default function App() {
                 <p>
                   כדי להתחיל לעבוד, בחרי האם ליצור תוכנית עבודה אקולוגית לתלמיד/ה חדש/ה או לפתוח תוכנית קיימת מתוך רשימת התלמידים שלך.
                 </p>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    padding: '12px 18px',
+                    background: '#ffffff',
+                    border: '1.5px solid #d3dff0',
+                    borderRadius: '14px',
+                    marginTop: '14px',
+                    boxShadow: '0 2px 6px rgba(43, 76, 115, 0.04)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <ClipboardList size={22} style={{ color: '#4a88c7' }} />
+                    <div>
+                      <strong style={{ fontSize: '13.5px', color: '#2b4c73', display: 'block' }}>מעקב יומי, משימות ולוח שנה</strong>
+                      <span style={{ fontSize: '12px', color: '#5c6f8c' }}>סנכרון פגישות, משימות פדגוגיות להיום, ועדכון מהיר של יעדים ב-AI</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowDailyTracker(true)}
+                    style={{
+                      background: '#4a88c7',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    כניסה למעקב היומי ⚡
+                  </button>
+                </div>
               </div>
 
               <div className="inside-landing-cards-grid">
