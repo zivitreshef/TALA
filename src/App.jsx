@@ -1698,7 +1698,7 @@ export default function App() {
     {};
 
   const siteVersion =
-    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.1';
+    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.2';
 
   return (
     <div className="tala-app-root" dir="rtl">
