@@ -221,7 +221,7 @@ Run: `npx vitest run src/__tests__/reportSwitching.test.js`
   - `removeGoalRow(prev, goalId) => FormData`: appends a non-empty removed goal to `removedAiGoals` as `{ id, environment, title, activityParticipation, aiSnapshot }` (trimmed)
   - `buildNewGoalRow({ id, stage, isTalaMode, isKindergarten, plus3Months }) => Goal`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 import { describe, it, expect } from 'vitest';
@@ -263,17 +263,17 @@ describe('workPlanEdits', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL**
+- [x] **Step 2: Run, expect FAIL**
 
 Run: `npx vitest run src/__tests__/workPlanEdits.test.js`
 
-- [ ] **Step 3: Implement in `src/domain/workPlanEdits.js`.** Bodies are the current `setFormData` updater bodies. `buildNewGoalRow` reproduces the object in `handleAddGoalRow`, with `duration: \`3 חודשים (עד ${plus3Months})\``.
+- [x] **Step 3: Implement in `src/domain/workPlanEdits.js`.** Bodies are the current `setFormData` updater bodies. `buildNewGoalRow` reproduces the object in `handleAddGoalRow`, with `duration: \`3 חודשים (עד ${plus3Months})\``.
 
-- [ ] **Step 4: Rewire the handlers.** Keep the lock guards, `handleAutoUnlockReport('evalEdit')`, `window.confirm` and picker state calls in the component. Each `setFormData((prev) => …)` becomes `setFormData((prev) => fn(prev, …))`.
+- [x] **Step 4: Rewire the handlers.** Keep the lock guards, `handleAutoUnlockReport('evalEdit')`, `window.confirm` and picker state calls in the component. Each `setFormData((prev) => …)` becomes `setFormData((prev) => fn(prev, …))`.
 
-- [ ] **Step 5: Verify** with `npx vitest run` and `npm run build`.
+- [x] **Step 5: Verify** with `npx vitest run` and `npm run build`.
 
-- [ ] **Step 6: Commit** with `refactor(domain): extract work-plan field and goal edit rules`
+- [x] **Step 6: Commit** with `refactor(domain): extract work-plan field and goal edit rules`
 
 ---
 

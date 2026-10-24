@@ -138,6 +138,17 @@ import {
   syncActiveReportSnapshot
 } from './domain/yearReport';
 import { switchPlanType, switchSchoolYear } from './domain/reportSwitching';
+import {
+  LOCKED_EDITABLE_FIELDS,
+  EVAL_GOAL_FIELDS,
+  applyFieldChange,
+  updateTalaProfileRow,
+  toggleFocusDomain,
+  applyGoalChange,
+  toggleGoalAiLock,
+  removeGoalRow,
+  buildNewGoalRow
+} from './domain/workPlanEdits';
 
 const DURATION_TSHIRT_OPTIONS = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
@@ -580,38 +591,8 @@ export default function EcologicalWorkPlanForm({
 
   // Update personal or top-level field (when report is locked, only Evaluation Report fields may be updated)
   const handleFieldChange = (field, value) => {
-    const allowedWhenLocked = new Set([
-      'evalReportFreeText',
-      'evalReportSummary',
-      'statusReportSections',
-      'statusReportUpdatedAt'
-    ]);
-    if (formData.isLocked && !allowedWhenLocked.has(field)) return;
-    setFormData((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === 'stage') {
-        next.stage = value;
-        next.stageSource = 'user_explicit';
-        next.stageReason = value === 'kindergarten' ? 'בחירת משתמש: גן ילדים' : 'בחירת משתמש: בית ספר';
-        next.stageUpdatedAt = new Date().toISOString();
-      } else if (field === 'educationalFramework' || field === 'teacherFreeText' || field === 'birthDate') {
-        if (next.stageSource !== 'user_explicit') {
-          const stageInfo = detectStudentStage(
-            {
-              educationalFramework: next.educationalFramework,
-              teacherFreeText: next.teacherFreeText,
-              birthDate: next.birthDate
-            },
-            next.date
-          );
-          next.stage = stageInfo.stage === 'kindergarten' ? 'kindergarten' : 'school';
-          next.stageSource = stageInfo.stageSource;
-          next.stageReason = stageInfo.stageReason;
-          next.stageUpdatedAt = stageInfo.stageUpdatedAt;
-        }
-      }
-      return next;
-    });
+    if (formData.isLocked && !LOCKED_EDITABLE_FIELDS.has(field)) return;
+    setFormData((prev) => applyFieldChange(prev, field, value));
   };
 
   // Append parent / student answers to the teacher free text, then surface that section
@@ -625,35 +606,13 @@ export default function EcologicalWorkPlanForm({
   // Update a row in the 8-row functional profile table (for תל"א)
   const handleTalaProfileRowChange = (rowIdOrDomain, field, value) => {
     if (formData.isLocked) return;
-    setFormData((prev) => {
-      const currentRows = buildDefaultTalaProfileRows(prev.talaProfileRows);
-      const isStrengthField = field === 'strengths' || field === 'strengthsAndFacilitators';
-      return {
-        ...prev,
-        talaProfileRows: currentRows.map((r) =>
-          r.id === rowIdOrDomain || r.domain === rowIdOrDomain || r.subDomain === rowIdOrDomain
-            ? isStrengthField
-              ? { ...r, strengths: value, strengthsAndFacilitators: value }
-              : { ...r, toStrengthen: value, areasToStrengthenAndBarriers: value }
-            : r
-        )
-      };
-    });
+    setFormData((prev) => updateTalaProfileRow(prev, rowIdOrDomain, field, value));
   };
 
   // Toggle selection of a focus domain for the תל"א work plan
   const handleToggleTalaFocusDomain = (domain) => {
     if (formData.isLocked) return;
-    setFormData((prev) => {
-      const current = Array.isArray(prev.talaFocusDomains) ? prev.talaFocusDomains : [];
-      const next = current.includes(domain)
-        ? current.filter((d) => d !== domain)
-        : [...current, domain];
-      return {
-        ...prev,
-        talaFocusDomains: next
-      };
-    });
+    setFormData((prev) => toggleFocusDomain(prev, domain));
   };
 
   // Update student gender ('boy' = בן / זכר, 'girl' = בת / נקבה) and automatically inflect all goals & objectives
@@ -668,12 +627,7 @@ export default function EcologicalWorkPlanForm({
 
   // Update specific goal row (when report is locked, only Mid-Year / End-of-Year Evaluation fields can be updated!)
   const handleGoalChange = (goalId, field, value) => {
-    const allowedEvalFields = new Set([
-      'achievementStatus',
-      'midYearEvaluation',
-      'endYearEvaluation'
-    ]);
-    const isEvalField = allowedEvalFields.has(field);
+    const isEvalField = EVAL_GOAL_FIELDS.has(field);
     if (formData.isLocked) {
       if (isEvalField) {
         handleAutoUnlockReport('evalEdit');
@@ -681,32 +635,13 @@ export default function EcologicalWorkPlanForm({
         return;
       }
     }
-    setFormData((prev) => ({
-      ...prev,
-      goals: (prev.goals || []).map((g) =>
-        g.id === goalId
-          ? isEvalField
-            ? { ...g, [field]: value }
-            : { ...g, [field]: value, isTeacherModified: true }
-          : g
-      )
-    }));
+    setFormData((prev) => applyGoalChange(prev, goalId, field, value));
   };
 
   // Toggle whether a specific goal is locked against AI re-analysis
   const handleToggleGoalLock = (goalId) => {
     if (formData.isLocked) return;
-    setFormData((prev) => ({
-      ...prev,
-      goals: (prev.goals || []).map((g) => {
-        if (g.id !== goalId) return g;
-        const currentlyLocked = isGoalProtectedFromAiOverwrite(g);
-        if (currentlyLocked) {
-          return attachAiBaselineToGoal(g);
-        }
-        return { ...g, isTeacherModified: true };
-      })
-    }));
+    setFormData((prev) => toggleGoalAiLock(prev, goalId));
   };
 
   // Add a new empty goal block and open the smart Goal Picker immediately
@@ -714,26 +649,13 @@ export default function EcologicalWorkPlanForm({
     if (formData.isLocked) return;
     const newId = 'g_row_' + Date.now();
     const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
-    const newGoalObj = {
+    const newGoalObj = buildNewGoalRow({
       id: newId,
-      environment: getDefaultEnvironmentForStage(currentStage),
-      activityParticipation: '',
-      title: '',
-      objectives: '',
-      opportunities: '',
-      opportunitiesIntegration: '',
-      opportunitiesTherapist: '',
-      learningAccommodations: '',
-      partners: isTalaMode
-        ? 'מחנכת, מורת שילוב, מטפלת באומנויות'
-        : isKindergarten
-        ? 'צוות הגן, סייעת אישית'
-        : getDefaultPartnersForStage('school'),
-      duration: `3 חודשים (עד ${dateInfo.plus3Months})`,
-      evaluationCriteria: '',
-      isTeacherAdded: true,
-      isTeacherModified: true
-    };
+      stage: currentStage,
+      isTalaMode,
+      isKindergarten,
+      plus3Months: dateInfo.plus3Months
+    });
     setFormData((prev) => ({
       ...prev,
       goals: [...(prev.goals || []), newGoalObj]
@@ -748,24 +670,7 @@ export default function EcologicalWorkPlanForm({
     if ((formData.goals || []).length <= 1) {
       if (!window.confirm('זוהי המטרה היחידה בתכנית. האם למחוק אותה?')) return;
     }
-    setFormData((prev) => {
-      const targetGoal = (prev.goals || []).find((g) => g.id === goalId);
-      const nextRemoved = [...(prev.removedAiGoals || [])];
-      if (targetGoal && !isGoalEmpty(targetGoal)) {
-        nextRemoved.push({
-          id: targetGoal.id,
-          environment: (targetGoal.environment || '').trim(),
-          title: (targetGoal.title || '').trim(),
-          activityParticipation: (targetGoal.activityParticipation || '').trim(),
-          aiSnapshot: targetGoal.aiSnapshot || null
-        });
-      }
-      return {
-        ...prev,
-        removedAiGoals: nextRemoved,
-        goals: (prev.goals || []).filter((g) => g.id !== goalId)
-      };
-    });
+    setFormData((prev) => removeGoalRow(prev, goalId));
   };
 
   // Select a goal from the Dynamic Goal Bank (automatically adjusted to student's gender!)
