@@ -135,6 +135,23 @@ import TrialNdaModal from './components/modals/TrialNdaModal';
 import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
+import { appendBankGoalToStudent } from './domain/bankGoalApplication';
+import {
+  getFrameworkKey,
+  filterStudentsBySearch,
+  sortStudentsByName,
+  sortStudentsByFramework,
+  groupStudentsByFramework,
+  resolveBankTargetStudent
+} from './domain/studentListView';
+import {
+  isSurveyEligible,
+  advanceUsageEntry,
+  shouldPromptSurvey,
+  patchUserByEmail,
+  buildSurveySummaryNotes
+} from './domain/userEngagement';
+import { buildAdminBankGoalPayload } from './domain/goalBankAdmin';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
 import './index.css';
 
@@ -783,7 +800,7 @@ export default function App() {
     }
 
     // 4. Open the shared student report and close the notification modal
-    const fwKey = (studentObj.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
+    const fwKey = getFrameworkKey(studentObj);
     setExpandedFrameworks((prev) => ({ ...prev, [fwKey]: true }));
     setSelectedStudentId(studentObj.id);
     setShowSelfPasswordModal(false);
@@ -935,15 +952,10 @@ export default function App() {
       surveyPayload.submittedAt ||
       new Date().toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
 
-    const updatedList = allowedUsers.map((u) =>
-      u.email.toLowerCase() === currentUser.email.toLowerCase()
-        ? {
-            ...u,
-            surveyCompleted: true,
-            surveyCompletedAt: submittedAtStr
-          }
-        : u
-    );
+    const updatedList = patchUserByEmail(allowedUsers, currentUser.email, {
+      surveyCompleted: true,
+      surveyCompletedAt: submittedAtStr
+    });
     handleUpdateAllowedUsers(updatedList);
 
     const updatedCurrent = {
@@ -954,19 +966,7 @@ export default function App() {
     setCurrentUser(updatedCurrent);
     safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
 
-    const r = surveyPayload.ratings || {};
-    const summaryNotes = [
-      `קלות שימוש: ${r.easeOfWebsite || 5}/5`,
-      `יצירת תלמיד: ${r.createStudent || 5}/5`,
-      `מטרות ו-AI: ${r.generateGoals || 5}/5`,
-      `הפקת דוחות: ${r.createReport || 5}/5`,
-      `שיתוף עם קולגות: ${r.collaborateWithColleagues || 5}/5`,
-      `המלצה לרכישה: ${surveyPayload.recommendToColleaguesAndManager || '—'}`,
-      surveyPayload.overallFeedback ? `משוב: ${surveyPayload.overallFeedback}` : '',
-      surveyPayload.improvementSuggestions ? `הצעות שיפור: ${surveyPayload.improvementSuggestions}` : ''
-    ]
-      .filter(Boolean)
-      .join(' | ');
+    const summaryNotes = buildSurveySummaryNotes(surveyPayload);
 
     handleSubmitAdminRequest({
       id: 'survey_' + Date.now(),
@@ -996,11 +996,9 @@ export default function App() {
     setSurveySnoozedInSession(true);
     if (!currentUser) return;
 
-    const updatedList = allowedUsers.map((u) =>
-      u.email.toLowerCase() === currentUser.email.toLowerCase()
-        ? { ...u, surveyDismissed: true }
-        : u
-    );
+    const updatedList = patchUserByEmail(allowedUsers, currentUser.email, {
+      surveyDismissed: true
+    });
     handleUpdateAllowedUsers(updatedList);
 
     const updatedCurrent = { ...currentUser, surveyDismissed: true };
@@ -1010,12 +1008,7 @@ export default function App() {
 
   // Track active usage for new users and automatically trigger the optional survey after working with the webapp for a while
   useEffect(() => {
-    if (!currentUser || currentUser.role === 'admin') return undefined;
-    if (currentUser.mustChangePassword) return undefined;
-    if (currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned)) {
-      return undefined;
-    }
-    if (currentUser.surveyCompleted || currentUser.surveyDismissed || surveySnoozedInSession) {
+    if (!isSurveyEligible(currentUser, surveySnoozedInSession)) {
       return undefined;
     }
 
@@ -1027,21 +1020,12 @@ export default function App() {
     const checkAndAdvanceUsage = () => {
       if (document.visibilityState !== 'visible') return;
       const allUsage = safeGetStorageJson(USER_USAGE_TRACKER_KEY, {}) || {};
-      const prevEntry = allUsage[emailKey] || {
-        firstSeenAt: Date.now(),
-        activeSeconds: 0
-      };
-      const nextSeconds = (Number(prevEntry.activeSeconds) || 0) + 30;
-      allUsage[emailKey] = {
-        ...prevEntry,
-        activeSeconds: nextSeconds
-      };
+      const nextEntry = advanceUsageEntry(allUsage[emailKey]);
+      allUsage[emailKey] = nextEntry;
       safeSetStorageJson(USER_USAGE_TRACKER_KEY, allUsage);
 
       // Trigger optional survey after ~8 minutes of active usage, or after ~3 minutes if the user already created/worked on a student card
-      const hasWorkedEnough =
-        nextSeconds >= 480 || (ownedCount >= 1 && nextSeconds >= 180);
-      if (hasWorkedEnough) {
+      if (shouldPromptSurvey(nextEntry.activeSeconds, ownedCount)) {
         setShowFeedbackSurveyModal(true);
       }
     };
@@ -1463,99 +1447,10 @@ export default function App() {
       return;
     }
 
-    const genderToUse = baseStudent.gender || 'boy';
-    const studentFirstName = (
-      baseStudent.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד')
-    )
-      .trim()
-      .split(/\s+/)[0];
+    const res = appendBankGoalToStudent(baseStudent, bankItem);
+    if (!res.added) return;
 
-    const genderTitle = adaptTextToGender(bankItem.title || '', genderToUse);
-    const genderActivity = adaptTextToGender(bankItem.defaultActivity || '', genderToUse);
-    const genderObjectives = (bankItem.suggestedObjectives || [])
-      .map((o) => `• ${adaptTextToGender(o, genderToUse)}`)
-      .join('\n');
-    const personalizedOpportunities = adaptTextToGender(
-      (bankItem.defaultOpportunities || '').replace(/הילד/g, studentFirstName),
-      genderToUse
-    );
-    const genderEval = adaptTextToGender(bankItem.defaultEvaluation || '', genderToUse);
-    const dateInfo = resolveStudentAgeAndDateInfo(
-      baseStudent,
-      baseStudent.teacherFreeText || ''
-    );
-
-    const existingGoals = Array.isArray(baseStudent.goals) ? baseStudent.goals : [];
-    const alreadyExists = existingGoals.some(
-      (g) =>
-        (g.title || '').trim() === genderTitle.trim() ||
-        (g.title || '').trim() === (bankItem.title || '').trim()
-    );
-    if (alreadyExists) return;
-
-    const draftGoal = {
-      id: 'g_bank_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      environment: bankItem.environment || ENVIRONMENTS_LIST[0],
-      activityParticipation: genderActivity || '',
-      title: genderTitle,
-      objectives: genderObjectives || '',
-      opportunities: personalizedOpportunities || '',
-      partners: bankItem.defaultPartners || 'צוות הגן, סייעת אישית',
-      duration: '',
-      evaluationCriteria: genderEval || '',
-      isTeacherAdded: true,
-      isTeacherModified: true
-    };
-
-    const sizedGoal = {
-      ...draftGoal,
-      duration: normalizeAndSizeGoalDuration(
-        draftGoal,
-        baseStudent.teacherFreeText || '',
-        baseStudent,
-        dateInfo
-      )
-    };
-
-    const nextGoals =
-      existingGoals.length === 1 && isGoalEmpty(existingGoals[0])
-        ? [sizedGoal]
-        : [...existingGoals, sizedGoal];
-
-    const nowTime = new Date().toLocaleTimeString('he-IL', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    const activeYear = baseStudent.schoolYear || 'תשפ"ו (2025-2026)';
-    const updatedStudent = {
-      ...baseStudent,
-      goals: nextGoals,
-      lastSavedAt: nowTime,
-      reportsByYear: {
-        ...(baseStudent.reportsByYear || {}),
-        [activeYear]: {
-          ...(baseStudent.reportsByYear?.[activeYear] || {}),
-          date: baseStudent.date || new Date().toLocaleDateString('he-IL'),
-          planType: baseStudent.planType || 'תל"א (תוכנית לימודים אישית)',
-          teacherFreeText: baseStudent.teacherFreeText || '',
-          freeTextAnalyzed: Boolean(baseStudent.freeTextAnalyzed),
-          removedAiGoals: Array.isArray(baseStudent.removedAiGoals)
-            ? baseStudent.removedAiGoals
-            : [],
-          strengthsExisting: baseStudent.strengthsExisting || '',
-          strengthsToEmpower: baseStudent.strengthsToEmpower || '',
-          recommendations: baseStudent.recommendations || '',
-          evalReportFreeText: baseStudent.evalReportFreeText || '',
-          evalReportSummary: baseStudent.evalReportSummary || '',
-          statusReportSections: Array.isArray(baseStudent.statusReportSections)
-            ? baseStudent.statusReportSections
-            : [],
-          statusReportUpdatedAt: baseStudent.statusReportUpdatedAt || '',
-          lastSavedAt: nowTime,
-          goals: nextGoals
-        }
-      }
-    };
+    const updatedStudent = res.student;
 
     setStudents((prev) =>
       prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
@@ -1570,7 +1465,7 @@ export default function App() {
 
     const studentDisplayName = baseStudent.name?.trim() || 'התלמיד/ה';
     setBankAddToast(
-      `✅ המטרה "${genderTitle}" נוספה לתכנית של ${studentDisplayName} ומשקלה במאגר עלה ב-+1!`
+      `✅ המטרה "${res.goalTitle}" נוספה לתכנית של ${studentDisplayName} ומשקלה במאגר עלה ב-+1!`
     );
     if (onboardingTourStep === 5) {
       setOnboardingTourStep(6);
@@ -1632,49 +1527,17 @@ export default function App() {
       return;
     }
 
-    const resolvedStages = Array.isArray(editingBankGoal.stages) && editingBankGoal.stages.length > 0
-      ? editingBankGoal.stages
-      : ['kindergarten'];
-
-    const targetTitle = editingBankGoal.title.trim();
-    const rawEnv = (editingBankGoal.environment || '').trim() || KINDERGARTEN_ENVIRONMENTS[0];
-    const targetEnv = canonicalizeEnvironment(rawEnv) || KINDERGARTEN_ENVIRONMENTS[0];
+    const payload = buildAdminBankGoalPayload(editingBankGoal);
+    const targetTitle = payload.title;
+    const targetEnv = payload.environment;
+    const resolvedStages = payload.stages;
 
     let nextBank;
     if (editingBankGoal.mode === 'add') {
-      nextBank = addGoalByAdmin(
-        {
-          title: targetTitle,
-          stages: resolvedStages,
-          environment: targetEnv,
-          usageCount: editingBankGoal.usageCount,
-          defaultActivity: editingBankGoal.defaultActivity,
-          suggestedObjectives: editingBankGoal.suggestedObjectivesText,
-          defaultOpportunities: editingBankGoal.defaultOpportunities,
-          defaultPartners: editingBankGoal.defaultPartners,
-          defaultDuration: editingBankGoal.defaultDuration,
-          defaultEvaluation: editingBankGoal.defaultEvaluation
-        },
-        goalBank
-      );
+      nextBank = addGoalByAdmin(payload, goalBank);
       setBankAddToast(`✅ המטרה "${targetTitle}" נוספה בהצלחה למאגר!`);
     } else {
-      nextBank = updateGoalByAdmin(
-        editingBankGoal.id,
-        {
-          title: targetTitle,
-          stages: resolvedStages,
-          environment: targetEnv,
-          usageCount: editingBankGoal.usageCount,
-          defaultActivity: editingBankGoal.defaultActivity,
-          suggestedObjectives: editingBankGoal.suggestedObjectivesText,
-          defaultOpportunities: editingBankGoal.defaultOpportunities,
-          defaultPartners: editingBankGoal.defaultPartners,
-          defaultDuration: editingBankGoal.defaultDuration,
-          defaultEvaluation: editingBankGoal.defaultEvaluation
-        },
-        goalBank
-      );
+      nextBank = updateGoalByAdmin(editingBankGoal.id, payload, goalBank);
       setBankAddToast(`✅ השינויים במטרה "${targetTitle}" נשמרו בהצלחה!`);
     }
 
@@ -1795,47 +1658,21 @@ export default function App() {
   const userStudents = getStudentsForUser(students, currentUser);
   const archivedUserStudents = getArchivedStudentsForUser(students, currentUser);
   const selectedStudent = userStudents.find((s) => s.id === selectedStudentId);
-  const filteredStudents = userStudents.filter(
-    (s) =>
-      (s.name || '').includes(studentSearch) ||
-      (s.educationalFramework || '').includes(studentSearch)
-  );
-  const sortedStudentsByName = [...filteredStudents].sort((a, b) =>
-    (a.name || '').trim().localeCompare((b.name || '').trim(), 'he')
-  );
-  const sortedStudentsByFramework = [...filteredStudents].sort((a, b) => {
-    const fwA = (a.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
-    const fwB = (b.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
-    const fwCmp = fwA.localeCompare(fwB, 'he');
-    if (fwCmp !== 0) return fwCmp;
-    return (a.name || '').trim().localeCompare((b.name || '').trim(), 'he');
-  });
-  const studentsByFramework = filteredStudents.reduce((acc, st) => {
-    const fwKey = (st.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
-    if (!acc[fwKey]) {
-      acc[fwKey] = [];
-    }
-    acc[fwKey].push(st);
-    return acc;
-  }, {});
-  const frameworkClusters = Object.entries(studentsByFramework);
+  const filteredStudents = filterStudentsBySearch(userStudents, studentSearch);
+  const sortedStudentsByName = sortStudentsByName(filteredStudents);
+  const sortedStudentsByFramework = sortStudentsByFramework(filteredStudents);
+  const frameworkClusters = groupStudentsByFramework(filteredStudents);
   const sortedBank = getSortedGoalBank(goalBank);
-  const activeBankTargetStudent =
-    userStudents.find(
-      (s) => s.id === (targetBankStudentId || selectedStudentId)
-    ) ||
-    selectedStudent ||
-    userStudents[0] ||
-    null;
+  const activeBankTargetStudent = resolveBankTargetStudent(
+    userStudents,
+    targetBankStudentId,
+    selectedStudentId
+  );
   const activeGoalBankStudentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
   const currentModalStage = goalBankStageFilter !== null ? goalBankStageFilter : activeGoalBankStudentStage;
   const goalBankEnvironments = getCanonicalEnvironmentsForStage(currentModalStage);
 
-  const filteredArchivedStudents = archivedUserStudents.filter(
-    (s) =>
-      (s.name || '').includes(archiveSearch) ||
-      (s.educationalFramework || '').includes(archiveSearch)
-  );
+  const filteredArchivedStudents = filterStudentsBySearch(archivedUserStudents, archiveSearch);
   const activeArchivedStudent =
     archivedUserStudents.find((s) => s.id === selectedArchivedStudentId) ||
     filteredArchivedStudents[0] ||
@@ -1861,7 +1698,7 @@ export default function App() {
     {};
 
   const siteVersion =
-    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.1';
+    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.2';
 
   return (
     <div className="tala-app-root" dir="rtl">

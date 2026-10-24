@@ -43,7 +43,7 @@ import {
   reverseEngineerRawTextLocally,
   INITIAL_GOAL_BANK
 } from '../goalBankData';
-import { buildFreshReportForPlanType } from '../EcologicalWorkPlanForm';
+import { buildFreshReportForPlanType } from '../domain/yearReport';
 import { safeGetStorageJson } from '../services/storage';
 import {
   buildWorkPlanPrintHtml,

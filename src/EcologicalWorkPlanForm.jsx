@@ -125,6 +125,41 @@ import { HEALTH_EVENT_KINDS } from './domain/healthEvents.js';
 
 // NEW: Firebase Functions imports
 import { getFunctions, httpsCallable } from 'firebase/functions';
+import {
+  DEFAULT_SCHOOL_YEAR,
+  DEFAULT_PLAN_TYPE,
+  TACHI_PLAN_TYPE,
+  getPlanTypeStorageKey,
+  buildFreshReportForPlanType,
+  extractYearReportFromFormData,
+  isRawFreeTextAlreadyAnalyzed,
+  hasContentInYearReport,
+  normalizeStudentForForm,
+  syncActiveReportSnapshot
+} from './domain/yearReport';
+import { switchPlanType, switchSchoolYear } from './domain/reportSwitching';
+import {
+  LOCKED_EDITABLE_FIELDS,
+  EVAL_GOAL_FIELDS,
+  applyFieldChange,
+  updateTalaProfileRow,
+  toggleFocusDomain,
+  applyGoalChange,
+  toggleGoalAiLock,
+  removeGoalRow,
+  buildNewGoalRow,
+  applyShareToggle,
+  updateStatusSection,
+  removeStatusSection,
+  addManualStatusSection
+} from './domain/workPlanEdits';
+import { personalizeBankItem, fillGoalRowFromBank } from './domain/bankGoalApplication';
+import { callAiJson } from './services/aiJsonClient';
+import {
+  buildSummaryTablePrompt,
+  applyAiSummary,
+  applyLocalSummary
+} from './domain/summaryTable';
 
 const DURATION_TSHIRT_OPTIONS = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
@@ -135,140 +170,7 @@ const DURATION_TSHIRT_OPTIONS = [
   { size: 'XL', label: 'עד סוף השנה (שנתי)', value: 'עד סוף השנה' }
 ];
 
-const getPlanTypeStorageKey = (schoolYear, planType) => {
-  const yr = schoolYear || 'תשפ"ו (2025-2026)';
-  const typeKey = isTalaPlanType(planType) ? 'tala' : 'tachi';
-  return `${yr}__${typeKey}`;
-};
 
-export const buildFreshReportForPlanType = (planType, stage) => {
-  const resolvedPlanType = planType || 'תל"א (תוכנית לימודים אישית)';
-  const isTala = isTalaPlanType(resolvedPlanType);
-  const isSchoolStage = stage === 'school';
-  const freshGoal = {
-    id: 'g_init_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-    environment: isSchoolStage ? getDefaultEnvironmentForStage('school') : ENVIRONMENTS_LIST[0],
-    activityParticipation: '',
-    title: '',
-    objectives: '',
-    opportunities: '',
-    opportunitiesIntegration: '',
-    opportunitiesTherapist: '',
-    learningAccommodations: '',
-    partners: isTala
-      ? 'מחנכת, מורת שילוב, מטפלת באומנויות'
-      : isSchoolStage
-      ? getDefaultPartnersForStage('school')
-      : 'צוות הגן, סייעת אישית',
-    duration: '',
-    evaluationCriteria: ''
-  };
-
-  return {
-    date: new Date().toLocaleDateString('he-IL'),
-    planType: resolvedPlanType,
-    isLocked: false,
-    lockedAt: '',
-    lockedBy: '',
-    schoolName: '',
-    gradeClass: '',
-    homeroomTeacher: '',
-    integrationTeacher: '',
-    additionalPartners: '',
-    learningSupportAssistant: '',
-    counselorName: '',
-    psychologistName: '',
-    matyaCoordinator: '',
-    emotionalTherapist: '',
-    paraMedicalTeam: '',
-    teacherFreeText: '',
-    freeTextAnalyzed: false,
-    removedAiGoals: [],
-    strengthsExisting: '',
-    strengthsToEmpower: '',
-    studentGeneralBackground: '',
-    studentSupportReceived: '',
-    studentMainGoal: '',
-    talaProfileRows: buildDefaultTalaProfileRows(),
-    talaFocusDomains: [],
-    recommendations: '',
-    evalReportFreeText: '',
-    evalReportSummary: '',
-    statusReportSections: [],
-    statusReportUpdatedAt: '',
-    lastSavedAt: '',
-    goals: []
-  };
-};
-
-const extractYearReportFromFormData = (data) => ({
-  date: data?.date || new Date().toLocaleDateString('he-IL'),
-  planType: data?.planType || 'תל"א (תוכנית לימודים אישית)',
-  isLocked: Boolean(data?.isLocked),
-  lockedAt: data?.lockedAt || '',
-  lockedBy: data?.lockedBy || '',
-  schoolName: data?.schoolName || '',
-  gradeClass: data?.gradeClass || '',
-  homeroomTeacher: data?.homeroomTeacher || '',
-  integrationTeacher: data?.integrationTeacher || '',
-  additionalPartners: data?.additionalPartners || '',
-  learningSupportAssistant: data?.learningSupportAssistant || '',
-  counselorName: data?.counselorName || '',
-  psychologistName: data?.psychologistName || '',
-  matyaCoordinator: data?.matyaCoordinator || '',
-  emotionalTherapist: data?.emotionalTherapist || '',
-  paraMedicalTeam: data?.paraMedicalTeam || '',
-  teacherFreeText: data?.teacherFreeText || '',
-  freeTextAnalyzed: Boolean(data?.freeTextAnalyzed),
-  removedAiGoals: Array.isArray(data?.removedAiGoals) ? data.removedAiGoals : [],
-  strengthsExisting: data?.strengthsExisting || '',
-  strengthsToEmpower: data?.strengthsToEmpower || '',
-  studentGeneralBackground: data?.studentGeneralBackground || '',
-  studentSupportReceived: data?.studentSupportReceived || '',
-  studentMainGoal: data?.studentMainGoal || '',
-  talaProfileRows: buildDefaultTalaProfileRows(data?.talaProfileRows),
-  talaFocusDomains: Array.isArray(data?.talaFocusDomains) ? data.talaFocusDomains : [],
-  recommendations: data?.recommendations || '',
-  evalReportFreeText: data?.evalReportFreeText || '',
-  evalReportSummary: data?.evalReportSummary || '',
-  statusReportSections: Array.isArray(data?.statusReportSections) ? data.statusReportSections : [],
-  statusReportUpdatedAt: data?.statusReportUpdatedAt || '',
-  lastSavedAt: data?.lastSavedAt || '',
-  goals: (data?.goals || []).map((g) => adaptGoalToGender(g, data?.gender || 'boy'))
-});
-
-const isRawFreeTextAlreadyAnalyzed = (data) =>
-  Boolean(
-    data?.freeTextAnalyzed ||
-      ((data?.teacherFreeText || '').trim() &&
-        ((data?.strengthsExisting || '').trim() ||
-          (data?.strengthsToEmpower || '').trim() ||
-          (data?.studentGeneralBackground || '').trim() ||
-          (data?.studentSupportReceived || '').trim() ||
-          (data?.studentMainGoal || '').trim() ||
-          hasPopulatedTalaProfile(data) ||
-          (data?.goals || []).some((g) => (g?.title || '').trim())))
-  );
-
-const hasContentInYearReport = (rep) => {
-  if (!rep) return false;
-  return Boolean(
-    (rep.teacherFreeText && rep.teacherFreeText.trim()) ||
-      (rep.strengthsExisting && rep.strengthsExisting.trim()) ||
-      (rep.strengthsToEmpower && rep.strengthsToEmpower.trim()) ||
-      (rep.studentGeneralBackground && rep.studentGeneralBackground.trim()) ||
-      (rep.studentSupportReceived && rep.studentSupportReceived.trim()) ||
-      (rep.studentMainGoal && rep.studentMainGoal.trim()) ||
-      hasPopulatedTalaProfile(rep) ||
-      (rep.recommendations && rep.recommendations.trim()) ||
-      (rep.evalReportFreeText && rep.evalReportFreeText.trim()) ||
-      (rep.evalReportSummary && rep.evalReportSummary.trim()) ||
-      (Array.isArray(rep.statusReportSections) && rep.statusReportSections.length > 0) ||
-      (rep.goals || []).some(
-        (g) => (g.title && g.title.trim()) || (g.objectives && g.objectives.trim())
-      )
-  );
-};
 
 export default function EcologicalWorkPlanForm({
   student,
@@ -315,134 +217,8 @@ export default function EcologicalWorkPlanForm({
     }
   }, [onboardingTourStep]);
 
-  const buildNormalizedStudentData = (st) => {
-    const initialGender = st?.gender || 'boy';
-    const currentYear = st?.schoolYear || 'תשפ"ו (2025-2026)';
-    const currentPlanType = st?.planType || 'תל"א (תוכנית לימודים אישית)';
-    const normalizedGoals = (st?.goals || []).map((g) =>
-      adaptGoalToGender(g, initialGender)
-    );
-    const normalizedTalaProfileRows = buildDefaultTalaProfileRows(st?.talaProfileRows);
-    const normalizedTalaFocusDomains = Array.isArray(st?.talaFocusDomains)
-      ? st.talaFocusDomains
-      : [];
-    const existingReports = { ...(st?.reportsByYear || {}) };
-    const existingReportsByPlanType = { ...(st?.reportsByPlanType || {}) };
-    const initialRemovedAiGoals = Array.isArray(st?.removedAiGoals) ? st.removedAiGoals : [];
-    const initialStatusReportSections = Array.isArray(st?.statusReportSections)
-      ? st.statusReportSections
-      : [];
-    const initialLocked = Boolean(st?.isLocked);
-
-    // Detect if a תח"י report was previously switched to תל"א before per-planType separation existed
-    const hasTachiStrengthsOnly =
-      !st?.reportsByPlanType &&
-      Boolean((st?.strengthsExisting || '').trim() || (st?.strengthsToEmpower || '').trim()) &&
-      !(st?.studentGeneralBackground || '').trim() &&
-      !(st?.studentSupportReceived || '').trim() &&
-      !(st?.studentMainGoal || '').trim() &&
-      !hasPopulatedTalaProfile(st);
-
-    const baseSnapshot = {
-      date: st?.date || new Date().toLocaleDateString('he-IL'),
-      planType: currentPlanType,
-      isLocked: initialLocked,
-      lockedAt: st?.lockedAt || '',
-      lockedBy: st?.lockedBy || '',
-      schoolName: st?.schoolName || '',
-      gradeClass: st?.gradeClass || '',
-      homeroomTeacher: st?.homeroomTeacher || '',
-      integrationTeacher: st?.integrationTeacher || '',
-      additionalPartners: st?.additionalPartners || '',
-      learningSupportAssistant: st?.learningSupportAssistant || '',
-      counselorName: st?.counselorName || '',
-      psychologistName: st?.psychologistName || '',
-      matyaCoordinator: st?.matyaCoordinator || '',
-      emotionalTherapist: st?.emotionalTherapist || '',
-      paraMedicalTeam: st?.paraMedicalTeam || '',
-      teacherFreeText: st?.teacherFreeText || '',
-      freeTextAnalyzed: Boolean(st?.freeTextAnalyzed),
-      removedAiGoals: initialRemovedAiGoals,
-      strengthsExisting: st?.strengthsExisting || '',
-      strengthsToEmpower: st?.strengthsToEmpower || '',
-      studentGeneralBackground: st?.studentGeneralBackground || '',
-      studentSupportReceived: st?.studentSupportReceived || '',
-      studentMainGoal: st?.studentMainGoal || '',
-      talaProfileRows: normalizedTalaProfileRows,
-      talaFocusDomains: normalizedTalaFocusDomains,
-      recommendations: st?.recommendations || '',
-      evalReportFreeText: st?.evalReportFreeText || '',
-      evalReportSummary: st?.evalReportSummary || '',
-      statusReportSections: initialStatusReportSections,
-      statusReportUpdatedAt: st?.statusReportUpdatedAt || '',
-      lastSavedAt: st?.lastSavedAt || '',
-      goals: normalizedGoals
-    };
-
-    const stageInfo = detectStudentStage(
-      {
-        educationalFramework: st?.educationalFramework,
-        teacherFreeText: st?.teacherFreeText,
-        birthDate: st?.birthDate
-      },
-      baseSnapshot.date || st?.date
-    );
-    const resolvedStage = (st?.stage === 'kindergarten' || st?.stage === 'school')
-      ? st.stage
-      : (stageInfo.stage === 'kindergarten' ? 'kindergarten' : 'school');
-    const resolvedStageSource = st?.stageSource || (st?.stage ? 'user_explicit' : (stageInfo.stageSource || 'user_explicit'));
-    const resolvedStageReason = st?.stageReason || (st?.stage ? 'בחירת משתמש' : stageInfo.stageReason);
-    const resolvedStageUpdatedAt = st?.stageUpdatedAt || stageInfo.stageUpdatedAt;
-
-    if (hasTachiStrengthsOnly && isTalaPlanType(currentPlanType)) {
-      const tachiKey = getPlanTypeStorageKey(currentYear, 'תח"י (תוכנית חינוכית יחידנית)');
-      const talaKey = getPlanTypeStorageKey(currentYear, 'תל"א (תוכנית לימודים אישית)');
-      existingReportsByPlanType[tachiKey] = {
-        ...baseSnapshot,
-        planType: 'תח"י (תוכנית חינוכית יחידנית)'
-      };
-      const emptyTalaReport =
-        existingReportsByPlanType[talaKey] ||
-        buildFreshReportForPlanType('תל"א (תוכנית לימודים אישית)', resolvedStage);
-      existingReportsByPlanType[talaKey] = emptyTalaReport;
-      existingReports[currentYear] = emptyTalaReport;
-
-      return {
-        ...st,
-        ...emptyTalaReport,
-        schoolYear: currentYear,
-        gender: initialGender,
-        stage: resolvedStage,
-        stageSource: resolvedStageSource,
-        stageReason: resolvedStageReason,
-        stageUpdatedAt: resolvedStageUpdatedAt,
-        sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
-        reportsByYear: existingReports,
-        reportsByPlanType: existingReportsByPlanType
-      };
-    }
-
-    const activePlanKey = getPlanTypeStorageKey(currentYear, currentPlanType);
-    existingReportsByPlanType[activePlanKey] = baseSnapshot;
-    existingReports[currentYear] = baseSnapshot;
-
-    return {
-      ...st,
-      ...baseSnapshot,
-      schoolYear: currentYear,
-      gender: initialGender,
-      sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
-      reportsByYear: existingReports,
-      reportsByPlanType: existingReportsByPlanType,
-      stage: resolvedStage,
-      stageSource: resolvedStageSource,
-      stageReason: resolvedStageReason,
-      stageUpdatedAt: resolvedStageUpdatedAt
-    };
-  };
-
-  const [formData, setFormData] = useState(() => buildNormalizedStudentData(student));
-  const savedSnapshotRef = useRef(JSON.stringify(buildNormalizedStudentData(student)));
+  const [formData, setFormData] = useState(() => normalizeStudentForForm(student));
+  const savedSnapshotRef = useRef(JSON.stringify(normalizeStudentForForm(student)));
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
   const [showMinistryCopyModal, setShowMinistryCopyModal] = useState(false);
   const [observationModalGoalId, setObservationModalGoalId] = useState(null);
@@ -556,7 +332,7 @@ export default function EcologicalWorkPlanForm({
 
   // Sync when switching selected student from the sidebar list
   useEffect(() => {
-    const normalized = buildNormalizedStudentData(student);
+    const normalized = normalizeStudentForForm(student);
     savedSnapshotRef.current = JSON.stringify(normalized);
     setFormData(normalized);
     setShowFullDocPreview(Boolean(normalized.isLocked));
@@ -572,20 +348,7 @@ export default function EcologicalWorkPlanForm({
 
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
   useEffect(() => {
-    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
-    const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
-    const currentSnapshot = extractYearReportFromFormData(formData);
-    const syncedDraft = {
-      ...formData,
-      reportsByYear: {
-        ...(formData.reportsByYear || {}),
-        [activeYear]: currentSnapshot
-      },
-      reportsByPlanType: {
-        ...(formData.reportsByPlanType || {}),
-        [activePlanKey]: currentSnapshot
-      }
-    };
+    const syncedDraft = syncActiveReportSnapshot(formData);
     const isDirty = JSON.stringify(syncedDraft) !== savedSnapshotRef.current;
     if (onDraftStateChange) {
       onDraftStateChange({
@@ -605,18 +368,7 @@ export default function EcologicalWorkPlanForm({
         ...formData,
         lastSavedAt: nowTime
       };
-      const snapshotWithTime = extractYearReportFromFormData(updatedWithTime);
-      const updated = {
-        ...updatedWithTime,
-        reportsByYear: {
-          ...(formData.reportsByYear || {}),
-          [activeYear]: snapshotWithTime
-        },
-        reportsByPlanType: {
-          ...(formData.reportsByPlanType || {}),
-          [activePlanKey]: snapshotWithTime
-        }
-      };
+      const updated = syncActiveReportSnapshot(updatedWithTime);
       savedSnapshotRef.current = JSON.stringify(updated);
       setFormData(updated);
       onSaveStudentPlan(updated);
@@ -708,9 +460,6 @@ export default function EcologicalWorkPlanForm({
       minute: '2-digit'
     });
     const nowDate = new Date().toLocaleDateString('he-IL');
-    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
-    const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
-
     const updatedWithLock = {
       ...formData,
       isLocked: nextLocked,
@@ -718,18 +467,7 @@ export default function EcologicalWorkPlanForm({
       lockedBy: nextLocked ? (currentUser?.name || currentUser?.email || '') : '',
       lastSavedAt: nowTime
     };
-    const lockSnapshot = extractYearReportFromFormData(updatedWithLock);
-    const updated = {
-      ...updatedWithLock,
-      reportsByYear: {
-        ...(formData.reportsByYear || {}),
-        [activeYear]: lockSnapshot
-      },
-      reportsByPlanType: {
-        ...(formData.reportsByPlanType || {}),
-        [activePlanKey]: lockSnapshot
-      }
-    };
+    const updated = syncActiveReportSnapshot(updatedWithLock);
 
     if (nextLocked) {
       setOpenPickerGoalId(null);
@@ -756,9 +494,6 @@ export default function EcologicalWorkPlanForm({
       hour: '2-digit',
       minute: '2-digit'
     });
-    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
-    const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
-
     const updatedWithLock = {
       ...formData,
       isLocked: false,
@@ -766,18 +501,7 @@ export default function EcologicalWorkPlanForm({
       lockedBy: '',
       lastSavedAt: nowTime
     };
-    const lockSnapshot = extractYearReportFromFormData(updatedWithLock);
-    const updated = {
-      ...updatedWithLock,
-      reportsByYear: {
-        ...(formData.reportsByYear || {}),
-        [activeYear]: lockSnapshot
-      },
-      reportsByPlanType: {
-        ...(formData.reportsByPlanType || {}),
-        [activePlanKey]: lockSnapshot
-      }
-    };
+    const updated = syncActiveReportSnapshot(updatedWithLock);
 
     setShowFullDocPreview(false);
     savedSnapshotRef.current = JSON.stringify(updated);
@@ -802,18 +526,7 @@ export default function EcologicalWorkPlanForm({
     ) {
       return;
     }
-    const currentSnapshot = extractYearReportFromFormData(formData);
-    const syncedCurrent = {
-      ...formData,
-      reportsByYear: {
-        ...(formData.reportsByYear || {}),
-        [currentYear]: currentSnapshot
-      },
-      reportsByPlanType: {
-        ...(formData.reportsByPlanType || {}),
-        [getPlanTypeStorageKey(currentYear, formData.planType)]: currentSnapshot
-      }
-    };
+    const syncedCurrent = syncActiveReportSnapshot(formData);
     const rolled = buildRolloverStudentForNextYear(syncedCurrent, currentYear, nextYear);
     savedSnapshotRef.current = JSON.stringify(rolled);
     setFormData(rolled);
@@ -825,105 +538,28 @@ export default function EcologicalWorkPlanForm({
 
   // Toggle sharing this student with a colleague email (Option C)
   const handleToggleShareColleague = (colleagueEmail) => {
-    const cleanEmail = String(colleagueEmail || '').trim().toLowerCase();
-    if (!cleanEmail) return;
-    const currentShared = Array.isArray(formData.sharedWith) ? formData.sharedWith : [];
-    const exists = currentShared.some((em) => String(em || '').toLowerCase() === cleanEmail);
-    const nextShared = exists
-      ? currentShared.filter((em) => String(em || '').toLowerCase() !== cleanEmail)
-      : [...currentShared, cleanEmail];
-
-    const currentReadBy = Array.isArray(formData.sharedReadBy) ? formData.sharedReadBy : [];
-    const nextReadBy = currentReadBy.filter(
-      (em) => String(em || '').trim().toLowerCase() !== cleanEmail
-    );
     const nowStamp = new Date().toLocaleString('he-IL', {
       dateStyle: 'short',
       timeStyle: 'short'
     });
-    const nextSharedAtByEmail = {
-      ...(formData.sharedAtByEmail || {}),
-      ...(!exists ? { [cleanEmail]: nowStamp } : {})
-    };
-
-    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
-    const currentSnapshot = extractYearReportFromFormData(formData);
-    const updated = {
-      ...formData,
-      sharedWith: nextShared,
-      sharedReadBy: nextReadBy,
-      sharedByName: currentUser?.name || currentUser?.email || formData.sharedByName || '',
-      sharedAtByEmail: nextSharedAtByEmail,
-      reportsByYear: {
-        ...(formData.reportsByYear || {}),
-        [activeYear]: currentSnapshot
-      },
-      reportsByPlanType: {
-        ...(formData.reportsByPlanType || {}),
-        [getPlanTypeStorageKey(activeYear, formData.planType)]: currentSnapshot
-      }
-    };
-    savedSnapshotRef.current = JSON.stringify(updated);
-    setFormData(updated);
-    onSaveStudentPlan(updated);
+    const res = applyShareToggle(formData, colleagueEmail, currentUser, nowStamp);
+    if (!res) return;
+    savedSnapshotRef.current = JSON.stringify(res.next);
+    setFormData(res.next);
+    onSaveStudentPlan(res.next);
     if (onNotifySharedColleague) {
-      onNotifySharedColleague(formData.id, cleanEmail, !exists);
+      onNotifySharedColleague(formData.id, res.cleanEmail, res.isNewlyShared);
     }
   };
 
   // Switch between תל"א and תח"י: keep each plan type completely separate (empty form if the target plan type hasn't been created yet)
   const handlePlanTypeChange = (newPlanType) => {
     if (formData.isLocked) return;
-    setFormData((prev) => {
-      const currentPlanType = prev.planType || 'תל"א (תוכנית לימודים אישית)';
-      if (newPlanType === currentPlanType) return prev;
-
-      const currentYear = prev.schoolYear || 'תשפ"ו (2025-2026)';
-      const prevStorageKey = getPlanTypeStorageKey(currentYear, currentPlanType);
-      const nextStorageKey = getPlanTypeStorageKey(currentYear, newPlanType);
-
-      const currentReportSnapshot = extractYearReportFromFormData(prev);
-      const updatedReportsByPlanType = {
-        ...(prev.reportsByPlanType || {}),
-        [prevStorageKey]: currentReportSnapshot
-      };
-
-      const existingTargetPlanReport = updatedReportsByPlanType[nextStorageKey];
-      const genderToUse = prev.gender || 'boy';
-
-      const targetReportToLoad =
-        existingTargetPlanReport && hasContentInYearReport(existingTargetPlanReport)
-          ? {
-              ...existingTargetPlanReport,
-              planType: newPlanType,
-              talaProfileRows: buildDefaultTalaProfileRows(existingTargetPlanReport.talaProfileRows),
-              talaFocusDomains: Array.isArray(existingTargetPlanReport.talaFocusDomains)
-                ? existingTargetPlanReport.talaFocusDomains
-                : [],
-              goals: (existingTargetPlanReport.goals || []).map((g) =>
-                adaptGoalToGender(g, genderToUse)
-              )
-            }
-          : buildFreshReportForPlanType(newPlanType, prev.stage);
-
-      const nextData = {
-        ...prev,
-        ...targetReportToLoad,
-        planType: newPlanType,
-        reportsByPlanType: {
-          ...updatedReportsByPlanType,
-          [nextStorageKey]: targetReportToLoad
-        },
-        reportsByYear: {
-          ...(prev.reportsByYear || {}),
-          [currentYear]: targetReportToLoad
-        }
-      };
-
-      setShowFullDocPreview(Boolean(targetReportToLoad.isLocked));
-      setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
-      return nextData;
-    });
+    const next = switchPlanType(formData, newPlanType);
+    if (next === formData) return;
+    setFormData(next);
+    setShowFullDocPreview(Boolean(next.isLocked));
+    setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(next));
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
     setReverseEngineerBanner('');
@@ -933,139 +569,19 @@ export default function EcologicalWorkPlanForm({
 
   // Switch school year: snapshot current year's report and load (or create) the selected year's report
   const handleSchoolYearChange = (newYear) => {
-    setFormData((prev) => {
-      const currentYear = prev.schoolYear || 'תשפ"ו (2025-2026)';
-      if (newYear === currentYear) return prev;
-
-      const currentSnapshot = extractYearReportFromFormData(prev);
-      const updatedReportsByYear = {
-        ...(prev.reportsByYear || {}),
-        [currentYear]: currentSnapshot
-      };
-      const updatedReportsByPlanType = {
-        ...(prev.reportsByPlanType || {}),
-        [getPlanTypeStorageKey(currentYear, prev.planType)]: currentSnapshot
-      };
-
-      const existingTargetReport = updatedReportsByYear[newYear];
-      const genderToUse = prev.gender || 'boy';
-
-      if (existingTargetReport) {
-        const resolvedPlanType =
-          existingTargetReport.planType || prev.planType || 'תל"א (תוכנית לימודים אישית)';
-        const nextData = {
-          ...prev,
-          schoolYear: newYear,
-          date: existingTargetReport.date || new Date().toLocaleDateString('he-IL'),
-          planType: resolvedPlanType,
-          isLocked: Boolean(existingTargetReport.isLocked),
-          lockedAt: existingTargetReport.lockedAt || '',
-          lockedBy: existingTargetReport.lockedBy || '',
-          schoolName: existingTargetReport.schoolName ?? prev.schoolName ?? '',
-          gradeClass: existingTargetReport.gradeClass ?? prev.gradeClass ?? '',
-          homeroomTeacher: existingTargetReport.homeroomTeacher ?? prev.homeroomTeacher ?? '',
-          integrationTeacher: existingTargetReport.integrationTeacher ?? prev.integrationTeacher ?? '',
-          additionalPartners: existingTargetReport.additionalPartners ?? prev.additionalPartners ?? '',
-          learningSupportAssistant:
-            existingTargetReport.learningSupportAssistant ?? prev.learningSupportAssistant ?? '',
-          counselorName: existingTargetReport.counselorName ?? prev.counselorName ?? '',
-          psychologistName: existingTargetReport.psychologistName ?? prev.psychologistName ?? '',
-          matyaCoordinator: existingTargetReport.matyaCoordinator ?? prev.matyaCoordinator ?? '',
-          emotionalTherapist:
-            existingTargetReport.emotionalTherapist ?? prev.emotionalTherapist ?? '',
-          paraMedicalTeam: existingTargetReport.paraMedicalTeam ?? prev.paraMedicalTeam ?? '',
-          teacherFreeText: existingTargetReport.teacherFreeText || '',
-          freeTextAnalyzed: Boolean(existingTargetReport.freeTextAnalyzed),
-          removedAiGoals: Array.isArray(existingTargetReport.removedAiGoals)
-            ? existingTargetReport.removedAiGoals
-            : [],
-          strengthsExisting: existingTargetReport.strengthsExisting || '',
-          strengthsToEmpower: existingTargetReport.strengthsToEmpower || '',
-          studentGeneralBackground: existingTargetReport.studentGeneralBackground || '',
-          studentSupportReceived: existingTargetReport.studentSupportReceived || '',
-          studentMainGoal: existingTargetReport.studentMainGoal || '',
-          talaProfileRows: buildDefaultTalaProfileRows(existingTargetReport.talaProfileRows),
-          talaFocusDomains: Array.isArray(existingTargetReport.talaFocusDomains)
-            ? existingTargetReport.talaFocusDomains
-            : [],
-          recommendations: existingTargetReport.recommendations || '',
-          evalReportFreeText: existingTargetReport.evalReportFreeText || '',
-          evalReportSummary: existingTargetReport.evalReportSummary || '',
-          statusReportSections: Array.isArray(existingTargetReport.statusReportSections)
-            ? existingTargetReport.statusReportSections
-            : [],
-          statusReportUpdatedAt: existingTargetReport.statusReportUpdatedAt || '',
-          lastSavedAt: existingTargetReport.lastSavedAt || '',
-          goals: (existingTargetReport.goals || []).map((g) =>
-            adaptGoalToGender(g, genderToUse)
-          ),
-          reportsByYear: updatedReportsByYear,
-          reportsByPlanType: updatedReportsByPlanType
-        };
-        setShowFullDocPreview(Boolean(existingTargetReport.isLocked));
-        setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(nextData));
-        return nextData;
-      }
-
-      const freshReport = buildFreshReportForPlanType(
-        prev.planType || 'תל"א (תוכנית לימודים אישית)',
-        prev.stage
-      );
-
-      setShowFullDocPreview(false);
-      setIsFreeTextCollapsed(false);
-      return {
-        ...prev,
-        schoolYear: newYear,
-        ...freshReport,
-        reportsByYear: {
-          ...updatedReportsByYear,
-          [newYear]: freshReport
-        },
-        reportsByPlanType: {
-          ...updatedReportsByPlanType,
-          [getPlanTypeStorageKey(newYear, freshReport.planType)]: freshReport
-        }
-      };
-    });
+    const next = switchSchoolYear(formData, newYear);
+    if (next === formData) return;
+    setFormData(next);
+    setShowFullDocPreview(Boolean(next.isLocked));
+    setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(next));
     setOpenPickerGoalId(null);
     setActiveAiGoalId(null);
   };
 
   // Update personal or top-level field (when report is locked, only Evaluation Report fields may be updated)
   const handleFieldChange = (field, value) => {
-    const allowedWhenLocked = new Set([
-      'evalReportFreeText',
-      'evalReportSummary',
-      'statusReportSections',
-      'statusReportUpdatedAt'
-    ]);
-    if (formData.isLocked && !allowedWhenLocked.has(field)) return;
-    setFormData((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === 'stage') {
-        next.stage = value;
-        next.stageSource = 'user_explicit';
-        next.stageReason = value === 'kindergarten' ? 'בחירת משתמש: גן ילדים' : 'בחירת משתמש: בית ספר';
-        next.stageUpdatedAt = new Date().toISOString();
-      } else if (field === 'educationalFramework' || field === 'teacherFreeText' || field === 'birthDate') {
-        if (next.stageSource !== 'user_explicit') {
-          const stageInfo = detectStudentStage(
-            {
-              educationalFramework: next.educationalFramework,
-              teacherFreeText: next.teacherFreeText,
-              birthDate: next.birthDate
-            },
-            next.date
-          );
-          next.stage = stageInfo.stage === 'kindergarten' ? 'kindergarten' : 'school';
-          next.stageSource = stageInfo.stageSource;
-          next.stageReason = stageInfo.stageReason;
-          next.stageUpdatedAt = stageInfo.stageUpdatedAt;
-        }
-      }
-      return next;
-    });
+    if (formData.isLocked && !LOCKED_EDITABLE_FIELDS.has(field)) return;
+    setFormData((prev) => applyFieldChange(prev, field, value));
   };
 
   // Append parent / student answers to the teacher free text, then surface that section
@@ -1079,35 +595,13 @@ export default function EcologicalWorkPlanForm({
   // Update a row in the 8-row functional profile table (for תל"א)
   const handleTalaProfileRowChange = (rowIdOrDomain, field, value) => {
     if (formData.isLocked) return;
-    setFormData((prev) => {
-      const currentRows = buildDefaultTalaProfileRows(prev.talaProfileRows);
-      const isStrengthField = field === 'strengths' || field === 'strengthsAndFacilitators';
-      return {
-        ...prev,
-        talaProfileRows: currentRows.map((r) =>
-          r.id === rowIdOrDomain || r.domain === rowIdOrDomain || r.subDomain === rowIdOrDomain
-            ? isStrengthField
-              ? { ...r, strengths: value, strengthsAndFacilitators: value }
-              : { ...r, toStrengthen: value, areasToStrengthenAndBarriers: value }
-            : r
-        )
-      };
-    });
+    setFormData((prev) => updateTalaProfileRow(prev, rowIdOrDomain, field, value));
   };
 
   // Toggle selection of a focus domain for the תל"א work plan
   const handleToggleTalaFocusDomain = (domain) => {
     if (formData.isLocked) return;
-    setFormData((prev) => {
-      const current = Array.isArray(prev.talaFocusDomains) ? prev.talaFocusDomains : [];
-      const next = current.includes(domain)
-        ? current.filter((d) => d !== domain)
-        : [...current, domain];
-      return {
-        ...prev,
-        talaFocusDomains: next
-      };
-    });
+    setFormData((prev) => toggleFocusDomain(prev, domain));
   };
 
   // Update student gender ('boy' = בן / זכר, 'girl' = בת / נקבה) and automatically inflect all goals & objectives
@@ -1122,12 +616,7 @@ export default function EcologicalWorkPlanForm({
 
   // Update specific goal row (when report is locked, only Mid-Year / End-of-Year Evaluation fields can be updated!)
   const handleGoalChange = (goalId, field, value) => {
-    const allowedEvalFields = new Set([
-      'achievementStatus',
-      'midYearEvaluation',
-      'endYearEvaluation'
-    ]);
-    const isEvalField = allowedEvalFields.has(field);
+    const isEvalField = EVAL_GOAL_FIELDS.has(field);
     if (formData.isLocked) {
       if (isEvalField) {
         handleAutoUnlockReport('evalEdit');
@@ -1135,32 +624,13 @@ export default function EcologicalWorkPlanForm({
         return;
       }
     }
-    setFormData((prev) => ({
-      ...prev,
-      goals: (prev.goals || []).map((g) =>
-        g.id === goalId
-          ? isEvalField
-            ? { ...g, [field]: value }
-            : { ...g, [field]: value, isTeacherModified: true }
-          : g
-      )
-    }));
+    setFormData((prev) => applyGoalChange(prev, goalId, field, value));
   };
 
   // Toggle whether a specific goal is locked against AI re-analysis
   const handleToggleGoalLock = (goalId) => {
     if (formData.isLocked) return;
-    setFormData((prev) => ({
-      ...prev,
-      goals: (prev.goals || []).map((g) => {
-        if (g.id !== goalId) return g;
-        const currentlyLocked = isGoalProtectedFromAiOverwrite(g);
-        if (currentlyLocked) {
-          return attachAiBaselineToGoal(g);
-        }
-        return { ...g, isTeacherModified: true };
-      })
-    }));
+    setFormData((prev) => toggleGoalAiLock(prev, goalId));
   };
 
   // Add a new empty goal block and open the smart Goal Picker immediately
@@ -1168,26 +638,13 @@ export default function EcologicalWorkPlanForm({
     if (formData.isLocked) return;
     const newId = 'g_row_' + Date.now();
     const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
-    const newGoalObj = {
+    const newGoalObj = buildNewGoalRow({
       id: newId,
-      environment: getDefaultEnvironmentForStage(currentStage),
-      activityParticipation: '',
-      title: '',
-      objectives: '',
-      opportunities: '',
-      opportunitiesIntegration: '',
-      opportunitiesTherapist: '',
-      learningAccommodations: '',
-      partners: isTalaMode
-        ? 'מחנכת, מורת שילוב, מטפלת באומנויות'
-        : isKindergarten
-        ? 'צוות הגן, סייעת אישית'
-        : getDefaultPartnersForStage('school'),
-      duration: `3 חודשים (עד ${dateInfo.plus3Months})`,
-      evaluationCriteria: '',
-      isTeacherAdded: true,
-      isTeacherModified: true
-    };
+      stage: currentStage,
+      isTalaMode,
+      isKindergarten,
+      plus3Months: dateInfo.plus3Months
+    });
     setFormData((prev) => ({
       ...prev,
       goals: [...(prev.goals || []), newGoalObj]
@@ -1202,86 +659,19 @@ export default function EcologicalWorkPlanForm({
     if ((formData.goals || []).length <= 1) {
       if (!window.confirm('זוהי המטרה היחידה בתכנית. האם למחוק אותה?')) return;
     }
-    setFormData((prev) => {
-      const targetGoal = (prev.goals || []).find((g) => g.id === goalId);
-      const nextRemoved = [...(prev.removedAiGoals || [])];
-      if (targetGoal && !isGoalEmpty(targetGoal)) {
-        nextRemoved.push({
-          id: targetGoal.id,
-          environment: (targetGoal.environment || '').trim(),
-          title: (targetGoal.title || '').trim(),
-          activityParticipation: (targetGoal.activityParticipation || '').trim(),
-          aiSnapshot: targetGoal.aiSnapshot || null
-        });
-      }
-      return {
-        ...prev,
-        removedAiGoals: nextRemoved,
-        goals: (prev.goals || []).filter((g) => g.id !== goalId)
-      };
-    });
+    setFormData((prev) => removeGoalRow(prev, goalId));
   };
 
   // Select a goal from the Dynamic Goal Bank (automatically adjusted to student's gender!)
   const handleSelectGoalFromBank = (goalRowId, bankItem, fillTemplate = true) => {
     if (formData.isLocked) return;
-    const genderToUse = formData.gender || 'boy';
-    const studentFirstName = (formData.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד'))
-      .trim()
-      .split(/\s+/)[0];
-    const personalizedOpportunities = (bankItem.defaultOpportunities || '').replace(
-      /הילד/g,
-      studentFirstName
-    );
-
-    const genderTitle = adaptTextToGender(bankItem.title || '', genderToUse);
-    const genderActivity = adaptTextToGender(bankItem.defaultActivity || '', genderToUse);
-    const genderObjectives = (bankItem.suggestedObjectives || [])
-      .map((o) => `• ${adaptTextToGender(o, genderToUse)}`)
-      .join('\n');
-    const genderEval = adaptTextToGender(bankItem.defaultEvaluation || '', genderToUse);
-    const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
-
     setFormData((prev) => ({
       ...prev,
-      goals: (prev.goals || []).map((g) => {
-        if (g.id !== goalRowId) return g;
-        if (!fillTemplate) {
-          return {
-            ...g,
-            title: genderTitle,
-            environment: bankItem.environment || g.environment,
-            isTeacherModified: true
-          };
-        }
-        const draftGoal = {
-          ...g,
-          title: genderTitle,
-          environment: bankItem.environment || g.environment,
-          activityParticipation: g.activityParticipation || genderActivity || '',
-          objectives: g.objectives || genderObjectives,
-          opportunities: g.opportunities || personalizedOpportunities || '',
-          opportunitiesIntegration: g.opportunitiesIntegration || '',
-          opportunitiesTherapist: g.opportunitiesTherapist || '',
-          learningAccommodations: g.learningAccommodations || '',
-          partners: g.partners || bankItem.defaultPartners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות חינוכי, הורים'),
-          duration: g.duration || '',
-          evaluationCriteria: g.evaluationCriteria || genderEval || '',
-          isTeacherModified: true
-        };
-        return {
-          ...draftGoal,
-          duration:
-            g.duration && g.duration !== 'עד סוף השנה'
-              ? g.duration
-              : normalizeAndSizeGoalDuration(
-                  draftGoal,
-                  prev.teacherFreeText || '',
-                  prev,
-                  dateInfo
-                )
-        };
-      })
+      goals: (prev.goals || []).map((g) =>
+        g.id === goalRowId
+          ? fillGoalRowFromBank(g, bankItem, prev, { fillTemplate, isTalaMode })
+          : g
+      )
     }));
 
     // Increment usage count in global bank
@@ -1289,6 +679,8 @@ export default function EcologicalWorkPlanForm({
       title: bankItem.title,
       environment: bankItem.environment
     });
+
+    const genderTitle = personalizeBankItem(bankItem, formData).title;
 
     // Load the 3 Facilitating Questions for this Goal
     const questions =
@@ -1542,43 +934,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Helper to call Gemini API via secure backend proxy
-  const callGeminiJson = async (promptText) => {
-    try {
-      const maskedPromptClientSide = maskPromptForAi(promptText, formData);
-      const hints = {
-        gender: formData.gender || 'boy',
-        name: formData.name,
-        idNumber: formData.idNumber,
-        birthDate: formData.birthDate,
-        address: formData.address,
-        phone: formData.phone,
-        educationalFramework: formData.educationalFramework
-      };
-
-      const result = await callAiProxyEndpoint({
-        operation: 'rawPrompt',
-        payload: { prompt: maskedPromptClientSide },
-        hints
-      });
-      if (result && !result.goals && typeof result.raw === 'string') {
-        try {
-          const direct = JSON.parse(result.raw);
-          if (direct && typeof direct === 'object') return direct;
-        } catch (_) {}
-        const m = result.raw.match(/[\{\[][\s\S]*[\}\]]/);
-        if (m) {
-          try {
-            const parsed = JSON.parse(m[0]);
-            if (parsed && typeof parsed === 'object') return parsed;
-          } catch (_) {}
-        }
-      }
-      return result;
-    } catch (error) {
-      console.warn('Backend AI Proxy request failed, falling back to local processing:', error);
-      return null;
-    }
-  };
+  const callGeminiJson = (promptText) => callAiJson(promptText, formData);
 
   // === SUBMIT BUTTON: Generate Top Summary Table (and Goals if empty) from Teacher's Free Text + All Goals ===
   const handleSubmitGenerateSummaryTable = async () => {
@@ -1595,59 +951,16 @@ export default function EcologicalWorkPlanForm({
     setIsGeneratingSummary(true);
 
     if (freeText) {
-      const goalsSummary = goalsList
-        .map(
-          (g, idx) =>
-            `${idx + 1}. סביבה: ${g.environment} | מטרה: ${g.title} | תפקוד: ${g.activityParticipation || ''} | יעדים: ${g.objectives || ''}`
-        )
-        .join('\n');
-
-      const prompt = `אתה מומחה פדגוגי לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י).
-בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל המטרות שהוגדרו, הפק תקציר מנהלים תמציתי ומזוקק:
-- עבור תח"י: "strengthsExisting" (מוקדי כוח: כוחות קיימים) ו-"strengthsToEmpower" (כוחות להעצמה וחיזוק) — 3-4 נקודות קצרות בכל עמודה.
-- עבור תל"א: 
-  1. "studentGeneralBackground": רקע על התלמיד (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי) — 2-3 פסקאות קצרות ותמציתיות.
-  2. "studentSupportReceived": התמיכה שמקבל התלמיד (לימודי, רגשי, חברתי).
-  3. "studentMainGoal": מטרות של התלמיד (לאחר שיח אישי) — 1-2 משפטים.
-  4. "talaFocusDomains": מערך של תחומים נבחרים מתוך: ["לימודי", "התנהגותי", "רגשי", "חברתי", "חושי- מוטורי", "תקשורתי", "כישורי חיים"].
-
-טקסט חופשי של המורה:
-"${freeText}"
-
-המטרות שהוגדרו לתלמיד/ה:
-${goalsSummary}
-
-החזר JSON בלבד:
-{
-  "strengthsExisting": "• תחום אישיותי-רגשי: תמצית קצרה\\n• תחום קוגניטיבי ושפתי: תמצית קצרה",
-  "strengthsToEmpower": "• ${isKindergarten ? 'משחקי שולחן וקופסא' : 'קריאה והפקת משמעות'}: תמצית קצרה\\n• ${isKindergarten ? 'מפגש ושיח' : 'ניהול עצמי'}: תמצית קצרה",
-  "studentGeneralBackground": "רקע על התלמיד...",
-  "studentSupportReceived": "התמיכה שמקבל התלמיד...",
-  "studentMainGoal": "מטרות התלמיד...",
-  "talaFocusDomains": ["לימודי", "חברתי"]
-}`;
+      const prompt = buildSummaryTablePrompt({
+        freeText,
+        goals: goalsList,
+        isKindergarten
+      });
 
       const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed) {
-        const nextExisting = parsed.strengthsExisting || formData.strengthsExisting;
-        const nextEmpower = parsed.strengthsToEmpower || formData.strengthsToEmpower;
-        const updated = {
-          ...formData,
-          freeTextAnalyzed: true,
-          strengthsExisting: nextExisting,
-          strengthsToEmpower: nextEmpower,
-          studentGeneralBackground:
-            parsed.studentGeneralBackground || formData.studentGeneralBackground,
-          studentSupportReceived:
-            parsed.studentSupportReceived || formData.studentSupportReceived,
-          studentMainGoal:
-            parsed.studentMainGoal || formData.studentMainGoal,
-          talaFocusDomains: Array.isArray(parsed.talaFocusDomains) && parsed.talaFocusDomains.length > 0
-            ? parsed.talaFocusDomains
-            : formData.talaFocusDomains,
-          status: 'מוכן להדפסה',
-          lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-        };
+        const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        const updated = applyAiSummary(formData, parsed, nowTime);
         setFormData(updated);
         onSaveStudentPlan(updated);
         setIsGeneratingSummary(false);
@@ -1660,25 +973,8 @@ ${goalsSummary}
 
     // Use the coherent Hebrew Semantic & Executive Summary Interpreter
     const engineered = reverseEngineerRawTextLocally(freeText, formData, goalBank);
-
-    const updated = {
-      ...formData,
-      freeTextAnalyzed: true,
-      name: engineered?.name || formData.name,
-      gender: engineered?.gender || formData.gender || 'boy',
-      educationalFramework: engineered?.educationalFramework || formData.educationalFramework,
-      strengthsExisting: engineered?.strengthsExisting || formData.strengthsExisting,
-      strengthsToEmpower: engineered?.strengthsToEmpower || formData.strengthsToEmpower,
-      studentGeneralBackground:
-        engineered?.studentGeneralBackground || formData.studentGeneralBackground,
-      studentSupportReceived:
-        engineered?.studentSupportReceived || formData.studentSupportReceived,
-      studentMainGoal: engineered?.studentMainGoal || formData.studentMainGoal,
-      talaProfileRows: engineered?.talaProfileRows || formData.talaProfileRows,
-      talaFocusDomains: engineered?.talaFocusDomains || formData.talaFocusDomains,
-      status: 'מוכן להדפסה',
-      lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-    };
+    const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    const updated = applyLocalSummary(formData, engineered, nowTime);
 
     setFormData(updated);
     onSaveStudentPlan(updated);
@@ -1931,18 +1227,7 @@ ${rawText}
             status: 'מוכן להדפסה',
             lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
           };
-          const aiSnapshot = extractYearReportFromFormData(updatedBase);
-          const updated = {
-            ...updatedBase,
-            reportsByYear: {
-              ...(formData.reportsByYear || {}),
-              [activeYear]: aiSnapshot
-            },
-            reportsByPlanType: {
-              ...(formData.reportsByPlanType || {}),
-              [activePlanKey]: aiSnapshot
-            }
-          };
+          const updated = syncActiveReportSnapshot(updatedBase);
 
           savedSnapshotRef.current = JSON.stringify(updated);
           setFormData(updated);
@@ -2009,18 +1294,7 @@ ${rawText}
         status: 'מוכן להדפסה',
         lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
       };
-      const localAiSnapshot = extractYearReportFromFormData(updatedBase);
-      const updated = {
-        ...updatedBase,
-        reportsByYear: {
-          ...(formData.reportsByYear || {}),
-          [activeYear]: localAiSnapshot
-        },
-        reportsByPlanType: {
-          ...(formData.reportsByPlanType || {}),
-          [activePlanKey]: localAiSnapshot
-        }
-      };
+      const updated = syncActiveReportSnapshot(updatedBase);
 
       savedSnapshotRef.current = JSON.stringify(updated);
       setFormData(updated);
@@ -2049,24 +1323,11 @@ ${rawText}
       hour: '2-digit',
       minute: '2-digit'
     });
-    const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
-    const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
     const updatedWithTime = {
       ...formData,
       lastSavedAt: nowTime
     };
-    const currentSnapshot = extractYearReportFromFormData(updatedWithTime);
-    const updated = {
-      ...updatedWithTime,
-      reportsByYear: {
-        ...(formData.reportsByYear || {}),
-        [activeYear]: currentSnapshot
-      },
-      reportsByPlanType: {
-        ...(formData.reportsByPlanType || {}),
-        [activePlanKey]: currentSnapshot
-      }
-    };
+    const updated = syncActiveReportSnapshot(updatedWithTime);
     savedSnapshotRef.current = JSON.stringify(updated);
     setFormData(updated);
     onSaveStudentPlan(updated);
@@ -2491,45 +1752,15 @@ ${JSON.stringify(studentCardPayload, null, 2)}
   };
 
   const handleUpdateStatusSectionContent = (sectionNumber, newContent) => {
-    setFormData((prev) => ({
-      ...prev,
-      statusReportSections: (prev.statusReportSections || []).map((sec) =>
-        sec.sectionNumber === sectionNumber ? { ...sec, content: newContent } : sec
-      )
-    }));
+    setFormData((prev) => updateStatusSection(prev, sectionNumber, newContent));
   };
 
   const handleRemoveStatusSection = (sectionNumber) => {
-    setFormData((prev) => ({
-      ...prev,
-      statusReportSections: (prev.statusReportSections || []).filter(
-        (sec) => sec.sectionNumber !== sectionNumber
-      )
-    }));
+    setFormData((prev) => removeStatusSection(prev, sectionNumber));
   };
 
   const handleAddManualStatusSection = (sectionNumber) => {
-    const num = Number(sectionNumber);
-    if (!num) return;
-    const schemaItem = STATUS_REPORT_SECTIONS_SCHEMA.find((s) => s.sectionNumber === num);
-    if (!schemaItem) return;
-    setFormData((prev) => {
-      const current = prev.statusReportSections || [];
-      if (current.some((s) => s.sectionNumber === num)) return prev;
-      const next = [
-        ...current,
-        {
-          id: `status_sec_${num}`,
-          sectionNumber: num,
-          title: schemaItem.title,
-          content: ''
-        }
-      ].sort((a, b) => a.sectionNumber - b.sectionNumber);
-      return {
-        ...prev,
-        statusReportSections: next
-      };
-    });
+    setFormData((prev) => addManualStatusSection(prev, sectionNumber));
     setSelectedNewStatusSectionNum('');
   };
 

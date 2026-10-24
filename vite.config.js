@@ -6,7 +6,7 @@ function resolveSiteVersionFromGit() {
   if (process.env.VITE_APP_PR_NUMBER) {
     return `2.0.${process.env.VITE_APP_PR_NUMBER}`;
   }
-  return pkg.version || '2.0.1';
+  return pkg.version || '2.0.2';
 }
 
 export default defineConfig({
