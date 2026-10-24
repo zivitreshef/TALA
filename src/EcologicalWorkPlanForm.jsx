@@ -154,6 +154,12 @@ import {
   addManualStatusSection
 } from './domain/workPlanEdits';
 import { personalizeBankItem, fillGoalRowFromBank } from './domain/bankGoalApplication';
+import { callAiJson } from './services/aiJsonClient';
+import {
+  buildSummaryTablePrompt,
+  applyAiSummary,
+  applyLocalSummary
+} from './domain/summaryTable';
 
 const DURATION_TSHIRT_OPTIONS = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
@@ -928,43 +934,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Helper to call Gemini API via secure backend proxy
-  const callGeminiJson = async (promptText) => {
-    try {
-      const maskedPromptClientSide = maskPromptForAi(promptText, formData);
-      const hints = {
-        gender: formData.gender || 'boy',
-        name: formData.name,
-        idNumber: formData.idNumber,
-        birthDate: formData.birthDate,
-        address: formData.address,
-        phone: formData.phone,
-        educationalFramework: formData.educationalFramework
-      };
-
-      const result = await callAiProxyEndpoint({
-        operation: 'rawPrompt',
-        payload: { prompt: maskedPromptClientSide },
-        hints
-      });
-      if (result && !result.goals && typeof result.raw === 'string') {
-        try {
-          const direct = JSON.parse(result.raw);
-          if (direct && typeof direct === 'object') return direct;
-        } catch (_) {}
-        const m = result.raw.match(/[\{\[][\s\S]*[\}\]]/);
-        if (m) {
-          try {
-            const parsed = JSON.parse(m[0]);
-            if (parsed && typeof parsed === 'object') return parsed;
-          } catch (_) {}
-        }
-      }
-      return result;
-    } catch (error) {
-      console.warn('Backend AI Proxy request failed, falling back to local processing:', error);
-      return null;
-    }
-  };
+  const callGeminiJson = (promptText) => callAiJson(promptText, formData);
 
   // === SUBMIT BUTTON: Generate Top Summary Table (and Goals if empty) from Teacher's Free Text + All Goals ===
   const handleSubmitGenerateSummaryTable = async () => {
@@ -981,59 +951,16 @@ export default function EcologicalWorkPlanForm({
     setIsGeneratingSummary(true);
 
     if (freeText) {
-      const goalsSummary = goalsList
-        .map(
-          (g, idx) =>
-            `${idx + 1}. סביבה: ${g.environment} | מטרה: ${g.title} | תפקוד: ${g.activityParticipation || ''} | יעדים: ${g.objectives || ''}`
-        )
-        .join('\n');
-
-      const prompt = `אתה מומחה פדגוגי לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י).
-בהתבסס על הטקסט החופשי שכתבה המורה על הילד/ה ועל המטרות שהוגדרו, הפק תקציר מנהלים תמציתי ומזוקק:
-- עבור תח"י: "strengthsExisting" (מוקדי כוח: כוחות קיימים) ו-"strengthsToEmpower" (כוחות להעצמה וחיזוק) — 3-4 נקודות קצרות בכל עמודה.
-- עבור תל"א: 
-  1. "studentGeneralBackground": רקע על התלמיד (משפחה, אבחנה, טיפול במידה וישנו, מידע הכרחי) — 2-3 פסקאות קצרות ותמציתיות.
-  2. "studentSupportReceived": התמיכה שמקבל התלמיד (לימודי, רגשי, חברתי).
-  3. "studentMainGoal": מטרות של התלמיד (לאחר שיח אישי) — 1-2 משפטים.
-  4. "talaFocusDomains": מערך של תחומים נבחרים מתוך: ["לימודי", "התנהגותי", "רגשי", "חברתי", "חושי- מוטורי", "תקשורתי", "כישורי חיים"].
-
-טקסט חופשי של המורה:
-"${freeText}"
-
-המטרות שהוגדרו לתלמיד/ה:
-${goalsSummary}
-
-החזר JSON בלבד:
-{
-  "strengthsExisting": "• תחום אישיותי-רגשי: תמצית קצרה\\n• תחום קוגניטיבי ושפתי: תמצית קצרה",
-  "strengthsToEmpower": "• ${isKindergarten ? 'משחקי שולחן וקופסא' : 'קריאה והפקת משמעות'}: תמצית קצרה\\n• ${isKindergarten ? 'מפגש ושיח' : 'ניהול עצמי'}: תמצית קצרה",
-  "studentGeneralBackground": "רקע על התלמיד...",
-  "studentSupportReceived": "התמיכה שמקבל התלמיד...",
-  "studentMainGoal": "מטרות התלמיד...",
-  "talaFocusDomains": ["לימודי", "חברתי"]
-}`;
+      const prompt = buildSummaryTablePrompt({
+        freeText,
+        goals: goalsList,
+        isKindergarten
+      });
 
       const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed) {
-        const nextExisting = parsed.strengthsExisting || formData.strengthsExisting;
-        const nextEmpower = parsed.strengthsToEmpower || formData.strengthsToEmpower;
-        const updated = {
-          ...formData,
-          freeTextAnalyzed: true,
-          strengthsExisting: nextExisting,
-          strengthsToEmpower: nextEmpower,
-          studentGeneralBackground:
-            parsed.studentGeneralBackground || formData.studentGeneralBackground,
-          studentSupportReceived:
-            parsed.studentSupportReceived || formData.studentSupportReceived,
-          studentMainGoal:
-            parsed.studentMainGoal || formData.studentMainGoal,
-          talaFocusDomains: Array.isArray(parsed.talaFocusDomains) && parsed.talaFocusDomains.length > 0
-            ? parsed.talaFocusDomains
-            : formData.talaFocusDomains,
-          status: 'מוכן להדפסה',
-          lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-        };
+        const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        const updated = applyAiSummary(formData, parsed, nowTime);
         setFormData(updated);
         onSaveStudentPlan(updated);
         setIsGeneratingSummary(false);
@@ -1046,25 +973,8 @@ ${goalsSummary}
 
     // Use the coherent Hebrew Semantic & Executive Summary Interpreter
     const engineered = reverseEngineerRawTextLocally(freeText, formData, goalBank);
-
-    const updated = {
-      ...formData,
-      freeTextAnalyzed: true,
-      name: engineered?.name || formData.name,
-      gender: engineered?.gender || formData.gender || 'boy',
-      educationalFramework: engineered?.educationalFramework || formData.educationalFramework,
-      strengthsExisting: engineered?.strengthsExisting || formData.strengthsExisting,
-      strengthsToEmpower: engineered?.strengthsToEmpower || formData.strengthsToEmpower,
-      studentGeneralBackground:
-        engineered?.studentGeneralBackground || formData.studentGeneralBackground,
-      studentSupportReceived:
-        engineered?.studentSupportReceived || formData.studentSupportReceived,
-      studentMainGoal: engineered?.studentMainGoal || formData.studentMainGoal,
-      talaProfileRows: engineered?.talaProfileRows || formData.talaProfileRows,
-      talaFocusDomains: engineered?.talaFocusDomains || formData.talaFocusDomains,
-      status: 'מוכן להדפסה',
-      lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-    };
+    const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    const updated = applyLocalSummary(formData, engineered, nowTime);
 
     setFormData(updated);
     onSaveStudentPlan(updated);

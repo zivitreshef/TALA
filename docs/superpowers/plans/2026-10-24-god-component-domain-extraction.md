@@ -413,7 +413,7 @@ describe('bankGoalApplication', () => {
   - `applyAiSummary(data, parsed, nowTime) => FormData`
   - `applyLocalSummary(data, engineered, nowTime) => FormData`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 // aiJsonClient.test.js
@@ -463,11 +463,11 @@ describe('summaryTable', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL**
-- [ ] **Step 3: Implement both modules.** In the Form, `callGeminiJson` becomes `const callGeminiJson = (promptText) => callAiJson(promptText, formData);`. It's kept as a one-line alias so the other 16 AI call sites stay untouched.
-- [ ] **Step 4: Rewire `handleSubmitGenerateSummaryTable`** to `buildSummaryTablePrompt` → `callGeminiJson(formatPromptWithStudentContext(prompt, formData))` → `applyAiSummary`. On a `null` result, fall back to `reverseEngineerRawTextLocally` → `applyLocalSummary`. The UI calls stay in the component.
-- [ ] **Step 5: Verify** with `npx vitest run` and `npm run build`.
-- [ ] **Step 6: Commit** with `refactor(ai): extract AI JSON client and summary-table merge rules`
+- [x] **Step 2: Run, expect FAIL**
+- [x] **Step 3: Implement both modules.** In the Form, `callGeminiJson` becomes `const callGeminiJson = (promptText) => callAiJson(promptText, formData);`. It's kept as a one-line alias so the other 16 AI call sites stay untouched.
+- [x] **Step 4: Rewire `handleSubmitGenerateSummaryTable`** to `buildSummaryTablePrompt` → `callGeminiJson(formatPromptWithStudentContext(prompt, formData))` → `applyAiSummary`. On a `null` result, fall back to `reverseEngineerRawTextLocally` → `applyLocalSummary`. The UI calls stay in the component.
+- [x] **Step 5: Verify** with `npx vitest run` and `npm run build`.
+- [x] **Step 6: Commit** with `refactor(ai): extract AI JSON client and summary-table merge rules`
 
 ---
 
