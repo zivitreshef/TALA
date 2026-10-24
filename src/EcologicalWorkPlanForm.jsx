@@ -153,6 +153,7 @@ import {
   removeStatusSection,
   addManualStatusSection
 } from './domain/workPlanEdits';
+import { personalizeBankItem, fillGoalRowFromBank } from './domain/bankGoalApplication';
 
 const DURATION_TSHIRT_OPTIONS = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
@@ -658,63 +659,13 @@ export default function EcologicalWorkPlanForm({
   // Select a goal from the Dynamic Goal Bank (automatically adjusted to student's gender!)
   const handleSelectGoalFromBank = (goalRowId, bankItem, fillTemplate = true) => {
     if (formData.isLocked) return;
-    const genderToUse = formData.gender || 'boy';
-    const studentFirstName = (formData.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד'))
-      .trim()
-      .split(/\s+/)[0];
-    const personalizedOpportunities = (bankItem.defaultOpportunities || '').replace(
-      /הילד/g,
-      studentFirstName
-    );
-
-    const genderTitle = adaptTextToGender(bankItem.title || '', genderToUse);
-    const genderActivity = adaptTextToGender(bankItem.defaultActivity || '', genderToUse);
-    const genderObjectives = (bankItem.suggestedObjectives || [])
-      .map((o) => `• ${adaptTextToGender(o, genderToUse)}`)
-      .join('\n');
-    const genderEval = adaptTextToGender(bankItem.defaultEvaluation || '', genderToUse);
-    const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
-
     setFormData((prev) => ({
       ...prev,
-      goals: (prev.goals || []).map((g) => {
-        if (g.id !== goalRowId) return g;
-        if (!fillTemplate) {
-          return {
-            ...g,
-            title: genderTitle,
-            environment: bankItem.environment || g.environment,
-            isTeacherModified: true
-          };
-        }
-        const draftGoal = {
-          ...g,
-          title: genderTitle,
-          environment: bankItem.environment || g.environment,
-          activityParticipation: g.activityParticipation || genderActivity || '',
-          objectives: g.objectives || genderObjectives,
-          opportunities: g.opportunities || personalizedOpportunities || '',
-          opportunitiesIntegration: g.opportunitiesIntegration || '',
-          opportunitiesTherapist: g.opportunitiesTherapist || '',
-          learningAccommodations: g.learningAccommodations || '',
-          partners: g.partners || bankItem.defaultPartners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות חינוכי, הורים'),
-          duration: g.duration || '',
-          evaluationCriteria: g.evaluationCriteria || genderEval || '',
-          isTeacherModified: true
-        };
-        return {
-          ...draftGoal,
-          duration:
-            g.duration && g.duration !== 'עד סוף השנה'
-              ? g.duration
-              : normalizeAndSizeGoalDuration(
-                  draftGoal,
-                  prev.teacherFreeText || '',
-                  prev,
-                  dateInfo
-                )
-        };
-      })
+      goals: (prev.goals || []).map((g) =>
+        g.id === goalRowId
+          ? fillGoalRowFromBank(g, bankItem, prev, { fillTemplate, isTalaMode })
+          : g
+      )
     }));
 
     // Increment usage count in global bank
@@ -722,6 +673,8 @@ export default function EcologicalWorkPlanForm({
       title: bankItem.title,
       environment: bankItem.environment
     });
+
+    const genderTitle = personalizeBankItem(bankItem, formData).title;
 
     // Load the 3 Facilitating Questions for this Goal
     const questions =

@@ -135,6 +135,7 @@ import TrialNdaModal from './components/modals/TrialNdaModal';
 import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
+import { appendBankGoalToStudent } from './domain/bankGoalApplication';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
 import './index.css';
 
@@ -1463,99 +1464,10 @@ export default function App() {
       return;
     }
 
-    const genderToUse = baseStudent.gender || 'boy';
-    const studentFirstName = (
-      baseStudent.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד')
-    )
-      .trim()
-      .split(/\s+/)[0];
+    const res = appendBankGoalToStudent(baseStudent, bankItem);
+    if (!res.added) return;
 
-    const genderTitle = adaptTextToGender(bankItem.title || '', genderToUse);
-    const genderActivity = adaptTextToGender(bankItem.defaultActivity || '', genderToUse);
-    const genderObjectives = (bankItem.suggestedObjectives || [])
-      .map((o) => `• ${adaptTextToGender(o, genderToUse)}`)
-      .join('\n');
-    const personalizedOpportunities = adaptTextToGender(
-      (bankItem.defaultOpportunities || '').replace(/הילד/g, studentFirstName),
-      genderToUse
-    );
-    const genderEval = adaptTextToGender(bankItem.defaultEvaluation || '', genderToUse);
-    const dateInfo = resolveStudentAgeAndDateInfo(
-      baseStudent,
-      baseStudent.teacherFreeText || ''
-    );
-
-    const existingGoals = Array.isArray(baseStudent.goals) ? baseStudent.goals : [];
-    const alreadyExists = existingGoals.some(
-      (g) =>
-        (g.title || '').trim() === genderTitle.trim() ||
-        (g.title || '').trim() === (bankItem.title || '').trim()
-    );
-    if (alreadyExists) return;
-
-    const draftGoal = {
-      id: 'g_bank_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-      environment: bankItem.environment || ENVIRONMENTS_LIST[0],
-      activityParticipation: genderActivity || '',
-      title: genderTitle,
-      objectives: genderObjectives || '',
-      opportunities: personalizedOpportunities || '',
-      partners: bankItem.defaultPartners || 'צוות הגן, סייעת אישית',
-      duration: '',
-      evaluationCriteria: genderEval || '',
-      isTeacherAdded: true,
-      isTeacherModified: true
-    };
-
-    const sizedGoal = {
-      ...draftGoal,
-      duration: normalizeAndSizeGoalDuration(
-        draftGoal,
-        baseStudent.teacherFreeText || '',
-        baseStudent,
-        dateInfo
-      )
-    };
-
-    const nextGoals =
-      existingGoals.length === 1 && isGoalEmpty(existingGoals[0])
-        ? [sizedGoal]
-        : [...existingGoals, sizedGoal];
-
-    const nowTime = new Date().toLocaleTimeString('he-IL', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    const activeYear = baseStudent.schoolYear || 'תשפ"ו (2025-2026)';
-    const updatedStudent = {
-      ...baseStudent,
-      goals: nextGoals,
-      lastSavedAt: nowTime,
-      reportsByYear: {
-        ...(baseStudent.reportsByYear || {}),
-        [activeYear]: {
-          ...(baseStudent.reportsByYear?.[activeYear] || {}),
-          date: baseStudent.date || new Date().toLocaleDateString('he-IL'),
-          planType: baseStudent.planType || 'תל"א (תוכנית לימודים אישית)',
-          teacherFreeText: baseStudent.teacherFreeText || '',
-          freeTextAnalyzed: Boolean(baseStudent.freeTextAnalyzed),
-          removedAiGoals: Array.isArray(baseStudent.removedAiGoals)
-            ? baseStudent.removedAiGoals
-            : [],
-          strengthsExisting: baseStudent.strengthsExisting || '',
-          strengthsToEmpower: baseStudent.strengthsToEmpower || '',
-          recommendations: baseStudent.recommendations || '',
-          evalReportFreeText: baseStudent.evalReportFreeText || '',
-          evalReportSummary: baseStudent.evalReportSummary || '',
-          statusReportSections: Array.isArray(baseStudent.statusReportSections)
-            ? baseStudent.statusReportSections
-            : [],
-          statusReportUpdatedAt: baseStudent.statusReportUpdatedAt || '',
-          lastSavedAt: nowTime,
-          goals: nextGoals
-        }
-      }
-    };
+    const updatedStudent = res.student;
 
     setStudents((prev) =>
       prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
@@ -1570,7 +1482,7 @@ export default function App() {
 
     const studentDisplayName = baseStudent.name?.trim() || 'התלמיד/ה';
     setBankAddToast(
-      `✅ המטרה "${genderTitle}" נוספה לתכנית של ${studentDisplayName} ומשקלה במאגר עלה ב-+1!`
+      `✅ המטרה "${res.goalTitle}" נוספה לתכנית של ${studentDisplayName} ומשקלה במאגר עלה ב-+1!`
     );
     if (onboardingTourStep === 5) {
       setOnboardingTourStep(6);

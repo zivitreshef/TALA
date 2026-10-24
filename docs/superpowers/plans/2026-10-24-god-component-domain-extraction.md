@@ -348,7 +348,7 @@ Form `handleSelectGoalFromBank` (lines 1226–1305) and App `handleAddBankGoalTo
   - `fillGoalRowFromBank(goal, bankItem, student, { fillTemplate = true, isTalaMode = false } = {}) => Goal`. This is Form's per-row mapping. It computes `dateInfo` internally via `resolveStudentAgeAndDateInfo(student, student.teacherFreeText || '')`. Partner fallback is `isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'צוות חינוכי, הורים'`.
   - `appendBankGoalToStudent(student, bankItem, now = new Date()) => { student, added: boolean, goalTitle: string }`. This is App's logic. It returns `{ student /* same ref */, added: false }` when the gendered or raw title already exists. A lone empty goal is replaced. Environment falls back to `ENVIRONMENTS_LIST[0]` and partners to `'צוות הגן, סייעת אישית'`. `lastSavedAt` is HH:MM `he-IL`. The result goes through `syncActiveReportSnapshot`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 import { describe, it, expect } from 'vitest';
@@ -386,13 +386,13 @@ describe('bankGoalApplication', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL**
-- [ ] **Step 3: Implement** in `src/domain/bankGoalApplication.js`.
-- [ ] **Step 4: Rewire both callers.**
+- [x] **Step 2: Run, expect FAIL**
+- [x] **Step 3: Implement** in `src/domain/bankGoalApplication.js`.
+- [x] **Step 4: Rewire both callers.**
   - **Form:** `setFormData((prev) => ({ ...prev, goals: prev.goals.map((g) => g.id === goalRowId ? fillGoalRowFromBank(g, bankItem, prev, { fillTemplate, isTalaMode }) : g) }))`. Keep `recordGoalInBank` and the facilitating-questions code; use `personalizeBankItem(bankItem, formData).title` for `genderTitle`.
   - **App:** keep the `baseStudent` (unsaved-draft) selection and the locked toast. Call `appendBankGoalToStudent(baseStudent, bankItem)`, `return` if `!added`, then keep the existing `setStudents`/`saveStudentToCloud`/toast/onboarding code.
-- [ ] **Step 5: Verify.** Run `npx vitest run` and `npm run build`. Then smoke-test with `npm run dev`: open a girl student, add a bank goal from the Form picker and from the App goal-bank modal, and check that both show feminine text.
-- [ ] **Step 6: Commit** with `refactor(domain): unify bank-goal personalization used by App and Form`
+- [x] **Step 5: Verify.** Run `npx vitest run` and `npm run build`. Then smoke-test with `npm run dev`: open a girl student, add a bank goal from the Form picker and from the App goal-bank modal, and check that both show feminine text.
+- [x] **Step 6: Commit** with `refactor(domain): unify bank-goal personalization used by App and Form`
 
 ---
 
