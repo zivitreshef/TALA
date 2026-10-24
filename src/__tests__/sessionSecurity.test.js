@@ -1,4 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock firebase backend to prevent real Firestore network I/O in unit tests
+vi.mock('../firebaseBackend', () => ({
+  getFirestoreDb: vi.fn(() => null),
+  recordUserPresence: vi.fn().mockResolvedValue()
+}));
+
+globalThis.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ ip: '198.51.100.1' })
+});
 import {
   sessionDocKey,
   generateSessionId,
