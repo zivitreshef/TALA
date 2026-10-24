@@ -549,7 +549,7 @@ describe('studentListView', () => {
 - Produces (`goalBankAdmin.js`):
   - `buildAdminBankGoalPayload(editingBankGoal) => { title, stages, environment, usageCount, defaultActivity, suggestedObjectives, defaultOpportunities, defaultPartners, defaultDuration, defaultEvaluation }`. `stages` defaults to `['kindergarten']`. `environment = canonicalizeEnvironment(raw) || KINDERGARTEN_ENVIRONMENTS[0]`. `suggestedObjectives` comes from `suggestedObjectivesText`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 import { describe, it, expect } from 'vitest';
@@ -601,11 +601,11 @@ describe('buildAdminBankGoalPayload', () => {
 
 (Before writing, confirm `KINDERGARTEN_ENVIRONMENTS` and `canonicalizeEnvironment` are exported from `src/goalBankData.js`. If not, import them from wherever `App.jsx` imports them today.)
 
-- [ ] **Step 2: Run, expect FAIL**
-- [ ] **Step 3: Implement both modules.**
-- [ ] **Step 4: Rewire App.** The effect keeps `setInterval`, `document.visibilityState` and `safeGet/SetStorageJson`, and delegates the rules to the new functions. Both survey handlers use `patchUserByEmail`. `handleSaveAdminBankGoal` keeps the `alert`, toast and filter navigation, and passes `buildAdminBankGoalPayload(editingBankGoal)` to `addGoalByAdmin`/`updateGoalByAdmin`.
-- [ ] **Step 5: Verify** with `npx vitest run` and `npm run build`.
-- [ ] **Step 6: Commit** with `refactor(domain): extract survey/usage rules and admin bank-goal payload from App`
+- [x] **Step 2: Run, expect FAIL**
+- [x] **Step 3: Implement both modules.**
+- [x] **Step 4: Rewire App.** The effect keeps `setInterval`, `document.visibilityState` and `safeGet/SetStorageJson`, and delegates the rules to the new functions. Both survey handlers use `patchUserByEmail`. `handleSaveAdminBankGoal` keeps the `alert`, toast and filter navigation, and passes `buildAdminBankGoalPayload(editingBankGoal)` to `addGoalByAdmin`/`updateGoalByAdmin`.
+- [x] **Step 5: Verify** with `npx vitest run` and `npm run build`.
+- [x] **Step 6: Commit** with `refactor(domain): extract survey/usage rules and admin bank-goal payload from App`
 
 ---
 
