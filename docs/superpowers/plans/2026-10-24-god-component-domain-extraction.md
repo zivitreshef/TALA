@@ -488,7 +488,7 @@ describe('summaryTable', () => {
   - `groupStudentsByFramework(students) => Array<[frameworkKey, Student[]]>`
   - `resolveBankTargetStudent(userStudents, targetId, selectedId) => Student | null`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 import { describe, it, expect } from 'vitest';
@@ -523,11 +523,11 @@ describe('studentListView', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL**
-- [ ] **Step 3: Implement** in `src/domain/studentListView.js`. Reproduce App's current fallback chain exactly: `find(id === (targetId || selectedId)) || find(id === selectedId) || list[0] || null`.
-- [ ] **Step 4: Swap App's inline derivations** for these calls. `frameworkClusters = groupStudentsByFramework(filteredStudents)`. Apply the same filter to the archive search (`filteredArchivedStudents`).
-- [ ] **Step 5: Verify** with `npx vitest run` and `npm run build`.
-- [ ] **Step 6: Commit** with `refactor(domain): extract student list filtering, sorting and grouping`
+- [x] **Step 2: Run, expect FAIL**
+- [x] **Step 3: Implement** in `src/domain/studentListView.js`. Reproduce App's current fallback chain exactly: `find(id === (targetId || selectedId)) || find(id === selectedId) || list[0] || null`.
+- [x] **Step 4: Swap App's inline derivations** for these calls. `frameworkClusters = groupStudentsByFramework(filteredStudents)`. Apply the same filter to the archive search (`filteredArchivedStudents`).
+- [x] **Step 5: Verify** with `npx vitest run` and `npm run build`.
+- [x] **Step 6: Commit** with `refactor(domain): extract student list filtering, sorting and grouping`
 
 ---
 

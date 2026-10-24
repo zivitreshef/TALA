@@ -136,6 +136,14 @@ import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import { appendBankGoalToStudent } from './domain/bankGoalApplication';
+import {
+  getFrameworkKey,
+  filterStudentsBySearch,
+  sortStudentsByName,
+  sortStudentsByFramework,
+  groupStudentsByFramework,
+  resolveBankTargetStudent
+} from './domain/studentListView';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
 import './index.css';
 
@@ -784,7 +792,7 @@ export default function App() {
     }
 
     // 4. Open the shared student report and close the notification modal
-    const fwKey = (studentObj.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
+    const fwKey = getFrameworkKey(studentObj);
     setExpandedFrameworks((prev) => ({ ...prev, [fwKey]: true }));
     setSelectedStudentId(studentObj.id);
     setShowSelfPasswordModal(false);
@@ -1707,47 +1715,21 @@ export default function App() {
   const userStudents = getStudentsForUser(students, currentUser);
   const archivedUserStudents = getArchivedStudentsForUser(students, currentUser);
   const selectedStudent = userStudents.find((s) => s.id === selectedStudentId);
-  const filteredStudents = userStudents.filter(
-    (s) =>
-      (s.name || '').includes(studentSearch) ||
-      (s.educationalFramework || '').includes(studentSearch)
-  );
-  const sortedStudentsByName = [...filteredStudents].sort((a, b) =>
-    (a.name || '').trim().localeCompare((b.name || '').trim(), 'he')
-  );
-  const sortedStudentsByFramework = [...filteredStudents].sort((a, b) => {
-    const fwA = (a.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
-    const fwB = (b.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
-    const fwCmp = fwA.localeCompare(fwB, 'he');
-    if (fwCmp !== 0) return fwCmp;
-    return (a.name || '').trim().localeCompare((b.name || '').trim(), 'he');
-  });
-  const studentsByFramework = filteredStudents.reduce((acc, st) => {
-    const fwKey = (st.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
-    if (!acc[fwKey]) {
-      acc[fwKey] = [];
-    }
-    acc[fwKey].push(st);
-    return acc;
-  }, {});
-  const frameworkClusters = Object.entries(studentsByFramework);
+  const filteredStudents = filterStudentsBySearch(userStudents, studentSearch);
+  const sortedStudentsByName = sortStudentsByName(filteredStudents);
+  const sortedStudentsByFramework = sortStudentsByFramework(filteredStudents);
+  const frameworkClusters = groupStudentsByFramework(filteredStudents);
   const sortedBank = getSortedGoalBank(goalBank);
-  const activeBankTargetStudent =
-    userStudents.find(
-      (s) => s.id === (targetBankStudentId || selectedStudentId)
-    ) ||
-    selectedStudent ||
-    userStudents[0] ||
-    null;
+  const activeBankTargetStudent = resolveBankTargetStudent(
+    userStudents,
+    targetBankStudentId,
+    selectedStudentId
+  );
   const activeGoalBankStudentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
   const currentModalStage = goalBankStageFilter !== null ? goalBankStageFilter : activeGoalBankStudentStage;
   const goalBankEnvironments = getCanonicalEnvironmentsForStage(currentModalStage);
 
-  const filteredArchivedStudents = archivedUserStudents.filter(
-    (s) =>
-      (s.name || '').includes(archiveSearch) ||
-      (s.educationalFramework || '').includes(archiveSearch)
-  );
+  const filteredArchivedStudents = filterStudentsBySearch(archivedUserStudents, archiveSearch);
   const activeArchivedStudent =
     archivedUserStudents.find((s) => s.id === selectedArchivedStudentId) ||
     filteredArchivedStudents[0] ||
