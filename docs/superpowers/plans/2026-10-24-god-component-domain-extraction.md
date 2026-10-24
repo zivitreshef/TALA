@@ -611,8 +611,8 @@ describe('buildAdminBankGoalPayload', () => {
 
 ### Task 9: Verify and ship (TALA protocol)
 
-- [ ] **Step 1: Measure.** Run `(Get-Content src\EcologicalWorkPlanForm.jsx).Count; (Get-Content src\App.jsx).Count`. Expect roughly 6,000 lines or fewer for the Form (from 6,747) and roughly 4,000 or fewer for App (from 4,294). Record the numbers in the PR body.
-- [ ] **Step 2: Full gate.** `npx vitest run` must show every test passing (222 + about 40 new). `npm run build` must succeed.
+- [x] **Step 1: Measure.** Run `(Get-Content src\EcologicalWorkPlanForm.jsx).Count; (Get-Content src\App.jsx).Count`. Expect roughly 6,000 lines or fewer for the Form (from 6,747) and roughly 4,000 or fewer for App (from 4,294). Record the numbers in the PR body.
+- [x] **Step 2: Full gate.** `npx vitest run` must show every test passing (222 + about 40 new). `npm run build` must succeed.
 - [ ] **Step 3: Manual smoke** (`npm run dev`, about 10 minutes): open a student, switch תל"א⇄תח"י, switch year and back, add a bank goal from both entry points, share with a colleague, lock the report and edit a mid-year evaluation, then generate the summary table.
 - [ ] **Step 4: Ship per `GEMINI.md`.** Run `npm run upgrade:start` and wait 2 minutes. Push the branch and open a PR (use the `pr` skill; list ⚠ DECISION 1 and 2 under "Behavior changes"). Merge to `main`, confirm the GitHub Pages workflow succeeds, then run `npm run upgrade:end`.
 
