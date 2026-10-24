@@ -136,7 +136,7 @@ Run: `npx vitest run src/__tests__/yearReport.test.js`
   - `switchPlanType(prev, newPlanType) => FormData`: returns `prev` (same reference) when the plan type is unchanged
   - `switchSchoolYear(prev, newYear) => FormData`: returns `prev` (same reference) when the year is unchanged
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 import { describe, it, expect } from 'vitest';
@@ -188,17 +188,17 @@ describe('switchSchoolYear', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL** (module not found)
+- [x] **Step 2: Run, expect FAIL** (module not found)
 
 Run: `npx vitest run src/__tests__/reportSwitching.test.js`
 
-- [ ] **Step 3: Implement both functions in `src/domain/reportSwitching.js`.** Their bodies are the current `setFormData((prev) => {...})` updater bodies, minus the `setShow…`/`setIsFreeText…` calls.
+- [x] **Step 3: Implement both functions in `src/domain/reportSwitching.js`.** Their bodies are the current `setFormData((prev) => {...})` updater bodies, minus the `setShow…`/`setIsFreeText…` calls.
 
-- [ ] **Step 4: Rewire the Form.** Each handler becomes: guard → `const next = switchX(formData, value); if (next === formData) return; setFormData(next); setShowFullDocPreview(Boolean(next.isLocked)); setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(next));`, followed by the existing resets (`setOpenPickerGoalId(null)` etc.). Keep the `if (formData.isLocked) return;` guard in `handlePlanTypeChange`. (For a fresh year, `next.isLocked` is false and `isRawFreeTextAlreadyAnalyzed(next)` is false, so this matches the old hard-coded `false/false`.)
+- [x] **Step 4: Rewire the Form.** Each handler becomes: guard → `const next = switchX(formData, value); if (next === formData) return; setFormData(next); setShowFullDocPreview(Boolean(next.isLocked)); setIsFreeTextCollapsed(isRawFreeTextAlreadyAnalyzed(next));`, followed by the existing resets (`setOpenPickerGoalId(null)` etc.). Keep the `if (formData.isLocked) return;` guard in `handlePlanTypeChange`. (For a fresh year, `next.isLocked` is false and `isRawFreeTextAlreadyAnalyzed(next)` is false, so this matches the old hard-coded `false/false`.)
 
-- [ ] **Step 5: Verify** with `npx vitest run` (all passing) and `npm run build`.
+- [x] **Step 5: Verify** with `npx vitest run` (all passing) and `npm run build`.
 
-- [ ] **Step 6: Commit** with `refactor(domain): extract pure plan-type and school-year switching`
+- [x] **Step 6: Commit** with `refactor(domain): extract pure plan-type and school-year switching`
 
 ---
 
