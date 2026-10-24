@@ -147,7 +147,11 @@ import {
   applyGoalChange,
   toggleGoalAiLock,
   removeGoalRow,
-  buildNewGoalRow
+  buildNewGoalRow,
+  applyShareToggle,
+  updateStatusSection,
+  removeStatusSection,
+  addManualStatusSection
 } from './domain/workPlanEdits';
 
 const DURATION_TSHIRT_OPTIONS = [
@@ -527,39 +531,17 @@ export default function EcologicalWorkPlanForm({
 
   // Toggle sharing this student with a colleague email (Option C)
   const handleToggleShareColleague = (colleagueEmail) => {
-    const cleanEmail = String(colleagueEmail || '').trim().toLowerCase();
-    if (!cleanEmail) return;
-    const currentShared = Array.isArray(formData.sharedWith) ? formData.sharedWith : [];
-    const exists = currentShared.some((em) => String(em || '').toLowerCase() === cleanEmail);
-    const nextShared = exists
-      ? currentShared.filter((em) => String(em || '').toLowerCase() !== cleanEmail)
-      : [...currentShared, cleanEmail];
-
-    const currentReadBy = Array.isArray(formData.sharedReadBy) ? formData.sharedReadBy : [];
-    const nextReadBy = currentReadBy.filter(
-      (em) => String(em || '').trim().toLowerCase() !== cleanEmail
-    );
     const nowStamp = new Date().toLocaleString('he-IL', {
       dateStyle: 'short',
       timeStyle: 'short'
     });
-    const nextSharedAtByEmail = {
-      ...(formData.sharedAtByEmail || {}),
-      ...(!exists ? { [cleanEmail]: nowStamp } : {})
-    };
-
-    const updated = {
-      ...syncActiveReportSnapshot(formData),
-      sharedWith: nextShared,
-      sharedReadBy: nextReadBy,
-      sharedByName: currentUser?.name || currentUser?.email || formData.sharedByName || '',
-      sharedAtByEmail: nextSharedAtByEmail
-    };
-    savedSnapshotRef.current = JSON.stringify(updated);
-    setFormData(updated);
-    onSaveStudentPlan(updated);
+    const res = applyShareToggle(formData, colleagueEmail, currentUser, nowStamp);
+    if (!res) return;
+    savedSnapshotRef.current = JSON.stringify(res.next);
+    setFormData(res.next);
+    onSaveStudentPlan(res.next);
     if (onNotifySharedColleague) {
-      onNotifySharedColleague(formData.id, cleanEmail, !exists);
+      onNotifySharedColleague(formData.id, res.cleanEmail, res.isNewlyShared);
     }
   };
 
@@ -1907,45 +1889,15 @@ ${JSON.stringify(studentCardPayload, null, 2)}
   };
 
   const handleUpdateStatusSectionContent = (sectionNumber, newContent) => {
-    setFormData((prev) => ({
-      ...prev,
-      statusReportSections: (prev.statusReportSections || []).map((sec) =>
-        sec.sectionNumber === sectionNumber ? { ...sec, content: newContent } : sec
-      )
-    }));
+    setFormData((prev) => updateStatusSection(prev, sectionNumber, newContent));
   };
 
   const handleRemoveStatusSection = (sectionNumber) => {
-    setFormData((prev) => ({
-      ...prev,
-      statusReportSections: (prev.statusReportSections || []).filter(
-        (sec) => sec.sectionNumber !== sectionNumber
-      )
-    }));
+    setFormData((prev) => removeStatusSection(prev, sectionNumber));
   };
 
   const handleAddManualStatusSection = (sectionNumber) => {
-    const num = Number(sectionNumber);
-    if (!num) return;
-    const schemaItem = STATUS_REPORT_SECTIONS_SCHEMA.find((s) => s.sectionNumber === num);
-    if (!schemaItem) return;
-    setFormData((prev) => {
-      const current = prev.statusReportSections || [];
-      if (current.some((s) => s.sectionNumber === num)) return prev;
-      const next = [
-        ...current,
-        {
-          id: `status_sec_${num}`,
-          sectionNumber: num,
-          title: schemaItem.title,
-          content: ''
-        }
-      ].sort((a, b) => a.sectionNumber - b.sectionNumber);
-      return {
-        ...prev,
-        statusReportSections: next
-      };
-    });
+    setFormData((prev) => addManualStatusSection(prev, sectionNumber));
     setSelectedNewStatusSectionNum('');
   };
 

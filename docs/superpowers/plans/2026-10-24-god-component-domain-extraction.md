@@ -292,7 +292,7 @@ Run: `npx vitest run src/__tests__/workPlanEdits.test.js`
   - `removeStatusSection(prev, sectionNumber) => FormData`
   - `addManualStatusSection(prev, sectionNumber) => FormData`: returns `prev` for unknown, zero or duplicate numbers; result sorted by `sectionNumber`; new item `{ id: \`status_sec_${n}\`, sectionNumber: n, title: schema.title, content: '' }`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 import { applyShareToggle, addManualStatusSection } from '../domain/workPlanEdits';
@@ -321,10 +321,10 @@ describe('sharing & status sections', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL**
-- [ ] **Step 3: Implement.** Bodies are moved from the four handlers. The component computes `nowStamp` with the existing `toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })` call and keeps the `savedSnapshotRef`, `onSaveStudentPlan` and `onNotifySharedColleague(formData.id, cleanEmail, isNewlyShared)` calls.
-- [ ] **Step 4: Verify** with `npx vitest run` and `npm run build`.
-- [ ] **Step 5: Commit** with `refactor(domain): extract team sharing and status-section operations`
+- [x] **Step 2: Run, expect FAIL**
+- [x] **Step 3: Implement.** Bodies are moved from the four handlers. The component computes `nowStamp` with the existing `toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })` call and keeps the `savedSnapshotRef`, `onSaveStudentPlan` and `onNotifySharedColleague(formData.id, cleanEmail, isNewlyShared)` calls.
+- [x] **Step 4: Verify** with `npx vitest run` and `npm run build`.
+- [x] **Step 5: Commit** with `refactor(domain): extract team sharing and status-section operations`
 
 ---
 

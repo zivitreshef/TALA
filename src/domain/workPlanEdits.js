@@ -2,13 +2,15 @@ import {
   buildDefaultTalaProfileRows,
   isGoalEmpty,
   attachAiBaselineToGoal,
-  isGoalProtectedFromAiOverwrite
+  isGoalProtectedFromAiOverwrite,
+  STATUS_REPORT_SECTIONS_SCHEMA
 } from '../goalBankData';
 import { detectStudentStage } from '../studentStage.js';
 import {
   getDefaultEnvironmentForStage,
   getDefaultPartnersForStage
 } from './stageGuard.js';
+import { syncActiveReportSnapshot } from './yearReport';
 
 export const LOCKED_EDITABLE_FIELDS = new Set([
   'evalReportFreeText',
@@ -142,5 +144,78 @@ export const buildNewGoalRow = ({ id, stage, isTalaMode, isKindergarten, plus3Mo
     evaluationCriteria: '',
     isTeacherAdded: true,
     isTeacherModified: true
+  };
+};
+
+export const applyShareToggle = (data, colleagueEmail, actor = {}, nowStamp = '') => {
+  const cleanEmail = String(colleagueEmail || '').trim().toLowerCase();
+  if (!cleanEmail) return null;
+  const currentShared = Array.isArray(data?.sharedWith) ? data.sharedWith : [];
+  const exists = currentShared.some((em) => String(em || '').toLowerCase() === cleanEmail);
+  const nextShared = exists
+    ? currentShared.filter((em) => String(em || '').toLowerCase() !== cleanEmail)
+    : [...currentShared, cleanEmail];
+
+  const currentReadBy = Array.isArray(data?.sharedReadBy) ? data.sharedReadBy : [];
+  const nextReadBy = currentReadBy.filter(
+    (em) => String(em || '').trim().toLowerCase() !== cleanEmail
+  );
+  const nextSharedAtByEmail = {
+    ...(data?.sharedAtByEmail || {}),
+    ...(!exists ? { [cleanEmail]: nowStamp } : {})
+  };
+
+  const next = {
+    ...syncActiveReportSnapshot(data),
+    sharedWith: nextShared,
+    sharedReadBy: nextReadBy,
+    sharedByName: actor?.name || actor?.email || data?.sharedByName || '',
+    sharedAtByEmail: nextSharedAtByEmail
+  };
+
+  return {
+    next,
+    cleanEmail,
+    isNewlyShared: !exists
+  };
+};
+
+export const updateStatusSection = (prev, sectionNumber, content) => {
+  return {
+    ...prev,
+    statusReportSections: (prev?.statusReportSections || []).map((sec) =>
+      sec.sectionNumber === sectionNumber ? { ...sec, content } : sec
+    )
+  };
+};
+
+export const removeStatusSection = (prev, sectionNumber) => {
+  return {
+    ...prev,
+    statusReportSections: (prev?.statusReportSections || []).filter(
+      (sec) => sec.sectionNumber !== sectionNumber
+    )
+  };
+};
+
+export const addManualStatusSection = (prev, sectionNumber) => {
+  const num = Number(sectionNumber);
+  if (!num) return prev;
+  const schemaItem = STATUS_REPORT_SECTIONS_SCHEMA.find((s) => s.sectionNumber === num);
+  if (!schemaItem) return prev;
+  const current = prev?.statusReportSections || [];
+  if (current.some((s) => s.sectionNumber === num)) return prev;
+  const next = [
+    ...current,
+    {
+      id: `status_sec_${num}`,
+      sectionNumber: num,
+      title: schemaItem.title,
+      content: ''
+    }
+  ].sort((a, b) => a.sectionNumber - b.sectionNumber);
+  return {
+    ...prev,
+    statusReportSections: next
   };
 };

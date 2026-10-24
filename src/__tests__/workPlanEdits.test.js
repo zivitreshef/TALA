@@ -4,8 +4,13 @@ import {
   applyFieldChange,
   applyGoalChange,
   removeGoalRow,
-  toggleFocusDomain
+  toggleFocusDomain,
+  applyShareToggle,
+  addManualStatusSection,
+  updateStatusSection,
+  removeStatusSection
 } from '../domain/workPlanEdits';
+import { STATUS_REPORT_SECTIONS_SCHEMA } from '../goalBankData';
 
 const now = new Date('2026-10-24T10:00:00Z');
 
@@ -49,5 +54,34 @@ describe('workPlanEdits', () => {
   it('toggles focus domains', () => {
     expect(toggleFocusDomain({ talaFocusDomains: ['רגשי'] }, 'רגשי').talaFocusDomains).toEqual([]);
     expect(toggleFocusDomain({}, 'חברתי').talaFocusDomains).toEqual(['חברתי']);
+  });
+});
+
+describe('sharing & status sections', () => {
+  it('normalizes and toggles colleague emails', () => {
+    const r1 = applyShareToggle({ sharedWith: [], sharedReadBy: ['a@b.com'] }, ' A@B.com ', { name: 'זיוית' }, '24.10.26');
+    expect(r1).toMatchObject({ cleanEmail: 'a@b.com', isNewlyShared: true });
+    expect(r1.next.sharedWith).toEqual(['a@b.com']);
+    expect(r1.next.sharedAtByEmail['a@b.com']).toBe('24.10.26');
+    expect(r1.next.sharedReadBy).toEqual([]);
+    const r2 = applyShareToggle(r1.next, 'a@b.com', {}, 'x');
+    expect(r2.isNewlyShared).toBe(false);
+    expect(r2.next.sharedWith).toEqual([]);
+    expect(applyShareToggle({}, '   ', {}, 'x')).toBeNull();
+  });
+  it('adds a manual status section once, sorted; ignores unknown numbers', () => {
+    const [first, second] = STATUS_REPORT_SECTIONS_SCHEMA;
+    const a = addManualStatusSection({ statusReportSections: [] }, String(second.sectionNumber));
+    const b = addManualStatusSection(a, first.sectionNumber);
+    expect(b.statusReportSections.map((s) => s.sectionNumber)).toEqual([first.sectionNumber, second.sectionNumber]);
+    expect(addManualStatusSection(b, first.sectionNumber)).toBe(b);
+    expect(addManualStatusSection(b, 9999)).toBe(b);
+  });
+  it('updates and removes status sections', () => {
+    const prev = { statusReportSections: [{ sectionNumber: 1, content: 'ישן' }, { sectionNumber: 2, content: '2' }] };
+    const updated = updateStatusSection(prev, 1, 'חדש');
+    expect(updated.statusReportSections[0].content).toBe('חדש');
+    const removed = removeStatusSection(updated, 1);
+    expect(removed.statusReportSections.map((s) => s.sectionNumber)).toEqual([2]);
   });
 });
