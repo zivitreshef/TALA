@@ -58,7 +58,7 @@ Today the "snapshot the active report into `reportsByYear` + `reportsByPlanType`
   - `normalizeStudentForForm(student) => FormData` (the renamed `buildNormalizedStudentData`, body unchanged)
   - `syncActiveReportSnapshot(data) => FormData`: returns `{ ...data, reportsByYear: {...data.reportsByYear, [yr]: snap}, reportsByPlanType: {...data.reportsByPlanType, [getPlanTypeStorageKey(yr, data.planType)]: snap} }` where `yr = data.schoolYear || DEFAULT_SCHOOL_YEAR` and `snap = extractYearReportFromFormData(data)`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```js
 import { describe, it, expect } from 'vitest';
@@ -107,17 +107,17 @@ describe('yearReport', () => {
 });
 ```
 
-- [ ] **Step 2: Run, expect FAIL** (`Failed to resolve import "../domain/yearReport"`)
+- [x] **Step 2: Run, expect FAIL** (`Failed to resolve import "../domain/yearReport"`)
 
 Run: `npx vitest run src/__tests__/yearReport.test.js`
 
-- [ ] **Step 3: Create `src/domain/yearReport.js`.** Move the helpers verbatim, importing `buildDefaultTalaProfileRows`, `isTalaPlanType`, `adaptGoalToGender`, `ENVIRONMENTS_LIST` from `../goalBankData`, `hasPopulatedTalaProfile` from `../export/wordAndPrintBuilders`, `detectStudentStage` from `../studentStage.js`, and `getDefaultEnvironmentForStage` and `getDefaultPartnersForStage` from `./stageGuard.js`. Replace the inline year and plan-type literals inside the moved code with the three constants. Add `syncActiveReportSnapshot`.
+- [x] **Step 3: Create `src/domain/yearReport.js`.** Move the helpers verbatim, importing `buildDefaultTalaProfileRows`, `isTalaPlanType`, `adaptGoalToGender`, `ENVIRONMENTS_LIST` from `../goalBankData`, `hasPopulatedTalaProfile` from `../export/wordAndPrintBuilders`, `detectStudentStage` from `../studentStage.js`, and `getDefaultEnvironmentForStage` and `getDefaultPartnersForStage` from `./stageGuard.js`. Replace the inline year and plan-type literals inside the moved code with the three constants. Add `syncActiveReportSnapshot`.
 
-- [ ] **Step 4: Rewire the Form.** Import the module. Replace `buildNormalizedStudentData(` with `normalizeStudentForForm(` at its 3 call sites. Replace every block of the shape `{ ...X, reportsByYear: { ...X.reportsByYear, [yr]: extractYearReportFromFormData(X) }, reportsByPlanType: { ...X.reportsByPlanType, [getPlanTypeStorageKey(yr, X.planType)]: <same snapshot> } }` with `syncActiveReportSnapshot(X)`. Expected sites are inside the auto-save effect (×2), `handleToggleReportLock`, `handleAutoUnlockReport`, `handleRolloverToNextYear`, `handleToggleShareColleague`, the two reverse-engineer saves (~1934, ~2012) and `handleSaveProgress`. Leave `handlePlanTypeChange` and `handleSchoolYearChange` alone (Task 2), and leave the read at ~3009. If a site adds extra keys next to the maps, keep them: `{ ...syncActiveReportSnapshot(X), extra }`.
+- [x] **Step 4: Rewire the Form.** Import the module. Replace `buildNormalizedStudentData(` with `normalizeStudentForForm(` at its 3 call sites. Replace every block of the shape `{ ...X, reportsByYear: { ...X.reportsByYear, [yr]: extractYearReportFromFormData(X) }, reportsByPlanType: { ...X.reportsByPlanType, [getPlanTypeStorageKey(yr, X.planType)]: <same snapshot> } }` with `syncActiveReportSnapshot(X)`. Expected sites are inside the auto-save effect (×2), `handleToggleReportLock`, `handleAutoUnlockReport`, `handleRolloverToNextYear`, `handleToggleShareColleague`, the two reverse-engineer saves (~1934, ~2012) and `handleSaveProgress`. Leave `handlePlanTypeChange` and `handleSchoolYearChange` alone (Task 2), and leave the read at ~3009. If a site adds extra keys next to the maps, keep them: `{ ...syncActiveReportSnapshot(X), extra }`.
 
-- [ ] **Step 5: Verify.** Run `npx vitest run`, expect all passing (222 + 5). Then run `npm run build`, expect `✓ built`.
+- [x] **Step 5: Verify.** Run `npx vitest run`, expect all passing (222 + 5). Then run `npm run build`, expect `✓ built`.
 
-- [ ] **Step 6: Commit** with `refactor(domain): extract year-report snapshot model from EcologicalWorkPlanForm`
+- [x] **Step 6: Commit** with `refactor(domain): extract year-report snapshot model from EcologicalWorkPlanForm`
 
 ---
 
