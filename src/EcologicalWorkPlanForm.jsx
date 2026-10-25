@@ -119,6 +119,11 @@ import MinistryCopyModal from './components/form/MinistryCopyModal';
 import QuickObservationModal from './components/form/QuickObservationModal';
 import DiagnosticIntakeModal from './components/form/DiagnosticIntakeModal';
 import { removeDiagnosticDocumentFromStudent } from './domain/diagnosticIntake';
+import {
+  deleteDossierFileBlob,
+  triggerDossierDownload,
+  openDossierFilePreview
+} from './services/dossierFileStorage';
 import { appendToFreeText } from './domain/parentInvite';
 import { addObservationToGoal } from './domain/goalObservations';
 import { DISCIPLINE_LEAD_OPTIONS } from './domain/studentSyncMerge';
@@ -245,8 +250,11 @@ export default function EcologicalWorkPlanForm({
 
   const attachedDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
 
-  const handleRemoveDiagnosticDoc = (docId, fileName) => {
+  const handleRemoveDiagnosticDoc = async (docId, fileName) => {
     if (window.confirm(`האם את בטוחה שברצונך להסיר את המסמך "${fileName}" מתיק התלמיד/ה?`)) {
+      try {
+        await deleteDossierFileBlob(docId);
+      } catch (_) {}
       const updated = removeDiagnosticDocumentFromStudent(formData, docId);
       setFormData(updated);
       onSaveStudentPlan?.(updated);
@@ -3645,21 +3653,21 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#4f46e5',
+                  background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',
-                  padding: '8px 14px',
+                  padding: '8px 16px',
                   fontSize: '13px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(79, 70, 229, 0.25)',
-                  transition: 'background 0.2s'
+                  boxShadow: '0 2px 6px rgba(91, 155, 213, 0.28)',
+                  transition: 'opacity 0.2s'
                 }}
                 title="העלאת מסמך אבחון וניתוח פדגוגי אוטומטי בעזרת AI"
               >
                 <Sparkles size={16} />
-                <span>קליטת אבחון חדש ב-AI</span>
+                <span>העלאת ועיבוד מסמכים</span>
               </button>
             )}
           </div>
@@ -3677,7 +3685,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 fontSize: '13px'
               }}
             >
-              טרם נשמרו מסמכי אבחון לתלמיד/ה זה. לחצי על ״קליטת אבחון חדש ב-AI״ כדי לצרף אבחון פסיכודידקטי, סיכום ועדת אפיון וזכאות או דוח טיפולי.
+              טרם נשמרו מסמכי אבחון לתלמיד/ה זה. לחצי על ״העלאת ועיבוד מסמכים״ כדי לצרף אבחון פסיכודידקטי, סיכום ועדת אפיון וזכאות או דוח טיפולי.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
@@ -3697,7 +3705,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
-                    <FileText size={18} color="#4f46e5" />
+                    <FileText size={18} color="#5b9bd5" />
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
@@ -3727,52 +3735,54 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <button
                       type="button"
-                      onClick={() => setViewingDocText(doc)}
-                      title="הצגת הטקסט שחולץ מהמסמך"
+                      onClick={async () => {
+                        const opened = await openDossierFilePreview(doc);
+                        if (!opened) {
+                          setViewingDocText(doc);
+                        }
+                      }}
+                      title="צפייה במסמך או בטקסט שחולץ"
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px',
+                        gap: '5px',
                         background: '#f8fafc',
                         border: '1px solid #cbd5e1',
                         borderRadius: '6px',
-                        padding: '4px 9px',
+                        padding: '5px 10px',
                         fontSize: '12px',
                         fontWeight: 600,
                         color: '#334155',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        transition: 'background 0.15s'
                       }}
                     >
                       <Eye size={13} />
-                      <span>צפייה בטקסט</span>
+                      <span>צפייה</span>
                     </button>
 
-                    {!isReportLocked && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedIntakeDoc(doc);
-                          setShowDiagnosticIntakeModal(true);
-                        }}
-                        title="ניתוח חוזר של מסמך זה בעזרת AI"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          background: '#f0fdf4',
-                          border: '1px solid #86efac',
-                          borderRadius: '6px',
-                          padding: '4px 9px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: '#166534',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Sparkles size={13} />
-                        <span>ניתוח ב-AI</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => triggerDossierDownload(doc)}
+                      title="הורדת הקובץ"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '5px 10px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#334155',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s'
+                      }}
+                    >
+                      <Download size={13} />
+                      <span>הורדה</span>
+                    </button>
 
                     {!isReportLocked && (
                       <button
@@ -3782,15 +3792,26 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
-                          background: '#fff1f2',
-                          border: '1px solid #fecdd3',
+                          gap: '5px',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
                           borderRadius: '6px',
-                          padding: '4px 8px',
+                          padding: '5px 9px',
                           fontSize: '12px',
                           fontWeight: 600,
-                          color: '#be123c',
-                          cursor: 'pointer'
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#be123c';
+                          e.currentTarget.style.borderColor = '#fecdd3';
+                          e.currentTarget.style.background = '#fff1f2';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#64748b';
+                          e.currentTarget.style.borderColor = '#e2e8f0';
+                          e.currentTarget.style.background = '#f8fafc';
                         }}
                       >
                         <Trash2 size={13} />
@@ -6353,33 +6374,26 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <span>העתק טקסט</span>
               </button>
               <div style={{ display: 'flex', gap: '8px' }}>
-                {!isReportLocked && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const doc = viewingDocText;
-                      setViewingDocText(null);
-                      setSelectedIntakeDoc(doc);
-                      setShowDiagnosticIntakeModal(true);
-                    }}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: '#4f46e5',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '6px 14px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Sparkles size={15} />
-                    <span>ניתוח ב-AI</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => triggerDossierDownload(viewingDocText)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#f8fafc',
+                    color: '#334155',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Download size={15} />
+                  <span>הורדת הקובץ</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setViewingDocText(null)}
