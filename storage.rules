@@ -1,9 +1,14 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Authenticated teachers can upload and download student dossier files
-    match /dossier_files/{allPaths=**} {
-      allow read, write: if request.auth != null;
+    // Authenticated teachers can upload and download student dossier files with strict security hardening
+    match /dossier_files/{studentId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size <= 20 * 1024 * 1024
+                   && request.resource.size > 0
+                   && request.resource.contentType.matches('application/pdf|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/msword|text/plain|text/csv|image/(png|jpeg|webp)')
+                   && !fileName.matches('.*\\.(exe|dll|bat|cmd|sh|ps1|vbs|js|html|htm|php|py|jar|msi|apk|bin|scr)$');
     }
     match /{allPaths=**} {
       allow read, write: if request.auth != null;
