@@ -153,6 +153,7 @@ import {
 } from './domain/userEngagement';
 import { buildAdminBankGoalPayload } from './domain/goalBankAdmin';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
+import GoalBankPage from './components/GoalBankPage';
 import './index.css';
 
 const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
@@ -1743,10 +1744,11 @@ export default function App() {
           <nav className="header-nav-segment" aria-label="ניווט ראשי">
             <button
               type="button"
-              className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker ? 'active' : ''}`}
+              className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker && !showGoalBankOverview ? 'active' : ''}`}
               onClick={() => {
                 setSelectedStudentId(null);
                 setShowDailyTracker(false);
+                setShowGoalBankOverview(false);
               }}
               title="חזרה לדף הבית"
             >
@@ -1756,10 +1758,11 @@ export default function App() {
 
             <button
               type="button"
-              className={`header-nav-btn ${showDailyTracker && selectedStudentId === null ? 'active' : ''}`}
+              className={`header-nav-btn ${showDailyTracker && selectedStudentId === null && !showGoalBankOverview ? 'active' : ''}`}
               onClick={() => {
                 setSelectedStudentId(null);
                 setShowDailyTracker(true);
+                setShowGoalBankOverview(false);
               }}
               title="מעקב יומי פדגוגי ולוח שנה"
             >
@@ -1769,9 +1772,11 @@ export default function App() {
 
             <button
               type="button"
-              className={`header-nav-btn ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
+              className={`header-nav-btn ${showGoalBankOverview && selectedStudentId === null ? 'active' : ''} ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
               onClick={() => {
                 setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
+                setSelectedStudentId(null);
+                setShowDailyTracker(false);
                 setShowGoalBankOverview(true);
                 if (onboardingTourStep === 5) {
                   setOnboardingTourStep(6);
@@ -2310,6 +2315,8 @@ export default function App() {
                 allowedUsers={allowedUsers}
                 onOpenGoalBankManager={() => {
                   if (selectedStudent?.id) setTargetBankStudentId(selectedStudent.id);
+                  setSelectedStudentId(null);
+                  setShowDailyTracker(false);
                   setShowGoalBankOverview(true);
                 }}
                 onSaveStudentPlan={handleSaveStudentPlan}
@@ -2334,8 +2341,44 @@ export default function App() {
                 onSelectStudent={(studentId) => {
                   setSelectedStudentId(studentId);
                   setShowDailyTracker(false);
+                  setShowGoalBankOverview(false);
                 }}
                 onClose={() => setShowDailyTracker(false)}
+              />
+            </ErrorBoundary>
+          ) : showGoalBankOverview ? (
+            <ErrorBoundary componentName="GoalBankPage">
+              <GoalBankPage
+                goalBank={goalBank}
+                currentUser={currentUser}
+                userStudents={userStudents}
+                targetBankStudentId={targetBankStudentId}
+                setTargetBankStudentId={setTargetBankStudentId}
+                unsavedDraftState={unsavedDraftState}
+                onAddGoalToStudent={handleAddBankGoalToStudent}
+                onSaveBankGoal={(editingGoal, payload) => {
+                  let nextBank;
+                  if (editingGoal.mode === 'add') {
+                    nextBank = addGoalByAdmin(payload, goalBank);
+                  } else {
+                    nextBank = updateGoalByAdmin(editingGoal.id, payload, goalBank);
+                  }
+                  setGoalBank(nextBank);
+                  saveGoalBank(nextBank);
+                  saveGoalBankToCloud(nextBank).catch(() => {});
+                }}
+                onDeleteBankGoal={handleDeleteAdminBankGoal}
+                onResetAllGoalWeights={handleResetAllGoalWeights}
+                onOpenStudentPlan={(studentId) => {
+                  setSelectedStudentId(studentId);
+                  setShowGoalBankOverview(false);
+                  setShowDailyTracker(false);
+                }}
+                onGoHome={() => {
+                  setShowGoalBankOverview(false);
+                  setSelectedStudentId(null);
+                  setShowDailyTracker(false);
+                }}
               />
             </ErrorBoundary>
           ) : (
@@ -2778,779 +2821,6 @@ export default function App() {
           onMarkHealthReviewed={handleMarkHealthReviewed}
           onClearHealthEvents={handleClearHealthEvents}
         />
-      )}
-
-      {/* Dynamic Goal Bank Popularity & Admin Management Modal */}
-      {showGoalBankOverview && (
-        <div
-          className="modal-backdrop"
-          onClick={() => {
-            setShowGoalBankOverview(false);
-            setEditingBankGoal(null);
-            setSelectedHlDomain(null);
-          }}
-          dir="rtl"
-        >
-          <div
-            className="modal-container"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '880px', width: '94%' }}
-          >
-            <div className="modal-header">
-              <div className="modal-header-title">
-                <TrendingUp size={22} />
-                <h3>מאגר המטרות הדינמי</h3>
-              </div>
-              <button
-                className="btn-icon-close"
-                onClick={() => {
-                  setShowGoalBankOverview(false);
-                  setEditingBankGoal(null);
-                  setSelectedHlDomain(null);
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="goal-bank-modal-top-bar">
-                <p style={{ fontSize: '13px', color: '#475569', margin: 0 }}>
-                  כל מטרה חדשה שהמנהלת או כל מורה מוסיפה משותפת לכלל המשתמשים במאגר זה. המטרות מוצגות לפי מידת השכיחות שלהן.
-                  {currentUser.role === 'admin' ? (
-                    <strong style={{ color: '#4c1d95', display: 'block', marginTop: '4px' }}>
-                      👑 הרשאת מנהל מערכת: באפשרותך להוסיף, לערוך או להסיר מטרות ויעדים במאגר.
-                    </strong>
-                  ) : (
-                    <span style={{ color: '#64748b', display: 'block', marginTop: '4px' }}>
-                      באפשרותך להוסיף מטרות חדשות למאגר המשותף.
-                    </span>
-                  )}
-                </p>
-
-                {!editingBankGoal && (
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {currentUser.role === 'admin' && (
-                      <button
-                        type="button"
-                        className="btn-secondary-sm"
-                        onClick={handleResetAllGoalWeights}
-                        title="אפס את מונה השכיחות של כל המטרות ל-0"
-                      >
-                        <RotateCcw size={14} />
-                        <span>אפס שכיחויות</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="btn-admin-add-bank-goal"
-                      onClick={handleStartAddGoalToBank}
-                    >
-                      <Plus size={16} />
-                      <span>הוסף מטרה חדשה למאגר</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Add Goal (Any User) / Edit Goal (Admin Only) Form */}
-              {editingBankGoal && (editingBankGoal.mode === 'add' || currentUser.role === 'admin') && (
-                <form className="admin-bank-goal-editor" onSubmit={handleSaveAdminBankGoal}>
-                  <div className="admin-editor-header">
-                    <h4>
-                      {editingBankGoal.mode === 'add'
-                        ? '➕ הוספת מטרה חדשה למאגר המטרות הדינמי'
-                        : '✏️ עריכת מטרה קיימת במאגר'}
-                    </h4>
-                    <button
-                      type="button"
-                      className="btn-cancel-bank-edit"
-                      onClick={() => setEditingBankGoal(null)}
-                    >
-                      <X size={15} />
-                      <span>ביטול</span>
-                    </button>
-                  </div>
-
-                  <div className="admin-editor-grid">
-                    <div className="admin-field full-span">
-                      <label>כותרת המטרה העליונה: *</label>
-                      <input
-                        type="text"
-                        required
-                        value={editingBankGoal.title}
-                        onChange={(e) =>
-                          setEditingBankGoal({ ...editingBankGoal, title: e.target.value })
-                        }
-                        placeholder="למשל: ירחיב וישכלל את מיומנויותיו במשחק הסוציודרמטי..."
-                      />
-                    </div>
-
-                    <div className="admin-field">
-                      <label>סביבה / תחום פעילות:</label>
-                      <input
-                        type="text"
-                        list="admin-environments-datalist"
-                        value={editingBankGoal.environment}
-                        onChange={(e) =>
-                          setEditingBankGoal({ ...editingBankGoal, environment: e.target.value })
-                        }
-                        placeholder="בחר או הקלד סביבה חדשה..."
-                      />
-                      <datalist id="admin-environments-datalist">
-                        {ENVIRONMENTS_LIST.map((env) => (
-                          <option key={env} value={env} />
-                        ))}
-                      </datalist>
-                    </div>
-
-                    <div className="admin-field">
-                      <label>שלב חינוכי (גן / בית ספר):</label>
-                      <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginTop: '6px' }}>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>
-                          <input
-                            type="checkbox"
-                            checked={(editingBankGoal.stages || []).includes('kindergarten')}
-                            onChange={(e) => {
-                              const cur = editingBankGoal.stages || [];
-                              const next = e.target.checked
-                                ? [...cur, 'kindergarten']
-                                : cur.filter((s) => s !== 'kindergarten');
-                              setEditingBankGoal({
-                                ...editingBankGoal,
-                                stages: next.length > 0 ? next : ['kindergarten']
-                              });
-                            }}
-                          />
-                          <span>גן</span>
-                        </label>
-                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>
-                          <input
-                            type="checkbox"
-                            checked={(editingBankGoal.stages || []).includes('school')}
-                            onChange={(e) => {
-                              const cur = editingBankGoal.stages || [];
-                              const next = e.target.checked
-                                ? [...cur, 'school']
-                                : cur.filter((s) => s !== 'school');
-                              setEditingBankGoal({
-                                ...editingBankGoal,
-                                stages: next.length > 0 ? next : ['school']
-                              });
-                            }}
-                          />
-                          <span>בית ספר</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="admin-field">
-                      <label>מונה שכיחות:</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editingBankGoal.usageCount}
-                        onChange={(e) =>
-                          setEditingBankGoal({
-                            ...editingBankGoal,
-                            usageCount: Number(e.target.value)
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="admin-field full-span">
-                      <label>תיאור פעילות והשתתפות מומלץ:</label>
-                      <textarea
-                        rows={2}
-                        value={editingBankGoal.defaultActivity}
-                        onChange={(e) =>
-                          setEditingBankGoal({
-                            ...editingBankGoal,
-                            defaultActivity: e.target.value
-                          })
-                        }
-                        placeholder="תיאור תפקוד בסביבה וגורמים מאפשרים/מגבילים..."
-                      />
-                    </div>
-
-                    <div className="admin-field full-span">
-                      <label>יעדים אופרטיביים משויכים:</label>
-                      <textarea
-                        rows={3}
-                        value={editingBankGoal.suggestedObjectivesText}
-                        onChange={(e) =>
-                          setEditingBankGoal({
-                            ...editingBankGoal,
-                            suggestedObjectivesText: e.target.value
-                          })
-                        }
-                        placeholder="יעד אופרטיבי 1&#10;יעד אופרטיבי 2&#10;יעד אופרטיבי 3"
-                      />
-                    </div>
-
-                    <div className="admin-field full-span">
-                      <label>הזדמנויות, אמצעים ותיווך מומלץ:</label>
-                      <textarea
-                        rows={2}
-                        value={editingBankGoal.defaultOpportunities}
-                        onChange={(e) =>
-                          setEditingBankGoal({
-                            ...editingBankGoal,
-                            defaultOpportunities: e.target.value
-                          })
-                        }
-                        placeholder="• המבוגר יזמין...&#10;• שימוש בכרטיסיות סדר יום..."
-                      />
-                    </div>
-
-                    <div className="admin-field">
-                      <label>שותפים מומלצים:</label>
-                      <input
-                        type="text"
-                        value={editingBankGoal.defaultPartners}
-                        onChange={(e) =>
-                          setEditingBankGoal({
-                            ...editingBankGoal,
-                            defaultPartners: e.target.value
-                          })
-                        }
-                        placeholder="צוות הגן, סייעת אישית, מרפאה בעיסוק..."
-                      />
-                    </div>
-
-                    <div className="admin-field">
-                      <label>משך מומלץ:</label>
-                      <input
-                        type="text"
-                        value={editingBankGoal.defaultDuration}
-                        onChange={(e) =>
-                          setEditingBankGoal({
-                            ...editingBankGoal,
-                            defaultDuration: e.target.value
-                          })
-                        }
-                        placeholder="עד סוף השנה / כשלושה חודשים"
-                      />
-                    </div>
-
-                    <div className="admin-field full-span">
-                      <label>אמות מידה להערכה:</label>
-                      <input
-                        type="text"
-                        value={editingBankGoal.defaultEvaluation}
-                        onChange={(e) =>
-                          setEditingBankGoal({
-                            ...editingBankGoal,
-                            defaultEvaluation: e.target.value
-                          })
-                        }
-                        placeholder="כיצד נדע שהמטרה הושגה?"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="admin-editor-actions">
-                    <button type="submit" className="btn-save-bank-goal">
-                      <Check size={16} />
-                      <span>
-                        {editingBankGoal.mode === 'add'
-                          ? 'שמור והוסף מטרה למאגר'
-                          : 'שמור שינויים במטרה'}
-                      </span>
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* Target Student Bar for Direct Goal Injection from the Bank */}
-              <div
-                style={{
-                  background: 'linear-gradient(135deg, #f3eefc 0%, #eef6ff 100%)',
-                  border: '1.5px solid #d6c6f7',
-                  borderRadius: '12px',
-                  padding: '10px 14px',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '10px'
-                }}
-              >
-                {userStudents.length > 0 ? (
-                  <>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#3b2868' }}>
-                        🎯 הוספת מטרה מהמאגר ישירות לתכנית של:
-                      </span>
-                      <select
-                        value={activeBankTargetStudent?.id || ''}
-                        onChange={(e) => setTargetBankStudentId(e.target.value)}
-                        style={{
-                          padding: '5px 10px',
-                          borderRadius: '8px',
-                          border: '1.5px solid #b39ddb',
-                          background: '#ffffff',
-                          fontSize: '13px',
-                          fontWeight: 700,
-                          color: '#24344d',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {userStudents.map((st) => (
-                          <option key={st.id} value={st.id}>
-                            {st.name || 'תלמיד/ה ללא שם'}{' '}
-                            {st.educationalFramework ? `(${st.educationalFramework})` : ''} –{' '}
-                            {(st.goals || []).filter((g) => (g.title || '').trim()).length} מטרות
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {activeBankTargetStudent &&
-                      selectedStudentId !== activeBankTargetStudent.id && (
-                        <button
-                          type="button"
-                          className="btn-secondary-sm"
-                          onClick={() => {
-                            setSelectedStudentId(activeBankTargetStudent.id);
-                            setShowGoalBankOverview(false);
-                            setSelectedHlDomain(null);
-                          }}
-                          style={{ fontSize: '12px', padding: '4px 10px' }}
-                        >
-                          פתח את תכנית התלמיד/ה ⬅
-                        </button>
-                      )}
-                  </>
-                ) : (
-                  <span style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>
-                    💡 צרי כרטיס תלמיד/ה כדי להוסיף אליו מטרות בלחיצה אחת מתוך המאגר.
-                  </span>
-                )}
-              </div>
-
-              {bankAddToast && (
-                <div
-                  style={{
-                    background: '#f0fdf4',
-                    border: '1.5px solid #86efac',
-                    color: '#166534',
-                    borderRadius: '10px',
-                    padding: '8px 14px',
-                    marginBottom: '10px',
-                    fontSize: '13px',
-                    fontWeight: 700
-                  }}
-                >
-                  {bankAddToast}
-                </div>
-              )}
-
-              {/* Search Filter inside Goal Bank Modal */}
-              <div className="bank-modal-search-row">
-                <Search size={15} />
-                <input
-                  type="text"
-                  placeholder="חיפוש מטרה, סביבה או יעד במאגר..."
-                  value={goalBankSearch}
-                  onChange={(e) => setGoalBankSearch(e.target.value)}
-                />
-              </div>
-
-              {/* Stage Filter Pills & High-Level Domain Navigation Bar */}
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '8px',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: '12px'
-                }}
-              >
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  {/* Stage pills (גן / בית ספר / הכל) */}
-                  {(() => {
-                    const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
-                    const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
-                    return (
-                      <div style={{ display: 'inline-flex', gap: '4px', background: '#e2e8f0', padding: '2px', borderRadius: '999px' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGoalBankStageFilter('kindergarten');
-                            setSelectedHlDomain(null);
-                            setGoalBankEnvFilter('הכל');
-                          }}
-                          style={{
-                            padding: '3px 10px',
-                            borderRadius: '999px',
-                            fontSize: '11px',
-                            fontWeight: activeStage === 'kindergarten' ? 700 : 600,
-                            cursor: 'pointer',
-                            border: 'none',
-                            background: activeStage === 'kindergarten' ? '#7c3aed' : 'transparent',
-                            color: activeStage === 'kindergarten' ? '#ffffff' : '#334155'
-                          }}
-                        >
-                          גן
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGoalBankStageFilter('school');
-                            setSelectedHlDomain(null);
-                            setGoalBankEnvFilter('הכל');
-                          }}
-                          style={{
-                            padding: '3px 10px',
-                            borderRadius: '999px',
-                            fontSize: '11px',
-                            fontWeight: activeStage === 'school' ? 700 : 600,
-                            cursor: 'pointer',
-                            border: 'none',
-                            background: activeStage === 'school' ? '#7c3aed' : 'transparent',
-                            color: activeStage === 'school' ? '#ffffff' : '#334155'
-                          }}
-                        >
-                          בית ספר
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGoalBankStageFilter('all');
-                            setSelectedHlDomain(null);
-                            setGoalBankEnvFilter('הכל');
-                          }}
-                          style={{
-                            padding: '3px 10px',
-                            borderRadius: '999px',
-                            fontSize: '11px',
-                            fontWeight: activeStage === 'all' ? 700 : 600,
-                            cursor: 'pointer',
-                            border: 'none',
-                            background: activeStage === 'all' ? '#7c3aed' : 'transparent',
-                            color: activeStage === 'all' ? '#ffffff' : '#334155'
-                          }}
-                        >
-                          הכל
-                        </button>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Back button or breadcrumb when drilled down into a specific HL domain */}
-                {selectedHlDomain && !goalBankSearch.trim() && (
-                  <button
-                    type="button"
-                    className="goal-bank-hl-back-btn"
-                    onClick={() => {
-                      setSelectedHlDomain(null);
-                      setGoalBankEnvFilter('הכל');
-                    }}
-                  >
-                    <span>←</span>
-                    <span>חזרה לכל התחומים</span>
-                  </button>
-                )}
-              </div>
-
-              {/* VIEW 1: High-Level Goal Domains Grid (When no domain selected and no search) */}
-              {!selectedHlDomain && !goalBankSearch.trim() ? (
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600, marginBottom: '10px' }}>
-                    בחר/י תחום פעילות או מטרת-על כדי לצפות במטרות המותאמות:
-                  </div>
-                  <div className="goal-bank-hl-domains-grid">
-                    {(() => {
-                      const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
-                      const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
-
-                      // Gather relevant canonical environments for active stage
-                      const domainsToShow = [];
-                      if (activeStage === 'kindergarten' || activeStage === 'all') {
-                        KINDERGARTEN_ENVIRONMENTS.forEach((env) => {
-                          domainsToShow.push({ name: env, stage: 'kindergarten', stageLabel: 'גן' });
-                        });
-                      }
-                      if (activeStage === 'school' || activeStage === 'all') {
-                        SCHOOL_ENVIRONMENTS.forEach((env) => {
-                          domainsToShow.push({ name: env, stage: 'school', stageLabel: 'בית ספר' });
-                        });
-                      }
-
-                      const domainIcons = {
-                        'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה': '🎲',
-                        'מפגש בגן': '⭕',
-                        'משחק במרחב הגן': '🧸',
-                        'סדנא / יצירה': '🎨',
-                        'חצר': '⚽',
-                        'שירותים': '🧼',
-                        'אוכל': '🍎',
-                        'פעילות שאינה בשגרה': '✨',
-                        'האזנה ודיבור – כשירות תקשורתית': '🗣️',
-                        'כתיבה': '✍️',
-                        'קריאה והפקת משמעות': '📖',
-                        'כשירות לשונית – ידע לשוני': '💬'
-                      };
-
-                      return domainsToShow.map((item) => {
-                        const count = sortedBank.filter((g) => {
-                          if (!isGoalRelevantForStage(g, activeStage)) return false;
-                          const canon = canonicalizeEnvironment(g.environment);
-                          return canon === item.name || (g.environment || '').includes(item.name);
-                        }).length;
-
-                        return (
-                          <div
-                            key={`${item.stage}-${item.name}`}
-                            className="goal-bank-hl-card"
-                            onClick={() => {
-                              setSelectedHlDomain(item.name);
-                              setGoalBankEnvFilter(item.name);
-                            }}
-                          >
-                            <div className="goal-bank-hl-card-header">
-                              <span className="goal-bank-hl-card-icon">
-                                {domainIcons[item.name] || '🎯'}
-                              </span>
-                              <span
-                                className={`stage-chip ${
-                                  item.stage === 'school' ? 'stage-chip-school' : 'stage-chip-kdg'
-                                }`}
-                              >
-                                {item.stageLabel}
-                              </span>
-                            </div>
-                            <div className="goal-bank-hl-card-title">{item.name}</div>
-                            <div className="goal-bank-hl-card-footer">
-                              <span className="goal-bank-hl-card-count">
-                                {count} {count === 1 ? 'מטרה קיימת' : 'מטרות קיימות'}
-                              </span>
-                              <span className="goal-bank-hl-card-action">
-                                צפה במטרות ⬅
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                </div>
-              ) : (
-                /* VIEW 2: Drilled-down Goals List (Under selected domain or during search) */
-                <>
-                  {selectedHlDomain && !goalBankSearch.trim() && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '6px 12px',
-                        background: '#f8fafc',
-                        borderRadius: '8px',
-                        border: '1px solid #e2e8f0',
-                        marginBottom: '10px'
-                      }}
-                    >
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
-                        🎯 מטרות בתחום: <strong>{selectedHlDomain}</strong>
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="goal-bank-items-scroll" style={{ maxHeight: '420px' }}>
-                    {(() => {
-                      const studentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
-                      const activeStage = goalBankStageFilter !== null ? goalBankStageFilter : studentStage;
-                      const effectiveEnvFilter = selectedHlDomain || goalBankEnvFilter;
-
-                      return sortedBank
-                        .filter((g) => {
-                          if (!isGoalRelevantForStage(g, activeStage)) {
-                            return false;
-                          }
-                          if (
-                            effectiveEnvFilter !== 'הכל' &&
-                            canonicalizeEnvironment(g.environment) !== effectiveEnvFilter &&
-                            !(g.environment || '').includes(effectiveEnvFilter)
-                          ) {
-                            return false;
-                          }
-                          const q = goalBankSearch.trim();
-                          if (!q) return true;
-                          return (
-                            (g.title || '').includes(q) ||
-                            (g.environment || '').includes(q) ||
-                            (g.suggestedObjectives || []).some((o) => o.includes(q))
-                          );
-                        })
-                    .map((g, i) => {
-                      const targetStudentForCheck =
-                        activeBankTargetStudent &&
-                        unsavedDraftState.isDirty &&
-                        unsavedDraftState.draftData?.id === activeBankTargetStudent.id
-                          ? unsavedDraftState.draftData
-                          : activeBankTargetStudent;
-                      const targetGender = targetStudentForCheck?.gender || 'boy';
-                      const genderAdaptedTitle = adaptTextToGender(g.title || '', targetGender);
-                      const isAlreadyInTargetStudent = Boolean(
-                        targetStudentForCheck &&
-                          (targetStudentForCheck.goals || []).some(
-                            (stGoal) =>
-                              (stGoal.title || '').trim() === genderAdaptedTitle.trim() ||
-                              (stGoal.title || '').trim() === (g.title || '').trim()
-                          )
-                      );
-                      const itemStages = Array.isArray(g.stages) && g.stages.length > 0
-                        ? g.stages
-                        : (g.stage ? [g.stage] : ['kindergarten']);
-
-                      return (
-                        <div key={g.id} className="goal-bank-option-row" style={{ cursor: 'default' }}>
-                          <div className="goal-bank-option-main">
-                            <div className="goal-option-title-line">
-                              <span className="popularity-rank-badge">#{i + 1}</span>
-                              {itemStages.includes('kindergarten') && (
-                                <span className="stage-chip stage-chip-kdg">גן</span>
-                              )}
-                              {itemStages.includes('school') && (
-                                <span className="stage-chip stage-chip-school">בית ספר</span>
-                              )}
-                              <strong>{g.title}</strong>
-                              <span className="env-tag-chip">{canonicalizeEnvironment(g.environment)}</span>
-                              <span className="usage-count-badge">
-                                נבחר {g.usageCount ?? 0} פעמים
-                              </span>
-                            </div>
-                          </div>
-
-                        <div
-                          className="goal-bank-admin-actions"
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}
-                        >
-                          {activeBankTargetStudent && (
-                            targetStudentForCheck?.isLocked ? (
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '5px 10px',
-                                  borderRadius: '8px',
-                                  background: '#fef3c7',
-                                  color: '#92400e',
-                                  border: '1px solid #f59e0b',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  whiteSpace: 'nowrap'
-                                }}
-                                title="הדו״ח של התלמיד/ה נעול לעריכה"
-                              >
-                                <Lock size={13} />
-                                <span>הדו"ח נעול</span>
-                              </span>
-                            ) : isAlreadyInTargetStudent ? (
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '5px 10px',
-                                  borderRadius: '8px',
-                                  background: '#dcfce7',
-                                  color: '#166534',
-                                  border: '1px solid #86efac',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  whiteSpace: 'nowrap'
-                                }}
-                              >
-                                <Check size={14} />
-                                <span>כבר בתכנית</span>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleAddBankGoalToStudent(g, activeBankTargetStudent)
-                                }
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '5px',
-                                  padding: '5px 11px',
-                                  borderRadius: '8px',
-                                  background: 'linear-gradient(135deg, #4a88c7 0%, #6d5cae 100%)',
-                                  color: '#ffffff',
-                                  border: 'none',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                  boxShadow: '0 2px 6px rgba(74, 136, 199, 0.25)'
-                                }}
-                                title={`הוסף מטרה זו (מותאמת למגדר) ישירות אל תכנית העבודה של ${
-                                  activeBankTargetStudent.name || 'התלמיד/ה'
-                                } והעלה את משקל המטרה במאגר`}
-                              >
-                                <Plus size={14} />
-                                <span>
-                                  הוסף לתכנית של{' '}
-                                  {(activeBankTargetStudent.name || 'התלמיד/ה').split(/\s+/)[0]}
-                                </span>
-                              </button>
-                            )
-                          )}
-
-                          {currentUser.role === 'admin' && (
-                            <>
-                              <button
-                                type="button"
-                                className="btn-admin-edit-goal"
-                                onClick={() => handleStartEditBankGoal(g)}
-                                title="ערוך מטרה זו"
-                              >
-                                <Edit2 size={14} />
-                                <span>ערוך</span>
-                              </button>
-                              <button
-                                type="button"
-                                className="btn-admin-delete-goal"
-                                onClick={() => handleDeleteAdminBankGoal(g)}
-                                title="מחק מטרה זו מהמאגר"
-                              >
-                                <Trash2 size={14} />
-                                <span>הסר</span>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </>
-          )}
-        </div>
-        <div className="modal-footer" style={{ textAlign: 'left' }}>
-              <button
-                type="button"
-                className="btn-primary-sm"
-                onClick={() => {
-                  setShowGoalBankOverview(false);
-                  setEditingBankGoal(null);
-                  setSelectedHlDomain(null);
-                }}
-              >
-                סגור
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Student Deletion & Archive Confirmation Modals */}
