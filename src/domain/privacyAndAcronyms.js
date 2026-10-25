@@ -1,5 +1,20 @@
 // === פונקציות עזר להסתרת פרטים מזהים בהדפסה (ראשי תיבות והשחרה) ===
 
+/**
+ * Escapes unsafe HTML characters to prevent XSS injection.
+ * @param {string|any} str 
+ * @returns {string}
+ */
+export function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function toHebrewAcronym(fullName) {
   if (!fullName || !fullName.trim()) return 'א.א.';
   const parts = fullName
@@ -125,4 +140,3 @@ export function maskPromptForAi(promptText, formData) {
 
   return masked;
 }
-
