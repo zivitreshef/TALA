@@ -48,8 +48,9 @@ export default function DiagnosticIntakeModal({
             : extracted
         );
       } else {
+        setUploadedFileName(file.name);
         setErrorMessage(
-          'לא זוהתה שכבת טקסט בקובץ. אם מדובר במסמך סרוק (תמונה), העתיקי את הטקסט בעזרת כלי הסריקה בנייד (Google Lens או Live Text) והדביקי בתיבת הטקסט למטה.'
+          'לא זוהתה שכבת טקסט דיגיטלית בקובץ (ייתכן שמדובר במסמך סרוק כתמונה). הדביקי את טקסט האבחון או סיכום הוועדה בתיבת הטקסט למטה, וה-AI יבצע את הניתוח המלא.'
         );
       }
     } catch (err) {

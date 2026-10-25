@@ -72,7 +72,68 @@ export async function extractTextFromDocx(buffer) {
 }
 
 /**
- * Extracts plain text from an uploaded File (.txt, .docx, markdown, or basic .pdf).
+ * Extracts plain text from a PDF file ArrayBuffer using PDF.js with raw stream fallback.
+ */
+export async function extractTextFromPdf(buffer) {
+  if (!buffer) return '';
+
+  // 1. Primary: PDF.js legacy engine (handles compressed streams, embedded font CMaps, multi-page)
+  try {
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const data = new Uint8Array(buffer);
+    const loadingTask = pdfjsLib.getDocument({
+      data,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true
+    });
+    const pdf = await loadingTask.promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = (textContent.items || [])
+        .map((item) => (item.str ? item.str : ''))
+        .join(' ');
+      if (pageText.trim()) {
+        pages.push(`--- עמוד ${i} ---\n${pageText.trim()}`);
+      }
+    }
+    const combined = pages.join('\n\n');
+    if (combined.trim().length > 10) {
+      return combined;
+    }
+  } catch (err) {
+    console.warn('PDF.js extraction failed, attempting raw stream fallback:', err);
+  }
+
+  // 2. Fallback: raw stream parsing for simple uncompressed PDFs
+  try {
+    const textDecoder = new TextDecoder('latin1');
+    const rawStr = textDecoder.decode(buffer);
+    const btMatches = rawStr.match(/BT[\s\S]*?ET/g) || [];
+    const extractedChunks = [];
+    for (const block of btMatches) {
+      const strMatches = block.match(/\(([^)]+)\)\s*(?:Tj|'|")/g) || [];
+      for (const m of strMatches) {
+        const inner = m.replace(/^\(/, '').replace(/\)\s*(?:Tj|'|")$/, '');
+        if (inner && inner.trim().length > 1) {
+          extractedChunks.push(inner.trim());
+        }
+      }
+    }
+    if (extractedChunks.length > 5) {
+      return extractedChunks.join(' ');
+    }
+  } catch (e) {
+    console.warn('PDF raw stream fallback failed:', e);
+  }
+
+  return '';
+}
+
+/**
+ * Extracts plain text from an uploaded File (.txt, .docx, markdown, or .pdf).
  */
 export async function extractTextFromFile(file) {
   if (!file) return '';
@@ -96,33 +157,16 @@ export async function extractTextFromFile(file) {
     }
   }
 
-  // 3. PDF text extraction via browser native streams
+  // 3. PDF files (.pdf)
   if (fileName.endsWith('.pdf')) {
     try {
       const buffer = await file.arrayBuffer();
-      const textDecoder = new TextDecoder('latin1');
-      const rawStr = textDecoder.decode(buffer);
-
-      // Extract text within BT ... ET blocks
-      const btMatches = rawStr.match(/BT[\s\S]*?ET/g) || [];
-      const extractedChunks = [];
-
-      for (const block of btMatches) {
-        // Match literal strings: (some text) Tj or TJ
-        const strMatches = block.match(/\(([^)]+)\)\s*(?:Tj|'|")/g) || [];
-        for (const m of strMatches) {
-          const inner = m.replace(/^\(/, '').replace(/\)\s*(?:Tj|'|")$/, '');
-          if (inner && inner.trim().length > 1) {
-            extractedChunks.push(inner.trim());
-          }
-        }
-      }
-
-      if (extractedChunks.length > 5) {
-        return extractedChunks.join(' ');
+      const extracted = await extractTextFromPdf(buffer);
+      if (extracted && extracted.trim()) {
+        return extracted;
       }
     } catch (e) {
-      console.warn('PDF stream extraction fallback:', e);
+      console.warn('PDF extraction error:', e);
     }
   }
 
