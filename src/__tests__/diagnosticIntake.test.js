@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   buildDiagnosticPrompt,
   sanitizeDiagnosticIntakeResult,
-  applyDiagnosticIntakeToStudent
+  applyDiagnosticIntakeToStudent,
+  extractTextFromDocx,
+  extractTextFromFile
 } from '../domain/diagnosticIntake';
 
 describe('diagnosticIntake', () => {
@@ -69,5 +71,22 @@ describe('diagnosticIntake', () => {
     expect(applied.goals).toHaveLength(2);
     expect(applied.goals[0].id).toBe('g_existing');
     expect(applied.goals[1].id).toBe('intake_1');
+  });
+
+  it('extractTextFromDocx handles empty buffer gracefully', async () => {
+    const text = await extractTextFromDocx(null);
+    expect(text).toBe('');
+    const emptyBuf = new ArrayBuffer(10);
+    const textEmpty = await extractTextFromDocx(emptyBuf);
+    expect(textEmpty).toBe('');
+  });
+
+  it('extractTextFromFile handles text files', async () => {
+    const mockFile = {
+      name: 'report.txt',
+      text: async () => 'דוח אבחון טקסטואלי'
+    };
+    const text = await extractTextFromFile(mockFile);
+    expect(text).toBe('דוח אבחון טקסטואלי');
   });
 });

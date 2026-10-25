@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileUp, Sparkles, Check, CheckCircle2, ChevronRight, Loader2, X, AlertCircle } from 'lucide-react';
+import { FileUp, Sparkles, Check, CheckCircle2, ChevronRight, Loader2, X, AlertCircle, FileText } from 'lucide-react';
 import {
   extractTextFromFile,
   buildDiagnosticPrompt,
@@ -15,6 +15,7 @@ export default function DiagnosticIntakeModal({
 }) {
   const [step, setStep] = useState('input'); // 'input' | 'review'
   const [inputText, setInputText] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [parsedResult, setParsedResult] = useState(null);
@@ -23,15 +24,23 @@ export default function DiagnosticIntakeModal({
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setErrorMessage('');
     try {
       const extracted = await extractTextFromFile(file);
       if (extracted && extracted.trim()) {
-        setInputText((prev) => (prev ? `${prev}\n\n${extracted}` : extracted));
+        setUploadedFileName(file.name);
+        setInputText((prev) =>
+          prev
+            ? `${prev}\n\n--- תוכן מתוך ${file.name} ---\n${extracted}`
+            : extracted
+        );
       } else {
-        setErrorMessage('לא ניתן היה לחלץ טקסט מהקובץ באופן ישיר. ניתן להעתיק ולהדביק את תוכן האבחון ישירות לתיבת הטקסט.');
+        setErrorMessage(
+          'לא זוהתה שכבת טקסט בקובץ. אם מדובר במסמך סרוק (תמונה), העתיקי את הטקסט בעזרת כלי הסריקה בנייד (Google Lens או Live Text) והדביקי בתיבת הטקסט למטה.'
+        );
       }
     } catch (err) {
-      setErrorMessage('שגיאה בקריאת הקובץ. נסי להעתיק ולהדביק את הטקסט.');
+      setErrorMessage('שגיאה בקריאת הקובץ. נסי להעתיק ולהדביק את הטקסט ישירות.');
     }
   };
 
@@ -99,7 +108,7 @@ export default function DiagnosticIntakeModal({
           <div className="modal-title-row">
             <FileUp size={22} />
             <div>
-              <h3>קליטת אבחון וסיכום ועדת זכאות (Intelligent Diagnostic Intake)</h3>
+              <h3>קליטת אבחון וסיכום ועדת זכאות</h3>
               <p className="modal-subtitle">
                 גזירה אוטומטית של רקע, מענים, מוקדי כוח ומטרות מתוך דו״ח פסיכודידקטי או התפתחותי
               </p>
@@ -133,42 +142,76 @@ export default function DiagnosticIntakeModal({
 
           {step === 'input' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div
-                style={{
-                  border: '2px dashed #93c5fd',
-                  borderRadius: '12px',
-                  background: '#f0f9ff',
-                  padding: '16px',
-                  textAlign: 'center',
-                  cursor: 'pointer'
-                }}
-                onClick={() => document.getElementById('diagnostic-file-input')?.click()}
-              >
-                <FileUp size={28} style={{ color: '#0284c7', margin: '0 auto 6px auto' }} />
-                <div style={{ fontWeight: 700, color: '#0369a1', fontSize: '0.95rem' }}>
-                  לחצי כאן להעלאת קובץ אבחון (.PDF / .TXT)
+              {/* Step 1: Upload File */}
+              <div>
+                <label style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e3a5f', display: 'block', marginBottom: '6px' }}>
+                  1. העלאת קובץ אבחון (Word, PDF או טקסט):
+                </label>
+                <div
+                  style={{
+                    border: '2px dashed #93c5fd',
+                    borderRadius: '12px',
+                    background: '#f0f9ff',
+                    padding: '16px',
+                    textAlign: 'center',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => document.getElementById('diagnostic-file-input')?.click()}
+                >
+                  <FileUp size={28} style={{ color: '#0284c7', margin: '0 auto 6px auto' }} />
+                  <div style={{ fontWeight: 700, color: '#0369a1', fontSize: '0.95rem' }}>
+                    לחצי כאן להעלאת קובץ או גררי לכאן
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                    תמיכה מלאה בקובצי Word (DOCX), PDF וטקסט (TXT)
+                  </div>
+                  <input
+                    id="diagnostic-file-input"
+                    type="file"
+                    accept=".docx,.pdf,.txt,.csv,.md"
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                  />
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  או גררי קובץ לכאן
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                  💡 <strong>למסמכים סרוקים (תמונה ללא שכבת טקסט):</strong> ניתן לחלץ את הטקסט בקלות באמצעות סריקה מהנייד (Google Lens או Live Text) ולהדביק בתיבה למטה.
                 </div>
-                <input
-                  id="diagnostic-file-input"
-                  type="file"
-                  accept=".pdf,.txt,.csv,.md"
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
-                />
               </div>
 
+              {/* Step 2: Integrated Text Box (File contents + Teacher notes) */}
               <div>
-                <label style={{ fontWeight: 700, fontSize: '0.88rem', color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  או הדביקי כאן את טקסט האבחון / סיכום ועדת הזכאות:
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e3a5f', margin: 0 }}>
+                    2. תוכן האבחון והערות הצוות (ניתן לשלב טקסט מהקובץ והערות חופשיות):
+                  </label>
+                  {uploadedFileName && (
+                    <span
+                      style={{
+                        fontSize: '11.5px',
+                        color: '#0369a1',
+                        background: '#e0f2fe',
+                        border: '1px solid #bae6fd',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <FileText size={12} />
+                      <span>נטען: {uploadedFileName}</span>
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  טקסט מהקובץ ייטען לכאן אוטומטית. תוכלי להוסיף הערות אישיות, דגשים מפגישות הצוות או להדביק פסקאות נוספות לפני הניתוח:
+                </p>
                 <textarea
                   rows={8}
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder="הדביקי פסקאות מתוך דו״ח האבחון, רקע התפתחותי, סיכום אבחון פסיכולוגי או המלצות הצוות הרב-מקצועי..."
+                  placeholder="כאן יופיע הטקסט מהקובץ שתעלי, ובנוסף תוכלי להדביק או להקליד כאן פסקאות, דגשים אישיים או המלצות צוות..."
                   style={{
                     width: '100%',
                     borderRadius: '8px',
