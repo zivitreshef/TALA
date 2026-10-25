@@ -4,18 +4,22 @@ import {
   extractTextFromFile,
   buildDiagnosticPrompt,
   sanitizeDiagnosticIntakeResult,
-  applyDiagnosticIntakeToStudent
+  applyDiagnosticIntakeToStudent,
+  createDiagnosticDocumentRecord
 } from '../../domain/diagnosticIntake';
 import { callAiProxyEndpoint } from '../../services/aiProxyClient';
 
 export default function DiagnosticIntakeModal({
   formData,
   onApplyIntake,
-  onClose
+  onClose,
+  initialText = '',
+  initialDocName = ''
 }) {
   const [step, setStep] = useState('input'); // 'input' | 'review'
-  const [inputText, setInputText] = useState('');
-  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [inputText, setInputText] = useState(initialText || '');
+  const [uploadedFileName, setUploadedFileName] = useState(initialDocName || '');
+  const [uploadedDocRecord, setUploadedDocRecord] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [parsedResult, setParsedResult] = useState(null);
@@ -28,6 +32,15 @@ export default function DiagnosticIntakeModal({
     try {
       const extracted = await extractTextFromFile(file);
       if (extracted && extracted.trim()) {
+        const ext = (file.name || '').split('.').pop().toLowerCase() || 'pdf';
+        const sizeFormatted = file.size ? `${Math.round(file.size / 1024)} KB` : '';
+        const docRecord = createDiagnosticDocumentRecord({
+          fileName: file.name,
+          fileType: ext,
+          fullText: extracted,
+          fileSizeFormatted: sizeFormatted
+        });
+        setUploadedDocRecord(docRecord);
         setUploadedFileName(file.name);
         setInputText((prev) =>
           prev
@@ -85,7 +98,12 @@ export default function DiagnosticIntakeModal({
 
   const handleConfirmApply = () => {
     if (!parsedResult) return;
-    const updated = applyDiagnosticIntakeToStudent(formData, parsedResult, selectedGoalIds);
+    const updated = applyDiagnosticIntakeToStudent(
+      formData,
+      parsedResult,
+      selectedGoalIds,
+      uploadedDocRecord
+    );
     onApplyIntake?.(updated);
     onClose?.();
   };

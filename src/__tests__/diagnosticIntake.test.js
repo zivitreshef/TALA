@@ -118,4 +118,21 @@ describe('diagnosticIntake', () => {
     const removed = removeDiagnosticDocumentFromStudent(withDoc, doc.id);
     expect(removed.diagnosticDocuments).toHaveLength(0);
   });
+
+  it('attaches uploadedDocRecord to student when applyDiagnosticIntakeToStudent is called with a document', () => {
+    const student = { name: 'נועם', diagnosticDocuments: [] };
+    const doc = createDiagnosticDocumentRecord({
+      fileName: 'סיכום_ועדת_זכאות.pdf',
+      fileType: 'pdf',
+      fullText: 'המלצות שילוב...',
+      fileSizeFormatted: '45 KB'
+    });
+    const intake = {
+      studentGeneralBackground: 'רקע חדש',
+      suggestedGoals: []
+    };
+    const applied = applyDiagnosticIntakeToStudent(student, intake, [], doc);
+    expect(applied.diagnosticDocuments).toHaveLength(1);
+    expect(applied.diagnosticDocuments[0].fileName).toBe('סיכום_ועדת_זכאות.pdf');
+  });
 });

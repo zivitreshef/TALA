@@ -213,7 +213,8 @@ export function sanitizeDiagnosticIntakeResult(rawResult = {}, gender = 'boy') {
 export function applyDiagnosticIntakeToStudent(
   formData = {},
   intake = {},
-  selectedGoalIds = []
+  selectedGoalIds = [],
+  attachedDocRecord = null
 ) {
   const approvedGoals = (intake.suggestedGoals || []).filter((g) =>
     selectedGoalIds.includes(g.id)
@@ -230,7 +231,7 @@ export function applyDiagnosticIntakeToStudent(
     return `${c}\n\n${a}`;
   };
 
-  return {
+  let nextFormData = {
     ...formData,
     studentGeneralBackground: mergeText(
       formData.studentGeneralBackground,
@@ -247,6 +248,12 @@ export function applyDiagnosticIntakeToStudent(
     goals: nextGoals,
     lastSavedAt: new Date().toISOString()
   };
+
+  if (attachedDocRecord && attachedDocRecord.fileName) {
+    nextFormData = addDiagnosticDocumentToStudent(nextFormData, attachedDocRecord);
+  }
+
+  return nextFormData;
 }
 
 
