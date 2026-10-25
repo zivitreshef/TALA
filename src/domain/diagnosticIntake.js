@@ -1,7 +1,78 @@
 import { adaptTextToGender } from './goalSizingAndMerge';
 
 /**
- * Extracts plain text from an uploaded File (.txt or basic .pdf).
+ * Extracts plain text from an uncompressed or deflate-compressed .docx (Word) file ArrayBuffer.
+ */
+export async function extractTextFromDocx(buffer) {
+  if (!buffer) return '';
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  let pos = 0;
+
+  while (pos < bytes.length - 30) {
+    if (view.getUint32(pos, true) === 0x04034b50) {
+      const compMethod = view.getUint16(pos + 8, true);
+      const compSize = view.getUint32(pos + 18, true);
+      const nameLen = view.getUint16(pos + 26, true);
+      const extraLen = view.getUint16(pos + 28, true);
+      const nameBytes = bytes.slice(pos + 30, pos + 30 + nameLen);
+      const fileName = new TextDecoder('utf-8').decode(nameBytes);
+      const dataStart = pos + 30 + nameLen + extraLen;
+
+      if (fileName === 'word/document.xml') {
+        const compressedData = bytes.slice(dataStart, dataStart + compSize);
+        let xmlStr = '';
+        if (compMethod === 0) {
+          xmlStr = new TextDecoder('utf-8').decode(compressedData);
+        } else if (compMethod === 8 && typeof DecompressionStream !== 'undefined') {
+          try {
+            const ds = new DecompressionStream('deflate-raw');
+            const writer = ds.writable.getWriter();
+            writer.write(compressedData);
+            writer.close();
+            const reader = ds.readable.getReader();
+            const chunks = [];
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+            }
+            const totalLen = chunks.reduce((acc, c) => acc + c.length, 0);
+            const merged = new Uint8Array(totalLen);
+            let offset = 0;
+            for (const c of chunks) {
+              merged.set(c, offset);
+              offset += c.length;
+            }
+            xmlStr = new TextDecoder('utf-8').decode(merged);
+          } catch (e) {
+            console.warn('DOCX deflate decompression failed:', e);
+          }
+        }
+
+        if (xmlStr) {
+          const paragraphs = xmlStr.split(/<\/w:p>/);
+          const lines = [];
+          for (const p of paragraphs) {
+            const textMatches = p.match(/<w:t[^>]*>([^<]+)<\/w:t>/g) || [];
+            if (textMatches.length > 0) {
+              const line = textMatches.map((m) => m.replace(/<[^>]+>/g, '')).join('');
+              if (line.trim()) lines.push(line.trim());
+            }
+          }
+          return lines.join('\n');
+        }
+      }
+      pos = dataStart + compSize;
+    } else {
+      pos++;
+    }
+  }
+  return '';
+}
+
+/**
+ * Extracts plain text from an uploaded File (.txt, .docx, markdown, or basic .pdf).
  */
 export async function extractTextFromFile(file) {
   if (!file) return '';
@@ -12,7 +83,20 @@ export async function extractTextFromFile(file) {
     return await file.text();
   }
 
-  // 2. PDF text extraction via browser native streams
+  // 2. Word files (.docx)
+  if (fileName.endsWith('.docx')) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const extracted = await extractTextFromDocx(buffer);
+      if (extracted && extracted.trim()) {
+        return extracted;
+      }
+    } catch (e) {
+      console.warn('DOCX extraction fallback:', e);
+    }
+  }
+
+  // 3. PDF text extraction via browser native streams
   if (fileName.endsWith('.pdf')) {
     try {
       const buffer = await file.arrayBuffer();
