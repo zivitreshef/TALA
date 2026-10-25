@@ -534,6 +534,18 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
           ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
         </div>
         ${additionalMetadataBarHtml}
+        ${(() => {
+          const docs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+          if (docs.length === 0) return '';
+          return `
+            <div class="student-details-bar" style="background: #f0fdf4; border: 1px solid #86efac; border-right: 4px solid #16a34a; border-radius: 6px; padding: 6px 10px; margin-bottom: 12px; font-size: 12px;">
+              <div style="font-weight: 700; color: #166534; margin-bottom: 3px;">מסמכי אבחון ונספחים שמורים בתיק (${docs.length}):</div>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                ${docs.map(d => `<span>📄 <strong>${d.fileName || 'מסמך'}</strong> (${d.fileType || 'קובץ'}${d.fileSizeFormatted ? ' • ' + d.fileSizeFormatted : ''})</span>`).join('')}
+              </div>
+            </div>
+          `;
+        })()}
 
         <!-- Top Summary / Profile Section -->
         ${topSummarySectionHtml}
@@ -825,6 +837,16 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
           ${formData.phone ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
         </div>
         ${additionalWordBarHtml}
+        ${(() => {
+          const docs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+          if (docs.length === 0) return '';
+          return `
+            <div style="background-color:#f0fdf4; border:1px solid #86efac; padding:6pt 12pt; margin-bottom:12pt; font-size:10pt;">
+              <strong style="color:#166534;">מסמכי אבחון ונספחים שמורים בתיק (${docs.length}):</strong><br/>
+              ${docs.map(d => `📄 <strong>${d.fileName || 'מסמך'}</strong> (${d.fileType || 'קובץ'}${d.fileSizeFormatted ? ' • ' + d.fileSizeFormatted : ''})`).join(' &nbsp;|&nbsp; ')}
+            </div>
+          `;
+        })()}
 
         ${topWordSummaryTableHtml}
 

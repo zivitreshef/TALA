@@ -2161,7 +2161,11 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             onClick={() => setShowFullDocPreview(!showFullDocPreview)}
           >
             <FileText size={16} />
-            <span>{showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}</span>
+            <span>
+              {showFullDocPreview
+                ? (isReportLocked ? 'חזרה לתצוגת סעיפים' : 'חזרה לתצוגת עריכה')
+                : 'תצוגת מסמך מלאה'}
+            </span>
           </button>
 
           <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
@@ -2311,6 +2315,34 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 type="button"
+                onClick={() => {
+                  setIsDossierOpen(true);
+                  const dossierEl = document.getElementById('full-preview-dossier-section');
+                  dossierEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: attachedDocs.length > 0 ? '#ede9fe' : '#f1f5f9',
+                  color: attachedDocs.length > 0 ? '#5b21b6' : '#475569',
+                  border: attachedDocs.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+                title="צפייה והורדה של מסמכי האבחון והנספחים של התלמיד/ה"
+              >
+                <FolderOpen size={15} />
+                <span>
+                  תיק מסמכים
+                  {attachedDocs.length > 0 ? ` • ${attachedDocs.length}` : ''}
+                </span>
+              </button>
+              <button
+                type="button"
                 disabled={isReportLocked && !userCanLockReport}
                 onClick={() => setShowShareModal(true)}
                 style={{
@@ -2405,6 +2437,222 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 </div>
               );
             })()}
+
+                        {/* Dossier Card: Assessment documents & attachments in Full Document View */}
+            <div
+              id="full-preview-dossier-section"
+              className="diagnostic-dossier-card"
+              style={{
+                background: isDossierOpen
+                  ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)'
+                  : '#f8fafc',
+                border: isDossierOpen ? '1.5px solid #cbd5e1' : '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: isDossierOpen ? '14px 18px' : '10px 16px',
+                marginBottom: '14px',
+                boxShadow: isDossierOpen ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div
+                onClick={() => setIsDossierOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  flexWrap: 'wrap',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '7px',
+                      background: isDossierOpen || attachedDocs.length > 0 ? '#e0e7ff' : '#f1f5f9',
+                      color: isDossierOpen || attachedDocs.length > 0 ? '#4338ca' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <FolderOpen size={18} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
+                        תיק מסמכי אבחון, חוות דעת וסיכומי ועדות
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: attachedDocs.length > 0 ? '#15803d' : '#64748b',
+                          background: attachedDocs.length > 0 ? '#dcfce7' : '#e2e8f0',
+                          borderRadius: '999px',
+                          padding: '1px 8px'
+                        }}
+                      >
+                        {attachedDocs.length > 0 ? `${attachedDocs.length} מסמכים שמורים` : '0 מסמכים'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDossierOpen((prev) => !prev);
+                    }}
+                    title={isDossierOpen ? 'סגירת תיק מסמכים' : 'פתיחת תיק מסמכים'}
+                    aria-label={isDossierOpen ? 'סגירת תיק מסמכים' : 'פתיחת תיק מסמכים'}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      minWidth: '32px',
+                      borderRadius: '8px',
+                      background: isDossierOpen ? '#ede9fe' : '#f4f7fc',
+                      border: isDossierOpen ? '1px solid #c4b5fd' : '1px solid #d3dff0',
+                      color: isDossierOpen ? '#5b21b6' : '#2b4c73',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s ease',
+                      boxShadow: '0 1px 2px rgba(43, 76, 115, 0.04)'
+                    }}
+                  >
+                    {isDossierOpen ? <Minus size={16} /> : <Plus size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {isDossierOpen && (
+                <div style={{ marginTop: '14px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                  {attachedDocs.length === 0 ? (
+                    <div
+                      style={{
+                        background: '#ffffff',
+                        border: '1px dashed #cbd5e1',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        textAlign: 'center',
+                        color: '#64748b',
+                        fontSize: '13px'
+                      }}
+                    >
+                      טרם נשמרו מסמכי אבחון לתלמיד/ה זה.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {attachedDocs.map((doc) => (
+                        <div
+                          key={doc.id}
+                          style={{
+                            background: '#ffffff',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            padding: '10px 14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '10px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
+                            <FileText size={18} color="#5b9bd5" />
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
+                                  {doc.fileName || 'מסמך ללא שם'}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '10.5px',
+                                    fontWeight: 700,
+                                    color: '#4338ca',
+                                    background: '#e0e7ff',
+                                    borderRadius: '4px',
+                                    padding: '1px 5px',
+                                    textTransform: 'uppercase'
+                                  }}
+                                >
+                                  {doc.fileType || 'DOC'}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                                נשמר בתאריך: {new Date(doc.uploadedAt || Date.now()).toLocaleDateString('he-IL')}
+                                {doc.fileSizeFormatted ? ` • ${doc.fileSizeFormatted}` : ''}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const opened = await openDossierFilePreview(doc);
+                                if (!opened) {
+                                  setViewingDocText(doc);
+                                }
+                              }}
+                              title="צפייה במסמך או בטקסט שחולץ"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                padding: '5px 10px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: '#334155',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s'
+                              }}
+                            >
+                              <Eye size={13} />
+                              <span>צפייה</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => triggerDossierDownload(doc)}
+                              title="הורדת הקובץ"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                padding: '5px 10px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: '#334155',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s'
+                              }}
+                            >
+                              <Download size={13} />
+                              <span>הורדה</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {isTalaMode ? (
               <>
