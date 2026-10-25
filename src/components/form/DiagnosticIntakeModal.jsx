@@ -24,6 +24,10 @@ import {
 } from '../../domain/diagnosticIntake';
 import { callAiProxyEndpoint } from '../../services/aiProxyClient';
 import {
+  validateDossierFileUpload,
+  scanTextForMaliciousScripts
+} from '../../domain/dossierSecurity';
+import {
   saveDossierFileBlob,
   uploadDossierFileToCloud,
   MAX_DOSSIER_FILE_SIZE_BYTES
@@ -69,9 +73,10 @@ export default function DiagnosticIntakeModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > MAX_DOSSIER_FILE_SIZE_BYTES) {
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-      setErrorMessage(`גודל הקובץ (${sizeMb}MB) חורג מהמגבלה של 20MB. אנא בחרי קובץ קטן יותר.`);
+    // Multi-layer security validation: Size, extension allowlist, and binary magic bytes
+    const securityCheck = await validateDossierFileUpload(file);
+    if (!securityCheck.valid) {
+      setErrorMessage(securityCheck.reason || 'הקובץ נחסם מטעמי אבטחה.');
       const inputEl = document.getElementById('diagnostic-file-input');
       if (inputEl) inputEl.value = '';
       return;
@@ -82,6 +87,15 @@ export default function DiagnosticIntakeModal({
     try {
       const extracted = await extractTextFromFile(file);
       const cleanExtracted = (extracted || '').trim();
+
+      // Scan extracted content for malicious scripts/code injection
+      const textScan = scanTextForMaliciousScripts(cleanExtracted);
+      if (!textScan.valid) {
+        setErrorMessage(textScan.reason);
+        const inputEl = document.getElementById('diagnostic-file-input');
+        if (inputEl) inputEl.value = '';
+        return;
+      }
       const ext = (file.name || '').split('.').pop().toLowerCase() || 'pdf';
       const sizeFormatted = file.size ? `${Math.round(file.size / 1024)} KB` : '';
 
@@ -317,7 +331,7 @@ export default function DiagnosticIntakeModal({
                   <input
                     id="diagnostic-file-input"
                     type="file"
-                    accept=".docx,.pdf,.txt,.csv,.md"
+                    accept=".docx,.pdf,.txt,.csv,.png,.jpg,.jpeg,.webp"
                     onChange={handleFileUpload}
                     disabled={isExtracting}
                     style={{ display: 'none' }}
