@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
+import { jsPDF } from 'jspdf';
 import {
   buildDiagnosticPrompt,
   sanitizeDiagnosticIntakeResult,
   applyDiagnosticIntakeToStudent,
   extractTextFromDocx,
+  extractTextFromPdf,
   extractTextFromFile,
   createDiagnosticDocumentRecord,
   addDiagnosticDocumentToStudent,
@@ -91,6 +93,20 @@ describe('diagnosticIntake', () => {
     };
     const text = await extractTextFromFile(mockFile);
     expect(text).toBe('דוח אבחון טקסטואלי');
+  });
+
+  it('extracts text from a real multi-page PDF ArrayBuffer using extractTextFromPdf', async () => {
+    const doc = new jsPDF();
+    doc.text('Diagnostic report for student Gaya', 10, 10);
+    doc.addPage();
+    doc.text('Second page findings and recommendations', 10, 10);
+    const buffer = doc.output('arraybuffer');
+
+    const extracted = await extractTextFromPdf(buffer);
+    expect(extracted).toContain('עמוד 1');
+    expect(extracted).toContain('Diagnostic report');
+    expect(extracted).toContain('עמוד 2');
+    expect(extracted).toContain('Second page findings');
   });
 
   it('creates and manages diagnostic document records on student', () => {
