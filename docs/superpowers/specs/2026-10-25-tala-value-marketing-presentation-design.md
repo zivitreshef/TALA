@@ -29,7 +29,7 @@ This redesign merges the **"Big Rocks" Pedagogical Narrative** with the **"Befor
 
 ### Slide 2: "האבנים הגדולות" – משבר התל"א הקבורה מול שגרת עבודה חיה
 - **Focus**: Turning the static October IEP into a daily/weekly/monthly living compass.
-- **Card 1 (Before - השחיקה המסורתית)**: התל"א נכתבת בעמל רב ונשכחת בקלסר; ניהול יום מפוזר ביומני נייר ובפתקים; קושי לחבר בין המטרות הגדולות לפעולות בכיתה.
+- **Card 1 (Before - השחיקה המסורתית)**: ניירת ועבודה אדמיניסטרטיבית מרובה; ניהול יום מפוזר ביומני נייר ובפתקים; קושי לחבר בין המטרות הגדולות לפעולות בכיתה.
 - **Card 2 (After - שגרת TALA)**: יומן פדגוגי מובנה שמחבר בין לוח משרד החינוך, סנכרון Google/Outlook ומטרות העל; הפקת משימות יומיות ושבועיות ממוקדות.
 - **Takeaway Banner**: המורה פותחת כל בוקר עם מיקוד ברור באבנים הגדולות – במקום לטבוע בכיבוי שריפות.
 
@@ -37,7 +37,7 @@ This redesign merges the **"Big Rocks" Pedagogical Narrative** with the **"Befor
 - **Focus**: AI as an empowering copilot for diagnosis processing and goal formulation without sacrificing educator judgement.
 - **Card 1 (Before - השחיקה המסורתית)**: פענוח אבחונים עבי כרס (פסיכולוגי, פרא-רפואי) גוזל שעות רבות; ניסוח יעדים אופרטיביים מול דף ריק; חשש מאי-דיוקים.
 - **Card 2 (After - שגרת TALA)**: קליטת אבחון ב-AI (PDF/טקסט) למיצוי מיידי של מוקדי כוח ומטרות אקולוגיות; מחולל משימות חכם ומאגר מטרות מותאם לגן ולבי"ס.
-- **Takeaway Banner**: **טייס משנה, לא תחליף**: המערכת מציעה ומדייקת – המורה בוחנת, עורכת ומאשרת כל מילה לפי היכרותה עם התלמיד/ה.
+- **Takeaway Banner**: **כשה-AI נרתם לסייע ולהמליץ – המורה תמיד מובילה**: המערכת מציעה ומדייקת – המורה בוחנת, עורכת ומאשרת כל מילה לפי היכרותה עם התלמיד/ה.
 
 ### Slide 4: חיסכון בזמן ותיעוד שטח – פשטות ללא עומס
 - **Focus**: Micro-observations and zero-friction documentation eliminating the end-of-term crisis.
@@ -47,8 +47,8 @@ This redesign merges the **"Big Rocks" Pedagogical Narrative** with the **"Befor
 
 ### Slide 5: שותפות רב-מקצועית וחיבור להורים
 - **Focus**: Team synergy without administrative friction, seamless multi-disciplinary coordination.
-- **Card 1 (Before - השחיקה המסורתית)**: עבודה מנותקת בסילואים; קלינאית, מרפאה בעיסוק וגננת דורסות זו את קבצי זו; קושי לשתף הורים בצורה מכבדת ויעילה.
-- **Card 2 (After - שגרת TALA)**: שיוך "מוביל/ת מטרה" לכל יעד מקצועי; מיזוג ענן חכם ללא דריסות הדדיות; שער "קול ההורים" ישיר במובייל (WhatsApp) ללא חשיפת התיק.
+- **Card 1 (Before - השחיקה המסורתית)**: עבודה מפוצלת בצוות, ריבוי קבצים וקושי בשיתוף ההורים; גננת, מורת שילוב ומטפלים מתנהלים בנפרד.
+- **Card 2 (After - שגרת TALA)**: שיוך "מוביל/ת מטרה" לכל יעד מקצועי; מיזוג ענן חכם ומסונכרן; שער "קול ההורים" ישיר במובייל (WhatsApp) ללא חשיפת התיק.
 - **Takeaway Banner**: מעטפת 360° אמיתית סביב הילד – כל שותף יודע את אחריותו, ההורים מעורבים, והידע הפדגוגי נשמר ברצף רב-שנתי.
 
 ### Slide 6: השורה התחתונה – 3 דוחות רשמיים, גשר מנב"ס ושקט נפשי
