@@ -244,9 +244,7 @@ export default function EcologicalWorkPlanForm({
   const [showFullDocPreview, setShowFullDocPreview] = useState(() =>
     Boolean(student?.isLocked)
   );
-  const [isFreeTextCollapsed, setIsFreeTextCollapsed] = useState(() =>
-    isRawFreeTextAlreadyAnalyzed(student)
-  );
+  const [isFreeTextCollapsed, setIsFreeTextCollapsed] = useState(true); // Default - collapsed
   const [isAdditionalInfoOpen, setIsAdditionalInfoOpen] = useState(false); // Collapsed by default ("מידע נוסף")
   const [isDossierOpen, setIsDossierOpen] = useState(false); // Collapsed by default ("תיק מסמכי אבחון")
   const [copyTeamSuccessMsg, setCopyTeamSuccessMsg] = useState('');
@@ -3918,28 +3916,29 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
 
-              {((formData.teacherFreeText || '').trim() || isRawFreeTextAlreadyAnalyzed(formData)) && (
-                <button
-                  type="button"
-                  onClick={() => setIsFreeTextCollapsed((prev) => !prev)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    background: '#ffffff',
-                    color: '#4c1d95',
-                    border: '1px solid #c4b5fd',
-                    borderRadius: '6px',
-                    padding: '4px 10px',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {isFreeTextCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
-                  <span>{isFreeTextCollapsed ? 'הצג / ערוך תיאור חופשי' : 'הסתר תיאור חופשי'}</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsFreeTextCollapsed((prev) => !prev)}
+                title={isFreeTextCollapsed ? 'פתיחת תיאור חופשי' : 'סגירת תיאור חופשי'}
+                aria-label={isFreeTextCollapsed ? 'פתיחת תיאור חופשי' : 'סגירת תיאור חופשי'}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  minWidth: '32px',
+                  borderRadius: '8px',
+                  background: isFreeTextCollapsed ? '#f4f7fc' : '#ede9fe',
+                  border: isFreeTextCollapsed ? '1px solid #d3dff0' : '1px solid #c4b5fd',
+                  color: isFreeTextCollapsed ? '#2b4c73' : '#5b21b6',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(43, 76, 115, 0.04)'
+                }}
+              >
+                {isFreeTextCollapsed ? <Plus size={16} /> : <Minus size={16} />}
+              </button>
             </div>
           </div>
 
