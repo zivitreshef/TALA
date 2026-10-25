@@ -23,7 +23,11 @@ import {
   addDiagnosticDocumentToStudent
 } from '../../domain/diagnosticIntake';
 import { callAiProxyEndpoint } from '../../services/aiProxyClient';
-import { saveDossierFileBlob } from '../../services/dossierFileStorage';
+import {
+  saveDossierFileBlob,
+  uploadDossierFileToCloud,
+  MAX_DOSSIER_FILE_SIZE_BYTES
+} from '../../services/dossierFileStorage';
 
 export default function DiagnosticIntakeModal({
   formData,
@@ -64,6 +68,14 @@ export default function DiagnosticIntakeModal({
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > MAX_DOSSIER_FILE_SIZE_BYTES) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      setErrorMessage(`גודל הקובץ (${sizeMb}MB) חורג מהמגבלה של 20MB. אנא בחרי קובץ קטן יותר.`);
+      const inputEl = document.getElementById('diagnostic-file-input');
+      if (inputEl) inputEl.value = '';
+      return;
+    }
     setErrorMessage('');
     setIsExtracting(true);
 
@@ -85,6 +97,18 @@ export default function DiagnosticIntakeModal({
         await saveDossierFileBlob(docRecord.id, file);
       } catch (saveErr) {
         console.warn('Failed to save file blob in IndexedDB:', saveErr);
+      }
+
+      // Upload original file to Firebase Storage for cross-teacher access
+      try {
+        const studentId = formData?.id || 'general';
+        const cloudResult = await uploadDossierFileToCloud(docRecord.id, file, studentId);
+        if (cloudResult?.storageUrl) {
+          docRecord.storageUrl = cloudResult.storageUrl;
+          docRecord.storagePath = cloudResult.storagePath;
+        }
+      } catch (cloudErr) {
+        console.warn('Failed to upload file to Firebase Cloud Storage:', cloudErr);
       }
 
       setUploadedDocRecord(docRecord);
@@ -286,7 +310,7 @@ export default function DiagnosticIntakeModal({
                         לחצי כאן להעלאת קובץ או גררי לכאן
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                        תמיכה בקובצי Word (DOCX), PDF, טקסט (TXT) וסריקות
+                        תמיכה בקובצי Word (DOCX), PDF, טקסט (TXT) וסריקות (עד 20MB לקובץ)
                       </div>
                     </div>
                   )}
