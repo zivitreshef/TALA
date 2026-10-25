@@ -1,5 +1,17 @@
 import { adaptTextToGender } from './goalSizingAndMerge';
 
+// Polyfill Promise.withResolvers for Node 20 / older browser runtimes needed by pdfjs-dist
+if (typeof Promise.withResolvers === 'undefined') {
+  Promise.withResolvers = function () {
+    let resolve, reject;
+    const promise = new Promise((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
 /**
  * Extracts plain text from an uncompressed or deflate-compressed .docx (Word) file ArrayBuffer.
  */
