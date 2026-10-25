@@ -247,6 +247,7 @@ export default function EcologicalWorkPlanForm({
     isRawFreeTextAlreadyAnalyzed(student)
   );
   const [isAdditionalInfoOpen, setIsAdditionalInfoOpen] = useState(false); // Collapsed by default ("מידע נוסף")
+  const [isDossierOpen, setIsDossierOpen] = useState(false); // Collapsed by default ("תיק מסמכי אבחון")
   const [copyTeamSuccessMsg, setCopyTeamSuccessMsg] = useState('');
 
   const attachedDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
@@ -3586,247 +3587,297 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </h3>
         </div>
 
-        {/* Dossier Card: Assessment documents & committee summaries */}
+        {/* Dossier Card: Assessment documents & committee summaries (Collapsible Accordion) */}
         <div
           className="diagnostic-dossier-card"
           style={{
-            background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-            border: '1.5px solid #cbd5e1',
-            borderRadius: '12px',
-            padding: '16px 18px',
-            marginBottom: '20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            background: isDossierOpen
+              ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)'
+              : '#f8fafc',
+            border: isDossierOpen ? '1.5px solid #cbd5e1' : '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: isDossierOpen ? '14px 18px' : '10px 16px',
+            marginBottom: '18px',
+            boxShadow: isDossierOpen ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+            transition: 'all 0.2s ease'
           }}
         >
+          {/* Collapsible Header Row (Clickable to toggle) */}
           <div
+            onClick={() => setIsDossierOpen((prev) => !prev)}
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              cursor: 'pointer',
+              userSelect: 'none',
               flexWrap: 'wrap',
-              gap: '12px',
-              marginBottom: '10px'
+              gap: '10px'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  background: '#e0e7ff',
-                  color: '#4338ca',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '7px',
+                  background: isDossierOpen || attachedDocs.length > 0 ? '#e0e7ff' : '#f1f5f9',
+                  color: isDossierOpen || attachedDocs.length > 0 ? '#4338ca' : '#64748b',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0
                 }}
               >
-                <FolderOpen size={20} />
+                <FolderOpen size={18} />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
                     תיק מסמכי אבחון, חוות דעת וסיכומי ועדות
-                  </h4>
+                  </span>
                   <span
                     style={{
-                      fontSize: '11.5px',
+                      fontSize: '11px',
                       fontWeight: 600,
                       color: attachedDocs.length > 0 ? '#15803d' : '#64748b',
                       background: attachedDocs.length > 0 ? '#dcfce7' : '#e2e8f0',
                       borderRadius: '999px',
-                      padding: '2px 8px'
+                      padding: '1px 8px'
                     }}
                   >
                     {attachedDocs.length > 0 ? `${attachedDocs.length} מסמכים שמורים` : '0 מסמכים'}
                   </span>
                 </div>
-                <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
-                  העלי אבחונים ומסמכי רקע (Word, PDF או טקסט) כדי לשמור אותם בתיק התלמיד/ה ולגזור מהם רקע ומטרות בעזרת AI
-                </p>
               </div>
             </div>
 
-            {!isReportLocked && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedIntakeDoc(null);
-                  setShowDiagnosticIntakeModal(true);
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDossierOpen((prev) => !prev);
                 }}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(91, 155, 213, 0.28)',
-                  transition: 'opacity 0.2s'
+                  gap: '5px',
+                  background: isDossierOpen ? '#ede9fe' : '#f8fafc',
+                  color: isDossierOpen ? '#5b21b6' : '#475569',
+                  border: isDossierOpen ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
                 }}
-                title="העלאת מסמך אבחון וניתוח פדגוגי אוטומטי בעזרת AI"
               >
-                <Sparkles size={16} />
-                <span>העלאת ועיבוד מסמכים</span>
+                {isDossierOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                <span>{isDossierOpen ? 'כווץ' : 'הרחב'}</span>
               </button>
-            )}
+            </div>
           </div>
 
-          {/* Documents list or empty state */}
-          {attachedDocs.length === 0 ? (
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px dashed #cbd5e1',
-                borderRadius: '8px',
-                padding: '14px 16px',
-                textAlign: 'center',
-                color: '#64748b',
-                fontSize: '13px'
-              }}
-            >
-              טרם נשמרו מסמכי אבחון לתלמיד/ה זה. לחצי על ״העלאת ועיבוד מסמכים״ כדי לצרף אבחון פסיכודידקטי, סיכום ועדת אפיון וזכאות או דוח טיפולי.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-              {attachedDocs.map((doc) => (
+          {/* Expanded Content */}
+          {isDossierOpen && (
+            <div style={{ marginTop: '14px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  marginBottom: '12px'
+                }}
+              >
+                <p style={{ margin: 0, fontSize: '12.5px', color: '#64748b', maxWidth: '650px' }}>
+                  העלי אבחונים ומסמכי רקע (Word, PDF או טקסט עד 20MB) כדי לשמור אותם בתיק התלמיד/ה ולגזור מהם רקע ומטרות בעזרת AI
+                </p>
+
+                {!isReportLocked && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedIntakeDoc(null);
+                      setShowDiagnosticIntakeModal(true);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(91, 155, 213, 0.28)',
+                      transition: 'opacity 0.2s'
+                    }}
+                    title="העלאת מסמך אבחון וניתוח פדגוגי אוטומטי בעזרת AI"
+                  >
+                    <Sparkles size={16} />
+                    <span>העלאת ועיבוד מסמכים</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Documents list or empty state */}
+              {attachedDocs.length === 0 ? (
                 <div
-                  key={doc.id}
                   style={{
                     background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    border: '1px dashed #cbd5e1',
                     borderRadius: '8px',
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '10px'
+                    padding: '14px 16px',
+                    textAlign: 'center',
+                    color: '#64748b',
+                    fontSize: '13px'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
-                    <FileText size={18} color="#5b9bd5" />
-                    <div>
+                  טרם נשמרו מסמכי אבחון לתלמיד/ה זה. לחצי על ״העלאת ועיבוד מסמכים״ כדי לצרף אבחון פסיכודידקטי, סיכום ועדת אפיון וזכאות או דוח טיפולי.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {attachedDocs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '10px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
+                        <FileText size={18} color="#5b9bd5" />
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
+                              {doc.fileName || 'מסמך ללא שם'}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '10.5px',
+                                fontWeight: 700,
+                                color: '#4338ca',
+                                background: '#e0e7ff',
+                                borderRadius: '4px',
+                                padding: '1px 5px',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              {doc.fileType || 'DOC'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                            נשמר בתאריך: {new Date(doc.uploadedAt || Date.now()).toLocaleDateString('he-IL')}
+                            {doc.fileSizeFormatted ? ` • ${doc.fileSizeFormatted}` : ''}
+                          </div>
+                        </div>
+                      </div>
+
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
-                          {doc.fileName || 'מסמך ללא שם'}
-                        </span>
-                        <span
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const opened = await openDossierFilePreview(doc);
+                            if (!opened) {
+                              setViewingDocText(doc);
+                            }
+                          }}
+                          title="צפייה במסמך או בטקסט שחולץ"
                           style={{
-                            fontSize: '10.5px',
-                            fontWeight: 700,
-                            color: '#4338ca',
-                            background: '#e0e7ff',
-                            borderRadius: '4px',
-                            padding: '1px 5px',
-                            textTransform: 'uppercase'
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: '#334155',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s'
                           }}
                         >
-                          {doc.fileType || 'DOC'}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
-                        נשמר בתאריך: {new Date(doc.uploadedAt || Date.now()).toLocaleDateString('he-IL')}
-                        {doc.fileSizeFormatted ? ` • ${doc.fileSizeFormatted}` : ''}
+                          <Eye size={13} />
+                          <span>צפייה</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => triggerDossierDownload(doc)}
+                          title="הורדת הקובץ"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: '#334155',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s'
+                          }}
+                        >
+                          <Download size={13} />
+                          <span>הורדה</span>
+                        </button>
+
+                        {!isReportLocked && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDiagnosticDoc(doc.id, doc.fileName, doc.storagePath)}
+                            title="הסרת מסמך זה מתיק התלמיד/ה"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              background: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '6px',
+                              padding: '5px 9px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: '#64748b',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = '#be123c';
+                              e.currentTarget.style.borderColor = '#fecdd3';
+                              e.currentTarget.style.background = '#fff1f2';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = '#64748b';
+                              e.currentTarget.style.borderColor = '#e2e8f0';
+                              e.currentTarget.style.background = '#f8fafc';
+                            }}
+                          >
+                            <Trash2 size={13} />
+                            <span>הסרה</span>
+                          </button>
+                        )}
                       </div>
                     </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const opened = await openDossierFilePreview(doc);
-                        if (!opened) {
-                          setViewingDocText(doc);
-                        }
-                      }}
-                      title="צפייה במסמך או בטקסט שחולץ"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        background: '#f8fafc',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        padding: '5px 10px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: '#334155',
-                        cursor: 'pointer',
-                        transition: 'background 0.15s'
-                      }}
-                    >
-                      <Eye size={13} />
-                      <span>צפייה</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => triggerDossierDownload(doc)}
-                      title="הורדת הקובץ"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        background: '#f8fafc',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        padding: '5px 10px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: '#334155',
-                        cursor: 'pointer',
-                        transition: 'background 0.15s'
-                      }}
-                    >
-                      <Download size={13} />
-                      <span>הורדה</span>
-                    </button>
-
-                    {!isReportLocked && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDiagnosticDoc(doc.id, doc.fileName, doc.storagePath)}
-                        title="הסרת מסמך זה מתיק התלמיד/ה"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '6px',
-                          padding: '5px 9px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: '#64748b',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = '#be123c';
-                          e.currentTarget.style.borderColor = '#fecdd3';
-                          e.currentTarget.style.background = '#fff1f2';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = '#64748b';
-                          e.currentTarget.style.borderColor = '#e2e8f0';
-                          e.currentTarget.style.background = '#f8fafc';
-                        }}
-                      >
-                        <Trash2 size={13} />
-                        <span>הסרה</span>
-                      </button>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>
@@ -6245,6 +6296,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           initialDocName={selectedIntakeDoc?.fileName || ''}
           onApplyIntake={(updatedStudent) => {
             setFormData(updatedStudent);
+            setIsDossierOpen(true);
             onSaveStudentPlan?.(updatedStudent);
             setShowDiagnosticIntakeModal(false);
             setSelectedIntakeDoc(null);
