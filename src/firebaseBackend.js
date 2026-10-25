@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import {
   getFirestore,
   initializeFirestore,
@@ -109,6 +110,7 @@ export function parseFirebaseConfigInput(rawText) {
 
 let dbInstance = null;
 let authInstance = null;
+let storageInstance = null;
 
 function getFirebaseAppInstance() {
   const config = getActiveFirebaseConfig();
@@ -137,6 +139,19 @@ export function getFirestoreDb() {
     return dbInstance;
   } catch (err) {
     console.error('Error initializing Firebase Firestore:', err);
+    return null;
+  }
+}
+
+export function getFirebaseStorage() {
+  if (storageInstance) return storageInstance;
+  try {
+    const app = getFirebaseAppInstance();
+    if (!app) return null;
+    storageInstance = getStorage(app);
+    return storageInstance;
+  } catch (err) {
+    console.warn('Error initializing Firebase Storage:', err);
     return null;
   }
 }

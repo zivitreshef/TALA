@@ -320,7 +320,9 @@ export function createDiagnosticDocumentRecord({
   fileName = '',
   fileType = 'pdf',
   fullText = '',
-  fileSizeFormatted = ''
+  fileSizeFormatted = '',
+  storageUrl = '',
+  storagePath = ''
 }) {
   const cleanText = String(fullText || '').trim();
   const snippet = cleanText
@@ -331,6 +333,8 @@ export function createDiagnosticDocumentRecord({
     fileName: String(fileName || 'מסמך ללא שם').trim(),
     fileType: String(fileType || 'pdf').toLowerCase(),
     fileSizeFormatted: fileSizeFormatted || '',
+    storageUrl: String(storageUrl || ''),
+    storagePath: String(storagePath || ''),
     uploadedAt: new Date().toISOString(),
     extractionStatus: cleanText ? 'success' : 'scanned_image',
     textSnippet: snippet,

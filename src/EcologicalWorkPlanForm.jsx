@@ -121,6 +121,7 @@ import DiagnosticIntakeModal from './components/form/DiagnosticIntakeModal';
 import { removeDiagnosticDocumentFromStudent } from './domain/diagnosticIntake';
 import {
   deleteDossierFileBlob,
+  deleteDossierFileFromCloud,
   triggerDossierDownload,
   openDossierFilePreview
 } from './services/dossierFileStorage';
@@ -250,11 +251,16 @@ export default function EcologicalWorkPlanForm({
 
   const attachedDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
 
-  const handleRemoveDiagnosticDoc = async (docId, fileName) => {
+  const handleRemoveDiagnosticDoc = async (docId, fileName, storagePath) => {
     if (window.confirm(`האם את בטוחה שברצונך להסיר את המסמך "${fileName}" מתיק התלמיד/ה?`)) {
       try {
         await deleteDossierFileBlob(docId);
       } catch (_) {}
+      if (storagePath) {
+        try {
+          await deleteDossierFileFromCloud(storagePath);
+        } catch (_) {}
+      }
       const updated = removeDiagnosticDocumentFromStudent(formData, docId);
       setFormData(updated);
       onSaveStudentPlan?.(updated);
@@ -3787,7 +3793,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     {!isReportLocked && (
                       <button
                         type="button"
-                        onClick={() => handleRemoveDiagnosticDoc(doc.id, doc.fileName)}
+                        onClick={() => handleRemoveDiagnosticDoc(doc.id, doc.fileName, doc.storagePath)}
                         title="הסרת מסמך זה מתיק התלמיד/ה"
                         style={{
                           display: 'inline-flex',

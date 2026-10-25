@@ -11,6 +11,7 @@ import {
   addDiagnosticDocumentToStudent,
   removeDiagnosticDocumentFromStudent
 } from '../domain/diagnosticIntake';
+import { MAX_DOSSIER_FILE_SIZE_BYTES } from '../services/dossierFileStorage';
 
 describe('diagnosticIntake', () => {
   it('builds gender-specific prompt for diagnostic evaluation', () => {
@@ -150,5 +151,21 @@ describe('diagnosticIntake', () => {
     const applied = applyDiagnosticIntakeToStudent(student, intake, [], doc);
     expect(applied.diagnosticDocuments).toHaveLength(1);
     expect(applied.diagnosticDocuments[0].fileName).toBe('סיכום_ועדת_זכאות.pdf');
+  });
+
+  it('preserves cloud storageUrl and storagePath and enforces 20MB limit constant', () => {
+    expect(MAX_DOSSIER_FILE_SIZE_BYTES).toBe(20 * 1024 * 1024);
+
+    const doc = createDiagnosticDocumentRecord({
+      fileName: 'אבחון_פסיכולוגי_מלא.pdf',
+      fileType: 'pdf',
+      fullText: 'טקסט האבחון',
+      fileSizeFormatted: '18 MB',
+      storageUrl: 'https://firebasestorage.googleapis.com/v0/b/tala-d9aaa.firebasestorage.app/o/dossier_files%2Ffile.pdf',
+      storagePath: 'dossier_files/s123/doc1_file.pdf'
+    });
+
+    expect(doc.storageUrl).toBe('https://firebasestorage.googleapis.com/v0/b/tala-d9aaa.firebasestorage.app/o/dossier_files%2Ffile.pdf');
+    expect(doc.storagePath).toBe('dossier_files/s123/doc1_file.pdf');
   });
 });
