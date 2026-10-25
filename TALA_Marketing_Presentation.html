@@ -2,9 +2,9 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <title>מערכת TALA – פרזנטציה למנהלי מתי"א וצוותים מקצועיים</title>
+  <title>מערכת TALA – פרזנטציית ערך למנהלי מתי"א, מנהלים וצוותי חינוך מיוחד ושילוב</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800;900&display=swap');
 
     @page {
       size: A4 landscape;
@@ -23,7 +23,7 @@
       font-family: 'Rubik', Arial, sans-serif;
       direction: rtl;
       text-align: right;
-      background: #eef2f9;
+      background: #0f172a;
       color: #1e293b;
     }
 
@@ -38,6 +38,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      margin: 0 auto;
     }
 
     .slide:last-child {
@@ -45,91 +46,253 @@
       break-after: auto;
     }
 
+    /* Stained Accent Strip */
     .stained-strip {
-      height: 8px;
+      height: 7px;
       width: 100%;
-      background: linear-gradient(90deg, #7ec8e3 0%, #5b9bd5 25%, #8b6fc0 55%, #a98eda 80%, #c5aef2 100%);
+      background: linear-gradient(90deg, #38bdf8 0%, #3b82f6 25%, #6366f1 55%, #8b5cf6 80%, #ec4899 100%);
       flex-shrink: 0;
     }
 
+    /* Standard Slide Header */
     .slide-header {
-      background: linear-gradient(135deg, #2b4c7e 0%, #3b6ea5 48%, #6b52ae 100%);
+      background: linear-gradient(135deg, #0f2744 0%, #1e3a5f 50%, #4338ca 100%);
       color: #ffffff;
-      padding: 18px 38px;
+      padding: 16px 36px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 4px solid #c5aef2;
+      border-bottom: 3px solid #818cf8;
+      flex-shrink: 0;
     }
 
     .slide-header-brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 16px;
     }
 
     .slide-header-brand img {
-      width: 52px;
-      height: 52px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      border: 2px solid #e9d8fd;
+      border: 2px solid #c7d2fe;
       object-fit: cover;
       background: #ffffff;
     }
 
     .slide-header-title h2 {
       margin: 0;
-      font-size: 24px;
+      font-size: 23px;
       font-weight: 800;
       letter-spacing: -0.3px;
+      color: #ffffff;
     }
 
     .slide-header-title p {
       margin: 3px 0 0 0;
       font-size: 13.5px;
-      color: #e2e8f0;
+      color: #cbd5e1;
       font-weight: 400;
     }
 
     .slide-badge {
-      background: rgba(255, 255, 255, 0.16);
-      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.32);
       color: #ffffff;
       padding: 6px 14px;
       border-radius: 999px;
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 600;
+      white-space: nowrap;
     }
 
+    /* Standard Slide Body */
     .slide-body {
       flex: 1;
-      padding: 26px 40px;
+      padding: 22px 36px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      gap: 18px;
-      background: radial-gradient(circle at top left, #f5f3ff 0%, #f8fafc 45%, #ffffff 100%);
+      justify-content: space-between;
+      gap: 14px;
+      background: radial-gradient(circle at 10% 10%, #f8fafc 0%, #f1f5f9 60%, #e2e8f0 100%);
     }
 
+    /* Footer */
     .slide-footer {
-      padding: 12px 40px;
-      background: #f1f5f9;
+      padding: 10px 36px;
+      background: #f8fafc;
       border-top: 1px solid #cbd5e1;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 12px;
+      font-size: 11.5px;
       color: #475569;
       font-weight: 500;
       flex-shrink: 0;
     }
 
-    /* Cover Slide Specific */
+    /* Comparison Grid */
+    .split-comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      flex: 1;
+      align-items: stretch;
+    }
+
+    /* Comparison Cards */
+    .comparison-card {
+      border-radius: 16px;
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: #ffffff;
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
+      position: relative;
+    }
+
+    .comparison-card.before {
+      border: 1.5px solid #fecdd3;
+      background: linear-gradient(180deg, #fff5f5 0%, #ffffff 32%);
+    }
+
+    .comparison-card.after {
+      border: 1.5px solid #c7d2fe;
+      background: linear-gradient(180deg, #f5f3ff 0%, #ffffff 32%);
+    }
+
+    .card-top-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      align-self: flex-start;
+      margin-bottom: 10px;
+    }
+
+    .card-top-tag.before {
+      background: #ffe4e6;
+      color: #9f1239;
+      border: 1px solid #fecdd3;
+    }
+
+    .card-top-tag.after {
+      background: #e0e7ff;
+      color: #3730a3;
+      border: 1px solid #c7d2fe;
+    }
+
+    .comparison-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .comparison-card.before h3 {
+      color: #991b1b;
+    }
+
+    .comparison-card.after h3 {
+      color: #312e81;
+    }
+
+    .comparison-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      flex: 1;
+    }
+
+    .comparison-list li {
+      position: relative;
+      padding-right: 26px;
+      font-size: 13px;
+      line-height: 1.48;
+      color: #334155;
+    }
+
+    .comparison-list li strong {
+      color: #0f172a;
+    }
+
+    .comparison-card.before .comparison-list li::before {
+      content: "✕";
+      position: absolute;
+      right: 2px;
+      top: 1px;
+      color: #e11d48;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .comparison-card.after .comparison-list li::before {
+      content: "✓";
+      position: absolute;
+      right: 2px;
+      top: 1px;
+      color: #059669;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    /* Takeaway Value Banner */
+    .takeaway-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a5f 100%);
+      color: #ffffff;
+      border-radius: 12px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-right: 5px solid #6366f1;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+      flex-shrink: 0;
+    }
+
+    .takeaway-banner strong {
+      font-size: 14.5px;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .takeaway-banner p {
+      margin: 2px 0 0 0;
+      font-size: 12.5px;
+      color: #e2e8f0;
+      line-height: 1.4;
+    }
+
+    .takeaway-pill {
+      background: rgba(99, 102, 241, 0.25);
+      border: 1px solid rgba(165, 180, 252, 0.4);
+      color: #e0e7ff;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* Cover Slide Specific Styles */
     .cover-body {
       flex: 1;
-      background: linear-gradient(135deg, #1e3a5f 0%, #3b6ea5 45%, #5e4b9b 100%);
+      background: linear-gradient(135deg, #07192f 0%, #0f2d59 40%, #312e81 85%, #4c1d95 100%);
       color: #ffffff;
-      padding: 44px 54px;
+      padding: 38px 48px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -140,15 +303,15 @@
       display: flex;
       align-items: center;
       gap: 28px;
-      margin-top: 12px;
+      margin: 10px 0;
     }
 
     .cover-logo {
-      width: 118px;
-      height: 118px;
+      width: 105px;
+      height: 105px;
       border-radius: 50%;
-      border: 4px solid #d6bcfa;
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+      border: 3.5px solid #a5b4fc;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
       object-fit: cover;
       background: #ffffff;
       flex-shrink: 0;
@@ -156,188 +319,92 @@
 
     .cover-titles h1 {
       margin: 0;
-      font-size: 40px;
-      font-weight: 800;
+      font-size: 38px;
+      font-weight: 900;
       line-height: 1.18;
       color: #ffffff;
+      letter-spacing: -0.5px;
     }
 
     .cover-titles h3 {
       margin: 10px 0 0 0;
-      font-size: 21px;
+      font-size: 19px;
       font-weight: 500;
-      color: #e9d8fd;
-      line-height: 1.4;
+      color: #cbd5e1;
+      line-height: 1.45;
     }
 
-    .cover-pillars-grid {
+    .cover-titles h3 span {
+      color: #38bdf8;
+      font-weight: 700;
+    }
+
+    .cover-values-grid {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 10px;
-      margin: 18px 0;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin: 14px 0;
     }
 
-    .pillar-card {
-      background: rgba(255, 255, 255, 0.12);
-      border: 1.5px solid rgba(255, 255, 255, 0.28);
-      border-radius: 12px;
-      padding: 14px 10px;
+    .cover-value-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 14px;
+      padding: 16px 14px;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      backdrop-filter: blur(8px);
+    }
+
+    .cover-value-icon {
+      font-size: 26px;
+      margin-bottom: 2px;
+    }
+
+    .cover-value-card h4 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .cover-value-card p {
+      margin: 0;
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.42;
+    }
+
+    /* Slide 6 Special Final Card */
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .stat-box {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 14px;
       text-align: center;
     }
 
-    .pillar-icon {
-      font-size: 26px;
-      margin-bottom: 6px;
-      display: block;
+    .stat-number {
+      font-size: 22px;
+      font-weight: 900;
+      color: #4338ca;
+      line-height: 1;
     }
 
-    .pillar-card h4 {
-      margin: 0 0 5px 0;
-      font-size: 14.5px;
-      font-weight: 700;
-      color: #ffffff;
-    }
-
-    .pillar-card p {
-      margin: 0;
-      font-size: 11.5px;
-      color: #e2e8f0;
-      line-height: 1.35;
-    }
-
-    /* Content Cards & Grids */
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    .grid-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 18px;
-    }
-
-    .feature-card {
-      background: #ffffff;
-      border: 1.5px solid #cbd5e1;
-      border-right: 6px solid #5b9bd5;
-      border-radius: 14px;
-      padding: 18px 20px;
-      box-shadow: 0 4px 14px rgba(30, 58, 95, 0.05);
-    }
-
-    .feature-card.purple {
-      border-right-color: #7c3aed;
-    }
-
-    .feature-card.emerald {
-      border-right-color: #059669;
-    }
-
-    .feature-card.amber {
-      border-right-color: #d97706;
-    }
-
-    .feature-card.cyan {
-      border-right-color: #0284c7;
-    }
-
-    .feature-card h3 {
-      margin: 0 0 8px 0;
-      font-size: 18px;
-      font-weight: 700;
-      color: #1e3a5f;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .feature-card p {
-      margin: 0;
-      font-size: 14px;
-      line-height: 1.55;
-      color: #334155;
-    }
-
-    .feature-list {
-      margin: 8px 0 0 0;
-      padding-right: 18px;
-      font-size: 14px;
-      line-height: 1.6;
-      color: #334155;
-    }
-
-    .feature-list li {
-      margin-bottom: 5px;
-    }
-
-    .highlight-banner {
-      background: linear-gradient(135deg, #eef4fc 0%, #f3eefc 100%);
-      border: 1.5px solid #c4b5fd;
-      border-radius: 12px;
-      padding: 14px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .highlight-banner strong {
-      color: #4c1d95;
-      font-size: 15.5px;
-    }
-
-    .highlight-banner span {
-      color: #334155;
-      font-size: 14px;
-    }
-
-    /* Comparison Table */
-    .comp-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #ffffff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 14px rgba(30, 58, 95, 0.06);
-      font-size: 14px;
-    }
-
-    .comp-table th, .comp-table td {
-      border: 1.5px solid #cbd5e1;
-      padding: 8px 14px;
-      text-align: right;
-    }
-
-    .comp-table thead th {
-      background: #1e3a5f;
-      color: #ffffff;
-      font-size: 15px;
-      font-weight: 700;
-    }
-
-    .comp-table thead th.tala-col {
-      background: linear-gradient(135deg, #3b6ea5 0%, #6b46c1 100%);
-    }
-
-    .comp-table td.topic-col {
-      font-weight: 700;
-      background: #f8fafc;
-      color: #1e3a5f;
-      width: 22%;
-    }
-
-    .comp-table td.old-col {
-      color: #64748b;
-      width: 36%;
-    }
-
-    .comp-table td.new-col {
-      color: #0f172a;
+    .stat-label {
+      font-size: 11px;
       font-weight: 600;
-      background: #f5f3ff;
-      width: 42%;
+      color: #64748b;
+      margin-top: 4px;
     }
   </style>
 </head>
@@ -348,441 +415,394 @@
     <div class="stained-strip"></div>
     <div class="cover-body">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span class="slide-badge">פתרון דיגיטלי ייעודי למתי"א ולצוותי חינוך מיוחד ושילוב בגנים ובבתי הספר</span>
-<span style="font-size: 13.5px; color: #cbd5e1;" dir="ltr">תשפ"ו • 2026 • v2.0.1</span>
+        <span class="slide-badge">פלטפורמה אקולוגית חכמה למתי"א, לגני ילדים ולבתי ספר</span>
+        <span style="font-size: 13px; color: #cbd5e1;" dir="ltr">תשפ"ו • 2026 • פרזנטציית ערך פדגוגי</span>
       </div>
 
       <div class="cover-hero">
         <img src="./public/tala-logo.png" alt="TALA Logo" class="cover-logo" />
         <div class="cover-titles">
           <h1>מערכת TALA – תוכנית עבודה אקולוגית</h1>
-          <h3>הפלטפורמה החכמה לגני ילדים ולבתי ספר לקוקפיט יומי, משימות AI, תוכניות תל"א ותח"י, קליטת אבחונים, שיתוף הורים, דוחות הערכה וסנכרון יומנים</h3>
+          <h3>מהתוכנית הכתובה בקלסר <span>למצפן החינוכי של שגרת היומיום</span></h3>
+          <p style="margin: 8px 0 0 0; font-size: 14.5px; color: #e2e8f0; line-height: 1.45;">
+            מחזירים את הזמן, השקט הפדגוגי והדיוק המקצועי לצוותי החינוך המיוחד והשילוב – בעזרת AI רגיש תחת שליטה מלאה של המורה.
+          </p>
         </div>
       </div>
 
-      <div class="cover-pillars-grid">
-        <div class="pillar-card">
-          <span class="pillar-icon">📅</span>
-          <h4>קוקפיט יומי ו-AI</h4>
-          <p>יומן פדגוגי מובנה עם חופשות משרד החינוך, סנכרון ל-Outlook/Google ומחולל משימות יומיות ב-AI</p>
+      <div class="cover-values-grid">
+        <div class="cover-value-card">
+          <span class="cover-value-icon">🎯</span>
+          <h4>עוגן "האבנים הגדולות"</h4>
+          <p>חיבור ישיר של יעדי העל מהתל"א/תח"י לשגרת הבוקר, השבוע והחודש של הצוות.</p>
         </div>
-        <div class="pillar-card">
-          <span class="pillar-icon">🧠</span>
-          <h4>קליטת אבחון ומאגר ב-AI</h4>
-          <p>פענוח חכם של קובצי אבחון (PDF/טקסט), עיבוד תיאור חופשי ומאגר מטרות מותאם לגן ולבית הספר</p>
+        <div class="cover-value-card">
+          <span class="cover-value-icon">⏱️</span>
+          <h4>חיסכון 70% בזמן מנהלה</h4>
+          <p>פחות שעות מול טפסים ומאבקים בטבלאות, הרבה יותר זמן איכות חינוכי עם התלמידים.</p>
         </div>
-        <div class="pillar-card">
-          <span class="pillar-icon">👨‍👩‍👧</span>
-          <h4>קול ההורים ותצפיות</h4>
-          <p>קישור חד-פעמי להורים בנייד (WhatsApp) ותיעוד תצפיות מהיר של 10 שניות בכיתה ובגן</p>
+        <div class="cover-value-card">
+          <span class="cover-value-icon">🤖</span>
+          <h4>AI בשליטת המורה</h4>
+          <p>דיוק פדגוגי מרבי כשטייס-המשנה ממליץ והמורה תמיד בוחנת, עורכת ומאשרת.</p>
         </div>
-        <div class="pillar-card">
-          <span class="pillar-icon">📋</span>
-          <h4>3 דוחות + גשר למנב"ס</h4>
-          <p>תל"א/תח"י, הערכת מחצית ודו"ח מצב ב-Word/PDF/מייל + העתקה נקייה למנב"ס/משו"ב</p>
-        </div>
-        <div class="pillar-card">
-          <span class="pillar-icon">🤝</span>
-          <h4>צוות ורצף שנתי</h4>
-          <p>שיוך מוביל/ת מטרה, מיזוג ענן ללא דריסות הדדיות, עבודה אופליין (PWA) וגלגול לשנה הבאה</p>
-        </div>
-        <div class="pillar-card">
-          <span class="pillar-icon">🔒</span>
-          <h4>אבטחת מידע ופרטיות</h4>
-          <p>אימות שרת מוצפן, פרוקסי AI מוגן, התנתקות יומית והמרה אוטומטית לראשי תיבות והשחרת PII</p>
+        <div class="cover-value-card">
+          <span class="cover-value-icon">🤝</span>
+          <h4>מעטפת 360° אקולוגית</h4>
+          <p>סנכרון מלא בין גננת, מורת שילוב, מטפלים והורים בלחיצת כפתור וללא חיכוך.</p>
         </div>
       </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.22); padding-top: 14px; font-size: 13.5px; color: #e2e8f0;">
-        <span>מותאם למודל האקולוגי של משרד החינוך (גני ילדים ובתי ספר) • פועל מכל דפדפן במחשב, בטאבלט ובסמארטפון (גם אופליין)</span>
-        <strong>שקף 1 מתוך 7</strong>
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px; font-size: 12.5px; color: #cbd5e1;">
+        <span>תואם באופן מלא למודל האקולוגי של משרד החינוך • נגיש מכל מחשב, טאבלט וסמארטפון (כולל עבודה אופליין)</span>
+        <strong>שקף 1 מתוך 6</strong>
       </div>
     </div>
   </section>
 
-  <!-- SLIDE 2: DAILY PEDAGOGICAL COCKPIT, CALENDAR & AI FOCUS TASKS -->
+  <!-- SLIDE 2: THE BIG ROCKS & DAILY/WEEKLY ROUTINES -->
   <section class="slide">
     <div class="stained-strip"></div>
     <div class="slide-header">
       <div class="slide-header-brand">
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
-          <h2>1. קוקפיט פדגוגי יומי, יומן מפגשים חכם ומחולל משימות ב-AI</h2>
-          <p>סדר יום פדגוגי ממוקד, לוח שנה עברי מובנה עם חופשות משרד החינוך, סנכרון יומנים (Outlook/Google) ומשימות AI אישיות</p>
+          <h2>1. "האבנים הגדולות" – ממסמך שנשכח בקלסר לשגרת עבודה חיה</h2>
+          <p>גזירת המשימות היומיות והשבועיות ישירות מיעדי העל של התלמיד, עם חיבור מלא ללוח השנה ולסדר היום</p>
         </div>
       </div>
-      <span class="slide-badge">חדש ב-v1.0.87 • יומן פדגוגי • משימות AI • סנכרון ענן</span>
+      <span class="slide-badge">מיקוד פדגוגי יומיומי</span>
     </div>
 
     <div class="slide-body">
-      <div class="grid-3">
-        <div class="feature-card">
-          <h3>📅 יומן פדגוגי מובנה ולוח עברי מודרני</h3>
-          <p>
-            ניהול סדר יום פדגוגי ישירות מתוך המערכת ללא צורך במעבר בין אפליקציות חיצוניות:
-          </p>
-          <ul class="feature-list">
-            <li><strong>תצוגת יום, שבוע וחודש מתקפלת:</strong> צפייה נוחה במפגשים, ישיבות צוות, הדרכות ומשימות יומיות עם פסי משך אופקיים וצבעי מיתוג.</li>
-            <li><strong>לוח חופשות משרד החינוך:</strong> זיהוי אוטומטי והבחנה ויזואלית ברורה בין חופשות רשמיות של משה"ח לבין ציוני מועד וימי זיכרון.</li>
-            <li><strong>בורר תאריכים עברי מותאם (HebrewDatePicker):</strong> ניווט חודשי מהיר, שמות ימים בעברית תקנית וממשק מודרני נקי המותאם לזרימת RTL.</li>
-          </ul>
+      <div class="split-comparison-grid">
+        <!-- Before -->
+        <div class="comparison-card before">
+          <div>
+            <span class="card-top-tag before">✕ השחיקה המסורתית</span>
+            <h3>קלסר סטטי וכיבוי שריפות</h3>
+            <ul class="comparison-list">
+              <li><strong>התל"א נשכחת במגירה:</strong> נכתבת במאמץ רב באוקטובר ונשארת ללא שימוש יומיומי עד לקראת דוחות סוף השנה.</li>
+              <li><strong>ניהול מפוזר ומקוטע:</strong> רישום ביומני נייר נפרדים, פתקים מודבקים ותזכורות מפוזרות בוואטסאפ.</li>
+              <li><strong>נתק מהמטרות הגדולות:</strong> קושי מתמיד לחבר בין יעדי העל הפדגוגיים לבין הפעילות הנעשית בפועל היום בכיתה או בגן.</li>
+              <li><strong>תחושת עומס ואי-וודאות:</strong> תחושה מתסכלת של כיבוי שריפות שוטף: "האם אנחנו באמת מקדמים את מה שהגדרנו עבור הילד?".</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #991b1b; font-weight: 600; margin-top: 8px;">
+            תוצאה: עבודה מאומצת אך מנותקת מיעדי העל של התוכנית.
+          </div>
         </div>
 
-        <div class="feature-card purple">
-          <h3>🤖 מיקוד פדגוגי יומי ומחולל משימות ב-AI</h3>
-          <p>
-            הפיכת תוכנית התל"א/תח"י לפעולות יומיומיות ממוקדות בעזרת בינה מלאכותית:
-          </p>
-          <ul class="feature-list">
-            <li><strong>בחירת תלמידי מוקד ליום הנבחר:</strong> המורה או הגננת מסמנת בלחיצה באילו תלמידים ברצונה להתמקד היום מתוך כלל תלמידי המסגרת.</li>
-            <li><strong>הפקת משימות ממוקדות ב-AI:</strong> המערכת מנתחת את יעדי התלמיד, מוקדי הכוח, האתגרים וההיסטוריה, ומייצרת משימת עבודה מותאמת ואופרטיבית להיום.</li>
-            <li><strong>אינדיקציית Busy חיה ומשוב מיידי:</strong> אנימציית טעינה מיידית, חסינות שגיאות (Heuristic Fallback) וסגירה נקייה עם הודעת הצלחה.</li>
-          </ul>
-        </div>
-
-        <div class="feature-card emerald">
-          <h3>🔄 סנכרון יומנים מהיר וניהול זמנים מתקדם</h3>
-          <p>
-            קישוריות מלאה לכל היומנים המוסדיים והאישיים בלחיצת כפתור אחת:
-          </p>
-          <ul class="feature-list">
-            <li><strong>סנכרון ישיר ל-Outlook 365 ול-Google Calendar:</strong> ייצוא מיידי של מפגשי התלמידים עם זמנים ופרטים מסודרים ליומן המורה או הגננת.</li>
-            <li><strong>ייצוא קובץ iCal / ICS:</strong> תאימות מלאה ל-Apple Calendar ולכל תוכנת יומן מקומית או ארגונית.</li>
-            <li><strong>בורר שעות 24h מודרני:</strong> צ'יפים מהירים לקביעת משך מפגש (15, 30, 45, 60 דק') ופופאובר Ghost Actions אלגנטי לשמירה על שקט ויזואלי.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="highlight-banner">
-        <div>
-          <strong>⚡ שילוב מושלם בין תכנון אסטרטגי למעשה חינוכי יומיומי:</strong>
-          <div style="margin-top: 4px;">
-            היומן הפדגוגי אינו יומן טכני מנותק – הוא שואב מידע ישירות מיעדי התל"א של התלמידים, מתחבר ללוח השנה של משרד החינוך ומספק לצוות משימות ממוקדות מבוססות AI.
+        <!-- After -->
+        <div class="comparison-card after">
+          <div>
+            <span class="card-top-tag after">✓ שגרת העבודה ב-TALA</span>
+            <h3>מצפן פדגוגי חי ומוביל</h3>
+            <ul class="comparison-list">
+              <li><strong>יומן פדגוגי מסונכרן:</strong> יומן מובנה עם לוח חופשות משרד החינוך וסנכרון ישיר ל-Outlook ול-Google Calendar.</li>
+              <li><strong>גזירת משימות מיעדי התל"א:</strong> המערכת מסייעת לגזור משימות שבועיות ויומיות ממוקדות ישירות מתוך "האבנים הגדולות" של התלמיד.</li>
+              <li><strong>תלמידי מוקד בכל יום:</strong> המורה או הגננת מסמנת תלמידי מוקד ליום הנבחר ומקבלת סדר יום פדגוגי רגוע וברור.</li>
+              <li><strong>פעולות קטנות שמייצרות הישגים:</strong> הפיכת חזון התל"א לצעדים מעשיים בשגרת הבוקר, במפגש, בחצר ובשיעור הפרטני.</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #312e81; font-weight: 700; margin-top: 8px;">
+            תוצאה: שקט נפשי וודאות – כל יום עבודה מקדם במדויק את יעדי העל.
           </div>
         </div>
       </div>
+
+      <div class="takeaway-banner">
+        <div>
+          <strong>🎯 הערך המוביל: שקט פדגוגי ומיקוד באבנים הגדולות</strong>
+          <p>הצוות החינוכי פותח כל בוקר עם מצפן ברור ורוגע מקצועי – התוכנית כבר אינה נטל בירוקרטי אלא כלי העבודה המרכזי.</p>
+        </div>
+        <span class="takeaway-pill">ודאות ופוקוס בכל בוקר</span>
+      </div>
     </div>
 
     <div class="slide-footer">
       <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 2 מתוך 7</span>
+      <span>שקף 2 מתוך 6</span>
     </div>
   </section>
 
-  <!-- SLIDE 3: EASE OF USE, DIAGNOSTIC INTAKE, GOAL BANK & MICRO-OBSERVATIONS -->
+  <!-- SLIDE 3: PROFESSIONAL AI WITH TEACHER IN THE COCKPIT -->
   <section class="slide">
     <div class="stained-strip"></div>
     <div class="slide-header">
       <div class="slide-header-brand">
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
-          <h2>2. קליטת אבחונים ב-AI, מאגר מותאם לגן/בי"ס ותצפיות מהירות</h2>
-          <p>עבודה חלקה מכל מכשיר (גם ללא קליטת אינטרנט) – פחות שעות של עיצוב טבלאות, יותר זמן לעבודה חינוכית</p>
+          <h2>2. בינה מלאכותית מקצועית – המורה תמיד במושב הנהג (Human-in-the-Loop)</h2>
+          <p>קליטת אבחונים מהירה וניסוח מטרות מדויק ב-AI – כשטייס המשנה מציע והמורה בוחנת, מדייקת ומאשרת</p>
         </div>
       </div>
-      <span class="slide-badge">AI חכם • גן ובית ספר • Offline PWA</span>
+      <span class="slide-badge">דיוק פדגוגי & בקרה מלאה</span>
     </div>
 
     <div class="slide-body">
-      <div class="grid-3">
-        <div class="feature-card">
-          <h3>✨ עיבוד מידע וקליטת אבחון חכמה ב-AI</h3>
-          <p>
-            ניסוח פדגוגי תקני מתיאור חופשי של המורה/הגננת או מתוך מסמכי אבחון מקצועיים:
-          </p>
-          <ul class="feature-list">
-            <li><strong>קליטת אבחון ב-AI (PDF / טקסט):</strong> העלאת קובץ אבחון או הדבקת סיכום (פסיכולוגי, קלינאית, ריפוי בעיסוק) למיצוי אוטומטי של מוקדי כוח, תפקוד ומטרות אקולוגיות מבוססות-ממצאים.</li>
-            <li><strong>מילוי 6 עמודות התוכנית:</strong> מטרות, יעדים אופרטיביים, אמצעים ומשך יחסי (S/M/L).</li>
-            <li><strong>הגנה מפני דריסה:</strong> מטרות שנערכו ידנית או כוללות תצפיות מוגנות בניתוח חוזר.</li>
-          </ul>
+      <div class="split-comparison-grid">
+        <!-- Before -->
+        <div class="comparison-card before">
+          <div>
+            <span class="card-top-tag before">✕ השחיקה המסורתית</span>
+            <h3>פענוח מתיש ומאבק מול דף ריק</h3>
+            <ul class="comparison-list">
+              <li><strong>שעות של קריאת אבחונים:</strong> פענוח ידני מייגע של עשרות עמודי אבחון מורכבים (פסיכולוגי, קלינאית, ריפוי בעיסוק).</li>
+              <li><strong>מאבק בניסוח מטרות:</strong> ישיבה מול טופס ריק וניסיון לנסח יעדים אופרטיביים מותאמים אישית לשלב הגיל והמסגרת.</li>
+              <li><strong>שונות וחוסר אחידות:</strong> קושי לשמור על שפה פדגוגית אחידה ומקצועית העומדת בסטנדרטים של המתי"א והפיקוח.</li>
+              <li><strong>חשש מאיבוד שליטה:</strong> רתיעה מוצדקת ממערכות אוטומטיות שעלולות לקבל החלטות מנותקות ללא רגישות אנושית.</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #991b1b; font-weight: 600; margin-top: 8px;">
+            תוצאה: שעות עבודה מבוזבזות בלילות וחשש מתמיד מאי-דיוקים.
+          </div>
         </div>
 
-        <div class="feature-card purple">
-          <h3>📚 מאגר מטרות דו-שלבי לגן ולבית הספר</h3>
-          <p>
-            מאגר מטרות ויעדים אופרטיביים המותאם אוטומטית לשלב החינוכי (<strong>גן ילדים</strong> או <strong>בית ספר</strong>):
-          </p>
-          <ul class="feature-list">
-            <li><strong>ניווט דו-שלבי נוח:</strong> סינון לפי סביבות פעילות (מפגש, חצר, שיעור פרונטלי, פרטני ועוד) ושיבוץ ישיר לתלמיד/ה בלחיצה אחת.</li>
-            <li><strong>התאמה אוטומטית לבן / בת:</strong> הטיה אוטומטית של המטרות והיעדים לזכר או נקבה.</li>
-            <li><strong>סיור קליטה מונחה:</strong> הדרכה אינטראקטיבית צעד-אחר-צעד וסרטון הדרכה מובנה.</li>
-          </ul>
-        </div>
-
-        <div class="feature-card emerald">
-          <h3>📱 מיקרו-תצפיות בכיתה ועבודה אופליין (PWA)</h3>
-          <p>
-            תיעוד רציף מהשטח בסמארטפון או בטאבלט בתוך הגן והכיתה, גם במקלטים או בכיתות ללא קליטה:
-          </p>
-          <ul class="feature-list">
-            <li><strong>כפתור "+ תצפית מהירה":</strong> תיעוד של 10 שניות לכל מטרה (תאריך, סולם התקדמות והערה קצרה) המזין אוטומטית את הערכת המחצית וסוף השנה.</li>
-            <li><strong>עבודה רציפה אופליין (Offline PWA):</strong> שמירה מקומית מוגנת (IndexedDB) וסנכרון אוטומטי לענן עם חזרת החיבור.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="highlight-banner">
-        <div>
-          <strong>💡 אפס עומס ויזואלי (Zero Form Clutter):</strong>
-          <div style="margin-top: 4px;">
-            כל היכולות המתקדמות – קליטת אבחון, תצפית מהירה, קישור להורים והעתקה למנב"ס – נפתחות בכפתורי פעולה נקיים ומודאלים מונחים, כדי לשמור על טופס עבודה נקי, רגוע ונוח.
+        <!-- After -->
+        <div class="comparison-card after">
+          <div>
+            <span class="card-top-tag after">✓ שגרת העבודה ב-TALA</span>
+            <h3>טייס משנה מבוסס AI בשליטת הצוות</h3>
+            <ul class="comparison-list">
+              <li><strong>קליטת אבחון חכמה (PDF/טקסט):</strong> העלאת קובץ אבחון למיצוי מיידי ומדויק של מוקדי כוח, אתגרים ומטרות אקולוגיות מבוססות ממצאים.</li>
+              <li><strong>מאגר מטרות פדגוגי דו-שלבי:</strong> מאגר עשיר ומובנה המותאם לגן ילדים או לבית ספר, עם התאמה לשונית אוטומטית לבן/בת.</li>
+              <li><strong>מחולל משימות ורעיונות לפעילות:</strong> ה-AI מציע רעיונות יצירתיים לפעילויות המשלבות את יעדי התלמיד בתוך השגרה הכיתתית.</li>
+              <li><strong>המורה קובעת ומאשרת הכל:</strong> שום המלצה אינה נכנסת לתוכנית ללא בדיקה, עריכה, שכתוב ואישור סופי של הצוות החינוכי.</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #312e81; font-weight: 700; margin-top: 8px;">
+            תוצאה: ניסוח מקצועי ברמה הגבוהה ביותר תוך דקות – עם אפס ויתור על שיקול הדעת של המורה.
           </div>
         </div>
       </div>
+
+      <div class="takeaway-banner">
+        <div>
+          <strong>💡 העיקרון המנחה: טייס משנה, לא תחליף</strong>
+          <p>הבינה המלאכותית מספקת דיוק, מהירות ומבנה פדגוגי מוקפד – המורה מביאה את ההיכרות האישית, הרגישות והסמכות המקצועית.</p>
+        </div>
+        <span class="takeaway-pill">המורה תמיד מובילה</span>
+      </div>
     </div>
 
     <div class="slide-footer">
       <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 3 מתוך 7</span>
+      <span>שקף 3 מתוך 6</span>
     </div>
   </section>
 
-  <!-- SLIDE 4: UNIFIED FORMAT, 3 OFFICIAL REPORTS & MINISTRY CLIPBOARD BRIDGE -->
+  <!-- SLIDE 4: TIME SAVINGS & 10-SECOND MICRO OBSERVATIONS -->
   <section class="slide">
     <div class="stained-strip"></div>
     <div class="slide-header">
       <div class="slide-header-brand">
         <img src="./public/tala-logo.png" alt="TALA Logo" />
         <div class="slide-header-title">
-          <h2>3. פורמט פדגוגי אחיד, 3 דוחות רשמיים וגשר העתקה למנב"ס/משו"ב</h2>
-          <p>שפה ארגונית ופדגוגית אחידה במתי"א – מתוכנית תל"א/תח"י, דרך הערכת מחצית/סוף שנה ועד דו"ח מצב והדבקה במנב"ס</p>
+          <h2>3. חיסכון בזמן ותיעוד שטח – אפס עומס בירוקרטי</h2>
+          <p>מיקרו-תצפית של 10 שניות מתוך הכיתה והגן מחליפה מרתונים מפרכים של שחזור זיכרון לקראת דוחות ההערכה</p>
         </div>
       </div>
-      <span class="slide-badge">3 דוחות ב-Word / PDF / מייל + העתקה למנב"ס</span>
+      <span class="slide-badge">חיסכון 70% בזמן מנהלה</span>
     </div>
 
     <div class="slide-body">
-      <div class="grid-3">
-        <div class="feature-card">
-          <h3>📄 1. תוכנית תל"א / תח"י אחידה</h3>
-          <p>
-            מופקת במבנה אחיד, ברור ומכבד הכולל פרטי תלמיד/ה (מותאמים לגן או לבית ספר), קול ההורים, טבלת מוקדי כוח וטבלאות מטרות ב-6 עמודות:
-          </p>
-          <ul class="feature-list">
-            <li>תיאור תפקוד בסביבת הפעילות, מטרה, יעדים אופרטיביים ו<strong>מוביל/ת מטרה</strong>.</li>
-            <li>הזדמנויות ואמצעים, שותפים, משך יחסי (S/M/L) ואמות מידה להערכה.</li>
-          </ul>
-        </div>
-
-        <div class="feature-card purple">
-          <h3>📊 2. דוח הערכת מחצית / סוף שנה</h3>
-          <p>
-            הפרדה מובנית בין תוכנית התל"א לבין <strong>דוח הערכת מחצית / סוף שנה</strong> המוזן ממיקרו-תצפיות השטח:
-          </p>
-          <ul class="feature-list">
-            <li>שילוב אוטומטי של היסטוריית התצפיות המהירות שתועדו לאורך השנה בכל מטרה.</li>
-            <li>סימון סטטוס השגת מטרה ועיבוד ב-AI לניסוח פדגוגי מקצועי של התקדמות התלמיד/ה.</li>
-            <li>הפקה והדפסה כדוח הערכה עצמאי ונפרד מהתל"א.</li>
-          </ul>
-        </div>
-
-        <div class="feature-card emerald">
-          <h3>📋 3. דו"ח מצב + גשר העתקה למנב"ס</h3>
-          <p>
-            הפקת <strong>דו"ח מצב מקיף (עד 15 סעיפים תקניים)</strong> לצד גשר העתקה מהיר למערכות משרד החינוך:
-          </p>
-          <ul class="feature-list">
-            <li><strong>דו"ח מצב מבוסס עובדתית בלבד:</strong> נשען אך ורק על נתוני הכרטיס, המטרות והתצפיות (סעיפים ריקים מושמטים אוטומטית).</li>
-            <li><strong>כפתור "📋 העתקה למנב"ס":</strong> העתקה בלחיצה אחת של טקסט נקי (ללא טבלאות מתפרקות) להדבקה ישירה במנב"סנט או במשו"ב.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="highlight-banner">
-        <div>
-          <strong>📤 ייצוא בלחיצה אחת לכל שלושת הדוחות + העתקה נקייה למנב"ס:</strong>
-          <span>הורדת קובץ Word עריך מלא • הדפסה והפקת PDF מותאם לדף • שליחה ישירה במייל • העתקה מובנית למנב"ס/משו"ב עם הגנת פרטיות.</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="slide-footer">
-      <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 4 מתוך 7</span>
-    </div>
-  </section>
-
-  <!-- SLIDE 5: INFORMATION SECURITY & PRIVACY -->
-  <section class="slide">
-    <div class="stained-strip"></div>
-    <div class="slide-header">
-      <div class="slide-header-brand">
-        <img src="./public/tala-logo.png" alt="TALA Logo" />
-        <div class="slide-header-title">
-          <h2>4. אבטחת מידע ברמת שרת והגנה קפדנית על פרטיות הקטין</h2>
-          <p>תכנון מובנה לשמירה על חיסיון רפואי ופדגוגי בענן, בהדפסה, בהעתקה למנב"ס, בקישור להורים ובניהול המשתמשים</p>
-        </div>
-      </div>
-      <span class="slide-badge">אבטחת מידע ופרטיות מקצה לקצה</span>
-    </div>
-
-    <div class="slide-body">
-      <div class="grid-2">
-        <div class="feature-card">
-          <h3>🛡️ הגנת פרטיות אוטומטית בהדפסה, במייל ובמנב"ס</h3>
-          <p>
-            כברירת מחדל, מצב <strong>"הסתר פרטים מזהים"</strong> מופעל בכל הפקת מסמך (PDF, Word, מייל וגשר ההעתקה למנב"ס):
-          </p>
-          <ul class="feature-list">
-            <li><strong>המרה אוטומטית לראשי תיבות:</strong> שם התלמיד/ה מומר לראשי תיבות (למשל: <em>נועם ישראלי ← נ.י.</em>) בכותרת המסמך <strong>וגם בתוך כל הטקסטים החופשיים, המטרות, התצפיות ודו"ח המצב</strong>.</li>
-            <li><strong>השחרת פרטים רגישים ופענוח מקומי:</strong> מספר ת.ז, תאריך לידה, כתובת, טלפון ומסגרת מושחרים אוטומטית (████████). קובצי אבחון (PDF) ודוחות מעובדים בזיכרון הדפדפן בלבד.</li>
-          </ul>
-        </div>
-
-        <div class="feature-card purple">
-          <h3>🔐 אימות שרת מוצפן, פרוקסי AI מוגן ובידוד נתונים</h3>
-          <p>
-            המערכת פועלת על תשתית ענן מאובטחת (GitHub SSL/TLS + Google Cloud Functions) ומנוהלת ע"י מנהל/ת המתי"א:
-          </p>
-          <ul class="feature-list">
-            <li><strong>אימות סיסמאות בשרת ופרוקסי AI:</strong> אימות סיסמה בפונקציית ענן (SHA-256 + Salt ב-256 סבבים) והנפקת טוקן מאומת; קריאות ה-AI עוברות דרך פרוקסי שרת מוגן ללא חשיפת מפתחות.</li>
-            <li><strong>קליטה מאובטחת וטוקן הורים ממודר:</strong> חובת החלפת סיסמה זמנית, חתימה דיגיטלית על NDA למשתמשי ניסיון, וטוקן חד-פעמי ממודר להורים שלעולם אינו חושף את תיק התלמיד.</li>
-            <li><strong>התנתקות אוטומטית יומית:</strong> איפוס חיבור יומי למחשבים משותפים בגן ובבית הספר.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="highlight-banner">
-        <div>
-          <strong>🔒 שקט נפשי לצוות, להורים ולמנהלים:</strong>
-          <span>מגובה ב-220 בדיקות אבטחה, אינטגרציה ואיכות אוטומטיות – ניתן להפיק דוחות, לשתף צוות ולאסוף משוב מהורים תוך שמירה מוחלטת על פרטיות הקטין.</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="slide-footer">
-      <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 5 מתוך 7</span>
-    </div>
-  </section>
-
-  <!-- SLIDE 6: MULTI-YEAR TRACKING, PARENT VOICE & MULTI-DISCIPLINARY TEAM -->
-  <section class="slide">
-    <div class="stained-strip"></div>
-    <div class="slide-header">
-      <div class="slide-header-brand">
-        <img src="./public/tala-logo.png" alt="TALA Logo" />
-        <div class="slide-header-title">
-          <h2>5. שער "קול ההורים", צוות רב-מקצועי ומעקב רב-שנתי</h2>
-          <p>חיבור ההורים לתהליך החינוכי, חלוקת אחריות ברורה בצוות ללא דריסת נתונים, ורצף פדגוגי משנה לשנה</p>
-        </div>
-      </div>
-      <span class="slide-badge">שותפות הורים • צוות רב-מקצועי • רצף רב-שנתי</span>
-    </div>
-
-    <div class="slide-body">
-      <div class="grid-2">
-        <div class="feature-card">
-          <h3>👨‍👩‍👧 שער "קול ההורים" במובייל ומעקב רב-שנתי</h3>
-          <p>
-            שילוב אמיתי של ההורים בבניית התוכנית ושמירת היסטוריה מלאה לאורך שנות הלימודים (תשפ"ה–תש"צ):
-          </p>
-          <ul class="feature-list">
-            <li><strong>קישור חד-פעמי להורים (WhatsApp / נייד):</strong> שליחת שאלון קצר, מכבד ומותאם לנייד שבו ההורים משתפים בחוזקות הילד/ה, ציפיותיהם ודגשים לצוות – ומיזוג בלחיצה אחת לפרק 1 בתוכנית.</li>
-            <li><strong>כפתור "שכפל לשנה הבאה":</strong> פתיחת שנה חדשה בלחיצה אחת; מוקדי הכוח והמטרות מועתקים, והערכת סוף השנה הקודמת הופכת לנקודת המוצא בתיאור התפקוד.</li>
-          </ul>
-        </div>
-
-        <div class="feature-card purple">
-          <h3>🤝 מוביל/ת מטרה ומיזוג ענן רב-מקצועי ללא דריסות</h3>
-          <p>
-            עבודה מסונכרנת של גננת/מחנכת, מורת שילוב, מרפאה בעיסוק, קלינאית תקשורת, מנתחת התנהגות ומדריכת מתי"א:
-          </p>
-          <ul class="feature-list">
-            <li><strong>שיוך "מוביל/ת מטרה" לכל יעד:</strong> הגדרת תחום האחריות המקצועי לכל מטרה בתוכנית למעקב ברור בישיבות הצוות.</li>
-            <li><strong>מיזוג ענן חכם ברמת שדה (Field-Level Merge):</strong> כאשר קלינאית התקשורת והגננת מעדכנות מטרות שונות במקביל, המערכת ממזגת את השינויים באופן טרנזקציוני ללא דריסת עבודה הדדית.</li>
-            <li><strong>קבוצות צוות / מתי"א:</strong> שיתוף מבוקר ברמת תלמיד/ה תוך הגנה מפני מחיקה ע"י שותפים.</li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="highlight-banner">
-        <div>
-          <strong>🌱 מעטפת 360° סביב הילד/ה:</strong>
-          <span>ההורים שותפים, כל איש צוות יודע בדיוק אילו מטרות באחריותו, והידע המקצועי נשמר וממשיך באופן מובנה משנה לשנה.</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="slide-footer">
-      <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 6 מתוך 7</span>
-    </div>
-  </section>
-
-  <!-- SLIDE 7: SUMMARY & COMPARISON -->
-  <section class="slide">
-    <div class="stained-strip"></div>
-    <div class="slide-header">
-      <div class="slide-header-brand">
-        <img src="./public/tala-logo.png" alt="TALA Logo" />
-        <div class="slide-header-title">
-<h2>6. סיכום: קפיצת מדרגה מקצועית למתי"א ולצוותי החינוך</h2>
-          <p>השוואה בין תהליך העבודה המסורתי לבין עבודה במערכת TALA (גרסה v2.0.1)</p>
-        </div>
-      </div>
-      <span class="slide-badge">סיכום והטמעה</span>
-    </div>
-
-    <div class="slide-body">
-      <table class="comp-table">
-        <thead>
-          <tr>
-            <th>תחום</th>
-            <th>עבודה מסורתית בקבצים נפרדים</th>
-            <th class="tala-col">מערכת TALA – תוכנית עבודה אקולוגית</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="topic-col">קוקפיט יומי, יומן ומשימות ב-AI</td>
-            <td class="old-col">ניהול מפוזר ביומני נייר, תזכורות נפרדות, חוסר סנכרון עם יעדי התל"א וקושי בקביעת מיקוד יומי</td>
-            <td class="new-col">יומן פדגוגי מובנה עם חופשות משרד החינוך, סנכרון Outlook/Google, ומחולל AI למשימות יומיות ממוקדות לפי יעדי התלמיד</td>
-          </tr>
-          <tr>
-            <td class="topic-col">כתיבת תוכנית וקליטת אבחונים</td>
-            <td class="old-col">שעות של הקלדה ידנית, העתקה מסיכומי אבחונים ועיצוב טבלאות שמתפרקות</td>
-            <td class="new-col">קליטת אבחון חכמה ב-AI (PDF/טקסט), עיבוד מתיאור חופשי ומאגר מטרות דו-שלבי לגן ולבי"ס</td>
-          </tr>
-          <tr>
-            <td class="topic-col">תצפיות שטח ועבודה בנייד / אופליין</td>
-            <td class="old-col">פתקים אבודים בגן/בכיתה ותלות במחשב נייח עם חיבור אינטרנט רציף</td>
-            <td class="new-col">מיקרו-תצפיות של 10 שניות בנייד המזינות את ההערכות + עבודה רציפה גם ללא אינטרנט (Offline PWA)</td>
-          </tr>
-          <tr>
-            <td class="topic-col">3 דוחות רשמיים וגשר למנב"ס/משו"ב</td>
-            <td class="old-col">כתיבה ידנית מחדש של דו"ח מצב והעתקת טבלאות שמשתבשות במנב"סנט</td>
-            <td class="new-col">3 דוחות בלחיצה (תל"א, הערכה, דו"ח מצב) ב-Word/PDF/מייל + כפתור "📋 העתקה למנב"ס" בטקסט נקי</td>
-          </tr>
-          <tr>
-            <td class="topic-col">שותפות הורים וצוות רב-מקצועי</td>
-            <td class="old-col">קושי באיסוף עמדת ההורים ודריסת קבצים הדדית בין גננת, מורת שילוב ומטפלים</td>
-            <td class="new-col">קישור חד-פעמי ל"קול ההורים" בנייד, שיוך "מוביל/ת מטרה", ומיזוג ענן ברמת שדה ללא דריסות</td>
-          </tr>
-          <tr>
-            <td class="topic-col">אבטחת מידע, פרטיות ורצף רב-שנתי</td>
-            <td class="old-col">מחיקה ידנית של שמות ות.ז (חשוף לטעויות) וחיפוש קבצים משנים קודמות</td>
-            <td class="new-col">אימות שרת ופרוקסי AI, ראשי תיבות והשחרת PII אוטומטית, התנתקות יומית וגלגול חכם לשנה הבאה</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="highlight-banner" style="background: linear-gradient(135deg, #2b4c7e 0%, #5e4b9b 100%); color: #ffffff; border: none;">
-        <div>
-          <strong style="color: #ffffff; font-size: 17px;">מוכנים להטמיע את TALA בצוותי המתי"א, הגנים ובתי הספר שלכם?</strong>
-          <div style="color: #e2e8f0; font-size: 13.5px; margin-top: 3px;">
-            פועלת ישירות מהדפדפן בכל סמארטפון, טאבלט או מחשב (כולל תמיכת אופליין), עם סיור הדרכה מובנה וניהול קבוצות מתי"א.
+      <div class="split-comparison-grid">
+        <!-- Before -->
+        <div class="comparison-card before">
+          <div>
+            <span class="card-top-tag before">✕ השחיקה המסורתית</span>
+            <h3>"מבצע שחזור זיכרון" ושחיקת סוף מחצית</h3>
+            <ul class="comparison-list">
+              <li><strong>היעדר תיעוד לאורך השנה:</strong> עקב עומס המשימות והמחסור בכלים נוחים, תצפיות רבות מהשטח כלל אינן נרשמות.</li>
+              <li><strong>מרתון כתיבה מפרך:</strong> בהערכת מחצית ובסוף שנה, המורות והגננות נאלצות "לשחזר מהזיכרון" תהליכים של חודשים.</li>
+              <li><strong>לילות מול מסכי Word וטבלאות:</strong> שעות של ניסוחים חוזרים, עיצוב טבלאות שמתפרקות וחשש מפספוס התקדמות אמיתית.</li>
+              <li><strong>תלות במחשב נייח וקליטה:</strong> אי-יכולת לתעד בזמן אמת בחצר, במרחב הטיפולי, או בכיתות ומרחבים ללא קליטת אינטרנט.</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #991b1b; font-weight: 600; margin-top: 8px;">
+            תוצאה: עומס נפשי קיצוני ודוחות שנכתבים תחת לחץ זמן ושחיקה.
           </div>
         </div>
-        <span class="slide-badge" style="background: #ffffff; color: #2b4c7e; font-weight: 800;">
-TALA v2.0.1 • מוכנה להטמעה
+
+        <!-- After -->
+        <div class="comparison-card after">
+          <div>
+            <span class="card-top-tag after">✓ שגרת העבודה ב-TALA</span>
+            <h3>תיעוד קליל של 10 שניות בזמן אמת</h3>
+            <ul class="comparison-list">
+              <li><strong>כפתור "+ תצפית מהירה":</strong> בלחיצה אחת בסמארטפון או בטאבלט, המורה מתעדת הישג או התקדמות במטרה תוך 10 שניות.</li>
+              <li><strong>עבודה חלקה גם ללא אינטרנט (Offline):</strong> תמיכה מלאה בעבודה אופליין בחצר, במקלט או בכיתה ללא קליטה – עם סנכרון אוטומטי כשמתחברים.</li>
+              <li><strong>הדוחות נבנים מעצמם:</strong> כל תצפית שנרשמה לאורך החודשים מזינה באופן ישיר ואוטומטי את דוח הערכת המחצית וסוף השנה.</li>
+              <li><strong>ממשק שקט ונטול רעש:</strong> מסך עבודה נקי ומרווח ללא עומס שדות (Zero Form Clutter) המאפשר פעולה מהירה ונוחה.</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #312e81; font-weight: 700; margin-top: 8px;">
+            תוצאה: חסכון של עשרות שעות עבודה מנהלית ותמונת התקדמות מדויקת ורציפה.
+          </div>
+        </div>
+      </div>
+
+      <div class="takeaway-banner">
+        <div>
+          <strong>⚡ החיסכון המוכח: 70% פחות זמן על מנהלה</strong>
+          <p>איסוף נתונים שוטף ונטול מאמץ מחזיר לצוות עשרות שעות עבודה ומבטל כליל את סיוט "מרתון הדוחות" של סוף השנה.</p>
+        </div>
+        <span class="takeaway-pill">הדוחות נבנים תוך כדי תנועה</span>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
+      <span>שקף 4 מתוך 6</span>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: MULTIDISCIPLINARY TEAM & PARENT PARTNERSHIP -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="slide-header">
+      <div class="slide-header-brand">
+        <img src="./public/tala-logo.png" alt="TALA Logo" />
+        <div class="slide-header-title">
+          <h2>4. שותפות רב-מקצועית וחיבור ישיר להורים</h2>
+          <p>סנכרון מלא ללא דריסות הדדיות, שיתוף הורים מכבד במובייל ורצף פדגוגי הנשמר משנה לשנה</p>
+        </div>
+      </div>
+      <span class="slide-badge">מעטפת 360° מסונכרנת</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="split-comparison-grid">
+        <!-- Before -->
+        <div class="comparison-card before">
+          <div>
+            <span class="card-top-tag before">✕ השחיקה המסורתית</span>
+            <h3>סילואים מנותקים, דריסת קבצים ופער מול ההורים</h3>
+            <ul class="comparison-list">
+              <li><strong>עבודה מבודדת בקבצים נפרדים:</strong> גננת, מורת שילוב, קלינאית ומרפאה בעיסוק מנהלות רישומים נפרדים ללא שפה אחידה.</li>
+              <li><strong>דריסת שינויים ובלבול גרסאות:</strong> העברת קובצי Word במייל מובילה לעבודה כפולה, איבודי מידע ודריסת עדכונים הדדית.</li>
+              <li><strong>קושי באיסוף עמדת ההורים:</strong> שאלונים מודפסים שהולכים לאיבוד בתיק, או שיחות טלפון שלא מגיעות לידי ביטוי בתוכנית.</li>
+              <li><strong>קטיעת הרצף במעבר שנה:</strong> עם סיום השנה, הידע הפדגוגי נשאר מאחור והצוות של השנה הבאה מתחיל שוב מאפס.</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #991b1b; font-weight: 600; margin-top: 8px;">
+            תוצאה: חיכוך מנהלי, חוסר סנכרון ותחושת החמצה מול ההורים.
+          </div>
+        </div>
+
+        <!-- After -->
+        <div class="comparison-card after">
+          <div>
+            <span class="card-top-tag after">✓ שגרת העבודה ב-TALA</span>
+            <h3>צוות מתואם, הורים שותפים ורצף רב-שנתי</h3>
+            <ul class="comparison-list">
+              <li><strong>מוביל/ת מטרה לכל יעד:</strong> הגדרת תחום אחריות מקצועי ברור לכל מטרה, לדיון ממוקד ואפקטיבי בישיבות הצוות.</li>
+              <li><strong>מיזוג ענן חכם ללא דריסות:</strong> כל מטפל מעדכן את חלקו במקביל, והמערכת ממזגת את השינויים בצורה חלקה ובטוחה.</li>
+              <li><strong>שער "קול ההורים" ישיר ב-WhatsApp:</strong> שליחת קישור קצר ומכבד לנייד של ההורים; המשוב נכנס ישירות לפרק 1 בתוכנית.</li>
+              <li><strong>גלגול לשנה הבאה בלחיצה אחת:</strong> מוקדי הכוח והמטרות מועתקים לשנה החדשה, והערכת סוף השנה הופכת לנקודת המוצא הרציפה.</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #312e81; font-weight: 700; margin-top: 8px;">
+            תוצאה: שותפות אמיתית, חלוקת אחריות בריאה וידע פדגוגי שנשמר וצומח.
+          </div>
+        </div>
+      </div>
+
+      <div class="takeaway-banner">
+        <div>
+          <strong>🌱 המעטפת השלמה: שותפות הרמונית סביב הילד</strong>
+          <p>כל שותף יודע את אחריותו, ההורים מרגישים מעורבים ומוערכים, והידע הפדגוגי ממשיך ללוות את התלמיד משנה לשנה.</p>
+        </div>
+        <span class="takeaway-pill">שותפות הורים אמיתית</span>
+      </div>
+    </div>
+
+    <div class="slide-footer">
+      <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
+      <span>שקף 5 מתוך 6</span>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: EXECUTIVE SUMMARY, 3 OFFICIAL REPORTS & MINISTRY BRIDGE -->
+  <section class="slide">
+    <div class="stained-strip"></div>
+    <div class="slide-header">
+      <div class="slide-header-brand">
+        <img src="./public/tala-logo.png" alt="TALA Logo" />
+        <div class="slide-header-title">
+          <h2>5. השורה התחתונה: דוחות רשמיים, גשר למנב"ס ושקט נפשי</h2>
+          <p>עמידה מלאה בנהלי משרד החינוך, הפקת 3 דוחות בלחיצה והגנה מחמירה על פרטיות הקטין</p>
+        </div>
+      </div>
+      <span class="slide-badge">דיגיטציה מלאה & תקניות משה"ח</span>
+    </div>
+
+    <div class="slide-body">
+      <div class="split-comparison-grid">
+        <!-- Before -->
+        <div class="comparison-card before">
+          <div>
+            <span class="card-top-tag before">✕ השחיקה המסורתית</span>
+            <h3>טבלאות מתפרקות, כפילויות וחשש מפרטיות</h3>
+            <ul class="comparison-list">
+              <li><strong>כתיבה כפולה ומשולשת:</strong> כתיבה ידנית נפרדת של תל"א, הערכת מחצית ודו"ח מצב תקני לוועדות אפיון וזכאות.</li>
+              <li><strong>מאבקי הדבקה במנב"סנט/משו"ב:</strong> ניסיון להעתיק טבלאות ממסמכי Word שמסתיים בעימוד שבור ובאותיות הפוכות.</li>
+              <li><strong>סכנת חשיפת פרטי קטין (PII):</strong> מחיקה ידנית מועדת לטעויות של שמות ומספרי ת.ז לפני הפצה לגורמי טיפול חיצוניים.</li>
+              <li><strong>דוחות מצב חלקיים:</strong> קושי לבסס דוחות מצב על עובדות ותצפיות מדויקות שנאספו לאורך שנת הלימודים.</li>
+            </ul>
+          </div>
+          <div style="font-size: 11.5px; color: #991b1b; font-weight: 600; margin-top: 8px;">
+            תוצאה: מאבקים טכניים מתסכלים מול מערכות משרד החינוך וחשש מנהלי.
+          </div>
+        </div>
+
+        <!-- After -->
+        <div class="comparison-card after">
+          <div>
+            <span class="card-top-tag after">✓ שגרת העבודה ב-TALA</span>
+            <h3>3 דוחות בלחיצה, גשר מנב"ס והגנת פרטיות</h3>
+            <ul class="comparison-list">
+              <li><strong>3 דוחות רשמיים בלחיצה:</strong> הפקה מיידית של תוכנית תל"א/תח"י, הערכת מחצית וסוף שנה, ודו"ח מצב תקני של 15 סעיפים.</li>
+              <li><strong>ייצוא גמיש:</strong> הורדת קובץ Word מלא ועריך, הפקת PDF מותאם לדף, ושליחה ישירה ומאובטחת במייל.</li>
+              <li><strong>כפתור "📋 העתקה למנב"ס":</strong> העתקת טקסט נקי, רציף ומסודר בלחיצה אחת להדבקה מיידית במנב"סנט או משו"ב.</li>
+              <li><strong>הגנת פרטיות אוטומטית:</strong> המרה אוטומטית לראשי תיבות (נ.י.) והשחרת ת.ז ופרטים מזהים בכל הפקת מסמך.</li>
+            </ul>
+          </div>
+          
+          <div class="stats-row">
+            <div class="stat-box">
+              <div class="stat-number">70%-</div>
+              <div class="stat-label">זמן מנהלה ובירוקרטיה</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">100%</div>
+              <div class="stat-label">שליטה פדגוגית של המורה</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-number">360°</div>
+              <div class="stat-label">סנכרון צוות, הורים ומנב"ס</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="takeaway-banner" style="background: linear-gradient(135deg, #0f2744 0%, #1e3a5f 50%, #4338ca 100%);">
+        <div>
+          <strong style="color: #ffffff; font-size: 15px;">מוכנים להטמיע את TALA בצוותי המתי"א, הגנים ובתי הספר שלכם?</strong>
+          <p style="color: #e0e7ff; margin-top: 3px;">
+            המערכת מוכנה להטמעה מיידית: פועלת ישירות מהדפדפן, קלה ללמידה ב-5 דקות ומגובה בליווי מקצועי מלא.
+          </p>
+        </div>
+        <span class="takeaway-pill" style="background: #ffffff; color: #1e3a5f; font-weight: 800;">
+          TALA 2026 • מוכנה להטמעה
         </span>
       </div>
     </div>
 
     <div class="slide-footer">
       <span>מערכת TALA – תוכנית עבודה אקולוגית (תל"א / תח"י)</span>
-      <span>שקף 7 מתוך 7</span>
+      <span>שקף 6 מתוך 6</span>
     </div>
   </section>
 
