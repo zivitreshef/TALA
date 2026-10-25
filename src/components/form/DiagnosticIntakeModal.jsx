@@ -23,6 +23,7 @@ import {
   addDiagnosticDocumentToStudent
 } from '../../domain/diagnosticIntake';
 import { callAiProxyEndpoint } from '../../services/aiProxyClient';
+import { saveDossierFileBlob } from '../../services/dossierFileStorage';
 
 export default function DiagnosticIntakeModal({
   formData,
@@ -79,6 +80,13 @@ export default function DiagnosticIntakeModal({
         fullText: cleanExtracted,
         fileSizeFormatted: sizeFormatted
       });
+      // Preserve original file blob in local dossier storage for downloading and viewing
+      try {
+        await saveDossierFileBlob(docRecord.id, file);
+      } catch (saveErr) {
+        console.warn('Failed to save file blob in IndexedDB:', saveErr);
+      }
+
       setUploadedDocRecord(docRecord);
       setUploadedFileName(file.name);
 
