@@ -29,7 +29,9 @@ import {
   Unlock,
   MessageCircle,
   ClipboardCopy,
-  Home
+  Home,
+  Info,
+  FolderOpen
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
@@ -116,6 +118,7 @@ import ParentVoiceControl from './components/form/ParentVoiceControl';
 import MinistryCopyModal from './components/form/MinistryCopyModal';
 import QuickObservationModal from './components/form/QuickObservationModal';
 import DiagnosticIntakeModal from './components/form/DiagnosticIntakeModal';
+import { removeDiagnosticDocumentFromStudent } from './domain/diagnosticIntake';
 import { appendToFreeText } from './domain/parentInvite';
 import { addObservationToGoal } from './domain/goalObservations';
 import { DISCIPLINE_LEAD_OPTIONS } from './domain/studentSyncMerge';
@@ -223,6 +226,8 @@ export default function EcologicalWorkPlanForm({
   const [showMinistryCopyModal, setShowMinistryCopyModal] = useState(false);
   const [observationModalGoalId, setObservationModalGoalId] = useState(null);
   const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState(false);
+  const [selectedIntakeDoc, setSelectedIntakeDoc] = useState(null);
+  const [viewingDocText, setViewingDocText] = useState(null);
   const [saveBanner, setSaveBanner] = useState(false);
   const [autoSavedTime, setAutoSavedTime] = useState('');
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -237,6 +242,16 @@ export default function EcologicalWorkPlanForm({
   );
   const [isAdditionalInfoOpen, setIsAdditionalInfoOpen] = useState(false); // Collapsed by default ("מידע נוסף")
   const [copyTeamSuccessMsg, setCopyTeamSuccessMsg] = useState('');
+
+  const attachedDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+
+  const handleRemoveDiagnosticDoc = (docId, fileName) => {
+    if (window.confirm(`האם את בטוחה שברצונך להסיר את המסמך "${fileName}" מתיק התלמיד/ה?`)) {
+      const updated = removeDiagnosticDocumentFromStudent(formData, docId);
+      setFormData(updated);
+      onSaveStudentPlan?.(updated);
+    }
+  };
 
   const coworkerSuggestions = useMemo(
     () => extractCoworkerSuggestions(allStudents, allowedUsers, currentUser),
@@ -2977,6 +2992,31 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 : ''}
             </span>
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+            title="מסמכי אבחון וסיכומי ועדות שמורים – לחצי למעבר לחלק 2"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: attachedDocs.length > 0 ? '#f0fdf4' : '#f8fafc',
+              color: attachedDocs.length > 0 ? '#166534' : '#475569',
+              border: attachedDocs.length > 0 ? '1px solid #86efac' : '1px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <FileText size={15} style={{ color: attachedDocs.length > 0 ? '#15803d' : '#64748b' }} />
+            <span>
+              {attachedDocs.length > 0 ? `מסמכי אבחון • ${attachedDocs.length}` : 'מסמכי אבחון'}
+            </span>
+          </button>
           </div>
         </div>
 
@@ -3522,14 +3562,246 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       </section>
 
-      {/* Section 2: Teacher Free Text + עיבוד המידע Button + Student Profile (תל"א) or Strengths Table (תח"י) */}
+      {/* Section 2: Assessment Dossier + Teacher Free Text + AI Processing + Student Profile / Strengths */}
       <section className="form-section-card highlight-summary-section" ref={section2Ref}>
         <div className="section-header-line">
           <h3>
             {isTalaMode
-              ? '2. תיאור חופשי של המורה ופרופיל - תיאור תפקוד של התלמיד/ה'
-              : '2. תיאור חופשי של המורה וטבלת מוקדי כוח מסכמת'}
+              ? '2. מסמכי אבחון, תיאור תפקוד ומוקדי כוח של התלמיד/ה'
+              : '2. מסמכי אבחון, תיאור חופשי וטבלת מוקדי כוח מסכמת'}
           </h3>
+        </div>
+
+        {/* Dossier Card: Assessment documents & committee summaries */}
+        <div
+          className="diagnostic-dossier-card"
+          style={{
+            background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
+            border: '1.5px solid #cbd5e1',
+            borderRadius: '12px',
+            padding: '16px 18px',
+            marginBottom: '20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px',
+              marginBottom: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: '#e0e7ff',
+                  color: '#4338ca',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <FolderOpen size={20} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
+                    תיק מסמכי אבחון, חוות דעת וסיכומי ועדות
+                  </h4>
+                  <span
+                    style={{
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      color: attachedDocs.length > 0 ? '#15803d' : '#64748b',
+                      background: attachedDocs.length > 0 ? '#dcfce7' : '#e2e8f0',
+                      borderRadius: '999px',
+                      padding: '2px 8px'
+                    }}
+                  >
+                    {attachedDocs.length > 0 ? `${attachedDocs.length} מסמכים שמורים` : '0 מסמכים'}
+                  </span>
+                </div>
+                <p style={{ margin: '3px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                  העלי אבחונים ומסמכי רקע (Word, PDF או טקסט) כדי לשמור אותם בתיק התלמיד/ה ולגזור מהם רקע ומטרות בעזרת AI
+                </p>
+              </div>
+            </div>
+
+            {!isReportLocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedIntakeDoc(null);
+                  setShowDiagnosticIntakeModal(true);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#4f46e5',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(79, 70, 229, 0.25)',
+                  transition: 'background 0.2s'
+                }}
+                title="העלאת מסמך אבחון וניתוח פדגוגי אוטומטי בעזרת AI"
+              >
+                <Sparkles size={16} />
+                <span>קליטת אבחון חדש ב-AI</span>
+              </button>
+            )}
+          </div>
+
+          {/* Documents list or empty state */}
+          {attachedDocs.length === 0 ? (
+            <div
+              style={{
+                background: '#ffffff',
+                border: '1px dashed #cbd5e1',
+                borderRadius: '8px',
+                padding: '14px 16px',
+                textAlign: 'center',
+                color: '#64748b',
+                fontSize: '13px'
+              }}
+            >
+              טרם נשמרו מסמכי אבחון לתלמיד/ה זה. לחצי על ״קליטת אבחון חדש ב-AI״ כדי לצרף אבחון פסיכודידקטי, סיכום ועדת אפיון וזכאות או דוח טיפולי.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+              {attachedDocs.map((doc) => (
+                <div
+                  key={doc.id}
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px' }}>
+                    <FileText size={18} color="#4f46e5" />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
+                          {doc.fileName || 'מסמך ללא שם'}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            color: '#4338ca',
+                            background: '#e0e7ff',
+                            borderRadius: '4px',
+                            padding: '1px 5px',
+                            textTransform: 'uppercase'
+                          }}
+                        >
+                          {doc.fileType || 'DOC'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                        נשמר בתאריך: {new Date(doc.uploadedAt || Date.now()).toLocaleDateString('he-IL')}
+                        {doc.fileSizeFormatted ? ` • ${doc.fileSizeFormatted}` : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setViewingDocText(doc)}
+                      title="הצגת הטקסט שחולץ מהמסמך"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '4px 9px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#334155',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Eye size={13} />
+                      <span>צפייה בטקסט</span>
+                    </button>
+
+                    {!isReportLocked && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedIntakeDoc(doc);
+                          setShowDiagnosticIntakeModal(true);
+                        }}
+                        title="ניתוח חוזר של מסמך זה בעזרת AI"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#f0fdf4',
+                          border: '1px solid #86efac',
+                          borderRadius: '6px',
+                          padding: '4px 9px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#166534',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Sparkles size={13} />
+                        <span>ניתוח ב-AI</span>
+                      </button>
+                    )}
+
+                    {!isReportLocked && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDiagnosticDoc(doc.id, doc.fileName)}
+                        title="הסרת מסמך זה מתיק התלמיד/ה"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#fff1f2',
+                          border: '1px solid #fecdd3',
+                          borderRadius: '6px',
+                          padding: '4px 8px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#be123c',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Trash2 size={13} />
+                        <span>הסרה</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="free-text-area-box">
@@ -3563,29 +3835,6 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </label>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              {!isReportLocked && (
-                <button
-                  type="button"
-                  onClick={() => setShowDiagnosticIntakeModal(true)}
-                  title="קליטת דו״ח אבחון פסיכודידקטי או סיכום ועדת זכאות וגזירת רקע ומטרות ב-AI"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    background: '#f0fdf4',
-                    color: '#166534',
-                    border: '1px solid #bbf7d0',
-                    borderRadius: '6px',
-                    padding: '4px 11px',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Sparkles size={14} />
-                  <span>קליטת אבחון ב-AI</span>
-                </button>
-              )}
 
               {((formData.teacherFreeText || '').trim() || isRawFreeTextAlreadyAnalyzed(formData)) && (
                 <button
@@ -5965,13 +6214,192 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       {showDiagnosticIntakeModal && (
         <DiagnosticIntakeModal
           formData={formData}
+          initialText={selectedIntakeDoc?.fullText || ''}
+          initialDocName={selectedIntakeDoc?.fileName || ''}
           onApplyIntake={(updatedStudent) => {
             setFormData(updatedStudent);
             onSaveStudentPlan?.(updatedStudent);
             setShowDiagnosticIntakeModal(false);
+            setSelectedIntakeDoc(null);
           }}
-          onClose={() => setShowDiagnosticIntakeModal(false)}
+          onClose={() => {
+            setShowDiagnosticIntakeModal(false);
+            setSelectedIntakeDoc(null);
+          }}
         />
+      )}
+
+      {/* Reader Modal for Diagnostic Document Full Text */}
+      {viewingDocText && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={() => setViewingDocText(null)}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '14px',
+              maxWidth: '750px',
+              width: '100%',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+              overflow: 'hidden',
+              direction: 'rtl'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px 20px',
+                borderBottom: '1px solid #e2e8f0',
+                background: '#f8fafc'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FileText size={20} color="#4f46e5" />
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>
+                    {viewingDocText.fileName || 'מסמך אבחון'}
+                  </h4>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    הועלה בתאריך {new Date(viewingDocText.uploadedAt || Date.now()).toLocaleDateString('he-IL')}
+                    {viewingDocText.fileSizeFormatted ? ` • ${viewingDocText.fileSizeFormatted}` : ''}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingDocText(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  padding: '4px'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div
+              style={{
+                padding: '20px',
+                overflowY: 'auto',
+                flex: 1,
+                fontSize: '14px',
+                lineHeight: 1.7,
+                whiteSpace: 'pre-wrap',
+                color: '#334155',
+                background: '#fafafa',
+                fontFamily: 'inherit',
+                maxHeight: '60vh'
+              }}
+            >
+              {viewingDocText.fullText || viewingDocText.textSnippet || 'אין טקסט זמין במסמך זה.'}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 20px',
+                borderTop: '1px solid #e2e8f0',
+                background: '#ffffff'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(viewingDocText.fullText || '');
+                  alert('הטקסט הועתק ללוח בהצלחה!');
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <ClipboardCopy size={15} />
+                <span>העתק טקסט</span>
+              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {!isReportLocked && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const doc = viewingDocText;
+                      setViewingDocText(null);
+                      setSelectedIntakeDoc(doc);
+                      setShowDiagnosticIntakeModal(true);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#4f46e5',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 14px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Sparkles size={15} />
+                    <span>ניתוח ב-AI</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewingDocText(null)}
+                  style={{
+                    background: '#f8fafc',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    cursor: 'pointer'
+                  }}
+                >
+                  סגור
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
