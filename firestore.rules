@@ -19,6 +19,7 @@ service cloud.firestore {
 
     function isPrimaryAdmin() {
       return currentEmail() == 'zivit.reshef@gmail.com' ||
+        currentEmail() == 'moti.reshef@gmail.com' ||
         currentEmail() == 'moti_reshef@bmc.com' ||
         (request.auth != null && (
           request.auth.uid == 'tala_ccd05b8d703389243cd80ff9' ||
@@ -72,15 +73,17 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /tala_config/goal_bank {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
     match /tala_config/presence {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
     match /tala_sessions/{key} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      // Teachers can only read and manage their own session document; admins can inspect all
+      allow read: if isAdmin() || (isSignedIn() && key == currentEmail().replace('[^a-z0-9._-]', '_'));
+      allow write: if isAdmin() || (isSignedIn() && key == currentEmail().replace('[^a-z0-9._-]', '_'));
     }
     match /tala_config/students_migration_meta {
       allow read, write: if isAdmin();
@@ -104,7 +107,6 @@ service cloud.firestore {
           request.resource.data.userEmail == '' ||
           request.resource.data.userEmail == currentEmail());
     }
-    // Any other tala_config doc: denied by default.
 
     // Student plans & status reports. Owner, shared teachers and the primary admin only.
     match /tala_students/{studentId} {
@@ -113,15 +115,21 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
         (isAdmin() || request.resource.data.ownerEmail == currentEmail());
 
-      // Prevent non-owners from hijacking ownerEmail or archiving a shared student
+      // Prevent non-owners from hijacking ownerEmail, ownerUid, or archiving a shared student
       allow update: if (
         isOwnerOfResource(resource.data) ||
         isSharedOnResource(resource.data)
       ) && (
         request.resource.data.ownerEmail == resource.data.ownerEmail
       ) && (
+        !('ownerUid' in resource.data) ||
+        request.resource.data.ownerUid == resource.data.ownerUid
+      ) && (
         isOwnerOfResource(resource.data) ||
-        request.resource.data.archived == resource.data.archived
+        (
+          request.resource.data.archived == resource.data.archived &&
+          request.resource.data.sharedWith == resource.data.sharedWith
+        )
       );
 
       // Only the student's owner (or primary admin) can delete a student
@@ -169,9 +177,10 @@ service cloud.firestore {
       allow delete: if isInviteOwner(resource.data);
     }
 
-    // Per-user rate limit counter — users can only touch their own doc
+    // Per-user rate limit counter — strictly managed by Cloud Functions Admin SDK.
+    // Client cannot read or write to artificially zero out or manipulate rate limits.
     match /ai_rate_limits/{userId} {
-      allow read, write: if isSignedIn() && currentEmail() == userId;
+      allow read, write: if false;
     }
 
     // Audit log — completely locked down for clients

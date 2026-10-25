@@ -1,7 +1,8 @@
 import {
   toHebrewAcronym,
   maskSensitiveValue,
-  redactStudentNameInText
+  redactStudentNameInText,
+  escapeHtml
 } from '../domain/privacyAndAcronyms';
 import { generateStatusReportLocally } from '../domain/statusReportGenerator';
 import {
@@ -29,7 +30,7 @@ export function getAdditionalMetadataItems(formData = {}, hideDetails = false) {
     .filter((item) => String(item.value || '').trim().length > 0)
     .map((item) => ({
       label: item.label,
-      value: item.sensitive && hideDetails ? maskSensitiveValue(item.value) : String(item.value).trim()
+      value: item.sensitive && hideDetails ? maskSensitiveValue(item.value) : escapeHtml(String(item.value).trim())
     }));
 }
 
@@ -84,7 +85,7 @@ export function getDisplayStudentName(formData = {}, hideDetails = false) {
   if (hideDetails) {
     return toHebrewAcronym(formData.name);
   }
-  return formData.name || '__________';
+  return escapeHtml(formData.name || '__________');
 }
 
 export function getDisplayMaskedField(val, hideDetails = false) {
@@ -95,7 +96,7 @@ export function getDisplayMaskedField(val, hideDetails = false) {
 }
 
 export function getRedactedText(text, formData = {}, hideDetails = false) {
-  return redactStudentNameInText(text || '', formData.name, hideDetails);
+  return escapeHtml(redactStudentNameInText(text || '', formData.name, hideDetails));
 }
 
 export function getSafeReportFilename(formData = {}, hideDetails = false, ext = 'doc', mode = 'tala') {
