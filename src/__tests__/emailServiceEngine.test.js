@@ -65,6 +65,7 @@ describe('Email Service Configuration & Background Dispatch Engine', () => {
   afterEach(() => {
     warnSpy.mockRestore();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('persists and loads email engine configuration with defaults and fallbacks', () => {
