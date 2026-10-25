@@ -213,7 +213,8 @@ export function sanitizeDiagnosticIntakeResult(rawResult = {}, gender = 'boy') {
 export function applyDiagnosticIntakeToStudent(
   formData = {},
   intake = {},
-  selectedGoalIds = []
+  selectedGoalIds = [],
+  attachedDocRecord = null
 ) {
   const approvedGoals = (intake.suggestedGoals || []).filter((g) =>
     selectedGoalIds.includes(g.id)
@@ -230,7 +231,7 @@ export function applyDiagnosticIntakeToStudent(
     return `${c}\n\n${a}`;
   };
 
-  return {
+  let nextFormData = {
     ...formData,
     studentGeneralBackground: mergeText(
       formData.studentGeneralBackground,
@@ -245,6 +246,69 @@ export function applyDiagnosticIntakeToStudent(
     strengthsToEmpower: mergeText(formData.strengthsToEmpower, intake.strengthsToEmpower),
     recommendations: mergeText(formData.recommendations, intake.recommendations),
     goals: nextGoals,
+    lastSavedAt: new Date().toISOString()
+  };
+
+  if (attachedDocRecord && attachedDocRecord.fileName) {
+    nextFormData = addDiagnosticDocumentToStudent(nextFormData, attachedDocRecord);
+  }
+
+  return nextFormData;
+}
+
+
+/**
+ * Creates a diagnostic document record object for student storage.
+ */
+export function createDiagnosticDocumentRecord({
+  fileName = '',
+  fileType = 'pdf',
+  fullText = '',
+  fileSizeFormatted = ''
+}) {
+  const cleanText = String(fullText || '').trim();
+  const snippet = cleanText.length > 200 ? `${cleanText.slice(0, 200)}...` : cleanText;
+  return {
+    id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    fileName: String(fileName || 'מסמך ללא שם').trim(),
+    fileType: String(fileType || 'pdf').toLowerCase(),
+    fileSizeFormatted: fileSizeFormatted || '',
+    uploadedAt: new Date().toISOString(),
+    textSnippet: snippet,
+    fullText: cleanText
+  };
+}
+
+/**
+ * Attaches a diagnostic document record to the student's diagnosticDocuments list.
+ */
+export function addDiagnosticDocumentToStudent(formData = {}, docRecord = {}) {
+  if (!docRecord || !docRecord.fileName) return formData;
+  const existingDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+
+  const exists = existingDocs.some(
+    (d) => d.id === docRecord.id || (d.fileName === docRecord.fileName && d.fullText === docRecord.fullText)
+  );
+  if (exists) return formData;
+
+  return {
+    ...formData,
+    diagnosticDocuments: [docRecord, ...existingDocs],
+    lastSavedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Removes a diagnostic document from the student's diagnosticDocuments list by id.
+ */
+export function removeDiagnosticDocumentFromStudent(formData = {}, docId = '') {
+  if (!docId) return formData;
+  const existingDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+  const filtered = existingDocs.filter((d) => d.id !== docId);
+
+  return {
+    ...formData,
+    diagnosticDocuments: filtered,
     lastSavedAt: new Date().toISOString()
   };
 }

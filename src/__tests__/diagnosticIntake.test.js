@@ -4,7 +4,10 @@ import {
   sanitizeDiagnosticIntakeResult,
   applyDiagnosticIntakeToStudent,
   extractTextFromDocx,
-  extractTextFromFile
+  extractTextFromFile,
+  createDiagnosticDocumentRecord,
+  addDiagnosticDocumentToStudent,
+  removeDiagnosticDocumentFromStudent
 } from '../domain/diagnosticIntake';
 
 describe('diagnosticIntake', () => {
@@ -88,5 +91,48 @@ describe('diagnosticIntake', () => {
     };
     const text = await extractTextFromFile(mockFile);
     expect(text).toBe('דוח אבחון טקסטואלי');
+  });
+
+  it('creates and manages diagnostic document records on student', () => {
+    const doc = createDiagnosticDocumentRecord({
+      fileName: 'אבחון_פסיכולוגי.docx',
+      fileType: 'docx',
+      fullText: 'ממצאי אבחון פסיכולוגי של התלמיד...',
+      fileSizeFormatted: '120 KB'
+    });
+    expect(doc.id).toMatch(/^doc_/);
+    expect(doc.fileName).toBe('אבחון_פסיכולוגי.docx');
+    expect(doc.fileType).toBe('docx');
+    expect(doc.textSnippet).toContain('ממצאי אבחון');
+    expect(doc.uploadedAt).toBeDefined();
+
+    const student = { name: 'דני', diagnosticDocuments: [] };
+    const withDoc = addDiagnosticDocumentToStudent(student, doc);
+    expect(withDoc.diagnosticDocuments).toHaveLength(1);
+    expect(withDoc.diagnosticDocuments[0].id).toBe(doc.id);
+
+    // Adding duplicate does not create double record
+    const duplicate = addDiagnosticDocumentToStudent(withDoc, doc);
+    expect(duplicate.diagnosticDocuments).toHaveLength(1);
+
+    const removed = removeDiagnosticDocumentFromStudent(withDoc, doc.id);
+    expect(removed.diagnosticDocuments).toHaveLength(0);
+  });
+
+  it('attaches uploadedDocRecord to student when applyDiagnosticIntakeToStudent is called with a document', () => {
+    const student = { name: 'נועם', diagnosticDocuments: [] };
+    const doc = createDiagnosticDocumentRecord({
+      fileName: 'סיכום_ועדת_זכאות.pdf',
+      fileType: 'pdf',
+      fullText: 'המלצות שילוב...',
+      fileSizeFormatted: '45 KB'
+    });
+    const intake = {
+      studentGeneralBackground: 'רקע חדש',
+      suggestedGoals: []
+    };
+    const applied = applyDiagnosticIntakeToStudent(student, intake, [], doc);
+    expect(applied.diagnosticDocuments).toHaveLength(1);
+    expect(applied.diagnosticDocuments[0].fileName).toBe('סיכום_ועדת_זכאות.pdf');
   });
 });
