@@ -323,13 +323,16 @@ export function createDiagnosticDocumentRecord({
   fileSizeFormatted = ''
 }) {
   const cleanText = String(fullText || '').trim();
-  const snippet = cleanText.length > 200 ? `${cleanText.slice(0, 200)}...` : cleanText;
+  const snippet = cleanText
+    ? (cleanText.length > 200 ? `${cleanText.slice(0, 200)}...` : cleanText)
+    : 'מסמך סרוק / תמונה – שמור בתיק התלמיד/ה';
   return {
     id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     fileName: String(fileName || 'מסמך ללא שם').trim(),
     fileType: String(fileType || 'pdf').toLowerCase(),
     fileSizeFormatted: fileSizeFormatted || '',
     uploadedAt: new Date().toISOString(),
+    extractionStatus: cleanText ? 'success' : 'scanned_image',
     textSnippet: snippet,
     fullText: cleanText
   };
