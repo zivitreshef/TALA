@@ -4,6 +4,7 @@ import {
   Printer,
   Sparkles,
   Plus,
+  Minus,
   Trash2,
   Search,
   TrendingUp,
@@ -3659,22 +3660,25 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   e.stopPropagation();
                   setIsDossierOpen((prev) => !prev);
                 }}
+                title={isDossierOpen ? 'סגירת תיק מסמכים' : 'פתיחת תיק מסמכים'}
+                aria-label={isDossierOpen ? 'סגירת תיק מסמכים' : 'פתיחת תיק מסמכים'}
                 style={{
+                  width: '32px',
+                  height: '32px',
+                  minWidth: '32px',
+                  borderRadius: '8px',
+                  background: isDossierOpen ? '#ede9fe' : '#f4f7fc',
+                  border: isDossierOpen ? '1px solid #c4b5fd' : '1px solid #d3dff0',
+                  color: isDossierOpen ? '#5b21b6' : '#2b4c73',
+                  cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '5px',
-                  background: isDossierOpen ? '#ede9fe' : '#f8fafc',
-                  color: isDossierOpen ? '#5b21b6' : '#475569',
-                  border: isDossierOpen ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  padding: '4px 10px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer'
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(43, 76, 115, 0.04)'
                 }}
               >
-                {isDossierOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                <span>{isDossierOpen ? 'כווץ' : 'הרחב'}</span>
+                {isDossierOpen ? <Minus size={16} /> : <Plus size={16} />}
               </button>
             </div>
           </div>
