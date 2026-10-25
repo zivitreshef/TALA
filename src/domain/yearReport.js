@@ -193,7 +193,8 @@ export const normalizeStudentForForm = (st) => {
     statusReportSections: initialStatusReportSections,
     statusReportUpdatedAt: st?.statusReportUpdatedAt || '',
     lastSavedAt: st?.lastSavedAt || '',
-    goals: normalizedGoals
+    goals: normalizedGoals,
+    diagnosticDocuments: Array.isArray(st?.diagnosticDocuments) ? st.diagnosticDocuments : []
   };
 
   const stageInfo = detectStudentStage(
