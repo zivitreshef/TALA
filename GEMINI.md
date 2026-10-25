@@ -37,8 +37,10 @@ For ANY feature, enhancement, or modification in TALA, you MUST proactively desi
 
 For ANY enhancement or bug fix, ALWAYS strictly follow this 6-step lifecycle:
 1. **Red Banner (2 min)**: Trigger the live red warning banner in Firestore so active teachers know to save their work: `npm run upgrade:start`. Wait 2 minutes (or ensure banner is live) before deploying.
-2. **Branch & PR**: Develop on a dedicated feature/bugfix branch and create a PR.
-3. **Tests & Build**: Run all unit tests (`npx vitest run`) and verify the build (`npm run build`). All tests must pass before proceeding.
-4. **Merge**: Merge the PR into `main`.
+2. **Branch & Mandatory Test Authorship**:
+   - Develop on a dedicated feature/bugfix branch.
+   - **Zero Uncovered Code**: Every new feature MUST include new unit tests covering its behavior and edge cases in `src/__tests__/`; every bug fix MUST include a regression test reproducing the issue and proving the fix.
+3. **Verification & Build**: Run all unit tests (`npx vitest run`) and verify the production build (`npm run build`). All tests must pass with 100% success before proceeding.
+4. **PR & Merge**: Open a PR with clear test evidence and squash/merge into `main`.
 5. **Deploy Web**: Confirm that the GitHub Actions deployment workflow to GitHub Pages starts and finishes successfully.
 6. **Disable Banner**: Once the deployment is live, turn off the red warning banner: `npm run upgrade:end`.
