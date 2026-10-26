@@ -67,27 +67,39 @@ export function calculateStorageFootprint(students = []) {
   students.forEach((student) => {
     const studentName = student?.name || 'תלמיד/ה ללא שם';
     const studentId = student?.id || '';
-    const docs = student?.diagnosticDossier?.documents;
-    if (Array.isArray(docs)) {
-      docs.forEach((doc) => {
-        if (doc && (doc.storagePath || doc.storageUrl)) {
-          const fileSize = Number(doc.fileSize) || 0;
-          totalFiles += 1;
-          totalBytes += fileSize;
-          allFiles.push({
-            id: doc.id || doc.storagePath,
-            fileName: doc.fileName || doc.name || 'קובץ ללא שם',
-            fileSize,
-            formattedSize: fileSize > 1024 * 1024
-              ? (fileSize / (1024 * 1024)).toFixed(1) + ' MB'
-              : Math.round(fileSize / 1024) + ' KB',
-            studentName,
-            studentId,
-            uploadedAt: doc.uploadedAt || doc.createdAt || ''
-          });
+    const docs = Array.isArray(student?.diagnosticDocuments)
+      ? student.diagnosticDocuments
+      : Array.isArray(student?.diagnosticDossier?.documents)
+      ? student.diagnosticDossier.documents
+      : [];
+
+    docs.forEach((doc) => {
+      if (doc && (doc.storagePath || doc.storageUrl || doc.fileName)) {
+        let fileSize = Number(doc.fileSize) || 0;
+        if (!fileSize && doc.fileSizeFormatted) {
+          const m = String(doc.fileSizeFormatted).match(/([\d.]+)\s*(MB|KB|B)?/i);
+          if (m) {
+            const val = parseFloat(m[1]);
+            const unit = (m[2] || 'KB').toUpperCase();
+            fileSize = unit === 'MB' ? val * 1024 * 1024 : unit === 'KB' ? val * 1024 : val;
+          }
         }
-      });
-    }
+        if (!fileSize) fileSize = 250 * 1024;
+        totalFiles += 1;
+        totalBytes += fileSize;
+        allFiles.push({
+          id: doc.id || doc.storagePath,
+          fileName: doc.fileName || doc.name || 'קובץ ללא שם',
+          fileSize,
+          formattedSize: fileSize > 1024 * 1024
+            ? (fileSize / (1024 * 1024)).toFixed(1) + ' MB'
+            : Math.round(fileSize / 1024) + ' KB',
+          studentName,
+          studentId,
+          uploadedAt: doc.uploadedAt || doc.createdAt || ''
+        });
+      }
+    });
   });
 
   const totalMb = totalBytes / (1024 * 1024);
