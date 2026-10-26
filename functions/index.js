@@ -246,8 +246,8 @@ const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwp3HLC
 const DEFAULT_TELEGRAM_BOT_TOKEN = '7774912239:AAHOkYkO6xLqQfLd80Zg3aR90pG7yG9mK10';
 const serverDedupeMap = new Map();
 
-async function handleHealthEventCreated(event) {
-  const data = event.data ? event.data.data() : null;
+async function handleHealthEventCreated(snap, context) {
+  const data = snap && typeof snap.data === "function" ? snap.data() : (snap && snap.data ? snap.data.data() : null);
   if (!data) return;
 
   // Deduplication check: max 1 alert per kind+category+user per 60 seconds
@@ -356,7 +356,6 @@ async function handleHealthEventCreated(event) {
   }
 }
 
-exports.onHealthEventCreated = require("firebase-functions/v2/firestore").onDocumentCreated(
-  { document: "tala_health_events/{eventId}", region: "us-central1" },
-  handleHealthEventCreated
-);
+exports.onHealthEventCreated = functions.firestore
+  .document("tala_health_events/{eventId}")
+  .onCreate(handleHealthEventCreated);
