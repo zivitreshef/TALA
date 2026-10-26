@@ -248,7 +248,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         'utf-8'
       );
 
-      expect(content).toContain('AI יומי:');
+      expect(content).toContain('AdminUsageAndSecurityDashboard');
       expect(content).toContain('סה"כ שאילתות AI (מצטבר)');
       expect(content).toContain('שימושי AI (מצטבר)');
     });

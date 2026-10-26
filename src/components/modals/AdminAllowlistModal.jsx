@@ -708,23 +708,19 @@ export default function AdminAllowlistModal({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* System Quota Badges */}
+            {/* Cloud Sync Status Badge */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '6px',
                 background: 'rgba(255, 255, 255, 0.15)',
-                padding: '4px 10px',
+                padding: '4px 12px',
                 borderRadius: '999px',
                 fontSize: '11.5px',
                 fontWeight: 600
               }}
             >
-              <span title="מכסת AI Studio Gemini יומית (איפוס כל 24 שעות)">🤖 AI יומי: {effectiveAiCount} / {DAILY_AI_QUOTA_LIMIT}</span>
-              <span style={{ opacity: 0.5 }}>|</span>
-              <span title="מכסת שליחת מיילים יומית">✉️ מיילים: {effectiveEmailCount} / {DAILY_EMAIL_QUOTA_LIMIT}</span>
-              <span style={{ opacity: 0.5 }}>|</span>
               <span>{cloudSyncState?.connected ? '☁️ ענן מחובר' : '💾 מקומי'}</span>
             </div>
 
