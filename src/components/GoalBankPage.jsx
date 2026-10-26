@@ -9,6 +9,7 @@ import {
   Edit2,
   Trash2,
   X,
+  Users,
   Home,
   ArrowRight,
   Sparkles
@@ -261,10 +262,10 @@ export default function GoalBankPage({
             type="button"
             className="btn-goal-bank-back"
             onClick={onGoHome}
-            title="חזרה לדף הבית"
+            title="חזרה לניהול תלמידים"
           >
-            <Home size={15} />
-            <span>חזרה לדף הבית</span>
+            <Users size={15} />
+            <span>חזרה לניהול תלמידים</span>
           </button>
         </div>
       </header>
@@ -315,7 +316,7 @@ export default function GoalBankPage({
             </>
           ) : (
             <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
-              💡 צרי כרטיס תלמיד/ה בדף הבית כדי להוסיף מטרות בלחיצה אחת מתוך המאגר.
+              💡 צרי כרטיס תלמיד/ה בניהול תלמידים כדי להוסיף מטרות בלחיצה אחת מתוך המאגר.
             </span>
           )}
         </div>

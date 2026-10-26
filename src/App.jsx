@@ -1717,7 +1717,7 @@ export default function App() {
           className="tala-brand"
           onClick={() => setSelectedStudentId(null)}
           style={{ cursor: 'pointer' }}
-          title="חזרה לדף הבית הפנימי (בחירת או יצירת תלמיד/ה)"
+          title="חזרה לניהול תלמידים (בחירת או יצירת תלמיד/ה)"
         >
           <div className="brand-logo-circle">
             <img src="./tala-logo.png" alt="TALA Logo" className="header-logo-img" />
@@ -1750,10 +1750,10 @@ export default function App() {
                 setShowDailyTracker(false);
                 setShowGoalBankOverview(false);
               }}
-              title="חזרה לדף הבית"
+              title="ניהול תלמידים"
             >
-              <Home size={15} />
-              <span>דף הבית</span>
+              <Users size={15} />
+              <span>ניהול תלמידים</span>
             </button>
 
             <button
@@ -2284,10 +2284,10 @@ export default function App() {
                   type="button"
                   className="btn-mobile-back-roster"
                   onClick={() => setSelectedStudentId(null)}
-                  title="חזרה לדף הבית"
+                  title="ניהול תלמידים"
                 >
-                  <Home size={17} />
-                  <span>דף הבית</span>
+                  <Users size={17} />
+                  <span>ניהול תלמידים</span>
                 </button>
                 <button
                   type="button"

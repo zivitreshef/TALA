@@ -2033,7 +2033,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="button"
               className="btn-print-doc btn-home-nav-form"
               onClick={onGoHome}
-              title="חזרה לדף הבית (הוספת תלמיד/ה חדש/ה או פתיחת דוח קיים)"
+              title="חזרה לניהול תלמידים (הוספת תלמיד/ה חדש/ה או פתיחת דוח קיים)"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -2047,8 +2047,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 padding: '6px 12px'
               }}
             >
-              <Home size={16} style={{ color: '#2563eb' }} />
-              <span>דף הבית</span>
+              <Users size={16} style={{ color: '#2563eb' }} />
+              <span>ניהול תלמידים</span>
             </button>
           )}
 

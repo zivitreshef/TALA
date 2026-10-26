@@ -16,11 +16,12 @@
 
 /* --- Top Header & Fast Sync Toolbar --- */
 .tracker-top-header {
-  background: #ffffff;
-  border: 1.5px solid var(--border, #d3dff0);
+  background: linear-gradient(135deg, #2b4c73 0%, #3d6391 52%, #5c4b85 100%);
+  color: #ffffff;
+  border: none;
   border-radius: 18px;
-  padding: 16px 22px;
-  box-shadow: 0 4px 16px rgba(43, 76, 115, 0.04);
+  padding: 22px 28px;
+  box-shadow: 0 12px 30px rgba(43, 76, 115, 0.14);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -31,29 +32,30 @@
 .tracker-header-info {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .tracker-header-avatar {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #4a88c7 0%, #8b6fc0 100%);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   font-size: 20px;
-  box-shadow: 0 4px 12px rgba(74, 136, 199, 0.25);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   flex-shrink: 0;
 }
 
 .tracker-header-title-box h1 {
   margin: 0;
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 800;
-  color: var(--primary-deep, #2b4c73);
+  color: #ffffff;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -62,9 +64,9 @@
 
 .tracker-ai-pill {
   font-size: 11.5px;
-  background: #f3eefc;
-  color: #563d82;
-  border: 1px solid #b8a2e3;
+  background: rgba(255, 255, 255, 0.18);
+  color: #f0f7ff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 2px 10px;
   border-radius: 999px;
   font-weight: 700;
@@ -74,9 +76,9 @@
 }
 
 .tracker-header-date {
-  margin: 2px 0 0 0;
-  font-size: 12.5px;
-  color: var(--text-muted, #5c6f8c);
+  margin: 4px 0 0 0;
+  font-size: 13.5px;
+  color: rgba(240, 247, 255, 0.92);
 }
 
 .tracker-header-actions {
@@ -87,51 +89,54 @@
 }
 
 .btn-cal-sync {
-  background: #ffffff;
-  border: 1.5px solid var(--border, #d3dff0);
+  background: rgba(255, 255, 255, 0.18);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
   border-radius: 12px;
   padding: 8px 14px;
   font-size: 12.5px;
   font-weight: 700;
+  color: #ffffff;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   transition: all 0.15s ease;
-  box-shadow: 0 1px 4px rgba(43, 76, 115, 0.04);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .btn-cal-sync:hover {
-  background: #f8faff;
-  border-color: #b0c6e5;
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.5);
   transform: translateY(-1px);
 }
 
-
 .btn-cal-ics {
-  background: #f3eefc;
-  color: #563d82;
-  border-color: #b8a2e3;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.32);
 }
 
 .btn-cal-ics:hover {
-  background: #ebdffd;
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .btn-cal-close {
-  background: #f1f5f9;
-  color: #475569;
+  background: #ffffff;
+  color: #1e3a8a;
   border: none;
   border-radius: 12px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 .btn-cal-close:hover {
-  background: #e2e8f0;
+  background: #f0f7ff;
+  color: #1d4ed8;
+  transform: translateY(-1px);
 }
 
 /* --- Pulse Scorecards Row --- */

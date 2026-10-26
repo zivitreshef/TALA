@@ -615,7 +615,7 @@ export default function DailyPedagogicalTracker({
               onClick={onClose}
               className="btn-cal-close"
             >
-              חזרה לתיקי תלמידים
+              חזרה לניהול תלמידים
             </button>
           )}
         </div>
