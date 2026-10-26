@@ -181,6 +181,26 @@ describe('AI Backend Proxy Client & Security Safeguards', () => {
     ).rejects.toThrow('Prompt injection detected');
   });
 
+  it('pingAiProxy sends a lightweight operation: ping payload without prompt or Gemini overhead', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, pong: true })
+    });
+
+    const pingRes = await pingAiProxy();
+    expect(pingRes.ok).toBe(true);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+    const [calledUrl, calledOptions] = globalThis.fetch.mock.calls[0];
+    expect(calledUrl).toContain('aiGenerateV2');
+    expect(calledOptions.method).toBe('POST');
+
+    const parsedBody = JSON.parse(calledOptions.body);
+    expect(parsedBody.operation).toBe('ping');
+    expect(parsedBody.payload).toBeUndefined();
+    expect(parsedBody.hints).toBeUndefined();
+  });
+
   it('pingAiProxy retries on initial transient network failure and returns ok: true', async () => {
     globalThis.fetch = vi.fn()
       .mockRejectedValueOnce(new TypeError('Failed to fetch'))

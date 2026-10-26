@@ -188,9 +188,7 @@ export async function pingAiProxy() {
     ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
   };
   const bodyString = JSON.stringify({
-    operation: 'rawPrompt',
-    payload: { prompt: 'החזר JSON תקין בלבד: {"ok": true}' },
-    hints: {}
+    operation: 'ping'
   });
 
   const sendPing = async (url) => {
