@@ -52,6 +52,7 @@ import { sendUserInvitationEmailInBackground } from '../../emailService';
 import { subscribeToUserPresence } from '../../firebaseBackend';
 import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../UpgradeBanner';
 import SystemHealthPanel from './SystemHealthPanel';
+import AdminAlertsPanel from '../admin/AdminAlertsPanel';
 import AdminUsageAndSecurityDashboard from './AdminUsageAndSecurityDashboard';
 import { fetchTelemetrySnapshot } from '../../services/telemetryService';
 import { aggregateTelemetryData } from '../../domain/telemetry';
@@ -1906,6 +1907,11 @@ export default function AdminAllowlistModal({
                 onMarkHealthReviewed={onMarkHealthReviewed}
                 onClearHealthEvents={onClearHealthEvents}
                 cloudSyncState={cloudSyncState}
+              />
+              <AdminAlertsPanel
+                allowedUsers={allowedUsers}
+                onUpdateAllowedUsers={onUpdateAllowedUsers}
+                emailEngineConfig={emailEngineConfig}
               />
             </div>
           )}

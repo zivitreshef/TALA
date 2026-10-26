@@ -35,7 +35,7 @@ export const DEFAULT_APPS_SCRIPT_URL =
 
 export function loadEmailEngineConfig() {
   try {
-    const raw = localStorage.getItem(EMAIL_ENGINE_STORAGE_KEY);
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(EMAIL_ENGINE_STORAGE_KEY) : null;
     if (raw) {
       const parsed = JSON.parse(raw);
       return {

@@ -87,7 +87,7 @@ exports.aiGenerateV2=require("firebase-functions/v2/https").onRequest({region:"u
 
 // ---- talaConfigWrite: the only write path to tala_config/allowed_users & admin_requests ----
 const PRIMARY_ADMIN="zivit.reshef@gmail.com";
-const SELF_FIELDS=["passwordHash","passwordSalt","mustChangePassword","mustSignNda","ndaSigned","ndaSignedAt","ndaSignedDate","ndaSignerIdNumber","surveyCompleted","surveyCompletedAt","surveyDismissed","dismissedSharedReportIds","notifyOnSharedReport"];
+const SELF_FIELDS=["passwordHash","passwordSalt","mustChangePassword","mustSignNda","ndaSigned","ndaSignedAt","ndaSignedDate","ndaSignerIdNumber","surveyCompleted","surveyCompletedAt","surveyDismissed","dismissedSharedReportIds","notifyOnSharedReport","adminAlerts"];
 const OTHER_FIELDS=["dismissedSharedReportIds"]; // any signed-in user may re-notify a colleague
 const pick=(o,keys)=>{const r={};for(const k of keys)if(o&&k in o)r[k]=o[k];return r;};
 const lc=(s)=>String(s||"").trim().toLowerCase();
@@ -240,3 +240,123 @@ async function handleTalaLogin(req,res){
   res.status(200).json({allowed:true,token,user:outcome.user});
 }
 exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaLogin);
+
+// ---- onHealthEventCreated: Real-time Admin Alerts (Email, Telegram, WhatsApp) ----
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwp3HLCO9kErrN-vS2odXYcco1B5KMlbTw7qeJWrSSKg5nqZocfrsvyUOIO-LurJJtg/exec';
+const DEFAULT_TELEGRAM_BOT_TOKEN = '7774912239:AAHOkYkO6xLqQfLd80Zg3aR90pG7yG9mK10';
+const serverDedupeMap = new Map();
+
+async function handleHealthEventCreated(event) {
+  const data = event.data ? event.data.data() : null;
+  if (!data) return;
+
+  // Deduplication check: max 1 alert per kind+category+user per 60 seconds
+  const dedupeKey = `${data.kind || ''}_${data.category || ''}_${data.userEmail || ''}`;
+  const now = Date.now();
+  const lastSent = serverDedupeMap.get(dedupeKey) || 0;
+  if (now - lastSent < 60 * 1000) {
+    return;
+  }
+  serverDedupeMap.set(dedupeKey, now);
+
+  const db = admin.firestore();
+  let users = [];
+  try {
+    const snap = await db.collection("tala_config").doc("allowed_users").get();
+    users = (snap.exists && snap.data().users) || [];
+  } catch (err) {
+    console.error("Failed to read allowed_users for health alert:", err);
+    return;
+  }
+
+  const admins = users.filter((u) => u && u.role === "admin" && u.active !== false);
+  if (!admins.length) return;
+
+  const kindLabel = data.kind || 'תקלת מערכת';
+  const categoryLabel = data.category || 'כללי';
+  const operation = data.operation || 'פעולה לא ידועה';
+  const userEmail = data.userEmail || 'לא זוהה';
+  const message = data.message || 'אין פירוט';
+  const timestamp = data.createdAtIso ? new Date(data.createdAtIso).toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' }) : new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' });
+
+  const textAlert = `🚨 *התרעת מערכת TALA בזמן אמת* 🚨\n\n• *סוג תקלה:* ${kindLabel}\n• *קטגוריה:* ${categoryLabel}\n• *פעולה:* ${operation}\n• *משתמש/ת מדווח/ת:* ${userEmail}\n• *זמן:* ${timestamp}\n• *פרטי שגיאה:* ${message}\n\n_הודעה אוטומטית ממרכז הבקרה TALA_`;
+
+  const htmlEmail = `<div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px; background: #f8fafc;">
+    <div style="max-width: 600px; margin: auto; background: #fff; border: 1px solid #fee2e2; border-radius: 8px; overflow: hidden;">
+      <div style="background: #dc2626; color: #fff; padding: 15px 20px;">
+        <h2 style="margin: 0; font-size: 18px;">🚨 התרעת מערכת TALA בזמן אמת</h2>
+      </div>
+      <div style="padding: 20px; color: #1e293b; font-size: 14px;">
+        <p>נרשמה תקלה חדשה ביומן בקרת האיכות של מערכת TALA:</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+          <tr><td style="padding: 8px; font-weight: bold; width: 130px; border-bottom: 1px solid #f1f5f9;">סוג תקלה:</td><td style="padding: 8px; color: #b91c1c; font-weight: bold; border-bottom: 1px solid #f1f5f9;">${kindLabel}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #f1f5f9;">קטגוריה:</td><td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${categoryLabel}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #f1f5f9;">פעולה:</td><td style="padding: 8px; font-family: monospace; border-bottom: 1px solid #f1f5f9;">${operation}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #f1f5f9;">משתמש/ת:</td><td style="padding: 8px; color: #2563eb; border-bottom: 1px solid #f1f5f9;">${userEmail}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #f1f5f9;">זמן:</td><td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${timestamp}</td></tr>
+          <tr><td style="padding: 8px; font-weight: bold; vertical-align: top;">פרטי שגיאה:</td><td style="padding: 8px; background: #fff1f2; font-family: monospace; font-size: 12px;">${message}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>`;
+
+  for (const adminUser of admins) {
+    const alerts = adminUser.adminAlerts || {};
+
+    // 1. Email Alert
+    if (alerts.email && alerts.email.enabled) {
+      const toEmail = alerts.email.address || adminUser.email;
+      if (toEmail) {
+        try {
+          await fetch(DEFAULT_APPS_SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({
+              to: toEmail,
+              subject: `🚨 התרעת מערכת TALA: ${kindLabel} (${categoryLabel})`,
+              htmlBody: htmlEmail,
+              textBody: textAlert,
+              senderName: "מערכת TALA – בקרת איכות"
+            })
+          });
+        } catch (e) {
+          console.error("Email alert dispatch failed for admin", toEmail, e.message);
+        }
+      }
+    }
+
+    // 2. Telegram Alert
+    if (alerts.telegram && alerts.telegram.enabled && alerts.telegram.chatId) {
+      const botToken = alerts.telegram.botToken || DEFAULT_TELEGRAM_BOT_TOKEN;
+      try {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: alerts.telegram.chatId,
+            text: textAlert,
+            parse_mode: "Markdown"
+          })
+        });
+      } catch (e) {
+        console.error("Telegram alert dispatch failed for chatId", alerts.telegram.chatId, e.message);
+      }
+    }
+
+    // 3. WhatsApp Alert (CallMeBot)
+    if (alerts.whatsapp && alerts.whatsapp.enabled && alerts.whatsapp.phone && alerts.whatsapp.apiKey) {
+      const phone = String(alerts.whatsapp.phone).replace(/[^\d]/g, "");
+      const key = String(alerts.whatsapp.apiKey).trim();
+      try {
+        await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(textAlert)}&apikey=${key}`);
+      } catch (e) {
+        console.error("WhatsApp alert dispatch failed for phone", phone, e.message);
+      }
+    }
+  }
+}
+
+exports.onHealthEventCreated = require("firebase-functions/v2/firestore").onDocumentCreated(
+  { document: "tala_health_events/{eventId}", region: "us-central1" },
+  handleHealthEventCreated
+);
