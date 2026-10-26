@@ -276,6 +276,13 @@ export default function App() {
     saveSettingsToCloud({ enforcePasswordPolicy: nextVal });
   };
 
+  const [aiFreeze, setAiFreeze] = useState(false);
+  const handleUpdateAiFreeze = (nextVal) => {
+    const val = Boolean(nextVal);
+    setAiFreeze(val);
+    saveSettingsToCloud({ aiFreeze: val });
+  };
+
   const handleSubmitAdminRequest = (newReq) => {
     setAdminRequests((prev) => {
       const next = [newReq, ...prev];
@@ -541,6 +548,9 @@ export default function App() {
         if (settings?.emailEngineConfig && typeof settings.emailEngineConfig === 'object') {
           const syncedEmailCfg = saveEmailEngineConfig(settings.emailEngineConfig);
           setEmailEngineConfig(syncedEmailCfg);
+        }
+        if (settings && typeof settings.aiFreeze === 'boolean') {
+          setAiFreeze(settings.aiFreeze);
         }
         if (settings && 'upgradeBanner' in settings) {
           setUpgradeBanner(settings.upgradeBanner);
@@ -2822,6 +2832,8 @@ export default function App() {
           healthReviewedMs={healthReviewedMs}
           onMarkHealthReviewed={handleMarkHealthReviewed}
           onClearHealthEvents={handleClearHealthEvents}
+          aiFreeze={aiFreeze}
+          onUpdateAiFreeze={handleUpdateAiFreeze}
         />
       )}
 

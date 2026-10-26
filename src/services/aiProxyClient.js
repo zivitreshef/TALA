@@ -98,6 +98,9 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
     incrementDailyQuotaCount('ai');
     return data.data; // The returned structured JSON or fallback object
   } catch (proxyError) {
+    if (proxyError.status === 503 || (proxyError.message && proxyError.message.includes('frozen'))) {
+      throw proxyError;
+    }
     console.warn('[aiProxyClient] Proxy endpoint unavailable or failed:', proxyError.message);
     reportHealthEvent({
       kind: HEALTH_EVENT_KINDS.AI_PROXY_ERROR,

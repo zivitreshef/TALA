@@ -143,4 +143,23 @@ describe('AI Backend Proxy Client & Security Safeguards', () => {
 
     vi.useRealTimers();
   });
+
+  it('does not fallback to local key when AI service is frozen by admin (503 circuit breaker)', async () => {
+    mockStorage.set('tala_gemini_api_key', 'mock_admin_key');
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        error: 'AI service temporarily frozen by Administrator'
+      })
+    });
+
+    await expect(
+      callAiProxyEndpoint({
+        operation: 'rawPrompt',
+        payload: { prompt: 'כתוב מטרות' }
+      })
+    ).rejects.toThrow('AI service temporarily frozen');
+  });
 });

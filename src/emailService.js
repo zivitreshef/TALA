@@ -1,4 +1,5 @@
 import { incrementDailyQuotaCount } from './allowedUsers';
+import { recordEmailAuditLogToCloud } from './services/telemetryService';
 
 export const EMAIL_ENGINE_STORAGE_KEY = 'tala_email_engine_config_v1';
 
@@ -225,6 +226,7 @@ export async function sendReportEmailInBackground({
     }
 
     incrementDailyQuotaCount('email');
+    recordEmailAuditLogToCloud({ recipientEmail: toEmail }).catch(() => {});
     return { ok: true, provider: 'apps_script' };
   }
 

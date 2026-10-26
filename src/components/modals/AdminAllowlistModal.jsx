@@ -52,6 +52,9 @@ import { sendUserInvitationEmailInBackground } from '../../emailService';
 import { subscribeToUserPresence } from '../../firebaseBackend';
 import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../UpgradeBanner';
 import SystemHealthPanel from './SystemHealthPanel';
+import AdminUsageAndSecurityDashboard from './AdminUsageAndSecurityDashboard';
+import { fetchTelemetrySnapshot } from '../../services/telemetryService';
+import { aggregateTelemetryData } from '../../domain/telemetry';
 import { countUnreviewedHealthEvents } from '../../domain/healthEvents.js';
 
 function PasswordPolicyChecklist({ password }) {
@@ -121,7 +124,9 @@ export default function AdminAllowlistModal({
   healthEvents = [],
   healthReviewedMs = 0,
   onMarkHealthReviewed,
-  onClearHealthEvents
+  onClearHealthEvents,
+  aiFreeze = false,
+  onUpdateAiFreeze
 }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'users'); // 'users' | 'groups' | 'analytics' | 'requests' | 'health' | 'settings'
 
@@ -180,6 +185,26 @@ export default function AdminAllowlistModal({
   // Live Daily Quota Stats
   const dailyAiCount = useMemo(() => getDailyQuotaCount('ai'), []);
   const dailyEmailCount = useMemo(() => getDailyQuotaCount('email'), []);
+  const [cloudTelemetry, setCloudTelemetry] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchTelemetrySnapshot().then((snap) => {
+      if (snap && (snap.aiLogs?.length || snap.emailLogs?.length)) {
+        const agg = aggregateTelemetryData({
+          aiLogs: snap.aiLogs,
+          emailLogs: snap.emailLogs,
+          students,
+          settings: { aiFreeze },
+          now: new Date()
+        });
+        setCloudTelemetry(agg);
+      }
+    }).catch(() => {});
+  }, [isOpen, students, aiFreeze]);
+
+  const effectiveAiCount = cloudTelemetry ? cloudTelemetry.aiTodayCount : dailyAiCount;
+  const effectiveEmailCount = cloudTelemetry ? cloudTelemetry.emailTodayCount : dailyEmailCount;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -696,9 +721,9 @@ export default function AdminAllowlistModal({
                 fontWeight: 600
               }}
             >
-              <span title="מכסת AI Studio Gemini יומית (איפוס כל 24 שעות)">🤖 AI יומי: {dailyAiCount} / {DAILY_AI_QUOTA_LIMIT}</span>
+              <span title="מכסת AI Studio Gemini יומית (איפוס כל 24 שעות)">🤖 AI יומי: {effectiveAiCount} / {DAILY_AI_QUOTA_LIMIT}</span>
               <span style={{ opacity: 0.5 }}>|</span>
-              <span title="מכסת שליחת מיילים יומית">✉️ מיילים: {dailyEmailCount} / {DAILY_EMAIL_QUOTA_LIMIT}</span>
+              <span title="מכסת שליחת מיילים יומית">✉️ מיילים: {effectiveEmailCount} / {DAILY_EMAIL_QUOTA_LIMIT}</span>
               <span style={{ opacity: 0.5 }}>|</span>
               <span>{cloudSyncState?.connected ? '☁️ ענן מחובר' : '💾 מקומי'}</span>
             </div>
@@ -796,7 +821,7 @@ export default function AdminAllowlistModal({
             }}
           >
             <BarChart3 size={16} />
-            <span>מדדי פעילות וקיבולת</span>
+            <span>עלויות, שימוש ואבטחה</span>
           </button>
 
           <button
@@ -1634,7 +1659,22 @@ export default function AdminAllowlistModal({
 
           {/* TAB 3: CAPACITY & ANALYTICS */}
           {activeTab === 'analytics' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+              <AdminUsageAndSecurityDashboard
+                students={students}
+                settings={{ aiFreeze }}
+                onSettingsChange={(s) => onUpdateAiFreeze && onUpdateAiFreeze(s.aiFreeze)}
+                onTelemetryUpdated={(snap) => {
+                  const agg = aggregateTelemetryData({
+                    aiLogs: snap.aiLogs,
+                    emailLogs: snap.emailLogs,
+                    students,
+                    settings: { aiFreeze },
+                    now: new Date()
+                  });
+                  setCloudTelemetry(agg);
+                }}
+              />
               {/* KPI Cards Strip */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px' }}>
                 <div
@@ -1669,7 +1709,7 @@ export default function AdminAllowlistModal({
                     {allowedUsers.reduce((sum, u) => sum + (Number(u.aiUsageCount) || 0), 0)}
                   </strong>
                   <span style={{ fontSize: '11.5px', color: '#7c3aed' }}>
-                    היום: <strong>{dailyAiCount}</strong> מתוך {DAILY_AI_QUOTA_LIMIT} | ניסוח יעדים
+                    היום: <strong>{effectiveAiCount}</strong> מתוך {DAILY_AI_QUOTA_LIMIT} | ניסוח יעדים
                   </span>
                 </div>
 

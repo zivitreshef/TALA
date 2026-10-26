@@ -180,13 +180,25 @@ service cloud.firestore {
     // Per-user rate limit counter — strictly managed by Cloud Functions Admin SDK.
     // Client cannot read or write to artificially zero out or manipulate rate limits.
     match /ai_rate_limits/{userId} {
-      allow read, write: if false;
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
-    // Audit log — completely locked down for clients
-    // Only the Cloud Function (Admin SDK) can write; no client read/write
+    // AI Audit log — Cloud Function writes; admins can read & delete for auditing
     match /ai_audit_logs/{logId} {
-      allow read, write: if false;
+      allow read, delete: if isAdmin();
+      allow write: if false;
+    }
+
+    // Email Audit log: signed-in teachers log their sent emails; admins can read & purge
+    match /tala_email_audit_logs/{logId} {
+      allow read, delete: if isAdmin();
+      allow update: if false;
+      allow create: if isSignedIn() &&
+        request.resource.data.keys().hasAll(['id', 'createdAtMs', 'userEmail']) &&
+        (request.resource.data.userEmail == '' || request.resource.data.userEmail.lower() == currentEmail()) &&
+        request.resource.data.createdAtMs is number &&
+        request.resource.data.createdAtMs <= request.time.toMillis() + 60000;
     }
   }
 }
