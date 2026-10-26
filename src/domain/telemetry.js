@@ -7,6 +7,9 @@
 export const DAILY_AI_QUOTA_LIMIT = 1500;
 export const DAILY_EMAIL_QUOTA_LIMIT = 100;
 export const FREE_STORAGE_LIMIT_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB Firebase Storage free tier
+export const FREE_FIRESTORE_DAILY_READS = 50000;
+export const FREE_FIRESTORE_DAILY_WRITES = 20000;
+export const FREE_CLOUD_FUNCTIONS_INVOCATIONS_MONTHLY = 2000000;
 
 // Average token cost estimation for Gemini 2.5/2.0 Flash (~$0.075 per 1M input, ~$0.30 per 1M output)
 // Typical pedagogical query: ~1,500 input tokens + ~800 output tokens =~ $0.00035 USD per query
@@ -50,20 +53,38 @@ export function toTimestampMs(timeVal) {
 
 /**
  * Computes storage metrics across all student diagnostic dossiers.
+ * Also extracts top 5 largest files to identify storage hogs.
  */
 export function calculateStorageFootprint(students = []) {
-  if (!Array.isArray(students)) return { totalFiles: 0, totalBytes: 0, formattedMb: '0.0 MB', usagePercent: 0 };
+  if (!Array.isArray(students)) {
+    return { totalFiles: 0, totalBytes: 0, formattedMb: '0.0 MB', usagePercent: 0, largestFiles: [] };
+  }
 
   let totalFiles = 0;
   let totalBytes = 0;
+  const allFiles = [];
 
   students.forEach((student) => {
+    const studentName = student?.name || 'תלמיד/ה ללא שם';
+    const studentId = student?.id || '';
     const docs = student?.diagnosticDossier?.documents;
     if (Array.isArray(docs)) {
       docs.forEach((doc) => {
         if (doc && (doc.storagePath || doc.storageUrl)) {
+          const fileSize = Number(doc.fileSize) || 0;
           totalFiles += 1;
-          totalBytes += Number(doc.fileSize) || 0;
+          totalBytes += fileSize;
+          allFiles.push({
+            id: doc.id || doc.storagePath,
+            fileName: doc.fileName || doc.name || 'קובץ ללא שם',
+            fileSize,
+            formattedSize: fileSize > 1024 * 1024
+              ? (fileSize / (1024 * 1024)).toFixed(1) + ' MB'
+              : Math.round(fileSize / 1024) + ' KB',
+            studentName,
+            studentId,
+            uploadedAt: doc.uploadedAt || doc.createdAt || ''
+          });
         }
       });
     }
@@ -73,11 +94,16 @@ export function calculateStorageFootprint(students = []) {
   const formattedMb = totalMb < 100 ? totalMb.toFixed(1) + ' MB' : Math.round(totalMb) + ' MB';
   const usagePercent = Math.min(100, (totalBytes / FREE_STORAGE_LIMIT_BYTES) * 100);
 
+  const largestFiles = allFiles
+    .sort((a, b) => b.fileSize - a.fileSize)
+    .slice(0, 5);
+
   return {
     totalFiles,
     totalBytes,
     formattedMb,
-    usagePercent: Number(usagePercent.toFixed(2))
+    usagePercent: Number(usagePercent.toFixed(2)),
+    largestFiles
   };
 }
 
@@ -102,6 +128,7 @@ export function aggregateTelemetryData({
   let emailMonthCount = 0;
 
   const blockedInjections = [];
+  const rateLimitEvents = [];
   const geminiErrors = [];
   const userActivityMap = new Map();
 
@@ -135,6 +162,14 @@ export function aggregateTelemetryData({
         operation: log.operation || 'rawPrompt',
         createdAtMs: logMs,
         model: log.model
+      });
+    } else if (log.status === 'rate_limit_exceeded') {
+      rateLimitEvents.push({
+        id: log.id || `rl_${logMs}`,
+        email: log.email || 'unknown',
+        operation: log.operation || 'rawPrompt',
+        limitedWindow: log.limitedWindow || 'minute',
+        createdAtMs: logMs
       });
     } else if (log.status === 'gemini_error') {
       geminiErrors.push({
@@ -215,12 +250,53 @@ export function aggregateTelemetryData({
 
   // 7. Security Anomaly & Threat Level
   const recentInjections = blockedInjections.filter((inj) => inj.createdAtMs >= oneDayAgoMs);
+  const recentRateLimits = rateLimitEvents.filter((rl) => rl.createdAtMs >= oneDayAgoMs);
+
   let threatLevel = 'safe'; // 'safe' | 'warning' | 'critical'
-  if (recentInjections.length >= 3) {
+  if (recentInjections.length >= 3 || recentRateLimits.length >= 5) {
     threatLevel = 'critical';
-  } else if (recentInjections.length > 0) {
+  } else if (recentInjections.length > 0 || recentRateLimits.length > 0) {
     threatLevel = 'warning';
   }
+
+  // 8. Blaze Services Breakdown
+  const blazeBreakdown = [
+    {
+      service: 'Google AI Studio / Gemini API',
+      freeTier: '1,500 שאילתות / יום (חינם לחלוטין)',
+      currentUsage: `${aiTodayCount} היום | ${aiMonthCount} החודש`,
+      status: aiTodayCount <= DAILY_AI_QUOTA_LIMIT ? 'free' : 'billed',
+      estimatedCostIls: aiTodayCount <= DAILY_AI_QUOTA_LIMIT ? '0.00 ₪ (במסגרת המכסה)' : `${estimatedAiCostIls} ₪`
+    },
+    {
+      service: 'Firebase Cloud Functions v2',
+      freeTier: '2,000,000 קריאות / חודש',
+      currentUsage: `${aiMonthCount} קריאות`,
+      status: 'free',
+      estimatedCostIls: '0.00 ₪ (במסגרת המכסה)'
+    },
+    {
+      service: 'Firebase Cloud Storage (תיקי אבחון)',
+      freeTier: '5,120 MB (5 GB חינם)',
+      currentUsage: `${storage.formattedMb} (${storage.totalFiles} קבצים)`,
+      status: storage.usagePercent < 90 ? 'free' : 'warning',
+      estimatedCostIls: storage.usagePercent < 100 ? '0.00 ₪ (במסגרת המכסה)' : 'חריגה אפשרית'
+    },
+    {
+      service: 'Google Apps Script (מנוע מיילים ישיר)',
+      freeTier: '100 מיילים / יום לכתובת Gmail',
+      currentUsage: `${emailTodayCount} היום | ${emailMonthCount} החודש`,
+      status: emailTodayCount <= DAILY_EMAIL_QUOTA_LIMIT ? 'free' : 'warning',
+      estimatedCostIls: '0.00 ₪ (ללא תשלום)'
+    },
+    {
+      service: 'Cloud Firestore (מסד נתונים)',
+      freeTier: '50,000 קריאות / 20,000 כתיבות ביום',
+      currentUsage: 'תעבורה פדגוגית שוטפת',
+      status: 'free',
+      estimatedCostIls: '0.00 ₪ (במסגרת המכסה)'
+    }
+  ];
 
   return {
     nowMs,
@@ -243,10 +319,54 @@ export function aggregateTelemetryData({
     threatLevel,
     blockedInjections,
     recentInjectionsCount: recentInjections.length,
+    rateLimitEvents,
+    recentRateLimitsCount: recentRateLimits.length,
     geminiErrors,
 
     last7Days,
     topActiveTeachers,
+    blazeBreakdown,
     isAiFrozen: Boolean(settings?.aiFreeze)
   };
+}
+
+/**
+ * Generates a clean CSV string of recent telemetry events for admin export.
+ */
+export function generateTelemetryCsv({ aiLogs = [], emailLogs = [] } = {}) {
+  const rows = [['Type', 'Timestamp', 'UserEmail', 'Operation', 'Status', 'Details']];
+
+  (Array.isArray(aiLogs) ? aiLogs : []).forEach((log) => {
+    const ms = toTimestampMs(log.createdAt || log.timestamp || log.createdAtMs);
+    const dateStr = ms ? new Date(ms).toISOString() : '';
+    rows.push([
+      'AI_QUERY',
+      dateStr,
+      log.email || '',
+      log.operation || '',
+      log.status || '',
+      log.model || ''
+    ]);
+  });
+
+  (Array.isArray(emailLogs) ? emailLogs : []).forEach((log) => {
+    const ms = toTimestampMs(log.createdAtMs || log.createdAt || log.timestamp);
+    const dateStr = ms ? new Date(ms).toISOString() : '';
+    rows.push([
+      'EMAIL_SENT',
+      dateStr,
+      log.userEmail || '',
+      'send_email',
+      'ok',
+      log.recipientMasked || ''
+    ]);
+  });
+
+  return rows
+    .map((row) =>
+      row
+        .map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`)
+        .join(',')
+    )
+    .join('\n');
 }

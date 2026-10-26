@@ -5,6 +5,7 @@ import {
   toTimestampMs,
   calculateStorageFootprint,
   aggregateTelemetryData,
+  generateTelemetryCsv,
   DAILY_AI_QUOTA_LIMIT,
   DAILY_EMAIL_QUOTA_LIMIT
 } from '../domain/telemetry.js';
@@ -50,22 +51,24 @@ describe('Telemetry & Cost Dashboard Domain', () => {
     expect(toTimestampMs(null)).toBe(0);
   });
 
-  it('calculates storage footprint across student records', () => {
+  it('calculates storage footprint across student records and sorts largest files', () => {
     const students = [
       {
         id: 's1',
+        name: 'דני כהן',
         diagnosticDossier: {
           documents: [
-            { storagePath: 'dossier_files/s1/doc1.pdf', fileSize: 1024 * 1024 * 2 }, // 2MB
-            { storagePath: 'dossier_files/s1/doc2.pdf', fileSize: 1024 * 1024 * 3 }  // 3MB
+            { id: 'd1', fileName: 'diag1.pdf', storagePath: 'dossier_files/s1/doc1.pdf', fileSize: 1024 * 1024 * 2 }, // 2MB
+            { id: 'd2', fileName: 'scan.pdf', storagePath: 'dossier_files/s1/doc2.pdf', fileSize: 1024 * 1024 * 8 }  // 8MB
           ]
         }
       },
       {
         id: 's2',
+        name: 'רוני לוי',
         diagnosticDossier: {
           documents: [
-            { storagePath: 'dossier_files/s2/doc3.pdf', fileSize: 1024 * 1024 * 5 } // 5MB
+            { id: 'd3', fileName: 'speech.pdf', storagePath: 'dossier_files/s2/doc3.pdf', fileSize: 1024 * 1024 * 5 } // 5MB
           ]
         }
       },
@@ -76,9 +79,15 @@ describe('Telemetry & Cost Dashboard Domain', () => {
 
     const footprint = calculateStorageFootprint(students);
     expect(footprint.totalFiles).toBe(3);
-    expect(footprint.totalBytes).toBe(1024 * 1024 * 10); // 10MB
-    expect(footprint.formattedMb).toBe('10.0 MB');
+    expect(footprint.totalBytes).toBe(1024 * 1024 * 15); // 15MB
+    expect(footprint.formattedMb).toBe('15.0 MB');
     expect(footprint.usagePercent).toBeGreaterThan(0);
+
+    // Largest files check
+    expect(footprint.largestFiles.length).toBe(3);
+    expect(footprint.largestFiles[0].fileName).toBe('scan.pdf');
+    expect(footprint.largestFiles[0].formattedSize).toBe('8.0 MB');
+    expect(footprint.largestFiles[0].studentName).toBe('דני כהן');
   });
 
   it('aggregates live AI queries, emails, costs, and timeline accurately', () => {
@@ -91,7 +100,8 @@ describe('Telemetry & Cost Dashboard Domain', () => {
       { email: 'teacher1@school.org', status: 'ok', createdAt: todayMs },
       { email: 'teacher2@school.org', status: 'ok', createdAt: todayMs },
       { email: 'teacher2@school.org', status: 'ok', createdAt: yesterdayMs },
-      { email: 'attacker@evil.org', status: 'blocked_injection', createdAt: todayMs, operation: 'rawPrompt' }
+      { email: 'attacker@evil.org', status: 'blocked_injection', createdAt: todayMs, operation: 'rawPrompt' },
+      { email: 'spammer@evil.org', status: 'rate_limit_exceeded', createdAt: todayMs, operation: 'rawPrompt', limitedWindow: 'minute' }
     ];
 
     const emailLogs = [
@@ -108,10 +118,10 @@ describe('Telemetry & Cost Dashboard Domain', () => {
     });
 
     // AI Counts
-    expect(result.aiTodayCount).toBe(4); // 3 ok + 1 injection today
-    expect(result.aiMonthCount).toBe(5);
+    expect(result.aiTodayCount).toBe(5); // 3 ok + 1 injection + 1 rate limit
+    expect(result.aiMonthCount).toBe(6);
     expect(result.aiQuotaLimit).toBe(DAILY_AI_QUOTA_LIMIT);
-    expect(result.aiRemainingToday).toBe(DAILY_AI_QUOTA_LIMIT - 4);
+    expect(result.aiRemainingToday).toBe(DAILY_AI_QUOTA_LIMIT - 5);
 
     // Email Counts
     expect(result.emailTodayCount).toBe(1);
@@ -124,13 +134,18 @@ describe('Telemetry & Cost Dashboard Domain', () => {
 
     // Security & Threat Level
     expect(result.blockedInjections.length).toBe(1);
-    expect(result.threatLevel).toBe('warning'); // 1 injection in 24h
+    expect(result.rateLimitEvents.length).toBe(1);
+    expect(result.threatLevel).toBe('warning');
     expect(result.isAiFrozen).toBe(false);
+
+    // Blaze Breakdown
+    expect(result.blazeBreakdown.length).toBe(5);
+    expect(result.blazeBreakdown[0].service).toContain('Gemini');
 
     // 7-day sparkline
     expect(result.last7Days.length).toBe(7);
     const todayBucket = result.last7Days[result.last7Days.length - 1];
-    expect(todayBucket.aiCount).toBe(4);
+    expect(todayBucket.aiCount).toBe(5);
     expect(todayBucket.emailCount).toBe(1);
 
     // Top teachers ranking
@@ -150,6 +165,35 @@ describe('Telemetry & Cost Dashboard Domain', () => {
     const result = aggregateTelemetryData({ aiLogs, now });
     expect(result.threatLevel).toBe('critical');
     expect(result.recentInjectionsCount).toBe(3);
+  });
+
+  it('triggers critical threat level when 5+ rate limits detected within 24h', () => {
+    const now = new Date('2026-10-26T12:00:00Z');
+    const nowMs = now.getTime();
+    const aiLogs = Array.from({ length: 5 }).map((_, i) => ({
+      email: `bad_${i}@test.com`,
+      status: 'rate_limit_exceeded',
+      createdAt: nowMs - i * 1000
+    }));
+
+    const result = aggregateTelemetryData({ aiLogs, now });
+    expect(result.threatLevel).toBe('critical');
+    expect(result.recentRateLimitsCount).toBe(5);
+  });
+
+  it('generates valid CSV export string with proper escaping', () => {
+    const aiLogs = [
+      { email: 'teacher@school.org', operation: 'rawPrompt', status: 'ok', model: 'gemini-2.5-flash', createdAt: 1700000000000 }
+    ];
+    const emailLogs = [
+      { userEmail: 'teacher@school.org', recipientMasked: 'p***t@home.com', createdAtMs: 1700000000000 }
+    ];
+
+    const csv = generateTelemetryCsv({ aiLogs, emailLogs });
+    expect(csv).toContain('"AI_QUERY"');
+    expect(csv).toContain('"teacher@school.org"');
+    expect(csv).toContain('"EMAIL_SENT"');
+    expect(csv).toContain('"p***t@home.com"');
   });
 
   it('respects emergency AI freeze setting in status payload', () => {
