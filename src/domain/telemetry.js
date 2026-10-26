@@ -108,6 +108,91 @@ export function calculateStorageFootprint(students = []) {
 }
 
 /**
+ * Proactive Anomaly & Soft Quota Warning Detector.
+ * Identifies:
+ * 1. AI or Email consumption >= 80% of daily quota.
+ * 2. Cloud Storage footprint >= 80% of free tier (4,096 MB).
+ * 3. Runaway user anomaly (single user >= 40% of daily AI queries when total >= 20).
+ * 4. Volume spike anomaly (today's AI usage >= 2.5x the 7-day daily average when daily average >= 10).
+ */
+export function detectAbnormalSpikes({
+  aiTodayCount = 0,
+  emailTodayCount = 0,
+  storage = {},
+  topActiveTeachers = [],
+  last7Days = []
+} = {}) {
+  const anomalies = [];
+
+  // 1. Soft Quota Warnings (>= 80%)
+  if (aiTodayCount >= DAILY_AI_QUOTA_LIMIT * 0.8) {
+    anomalies.push({
+      id: 'warn_ai_soft_quota',
+      type: 'soft_quota',
+      title: 'התראת סף מקדימה: צריכת ה-AI הגיעה ל-80% מהמכסה היומית',
+      detail: `בוצעו ${aiTodayCount} שאילתות מתוך ${DAILY_AI_QUOTA_LIMIT} המותרות להיום. לקראת ניצול מלא המערכת תציע מעבר למפתח מנהל ישיר.`,
+      severity: aiTodayCount >= DAILY_AI_QUOTA_LIMIT ? 'critical' : 'warning'
+    });
+  }
+
+  if (emailTodayCount >= DAILY_EMAIL_QUOTA_LIMIT * 0.8) {
+    anomalies.push({
+      id: 'warn_email_soft_quota',
+      type: 'soft_quota',
+      title: 'התראת סף מקדימה: משלוח מיילים הגיע ל-80% ממכסת Apps Script',
+      detail: `נשלחו ${emailTodayCount} מתוך ${DAILY_EMAIL_QUOTA_LIMIT} מיילים יומיים. נותרו ${Math.max(0, DAILY_EMAIL_QUOTA_LIMIT - emailTodayCount)} מיילים עד לאיפוס מחר בבוקר.`,
+      severity: emailTodayCount >= DAILY_EMAIL_QUOTA_LIMIT ? 'critical' : 'warning'
+    });
+  }
+
+  if ((storage?.usagePercent || 0) >= 80) {
+    anomalies.push({
+      id: 'warn_storage_soft_quota',
+      type: 'soft_quota',
+      title: 'התראת סף מקדימה: נפח תיקי האבחון ב-Storage עבר 80% (4,096 MB)',
+      detail: `נפח האחסון הנוכחי עומד על ${storage.formattedMb} מתוך 5,120 MB ב-Free Tier. מומלץ לבדוק את טבלת הקבצים הכבדים.`,
+      severity: (storage?.usagePercent || 0) >= 95 ? 'critical' : 'warning'
+    });
+  }
+
+  // 2. Runaway Teacher Anomaly
+  if (aiTodayCount >= 20 && Array.isArray(topActiveTeachers) && topActiveTeachers.length > 0) {
+    const topTeacher = topActiveTeachers[0];
+    if (topTeacher && topTeacher.aiCount >= aiTodayCount * 0.4) {
+      anomalies.push({
+        id: `anomaly_teacher_${topTeacher.email}`,
+        type: 'user_spike',
+        title: `זיהוי ריכוז צריכה חריג: מורה יחידה צורכת ${Math.round((topTeacher.aiCount / aiTodayCount) * 100)}% מכלל ה-AI היומי`,
+        detail: `המשתמשת ${topTeacher.email} ביצעה ${topTeacher.aiCount} שאילתות היום. כדאי לוודא שלא מדובר בלולאה תקועה בדפדפן.`,
+        severity: 'warning'
+      });
+    }
+  }
+
+  // 3. Spike vs 7-day average
+  if (Array.isArray(last7Days) && last7Days.length >= 2) {
+    const pastDays = last7Days.slice(0, last7Days.length - 1);
+    const sumPast = pastDays.reduce((acc, d) => acc + (d.aiCount || 0), 0);
+    const avgPast = sumPast / pastDays.length;
+
+    if (avgPast >= 10 && aiTodayCount >= avgPast * 2.5) {
+      anomalies.push({
+        id: 'anomaly_volume_spike',
+        type: 'volume_spike',
+        title: `זינוק חד בפעילות AI היומית (פי ${(aiTodayCount / avgPast).toFixed(1)} מהממוצע השבועי)`,
+        detail: `היום נרשמו ${aiTodayCount} שאילתות לעומת ממוצע שבועי של ${Math.round(avgPast)} שאילתות ליום.`,
+        severity: 'warning'
+      });
+    }
+  }
+
+  return {
+    hasAnomalies: anomalies.length > 0,
+    anomalies
+  };
+}
+
+/**
  * Aggregates AI audit logs, email logs, storage and security events.
  */
 export function aggregateTelemetryData({
@@ -298,6 +383,15 @@ export function aggregateTelemetryData({
     }
   ];
 
+  // 9. Proactive Anomaly & Spike Detection
+  const anomalyReport = detectAbnormalSpikes({
+    aiTodayCount,
+    emailTodayCount,
+    storage,
+    topActiveTeachers,
+    last7Days
+  });
+
   return {
     nowMs,
     aiTodayCount,
@@ -322,6 +416,8 @@ export function aggregateTelemetryData({
     rateLimitEvents,
     recentRateLimitsCount: recentRateLimits.length,
     geminiErrors,
+
+    anomalyReport,
 
     last7Days,
     topActiveTeachers,

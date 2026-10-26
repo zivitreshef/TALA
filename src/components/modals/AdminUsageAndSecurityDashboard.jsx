@@ -271,6 +271,58 @@ export default function AdminUsageAndSecurityDashboard({
         </div>
       </div>
 
+      {/* Proactive Anomaly & Soft Quota Alert Banner */}
+      {data.anomalyReport?.hasAnomalies && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+            border: '1.5px solid #fde68a',
+            borderRadius: '12px',
+            padding: '14px 18px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={18} style={{ color: '#d97706' }} />
+            <strong style={{ fontSize: '14px', color: '#92400e' }}>
+              התראות סף מקדימות וזיהוי חריגות פעילות (Proactive Anomaly Alerts):
+            </strong>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {data.anomalyReport.anomalies.map((anom) => (
+              <div
+                key={anom.id}
+                style={{
+                  background: anom.severity === 'critical' ? '#fee2e2' : '#ffffff',
+                  border: `1px solid ${anom.severity === 'critical' ? '#fca5a5' : '#fed7aa'}`,
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px'
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: anom.severity === 'critical' ? '#991b1b' : '#9a3412'
+                  }}
+                >
+                  {anom.severity === 'critical' ? '🔴 ' : '🟠 '}
+                  {anom.title}
+                </span>
+                <span style={{ fontSize: '11.5px', color: '#475569' }}>
+                  {anom.detail}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Row 1: KPI Cards Grid */}
       <div
         style={{

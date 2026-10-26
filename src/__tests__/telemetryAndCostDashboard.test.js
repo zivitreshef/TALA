@@ -6,6 +6,7 @@ import {
   calculateStorageFootprint,
   aggregateTelemetryData,
   generateTelemetryCsv,
+  detectAbnormalSpikes,
   DAILY_AI_QUOTA_LIMIT,
   DAILY_EMAIL_QUOTA_LIMIT
 } from '../domain/telemetry.js';
@@ -209,6 +210,50 @@ describe('Telemetry & Cost Dashboard Domain', () => {
     expect(result.last7Days.length).toBe(7);
   });
 });
+
+  it('detects soft quota warnings when AI, email, or storage cross 80% threshold', () => {
+    const report = detectAbnormalSpikes({
+      aiTodayCount: 1250, // > 80% of 1500
+      emailTodayCount: 85, // > 80% of 100
+      storage: { usagePercent: 82, formattedMb: '4,198 MB' }
+    });
+
+    expect(report.hasAnomalies).toBe(true);
+    expect(report.anomalies.length).toBe(3);
+    expect(report.anomalies[0].id).toBe('warn_ai_soft_quota');
+    expect(report.anomalies[1].id).toBe('warn_email_soft_quota');
+    expect(report.anomalies[2].id).toBe('warn_storage_soft_quota');
+  });
+
+  it('detects runaway teacher anomaly when one user dominates AI queries', () => {
+    const report = detectAbnormalSpikes({
+      aiTodayCount: 50,
+      topActiveTeachers: [
+        { email: 'runaway@school.org', aiCount: 25 } // 50% > 40%
+      ]
+    });
+
+    expect(report.hasAnomalies).toBe(true);
+    expect(report.anomalies.some((a) => a.id.includes('runaway@school.org'))).toBe(true);
+  });
+
+  it('detects volume spike when today usage is > 2.5x the 7-day average', () => {
+    const report = detectAbnormalSpikes({
+      aiTodayCount: 80,
+      last7Days: [
+        { aiCount: 20 },
+        { aiCount: 20 },
+        { aiCount: 20 },
+        { aiCount: 20 },
+        { aiCount: 20 },
+        { aiCount: 20 },
+        { aiCount: 80 }
+      ]
+    });
+
+    expect(report.hasAnomalies).toBe(true);
+    expect(report.anomalies.some((a) => a.id === 'anomaly_volume_spike')).toBe(true);
+  });
 
 describe('Telemetry Service Layer', () => {
   beforeEach(() => {
