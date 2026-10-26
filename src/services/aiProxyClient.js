@@ -33,7 +33,7 @@ async function callDirectGeminiApi({ prompt, model = 'gemini-2.5-flash', apiKey 
 }
 
 /**
- * Proxy AI call to Cloud Function `aiGenerate` (or `aiGenerateV2`).
+ * Proxy AI call to Cloud Function `aiGenerateV2` (with automatic retry & fallback to `aiGenerate`).
  * Includes the logged-in user's Firebase Auth Bearer token in headers.
  * Fallbacks to direct Gemini API call if local Admin Gemini Key is present and proxy fails.
  */
@@ -59,10 +59,12 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
   const projectId = config?.projectId || 'tala-d9aaa';
   const region = 'us-central1';
   
-  // Custom or standard Cloud Function endpoint URL
+  // Custom or standard Cloud Function endpoint URLs
   const envProxyUrl = import.meta.env?.VITE_AI_PROXY_URL;
-  const functionUrl =
+  const primaryUrl =
     envProxyUrl || `https://${region}-${projectId}.cloudfunctions.net/aiGenerateV2`;
+  const fallbackUrl =
+    envProxyUrl ? null : `https://${region}-${projectId}.cloudfunctions.net/aiGenerate`;
 
   const headers = {
     'Content-Type': 'application/json'
@@ -71,16 +73,27 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
     headers['Authorization'] = `Bearer ${idToken}`;
   }
 
-  try {
-    const res = await fetch(functionUrl, {
+  const bodyString = JSON.stringify({
+    operation,
+    payload,
+    hints,
+    model
+  });
+
+  const isTransientFailure = (err) => {
+    if (!err) return false;
+    // Network / fetch failures (e.g. TypeError: Failed to fetch) have no status property
+    if (!err.status) return true;
+    // Transient 5xx status codes (cold start gateway timeout / bad gateway / temporary service unavailable)
+    if (err.status === 502 || err.status === 503 || err.status === 504) return true;
+    return false;
+  };
+
+  const executePost = async (url) => {
+    const res = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify({
-        operation,
-        payload,
-        hints,
-        model
-      })
+      body: bodyString
     });
 
     if (!res.ok) {
@@ -95,8 +108,35 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
     }
 
     const data = await res.json();
-    incrementDailyQuotaCount('ai');
     return data.data; // The returned structured JSON or fallback object
+  };
+
+  const retryDelayMs =
+    typeof process !== 'undefined' && process.env?.NODE_ENV === 'test' ? 10 : 800;
+
+  try {
+    let result;
+    try {
+      result = await executePost(primaryUrl);
+    } catch (firstErr) {
+      // Do not retry if explicitly frozen by admin (circuit breaker)
+      if (firstErr.status === 503 && firstErr.message && firstErr.message.includes('frozen')) {
+        throw firstErr;
+      }
+      if (!isTransientFailure(firstErr)) {
+        throw firstErr;
+      }
+
+      console.warn('[aiProxyClient] Primary proxy transiently failed, attempting auto-retry...', firstErr.message);
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+
+      // Attempt retry on fallback URL (v1) or re-attempt primary
+      const retryUrl = fallbackUrl || primaryUrl;
+      result = await executePost(retryUrl);
+    }
+
+    incrementDailyQuotaCount('ai');
+    return result;
   } catch (proxyError) {
     if (proxyError.status === 503 || (proxyError.message && proxyError.message.includes('frozen'))) {
       throw proxyError;
@@ -133,25 +173,31 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
  */
 export async function pingAiProxy() {
   const started = Date.now();
-  try {
-    const auth = getFirebaseAuth();
-    const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : '';
-    const config = getActiveFirebaseConfig();
-    const projectId = config?.projectId || 'tala-d9aaa';
-    const functionUrl =
-      import.meta.env?.VITE_AI_PROXY_URL ||
-      `https://us-central1-${projectId}.cloudfunctions.net/aiGenerateV2`;
-    const res = await fetch(functionUrl, {
+  const auth = getFirebaseAuth();
+  const idToken = auth?.currentUser ? await auth.currentUser.getIdToken() : '';
+  const config = getActiveFirebaseConfig();
+  const projectId = config?.projectId || 'tala-d9aaa';
+  const primaryUrl =
+    import.meta.env?.VITE_AI_PROXY_URL ||
+    `https://us-central1-${projectId}.cloudfunctions.net/aiGenerateV2`;
+  const fallbackUrl =
+    import.meta.env?.VITE_AI_PROXY_URL ? null : `https://us-central1-${projectId}.cloudfunctions.net/aiGenerate`;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+  };
+  const bodyString = JSON.stringify({
+    operation: 'rawPrompt',
+    payload: { prompt: 'החזר JSON תקין בלבד: {"ok": true}' },
+    hints: {}
+  });
+
+  const sendPing = async (url) => {
+    const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
-      },
-      body: JSON.stringify({
-        operation: 'rawPrompt',
-        payload: { prompt: 'החזר JSON תקין בלבד: {"ok": true}' },
-        hints: {}
-      })
+      headers,
+      body: bodyString
     });
     if (!res.ok) {
       let errData = {};
@@ -161,6 +207,21 @@ export async function pingAiProxy() {
       const err = new Error(errData.error || `AI proxy request failed with status ${res.status}`);
       err.status = res.status;
       throw err;
+    }
+    return res;
+  };
+
+  try {
+    try {
+      await sendPing(primaryUrl);
+    } catch (firstErr) {
+      // If network/cold-start error, retry fallback or retry primary once
+      if (!firstErr.status || firstErr.status >= 500) {
+        await new Promise((r) => setTimeout(r, 400));
+        await sendPing(fallbackUrl || primaryUrl);
+      } else {
+        throw firstErr;
+      }
     }
     return buildPingResult('ai', started, Date.now());
   } catch (error) {

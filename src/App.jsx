@@ -61,6 +61,7 @@ import {
   activateSession,
   generateSessionId
 } from './services/sessionSecurity';
+import { startAiProxyKeepAlive } from './services/aiProxyClient';
 import {
   INITIAL_STUDENTS_DATA,
   ENVIRONMENTS_LIST,
@@ -1056,6 +1057,13 @@ export default function App() {
     }, 2 * 60 * 1000);
     return () => clearInterval(interval);
   }, [currentUser]);
+
+  // Keep AI backend warm during active teacher session ($0 baseline, prevents cold-start drops)
+  useEffect(() => {
+    if (!currentUser?.email) return undefined;
+    const cleanup = startAiProxyKeepAlive();
+    return cleanup;
+  }, [currentUser?.email]);
 
   // Proactive Trial Expiration Alert Modal (pops up once per browser session when remaining trial days <= 2)
   useEffect(() => {
