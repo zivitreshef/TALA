@@ -196,7 +196,7 @@ export default function AdminAlertsPanel({
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#1e3a8a' }}>
               התרעות מנהל בזמן אמת (Real-Time Push Alerts)
             </h3>
-            <p style="margin: 2px 0 0 0; font-size: 13px; color: #3b82f6;">
+            <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#3b82f6' }}>
               קבלת התרעה מיידית למייל, ל-WhatsApp או ל-Telegram בכל פעם שמתרחשת תקלת מערכת או חריגת מכסה
             </p>
           </div>

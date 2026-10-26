@@ -282,4 +282,39 @@ describe('Admin Real-Time Alerts Domain & Dispatcher', () => {
       expect(results.every((r) => r.ok)).toBe(true);
     });
   });
+
+  describe('AdminAlertsPanel Component Rendering', () => {
+    it('renders cleanly without React style string errors (#62)', async () => {
+      const React = await import('react');
+      const { renderToStaticMarkup } = await import('react-dom/server');
+      const { default: AdminAlertsPanel } = await import('../components/admin/AdminAlertsPanel.jsx');
+
+      const allowedUsers = [
+        {
+          id: 'u1',
+          name: 'זיוית רשף',
+          email: 'zivit.reshef@gmail.com',
+          role: 'admin',
+          active: true,
+          adminAlerts: {
+            email: { enabled: true, address: 'zivit.reshef@gmail.com' },
+            whatsapp: { enabled: true, phone: '972501234567', apiKey: '123' },
+            telegram: { enabled: false, chatId: '' }
+          }
+        }
+      ];
+
+      expect(() => {
+        const html = renderToStaticMarkup(
+          React.createElement(AdminAlertsPanel, {
+            allowedUsers,
+            onUpdateAllowedUsers: vi.fn(),
+            emailEngineConfig: null
+          })
+        );
+        expect(html).toContain('התרעות מנהל בזמן אמת');
+        expect(html).toContain('זיוית רשף');
+      }).not.toThrow();
+    });
+  });
 });
