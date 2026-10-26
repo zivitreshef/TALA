@@ -431,9 +431,9 @@ export default function DailyPedagogicalTracker({
 
     try {
       const response = await callAiProxyEndpoint({
-        operation: 'goalMatch',
-        payload: { prompt, studentId: targetStudent.id, note: aiNoteText },
-        hints: { model: 'gemini-2.5-flash' }
+        operation: 'rawPrompt',
+        payload: { prompt },
+        hints: { gender: targetStudent?.gender || 'boy', name: targetStudent?.name, model: 'gemini-2.5-flash' }
       });
 
       const parsed = parseAiGoalMatchResponse(response);
@@ -1658,3 +1658,4 @@ export default function DailyPedagogicalTracker({
     </div>
   );
 }
+

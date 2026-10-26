@@ -144,6 +144,28 @@ describe('dailyPedagogicalTracking domain tests', () => {
     expect(parsed.observedSupportLevel).toBe('תזכורת מילולית');
     expect(parsed.suggestedProgressDelta).toBe(5);
   });
+  it('robustly parses AI goal match responses formatted in markdown or raw wrapping', () => {
+    // Case 1: Markdown codeblock wrapped string
+    const rawMarkdownStr = '```json\n{\n  "matchedGoalId": "g_2",\n  "matchedGoalTitle": "שיתוף פעולה במפגש",\n  "environment": "מפגש בוקר",\n  "observedSupportLevel": "עצמאי לחלוטין",\n  "suggestedProgressDelta": 10\n}\n```';
+    const parsedFromMarkdown = parseAiGoalMatchResponse(rawMarkdownStr);
+    expect(parsedFromMarkdown.matchedGoalId).toBe('g_2');
+    expect(parsedFromMarkdown.matchedGoalTitle).toBe('שיתוף פעולה במפגש');
+    expect(parsedFromMarkdown.suggestedProgressDelta).toBe(10);
+
+    // Case 2: Cloud proxy { raw: ... } object
+    const proxyWrapped = {
+      raw: '{\n  "matchedGoalId": "g_3",\n  "matchedGoalTitle": "מוטוריקה עדינה",\n  "environment": "שולחן יצירה",\n  "observedSupportLevel": "תיווך חלקי",\n  "suggestedProgressDelta": 5\n}'
+    };
+    const parsedFromProxy = parseAiGoalMatchResponse(proxyWrapped);
+    expect(parsedFromProxy.matchedGoalId).toBe('g_3');
+    expect(parsedFromProxy.environment).toBe('שולחן יצירה');
+
+    // Case 3: Empty / null / invalid inputs
+    expect(parseAiGoalMatchResponse(null)).toBeNull();
+    const fallbackParsed = parseAiGoalMatchResponse({});
+    expect(fallbackParsed.matchedGoalId).toBeNull();
+    expect(fallbackParsed.observedSupportLevel).toBe('תיווך חלקי');
+  });
 
   describe('getIsraeliHolidayOrVacation', () => {
     it('correctly identifies Summer Vacation for any year in July and August', () => {

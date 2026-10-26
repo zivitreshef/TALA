@@ -281,7 +281,25 @@ ${goalsSummary || 'אין עדיין יעדים מוגדרים'}
  */
 export function parseAiGoalMatchResponse(aiResult) {
   if (!aiResult) return null;
-  const raw = typeof aiResult === 'string' ? JSON.parse(aiResult) : aiResult;
+  let parsed = aiResult;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch (_) {
+      try {
+        const cleaned = parsed.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) parsed = JSON.parse(match[0]);
+      } catch (_) {}
+    }
+  } else if (parsed && typeof parsed === 'object' && typeof parsed.raw === 'string') {
+    try {
+      const cleaned = parsed.raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) parsed = JSON.parse(match[0]);
+    } catch (_) {}
+  }
+  const raw = parsed && typeof parsed === 'object' ? parsed : {};
   return {
     matchedGoalId: raw.matchedGoalId || null,
     matchedGoalTitle: raw.matchedGoalTitle || '',
@@ -322,3 +340,4 @@ export function getEventBarThickness(startTime = '', endTime = '') {
   if (duration <= 60) return 4.5;
   return 6;
 }
+
