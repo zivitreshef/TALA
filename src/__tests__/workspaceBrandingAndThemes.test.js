@@ -63,4 +63,25 @@ describe('Workspace Branding & Unified Blue Theme Contract', () => {
     expect(goalBankCss).toMatch(/\.goal-bank-top-header\s*\{[\s\S]*?color:\s*#ffffff;/);
     expect(goalBankCss).toMatch(/\.goal-bank-header-title-box\s+h1\s*\{[\s\S]*?color:\s*#ffffff;/);
   });
+
+  it('aligns the thickness, padding (22px 28px), and 48px avatar boxes across all 3 workspaces (Option B)', () => {
+    const appCode = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
+    const indexCss = fs.readFileSync(path.resolve(__dirname, '../index.css'), 'utf8');
+    const trackerCss = fs.readFileSync(path.resolve(__dirname, '../components/DailyPedagogicalTracker.css'), 'utf8');
+    const goalBankCss = fs.readFileSync(path.resolve(__dirname, '../components/GoalBankPage.css'), 'utf8');
+
+    // App.jsx: uses Users vector icon in inside-landing-avatar
+    expect(appCode).toContain('className="inside-landing-avatar"');
+    expect(appCode).toMatch(/<Users\s+size=\{22\}\s+color="#ffffff"/);
+
+    // CSS: all 3 headers use matching 22px 28px padding for aligned thickness
+    expect(indexCss).toMatch(/\.inside-landing-hero\s*\{[\s\S]*?padding:\s*22px 28px;/);
+    expect(trackerCss).toMatch(/\.tracker-top-header\s*\{[\s\S]*?padding:\s*22px 28px;/);
+    expect(goalBankCss).toMatch(/\.goal-bank-top-header\s*\{[\s\S]*?padding:\s*22px 28px;/);
+
+    // CSS: all 3 headers use matching 48x48px frosted avatar boxes
+    expect(indexCss).toMatch(/\.inside-landing-avatar\s*\{[\s\S]*?width:\s*48px;[\s\S]*?height:\s*48px;/);
+    expect(trackerCss).toMatch(/\.tracker-header-avatar\s*\{[\s\S]*?width:\s*48px;[\s\S]*?height:\s*48px;/);
+    expect(goalBankCss).toMatch(/\.goal-bank-header-avatar\s*\{[\s\S]*?width:\s*48px;[\s\S]*?height:\s*48px;/);
+  });
 });

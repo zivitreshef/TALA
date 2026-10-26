@@ -2384,31 +2384,33 @@ export default function App() {
           ) : (
             <div className="inside-landing-page">
               <div className="inside-landing-hero">
-                <div className="inside-landing-badge">
-                  <Sparkles size={15} />
-                  <span>ברוכה הבאה למרחב העבודה האישי</span>
-                </div>
-                <h2>שלום, {currentUser.name} 👋</h2>
-                <p>
-                  כדי להתחיל לעבוד, בחרי האם ליצור תוכנית עבודה אקולוגית לתלמיד/ה חדש/ה או לפתוח תוכנית קיימת מתוך רשימת התלמידים שלך.
-                </p>
-                <div className="inside-landing-tracker-strip">
-                  <div className="tracker-strip-content">
-                    <div className="tracker-strip-icon-box">
-                      <Calendar size={18} />
-                    </div>
-                    <div className="tracker-strip-texts">
-                      <strong>מעקב יומי, משימות ולוח שנה</strong>
-                      <span>סנכרון פגישות, משימות פדגוגיות להיום, ועדכון מהיר של יעדים ב-AI</span>
-                    </div>
+                <div className="inside-landing-header-info">
+                  <div className="inside-landing-avatar" title="מרחב ניהול תלמידים">
+                    <Users size={22} color="#ffffff" strokeWidth={2.2} />
                   </div>
+                  <div className="inside-landing-title-box">
+                    <h2>
+                      <span>שלום, {currentUser.name} 👋</span>
+                      <span className="inside-landing-badge">
+                        <Sparkles size={12} />
+                        מרחב ניהול תלמידים
+                      </span>
+                    </h2>
+                    <p>
+                      כדי להתחיל לעבוד, בחרי האם ליצור תוכנית עבודה אקולוגית לתלמיד/ה חדש/ה או לפתוח תוכנית קיימת מתוך רשימת התלמידים שלך
+                    </p>
+                  </div>
+                </div>
+                <div className="inside-landing-header-actions">
                   <button
                     type="button"
                     onClick={() => setShowDailyTracker(true)}
-                    className="tracker-strip-btn"
+                    className="btn-inside-landing-tracker"
+                    title="פתיחת מעקב יומי ויומן פדגוגי"
                   >
-                    <span>כניסה למעקב</span>
-                    <ArrowLeft size={14} />
+                    <Calendar size={14} />
+                    <span>מעקב יומי ויומן</span>
+                    <ArrowLeft size={13} />
                   </button>
                 </div>
               </div>
