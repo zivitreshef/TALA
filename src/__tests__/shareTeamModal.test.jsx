@@ -109,4 +109,22 @@ describe('ShareTeamModal Component (Tenant Isolation & Student Sharing)', () => 
     expect(html).toContain('מתי&quot;א דרום');
     expect(html).not.toContain('type="checkbox"');
   });
+
+  it('renders optional note section with quick chips for share handoff message', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ShareTeamModal, {
+        isOpen: true,
+        onClose: () => {},
+        formData: sampleStudent,
+        currentUser: { email: 'zivit@tala.edu.il', group: 'מתי"א מרכז' },
+        allowedUsers,
+        onToggleShareColleague: () => {}
+      })
+    );
+
+    expect(html).toContain('הודעת פתיחה והנחיות');
+    expect(html).toContain('נא להוסיף מטרות');
+    expect(html).toContain('לעיונך והערות');
+    expect(html).toContain('בדיקת סטטוס');
+  });
 });

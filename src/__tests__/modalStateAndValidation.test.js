@@ -6,6 +6,7 @@ import {
   ArchiveStudentModal,
   LogoutUnsavedModal
 } from '../components/modals/StudentActionModals';
+import { UserSelfPasswordModal } from '../AllowlistAuthGate';
 import TrialUpgradeModal from '../components/modals/TrialUpgradeModal';
 import UserFeedbackSurveyModal from '../components/modals/UserFeedbackSurveyModal';
 import AdminAllowlistModal from '../components/modals/AdminAllowlistModal';
@@ -991,6 +992,45 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
         // Status badge for needs_attention
         expect(html).toContain('⚠️ דורשת המשך מענה');
         expect(html).toContain('הערת מורה: &quot;עדיין יש שגיאה&quot;');
+      });
+    });
+
+    describe('UserSelfPasswordModal Shared Reports Notification & Handoff Notes', () => {
+      it('renders unread shared reports with attached handoff note callouts', () => {
+        const unreadReports = [
+          {
+            id: 'st_100',
+            studentName: 'דניאל לוי',
+            ownerName: 'שרה כהן',
+            ownerEmail: 'sara@school.org',
+            educationalFramework: 'כיתת שילוב',
+            schoolYear: '2026-2027',
+            teamMessages: [
+              {
+                id: 'm1',
+                type: 'share_handoff',
+                authorName: 'שרה כהן',
+                text: 'נא להוסיף מטרות קלינאית תקשורת לקראת הוועדה',
+                recipientEmail: 'therapist@school.org'
+              }
+            ]
+          }
+        ];
+
+        const html = renderToStaticMarkup(
+          React.createElement(UserSelfPasswordModal, {
+            isOpen: true,
+            onClose: () => {},
+            currentUser: { name: 'מיכל המרפאה', email: 'therapist@school.org' },
+            onSubmit: () => {},
+            unreadSharedReports: unreadReports
+          })
+        );
+
+        expect(html).toContain('דניאל לוי');
+        expect(html).toContain('כיתת שילוב');
+        expect(html).toContain('✉️ הודעה:');
+        expect(html).toContain('נא להוסיף מטרות קלינאית תקשורת לקראת הוועדה');
       });
     });
 

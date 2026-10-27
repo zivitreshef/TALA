@@ -124,7 +124,39 @@ export function mergeStudentSnapshots({
   });
 
   merged.goals = mergedGoals;
+
+  // 3. Team messages non-destructive union
+  merged.teamMessages = mergeTeamMessages(localStudent.teamMessages, serverStudent.teamMessages);
+
   merged.updatedAt = new Date().toISOString();
 
   return merged;
+}
+
+/**
+ * Merges team collaboration messages union by unique id, preserving deletions and ordering chronologically.
+ */
+export function mergeTeamMessages(localMsgs = [], serverMsgs = []) {
+  const map = new Map();
+  [...(localMsgs || []), ...(serverMsgs || [])].forEach((msg) => {
+    if (msg && msg.id) {
+      if (!map.has(msg.id)) {
+        map.set(msg.id, msg);
+      } else {
+        const existing = map.get(msg.id);
+        const isDeleted = existing.isDeleted || msg.isDeleted;
+        map.set(msg.id, {
+          ...existing,
+          ...msg,
+          ...(isDeleted ? { isDeleted: true, text: 'הודעה זו נמחקה על ידי המחבר/ת' } : {})
+        });
+      }
+    }
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    const da = new Date(a.createdAt || 0).getTime();
+    const db = new Date(b.createdAt || 0).getTime();
+    return da - db;
+  });
 }

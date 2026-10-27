@@ -6,6 +6,9 @@ import {
   removeGoalRow,
   toggleFocusDomain,
   applyShareToggle,
+  createTeamMessage,
+  appendTeamMessage,
+  retractTeamMessage,
   addManualStatusSection,
   updateStatusSection,
   removeStatusSection
@@ -138,5 +141,120 @@ describe('sharing & status sections', () => {
     expect(updated.statusReportSections[0].content).toBe('חדש');
     const removed = removeStatusSection(updated, 1);
     expect(removed.statusReportSections.map((s) => s.sectionNumber)).toEqual([2]);
+  });
+
+  describe('Team Messages & Share Handoff Notes', () => {
+    it('creates, sanitizes, and limits team messages', () => {
+      // 1. Valid message
+      const msg = createTeamMessage({
+        authorEmail: 'sara@school.org',
+        authorName: 'שרה כהן',
+        authorRole: 'מחנכת',
+        text: '  היי דנה, אנא הוסיפי מטרות תקשורת  ',
+        type: 'comment'
+      });
+      expect(msg).toMatchObject({
+        authorEmail: 'sara@school.org',
+        authorName: 'שרה כהן',
+        authorRole: 'מחנכת',
+        text: 'היי דנה, אנא הוסיפי מטרות תקשורת',
+        type: 'comment'
+      });
+      expect(msg.id).toMatch(/^msg_/);
+      expect(msg.createdAt).toBeDefined();
+
+      // 2. Strips HTML tags and caps at 800 characters
+      const longHtml = '<script>alert("xss")</script><b>הודעה חשובה:</b> ' + 'א'.repeat(1000);
+      const sanitized = createTeamMessage({
+        authorEmail: 'sara@school.org',
+        text: longHtml
+      });
+      expect(sanitized.text.startsWith('הודעה חשובה: ')).toBe(true);
+      expect(sanitized.text.includes('<script>')).toBe(false);
+      expect(sanitized.text.length).toBeLessThanOrEqual(800);
+
+      // 3. Rejects empty messages or missing author
+      expect(createTeamMessage({ authorEmail: 'sara@school.org', text: '   ' })).toBeNull();
+      expect(createTeamMessage({ authorEmail: '', text: 'תוכן תקין' })).toBeNull();
+    });
+
+    it('appends a team message to the student plan', () => {
+      const student = { name: 'דניאל', teamMessages: [] };
+      const msg = createTeamMessage({
+        authorEmail: 'sara@school.org',
+        authorName: 'שרה',
+        text: 'הודעה ראשונה'
+      });
+      const updated = appendTeamMessage(student, msg);
+      expect(updated.teamMessages).toHaveLength(1);
+      expect(updated.teamMessages[0].id).toBe(msg.id);
+      expect(updated.teamMessages[0].text).toBe('הודעה ראשונה');
+
+      // Invalid message or student returns same
+      expect(appendTeamMessage(student, null)).toBe(student);
+    });
+
+    it('enforces author-only message retraction', () => {
+      const student = {
+        name: 'דניאל',
+        teamMessages: [
+          {
+            id: 'msg_1',
+            authorEmail: 'sara@school.org',
+            authorName: 'שרה',
+            text: 'מטרות שפה מעודכנות'
+          },
+          {
+            id: 'msg_2',
+            authorEmail: 'dana@school.org',
+            authorName: 'דנה',
+            text: 'מטרות תקשורת'
+          }
+        ]
+      };
+
+      // 1. Sara cannot retract Dana's message
+      const blocked = retractTeamMessage(student, 'msg_2', 'sara@school.org');
+      expect(blocked.teamMessages.find((m) => m.id === 'msg_2').isDeleted).toBeUndefined();
+
+      // 2. Dana can retract her own message
+      const retracted = retractTeamMessage(student, 'msg_2', 'dana@school.org');
+      const target = retracted.teamMessages.find((m) => m.id === 'msg_2');
+      expect(target.isDeleted).toBe(true);
+      expect(target.text).toBe('הודעה זו נמחקה על ידי המחבר/ת');
+      expect(target.deletedAt).toBeDefined();
+
+      // 3. Sara's message remains untouched
+      expect(retracted.teamMessages.find((m) => m.id === 'msg_1').isDeleted).toBeUndefined();
+    });
+
+    it('automatically attaches a share handoff note when toggling share with note options', () => {
+      const allowedUsers = [
+        { email: 'teacher1@center.org', group: 'מתי"א מרכז', active: true },
+        { email: 'therapist@center.org', group: 'מתי"א מרכז', active: true }
+      ];
+      const student = { sharedWith: [], teamMessages: [] };
+
+      const res = applyShareToggle(
+        student,
+        'therapist@center.org',
+        { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז' },
+        '24.10.26',
+        {
+          allowedUsers,
+          handoffNote: 'נא להוסיף מטרות לקראת ועדת שילוב',
+          recipientName: 'מיכל המרפאה'
+        }
+      );
+
+      expect(res).not.toBeNull();
+      expect(res.next.sharedWith).toEqual(['therapist@center.org']);
+      expect(res.next.teamMessages).toHaveLength(1);
+      const note = res.next.teamMessages[0];
+      expect(note.type).toBe('share_handoff');
+      expect(note.text).toBe('נא להוסיף מטרות לקראת ועדת שילוב');
+      expect(note.recipientEmail).toBe('therapist@center.org');
+      expect(note.authorEmail).toBe('teacher1@center.org');
+    });
   });
 });

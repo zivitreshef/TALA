@@ -180,12 +180,31 @@ export const applyShareToggle = (
     ...(!exists ? { [cleanEmail]: nowStamp } : {})
   };
 
+  let nextTeamMessages = Array.isArray(data?.teamMessages) ? [...data.teamMessages] : [];
+  if (!exists && (options.handoffNote || options.messageText)) {
+    const noteText = options.handoffNote || options.messageText;
+    const handoffMsg = createTeamMessage({
+      authorEmail: actor?.email || data?.ownerEmail || '',
+      authorName: actor?.name || actor?.email || 'מחבר/ת התוכנית',
+      authorRole: actor?.title || actor?.role || 'צוות חינוכי',
+      text: noteText,
+      type: 'share_handoff',
+      recipientEmail: cleanEmail,
+      recipientName: options.recipientName || '',
+      schoolYear: data?.schoolYear || ''
+    });
+    if (handoffMsg) {
+      nextTeamMessages.push(handoffMsg);
+    }
+  }
+
   const next = {
     ...syncActiveReportSnapshot(data),
     sharedWith: nextShared,
     sharedReadBy: nextReadBy,
     sharedByName: actor?.name || actor?.email || data?.sharedByName || '',
-    sharedAtByEmail: nextSharedAtByEmail
+    sharedAtByEmail: nextSharedAtByEmail,
+    teamMessages: nextTeamMessages
   };
 
   return {
@@ -210,6 +229,84 @@ export const removeStatusSection = (prev, sectionNumber) => {
     statusReportSections: (prev?.statusReportSections || []).filter(
       (sec) => sec.sectionNumber !== sectionNumber
     )
+  };
+};
+
+export const createTeamMessage = ({
+  authorEmail,
+  authorName = '',
+  authorRole = '',
+  text = '',
+  type = 'comment',
+  recipientEmail = '',
+  recipientName = '',
+  schoolYear = ''
+} = {}) => {
+  const cleanAuthorEmail = String(authorEmail || '').trim().toLowerCase();
+  if (!cleanAuthorEmail) return null;
+
+  // Sanitize: strip script/style tags and contents, strip other HTML tags, trim, and cap to 800 chars
+  const rawText = String(text || '')
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .trim();
+  if (!rawText) return null;
+  const cleanText = rawText.slice(0, 800);
+
+  const cleanRecipientEmail = String(recipientEmail || '').trim().toLowerCase();
+  const id = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+  return {
+    id,
+    authorEmail: cleanAuthorEmail,
+    authorName: String(authorName || '').trim() || cleanAuthorEmail,
+    authorRole: String(authorRole || '').trim(),
+    text: cleanText,
+    type: type === 'share_handoff' ? 'share_handoff' : 'comment',
+    ...(cleanRecipientEmail ? { recipientEmail: cleanRecipientEmail } : {}),
+    ...(recipientName ? { recipientName: String(recipientName).trim() } : {}),
+    ...(schoolYear ? { schoolYear: String(schoolYear).trim() } : {}),
+    createdAt: new Date().toISOString()
+  };
+};
+
+export const appendTeamMessage = (data, messageObj) => {
+  if (!data || !messageObj || !messageObj.id) return data;
+  const currentMessages = Array.isArray(data.teamMessages) ? data.teamMessages : [];
+  return {
+    ...syncActiveReportSnapshot(data),
+    teamMessages: [...currentMessages, messageObj]
+  };
+};
+
+export const retractTeamMessage = (data, messageId, userEmail) => {
+  if (!data || !messageId || !userEmail) return data;
+  const cleanUserEmail = String(userEmail).trim().toLowerCase();
+  const currentMessages = Array.isArray(data.teamMessages) ? data.teamMessages : [];
+  const target = currentMessages.find((m) => m.id === messageId);
+  if (!target) return data;
+
+  // Author-only check
+  if (String(target.authorEmail || '').trim().toLowerCase() !== cleanUserEmail) {
+    return data;
+  }
+
+  const updatedMessages = currentMessages.map((m) => {
+    if (m.id === messageId) {
+      return {
+        ...m,
+        isDeleted: true,
+        text: 'הודעה זו נמחקה על ידי המחבר/ת',
+        deletedAt: new Date().toISOString()
+      };
+    }
+    return m;
+  });
+
+  return {
+    ...syncActiveReportSnapshot(data),
+    teamMessages: updatedMessages
   };
 };
 

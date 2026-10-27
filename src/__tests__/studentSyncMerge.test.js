@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   mergeObservationsLists,
   mergeGoalObjects,
-  mergeStudentSnapshots
+  mergeStudentSnapshots,
+  mergeTeamMessages
 } from '../domain/studentSyncMerge';
 
 describe('studentSyncMerge (Multi-Disciplinary & Field-Level Saves)', () => {
@@ -63,5 +64,56 @@ describe('studentSyncMerge (Multi-Disciplinary & Field-Level Saves)', () => {
 
     expect(g2.title).toBe('מטרה 2 מעודכנת ע"י קלינאית');
     expect(g2.leadProfessional).toBe('קלינאית תקשורת');
+  });
+
+  it('merges team messages union by id and sorts chronologically', () => {
+    const local = [
+      { id: 'm1', text: 'הודעה 1', createdAt: '2026-10-20T10:00:00Z' }
+    ];
+    const server = [
+      { id: 'm1', text: 'הודעה 1', createdAt: '2026-10-20T10:00:00Z' },
+      { id: 'm2', text: 'הודעה 2', createdAt: '2026-10-20T11:00:00Z' }
+    ];
+
+    const merged = mergeTeamMessages(local, server);
+    expect(merged).toHaveLength(2);
+    expect(merged[0].id).toBe('m1');
+    expect(merged[1].id).toBe('m2');
+  });
+
+  it('reconciles simultaneous edits preserving concurrent team messages from colleagues', () => {
+    const base = {
+      id: 'st_1',
+      teamMessages: [
+        { id: 'm1', text: 'הודעת פתיחה', createdAt: '2026-10-20T10:00:00Z' }
+      ]
+    };
+
+    // Homeroom teacher posted m2
+    const local = {
+      ...base,
+      teamMessages: [
+        ...base.teamMessages,
+        { id: 'm2', text: 'עדכון מחנכת', createdAt: '2026-10-20T11:00:00Z' }
+      ]
+    };
+
+    // Therapist concurrently posted m3
+    const server = {
+      ...base,
+      teamMessages: [
+        ...base.teamMessages,
+        { id: 'm3', text: 'עדכון מטפלת', createdAt: '2026-10-20T12:00:00Z' }
+      ]
+    };
+
+    const reconciled = mergeStudentSnapshots({
+      localStudent: local,
+      serverStudent: server,
+      baseSnapshot: base
+    });
+
+    expect(reconciled.teamMessages).toHaveLength(3);
+    expect(reconciled.teamMessages.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
   });
 });

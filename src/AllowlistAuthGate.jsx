@@ -833,6 +833,17 @@ export function UserSelfPasswordModal({
                     </div>
                     {unreadSharedReports.map((st) => {
                       const ownerName = resolveOwnerDisplayName(st);
+                      const userEmail = (currentUser?.email || '').trim().toLowerCase();
+                      const relevantMessage = Array.isArray(st.teamMessages)
+                        ? [...st.teamMessages]
+                            .reverse()
+                            .find(
+                              (m) =>
+                                !m.isDeleted &&
+                                (m.type === 'share_handoff' ||
+                                  (m.recipientEmail && m.recipientEmail.toLowerCase() === userEmail))
+                            ) || st.teamMessages.filter((m) => !m.isDeleted).slice(-1)[0]
+                        : null;
                       return (
                         <button
                           key={st.id}
@@ -884,6 +895,28 @@ export function UserSelfPasswordModal({
                               שותף עמך על ידי: <strong>{ownerName}</strong>
                               {st.schoolYear ? ` • תשפ"ו (${st.schoolYear})` : ''}
                             </span>
+                            {relevantMessage && relevantMessage.text && (
+                              <div
+                                style={{
+                                  marginTop: '4px',
+                                  padding: '4px 8px',
+                                  background: '#f5f3ff',
+                                  border: '1px solid #ddd6fe',
+                                  borderRadius: '6px',
+                                  fontSize: '11.5px',
+                                  color: '#5b21b6',
+                                  lineHeight: 1.4,
+                                  display: 'flex',
+                                  alignItems: 'flex-start',
+                                  gap: '4px'
+                                }}
+                              >
+                                <span style={{ fontWeight: 700, flexShrink: 0 }}>✉️ הודעה:</span>
+                                <span style={{ fontStyle: 'italic', wordBreak: 'break-word' }}>
+                                  "{relevantMessage.text}"
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <span
                             style={{
