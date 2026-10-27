@@ -5,7 +5,7 @@ import {
   X,
   Send,
   User,
-  ShieldCheck,
+  Headphones,
   Clock,
   Sparkles,
   CheckCircle2,
@@ -322,7 +322,7 @@ export default function TeacherChatWidget({
                   justifyContent: 'center'
                 }}
               >
-                <ShieldCheck size={18} color="#ffffff" />
+                <Headphones size={18} color="#ffffff" />
               </div>
               <div>
                 <h4
@@ -457,7 +457,7 @@ export default function TeacherChatWidget({
                   >
                     {isAdmin ? (
                       <>
-                        <ShieldCheck size={11} color="#7c65b8" />
+                        <Headphones size={11} color="#7c65b8" />
                         <strong style={{ color: '#7c65b8' }}>{msg.senderName}</strong>
                       </>
                     ) : (

@@ -2045,7 +2045,7 @@ export default function AdminAllowlistModal({
                                       }}
                                     >
                                       <div style={{ fontSize: '10.5px', color: isAdmin ? '#1e40af' : '#64748b', fontWeight: 700, marginBottom: '2px' }}>
-                                        {isAdmin ? '🛡️ מנהלת המערכת' : `👤 ${m.senderName || req.name}`} • {m.createdAt}
+                                        {isAdmin ? '🎧 מנהלת המערכת' : `👤 ${m.senderName || req.name}`} • {m.createdAt}
                                       </div>
                                       <div style={{ color: '#1e293b', whiteSpace: 'pre-wrap' }}>{m.text}</div>
                                     </div>

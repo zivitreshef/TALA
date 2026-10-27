@@ -53,6 +53,9 @@ describe('TeacherChatWidget Component (Bi-directional Support Chat)', () => {
     expect(html).toContain('title="צרף צילום מסך (או הדבק ב-Ctrl+V)"');
     // Verifies green circle is replaced with subtle message icon (no green circle #4ade80)
     expect(html).not.toContain('#4ade80');
+    // Verifies friendly Headphones support icon is rendered instead of defensive shield
+    expect(html).toContain('lucide-headphones');
+    expect(html).not.toContain('lucide-shield-check');
   });
 
   it('honors isOpenControlled when opened externally from Help Modal', () => {
