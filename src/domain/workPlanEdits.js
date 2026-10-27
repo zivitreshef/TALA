@@ -267,6 +267,7 @@ export const createTeamMessage = ({
     ...(cleanRecipientEmail ? { recipientEmail: cleanRecipientEmail } : {}),
     ...(recipientName ? { recipientName: String(recipientName).trim() } : {}),
     ...(schoolYear ? { schoolYear: String(schoolYear).trim() } : {}),
+    readBy: [cleanAuthorEmail],
     createdAt: new Date().toISOString()
   };
 };
@@ -274,9 +275,14 @@ export const createTeamMessage = ({
 export const appendTeamMessage = (data, messageObj) => {
   if (!data || !messageObj || !messageObj.id) return data;
   const currentMessages = Array.isArray(data.teamMessages) ? data.teamMessages : [];
+  const authorEmail = String(messageObj.authorEmail || '').trim().toLowerCase();
   return {
     ...syncActiveReportSnapshot(data),
-    teamMessages: [...currentMessages, messageObj]
+    teamMessages: [...currentMessages, messageObj],
+    lastTeamMessageAt: messageObj.createdAt,
+    lastTeamMessageBy: authorEmail,
+    // Reset sharedReadBy so other colleagues receive unread notification
+    sharedReadBy: [authorEmail]
   };
 };
 

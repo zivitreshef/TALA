@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import TeamChatDrawer from '../components/form/TeamChatDrawer';
+import TeamChatDrawer, { getAuthorColorTheme, AUTHOR_COLOR_THEMES } from '../components/form/TeamChatDrawer';
 
 describe('TeamChatDrawer Component', () => {
   const currentUser = {
@@ -102,5 +102,48 @@ describe('TeamChatDrawer Component', () => {
     );
 
     expect(html).toContain('אין עדיין הודעות בשיח הצוות');
+  });
+
+  it('places the drawer on the LEFT side so Hebrew text on the right remains visible and unblocked', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(TeamChatDrawer, {
+        isOpen: true,
+        onClose: () => {},
+        studentName: 'דניאל לוי',
+        teamMessages: sampleMessages,
+        currentUser
+      })
+    );
+
+    // In RTL, justifyContent: flex-end positions the drawer on the left side
+    expect(html).toContain('justify-content:flex-end');
+    expect(html).toContain('slideInLeft');
+  });
+
+  it('assigns distinct color themes per author for easy visual tracking', () => {
+    const themeSara = getAuthorColorTheme('sara@school.org');
+    const themeMichal = getAuthorColorTheme('michal@school.org');
+
+    // Both themes should exist and be valid from the theme set
+    expect(AUTHOR_COLOR_THEMES).toContain(themeSara);
+    expect(AUTHOR_COLOR_THEMES).toContain(themeMichal);
+    // Hash consistency: same author always gets identical color
+    expect(getAuthorColorTheme('sara@school.org')).toEqual(themeSara);
+
+    const html = renderToStaticMarkup(
+      React.createElement(TeamChatDrawer, {
+        isOpen: true,
+        onClose: () => {},
+        studentName: 'דניאל לוי',
+        teamMessages: sampleMessages,
+        currentUser // Sara
+      })
+    );
+
+    // Sara's card has (אני) indicator
+    expect(html).toContain('(אני)');
+    // Contains distinct background colors from the themes
+    expect(html).toContain(themeSara.bg);
+    expect(html).toContain(themeMichal.bg);
   });
 });

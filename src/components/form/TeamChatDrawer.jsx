@@ -1,6 +1,63 @@
 import React, { useState } from 'react';
 import { MessageSquare, Send, Trash2, X, Clock, Pin, AlertCircle } from 'lucide-react';
 
+export const AUTHOR_COLOR_THEMES = [
+  {
+    bg: '#f5f3ff', // Soft violet/purple
+    border: '#ddd6fe',
+    avatarBg: '#7c3aed',
+    badgeBg: '#ede9fe',
+    badgeColor: '#6d28d9'
+  },
+  {
+    bg: '#eff6ff', // Soft blue
+    border: '#bfdbfe',
+    avatarBg: '#2563eb',
+    badgeBg: '#dbeafe',
+    badgeColor: '#1d4ed8'
+  },
+  {
+    bg: '#f0fdf4', // Soft emerald green
+    border: '#bbf7d0',
+    avatarBg: '#059669',
+    badgeBg: '#dcfce7',
+    badgeColor: '#15803d'
+  },
+  {
+    bg: '#fffbeb', // Soft warm amber
+    border: '#fde68a',
+    avatarBg: '#d97706',
+    badgeBg: '#fef3c7',
+    badgeColor: '#b45309'
+  },
+  {
+    bg: '#fff1f2', // Soft coral rose
+    border: '#fecdd3',
+    avatarBg: '#e11d48',
+    badgeBg: '#ffe4e6',
+    badgeColor: '#be123c'
+  },
+  {
+    bg: '#ecfeff', // Soft cyan/aqua
+    border: '#a5f3fc',
+    avatarBg: '#0891b2',
+    badgeBg: '#cffafe',
+    badgeColor: '#0e7490'
+  }
+];
+
+export function getAuthorColorTheme(authorEmail = '') {
+  const clean = String(authorEmail || '').trim().toLowerCase();
+  if (!clean) return AUTHOR_COLOR_THEMES[0];
+  let hash = 0;
+  for (let i = 0; i < clean.length; i++) {
+    hash = (hash << 5) - hash + clean.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % AUTHOR_COLOR_THEMES.length;
+  return AUTHOR_COLOR_THEMES[index];
+}
+
 const DRAWER_QUICK_CHIPS = [
   'נא לבדוק מטרות טיפוליות',
   'עודכן לקראת ישיבת צוות',
@@ -68,24 +125,26 @@ export default function TeamChatDrawer({
         backgroundColor: 'rgba(15, 23, 42, 0.45)',
         zIndex: 1050,
         display: 'flex',
-        justifyContent: 'flex-start',
+        justifyContent: 'flex-end', // Aligns to the LEFT side in RTL mode
         backdropFilter: 'blur(2px)',
         direction: 'rtl'
       }}
     >
       <div
         className="team-chat-drawer"
+        data-testid="team-chat-drawer-panel"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
           maxWidth: '400px',
           height: '100%',
           backgroundColor: '#ffffff',
-          boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
+          boxShadow: '4px 0 24px rgba(0, 0, 0, 0.15)',
+          borderRight: '1px solid #cbd5e1',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 1051,
-          animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+          animation: 'slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
         {/* Drawer Header */}
@@ -201,6 +260,7 @@ export default function TeamChatDrawer({
               const isMine = myEmail && String(msg.authorEmail || '').trim().toLowerCase() === myEmail;
               const isHandoff = msg.type === 'share_handoff';
               const initialLetter = (msg.authorName || msg.authorEmail || 'צ').trim().charAt(0);
+              const theme = getAuthorColorTheme(msg.authorEmail);
 
               return (
                 <div
@@ -208,17 +268,13 @@ export default function TeamChatDrawer({
                   style={{
                     backgroundColor: msg.isDeleted
                       ? '#f1f5f9'
-                      : isHandoff
-                      ? '#f5f3ff'
-                      : '#ffffff',
+                      : theme.bg,
                     border: msg.isDeleted
                       ? '1px dashed #cbd5e1'
-                      : isHandoff
-                      ? '1.5px solid #c4b5fd'
-                      : '1px solid #e2e8f0',
+                      : `1.5px solid ${theme.border}`,
                     borderRadius: '12px',
                     padding: '12px',
-                    boxShadow: msg.isDeleted ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+                    boxShadow: msg.isDeleted ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.05)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '6px'
@@ -239,7 +295,7 @@ export default function TeamChatDrawer({
                           width: '26px',
                           height: '26px',
                           borderRadius: '8px',
-                          backgroundColor: isHandoff ? '#7c3aed' : '#2563eb',
+                          backgroundColor: theme.avatarBg,
                           color: '#ffffff',
                           display: 'flex',
                           alignItems: 'center',
@@ -255,12 +311,17 @@ export default function TeamChatDrawer({
                         <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
                           {msg.authorName || msg.authorEmail}
                         </span>
+                        {isMine && (
+                          <span style={{ fontSize: '11px', color: '#64748b', marginRight: '4px' }}>
+                            (אני)
+                          </span>
+                        )}
                         {msg.authorRole && (
                           <span
                             style={{
                               fontSize: '11px',
-                              color: isHandoff ? '#6d28d9' : '#1d4ed8',
-                              backgroundColor: isHandoff ? '#ede9fe' : '#eff6ff',
+                              color: theme.badgeColor,
+                              backgroundColor: theme.badgeBg,
                               borderRadius: '4px',
                               padding: '1px 6px',
                               marginRight: '6px',

@@ -608,7 +608,38 @@ export default function EcologicalWorkPlanForm({
     savedSnapshotRef.current = JSON.stringify(next);
     setFormData(next);
     onSaveStudentPlan(next);
+
+    // Immediately alert all other team members in real-time
+    if (onNotifySharedColleague) {
+      const currentEmail = (currentUser?.email || '').trim().toLowerCase();
+      const allMembers = [
+        ...(Array.isArray(formData.sharedWith) ? formData.sharedWith : []),
+        formData.ownerEmail
+      ].filter(Boolean);
+      const uniqueRecipients = [...new Set(allMembers.map((e) => e.trim().toLowerCase()))].filter(
+        (e) => e && e !== currentEmail
+      );
+      uniqueRecipients.forEach((recipientEmail) => {
+        onNotifySharedColleague(formData.id, recipientEmail, true);
+      });
+    }
   };
+
+  // Synchronize incoming team messages from other colleagues in real-time
+  useEffect(() => {
+    if (student && student.id === formData.id && Array.isArray(student.teamMessages)) {
+      const currentMsgCount = (formData.teamMessages || []).length;
+      const incomingMsgCount = student.teamMessages.length;
+      if (incomingMsgCount !== currentMsgCount || student.lastTeamMessageAt !== formData.lastTeamMessageAt) {
+        setFormData((prev) => ({
+          ...prev,
+          teamMessages: student.teamMessages,
+          lastTeamMessageAt: student.lastTeamMessageAt,
+          lastTeamMessageBy: student.lastTeamMessageBy
+        }));
+      }
+    }
+  }, [student?.teamMessages, student?.lastTeamMessageAt]);
 
   // Retract author's own message in the Team Collaboration Thread
   const handleRetractTeamMessage = (messageId) => {

@@ -16,6 +16,8 @@ import {
   getStudentsForUser,
   getArchivedStudentsForUser,
   getUnreadSharedReportsForUser,
+  getUnreadTeamMessagesCountForUser,
+  markTeamMessagesAsRead,
   markSharedReportAsRead,
   getUserGroup,
   getShareableColleagues,
@@ -738,6 +740,37 @@ describe('School Year Rollover, Firebase Auth Provisioning & Safe Storage', () =
     // If user disables notifications (notifyOnSharedReport: false), returns empty list
     const disabledUser = { ...sharedColleague, notifyOnSharedReport: false };
     expect(getUnreadSharedReportsForUser([sharedStudent], disabledUser, [])).toHaveLength(0);
+
+    // Team Messages Real-Time Alerting:
+    // When a team message is added, it immediately alerts the colleague and owner
+    const studentWithMessage = {
+      ...markedReadStudent,
+      teamMessages: [
+        {
+          id: 'msg_999',
+          authorEmail: 'michal@tala.edu.il',
+          text: 'הודעה חדשה',
+          readBy: ['michal@tala.edu.il']
+        }
+      ]
+    };
+
+    // Ronit has 1 unread message
+    expect(getUnreadTeamMessagesCountForUser(studentWithMessage, 'ronit@tala.edu.il')).toBe(1);
+    // Michal (the author) has 0 unread messages
+    expect(getUnreadTeamMessagesCountForUser(studentWithMessage, 'michal@tala.edu.il')).toBe(0);
+
+    // Ronit immediately sees the report as unread again without refreshing!
+    const unreadWithMessage = getUnreadSharedReportsForUser(
+      [studentWithMessage],
+      sharedColleague,
+      ['st_shared_99'] // Even if previously dismissed!
+    );
+    expect(unreadWithMessage).toHaveLength(1);
+
+    // Marking messages as read clears the alert
+    const readMessagesStudent = markTeamMessagesAsRead(studentWithMessage, 'ronit@tala.edu.il');
+    expect(getUnreadTeamMessagesCountForUser(readMessagesStudent, 'ronit@tala.edu.il')).toBe(0);
   });
 
   it('formats Educational-Functional Status Report with professional bullets and strips all numbers', () => {
