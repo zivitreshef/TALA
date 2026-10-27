@@ -1,3 +1,4 @@
+import TeacherChatWidget from './components/chat/TeacherChatWidget';
 import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
@@ -637,6 +638,12 @@ export function AllowlistAuthGate({
           </div>
         </div>
       )}
+      {/* Live Bi-directional Support Chat on Login Screen (for lockout or assistance) */}
+      <TeacherChatWidget
+        initialUserEmail={email || contactEmail}
+        initialUserName={contactName || 'מורה'}
+        allowedUsers={allowedUsers}
+      />
     </div>
   );
 }

@@ -85,6 +85,15 @@ service cloud.firestore {
       allow read: if isAdmin() || (isSignedIn() && key == currentEmail().replace('[^a-z0-9._-]', '_'));
       allow write: if isAdmin() || (isSignedIn() && key == currentEmail().replace('[^a-z0-9._-]', '_'));
     }
+
+    // Live support chat threads between teachers and admins.
+    // Admins can read, write, and delete all threads.
+    // Signed-in teachers can read and write only their own thread matching their email.
+    match /tala_support_threads/{threadId} {
+      allow read: if isAdmin() || (isSignedIn() && threadId == currentEmail().replace('[^a-z0-9._-]', '_'));
+      allow create, update: if isAdmin() || (isSignedIn() && threadId == currentEmail().replace('[^a-z0-9._-]', '_'));
+      allow delete: if isAdmin();
+    }
     match /tala_config/students_migration_meta {
       allow read, write: if isAdmin();
     }

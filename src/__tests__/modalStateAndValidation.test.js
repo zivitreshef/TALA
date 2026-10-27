@@ -8,6 +8,7 @@ import {
 } from '../components/modals/StudentActionModals';
 import TrialUpgradeModal from '../components/modals/TrialUpgradeModal';
 import UserFeedbackSurveyModal from '../components/modals/UserFeedbackSurveyModal';
+import AdminAllowlistModal from '../components/modals/AdminAllowlistModal';
 import { getPaidRemainingDays } from '../allowedUsers';
 
 // ============================================================================
@@ -726,5 +727,25 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
         expect(onDismissSurveyPermanently).toHaveBeenCalledTimes(1);
       });
     });
+    describe('AdminAllowlistModal Layout Resiliency', () => {
+      it('preserves tab strip visibility and prevents flexbox vertical clipping with banner toast', () => {
+        const html = renderToStaticMarkup(
+          React.createElement(AdminAllowlistModal, {
+            isOpen: true,
+            onClose: () => {},
+            allowedUsers: [],
+            onUpdateAllowedUsers: () => {},
+            currentUser: { role: 'admin', email: 'admin@tala.com' }
+          })
+        );
+
+        // Header and tab strip must not shrink under flex compression
+        expect(html).toContain('flex-shrink:0');
+        expect(html).toContain('overflow-x:auto');
+        expect(html).toContain('overflow-y:auto');
+        expect(html).toContain('modal-body');
+      });
+    });
+
   });
 });
