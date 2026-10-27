@@ -117,6 +117,8 @@ import {
   getStudentsForUser,
   getArchivedStudentsForUser,
   getUnreadSharedReportsForUser,
+  getUnreadTeamMessagesCountForUser,
+  markTeamMessagesAsRead,
   markSharedReportAsRead
 } from './domain/permissions';
 import {
@@ -854,7 +856,8 @@ export default function App() {
     const emailLower = currentUser.email.trim().toLowerCase();
 
     // 1. Mark as read on the student object & persist to cloud so it disappears permanently
-    const updatedStudent = markSharedReportAsRead(studentObj, emailLower);
+    let updatedStudent = markSharedReportAsRead(studentObj, emailLower);
+    updatedStudent = markTeamMessagesAsRead(updatedStudent, emailLower);
     setStudents((prev) =>
       prev.map((st) => (st.id === studentObj.id ? updatedStudent : st))
     );

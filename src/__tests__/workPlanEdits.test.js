@@ -162,6 +162,7 @@ describe('sharing & status sections', () => {
       });
       expect(msg.id).toMatch(/^msg_/);
       expect(msg.createdAt).toBeDefined();
+      expect(msg.readBy).toEqual(['sara@school.org']);
 
       // 2. Strips HTML tags and caps at 800 characters
       const longHtml = '<script>alert("xss")</script><b>הודעה חשובה:</b> ' + 'א'.repeat(1000);

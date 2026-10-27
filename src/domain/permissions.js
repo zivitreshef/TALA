@@ -127,12 +127,54 @@ export function getUnreadSharedReportsForUser(
 
   return (allStudents || []).filter((s) => {
     if (!s || s.archived) return false;
+
+    // 1. Alert on any unread team message for this user (alerts both owner and shared colleagues)
+    if (canViewStudent(s, userObj)) {
+      const unreadCount = getUnreadTeamMessagesCountForUser(s, targetEmail);
+      if (unreadCount > 0) return true;
+    }
+
+    // 2. Newly shared report not yet opened or dismissed
     if (!isStudentSharedWithUser(s, userObj)) return false;
     if (dismissedSet.has(s.id)) return false;
     const readByList = Array.isArray(s.sharedReadBy) ? s.sharedReadBy : [];
     const alreadyRead = readByList.some((em) => normalizeEmail(em) === targetEmail);
     return !alreadyRead;
   });
+}
+
+export function getUnreadTeamMessagesCountForUser(studentObj, userEmail) {
+  if (!studentObj || !userEmail) return 0;
+  const cleanEmail = normalizeEmail(userEmail);
+  const msgs = Array.isArray(studentObj.teamMessages) ? studentObj.teamMessages : [];
+  return msgs.filter((m) => {
+    if (!m || m.isDeleted) return false;
+    if (normalizeEmail(m.authorEmail) === cleanEmail) return false;
+    const readBy = Array.isArray(m.readBy) ? m.readBy.map((e) => normalizeEmail(e)) : [];
+    return !readBy.includes(cleanEmail);
+  }).length;
+}
+
+export function markTeamMessagesAsRead(studentObj, userEmail) {
+  if (!studentObj || !userEmail) return studentObj;
+  const cleanEmail = normalizeEmail(userEmail);
+  const msgs = Array.isArray(studentObj.teamMessages) ? studentObj.teamMessages : [];
+  let changed = false;
+  const updated = msgs.map((m) => {
+    if (m && !m.isDeleted) {
+      const readBy = Array.isArray(m.readBy) ? m.readBy.map((e) => normalizeEmail(e)) : [];
+      if (!readBy.includes(cleanEmail)) {
+        changed = true;
+        return { ...m, readBy: [...readBy, cleanEmail] };
+      }
+    }
+    return m;
+  });
+  if (!changed) return studentObj;
+  return {
+    ...studentObj,
+    teamMessages: updated
+  };
 }
 
 export function markSharedReportAsRead(studentObj, userEmail) {
