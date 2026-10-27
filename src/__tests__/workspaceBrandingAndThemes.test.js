@@ -97,4 +97,15 @@ describe('Workspace Branding & Unified Blue Theme Contract', () => {
     expect(formCode).toContain('קריאה בלבד');
     expect(formCode).toContain('התוכנית נעולה לעריכה על ידי המורה האחראי/ת');
   });
+
+  it('ensures "שיח צוות" chat button is permanently accessible in top action bar and section 1 whether plan is locked or unlocked', () => {
+    const formCode = fs.readFileSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'), 'utf8');
+
+    // Sticky top action bar permanently renders Team Chat drawer trigger
+    expect(formCode).toContain('data-testid="top-action-bar-team-chat-btn"');
+    expect(formCode).toContain('className="btn-team-chat"');
+
+    // Section 1 header (editable view) also renders Team Chat trigger
+    expect(formCode).toContain('data-testid="section1-team-chat-btn"');
+  });
 });

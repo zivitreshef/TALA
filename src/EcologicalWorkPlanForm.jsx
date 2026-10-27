@@ -2226,6 +2226,48 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
           <button
             type="button"
+            className="btn-team-chat"
+            data-testid="top-action-bar-team-chat-btn"
+            onClick={() => setShowTeamChatDrawer(true)}
+            title="שיח צוות ותיעוד שיתוף"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '#eff6ff' : '#ffffff',
+              color: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '#1d4ed8' : '#334155',
+              border: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '1.5px solid #93c5fd' : '1px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+            }}
+          >
+            <MessageSquare size={16} style={{ color: '#2563eb' }} />
+            <span>שיח צוות</span>
+            {Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 && (
+              <span
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  padding: '1px 6px',
+                  borderRadius: '999px',
+                  minWidth: '16px',
+                  textAlign: 'center'
+                }}
+              >
+                {formData.teamMessages.filter(m => !m.isDeleted).length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
             className="btn-preview-doc"
             onClick={() => setShowFullDocPreview(!showFullDocPreview)}
           >
@@ -3371,6 +3413,33 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               שיתוף צוות
               {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
                 ? ` • ${formData.sharedWith.length}`
+                : ''}
+            </span>
+          </button>
+          <button
+            type="button"
+            data-testid="section1-team-chat-btn"
+            onClick={() => setShowTeamChatDrawer(true)}
+            title="שיח צוות ותיעוד שיתוף"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '#eff6ff' : '#f1f5f9',
+              color: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '#1d4ed8' : '#334155',
+              border: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '1px solid #bfdbfe' : '1px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <MessageSquare size={15} />
+            <span>
+              שיח צוות
+              {Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0
+                ? ` • ${formData.teamMessages.filter(m => !m.isDeleted).length}`
                 : ''}
             </span>
           </button>
