@@ -319,3 +319,40 @@ export function buildAdminChatNotificationEmailHtml({
     </div>
   `;
 }
+
+
+/**
+ * Computes the deduplicated count of pending inquiries across chat threads and contact requests.
+ * Only threads that are unreadByAdmin or marked as needs_attention, and standalone login requests, are counted.
+ * Resolved threads (e.g. thumb-up closed) or read active threads do not count as pending.
+ */
+export function computePendingInquiriesCount(adminRequests = [], supportThreads = []) {
+  const seenEmails = new Set();
+  let pendingCount = 0;
+
+  // 1. Live support chat threads
+  (supportThreads || []).forEach((thread) => {
+    const email = (thread.userEmail || '').trim().toLowerCase();
+    if (email) seenEmails.add(email);
+    if (thread.id) seenEmails.add(thread.id);
+    const isPending = Boolean(thread.unreadByAdmin) || thread.status === THREAD_STATUS.NEEDS_ATTENTION;
+    if (isPending) {
+      pendingCount++;
+    }
+  });
+
+  // 2. Standalone contact requests from login page not already accounted for by a live thread
+  (adminRequests || []).forEach((req) => {
+    const email = (req.email || '').trim().toLowerCase();
+    if (email && seenEmails.has(email)) return;
+    if (req.id && seenEmails.has(req.id)) return;
+    if (req.id && req.id.startsWith('req_chat_')) {
+      const threadKey = req.id.replace('req_chat_', '');
+      if (seenEmails.has(threadKey)) return;
+    }
+    // Standalone unhandled request
+    pendingCount++;
+  });
+
+  return pendingCount;
+}

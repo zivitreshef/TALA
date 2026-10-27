@@ -136,6 +136,7 @@ import TrialNdaModal from './components/modals/TrialNdaModal';
 import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import TeacherChatWidget from './components/chat/TeacherChatWidget';
 import { subscribeToAllSupportThreads } from './services/supportChatService';
+import { computePendingInquiriesCount, THREAD_STATUS } from './domain/supportChat.js';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import { appendBankGoalToStudent } from './domain/bankGoalApplication';
@@ -601,6 +602,34 @@ export default function App() {
       setAdminSupportThreads(threads || []);
     });
   }, [currentUser?.email, currentUser?.role]);
+
+  // Auto-prune adminRequests when matching support thread is already resolved
+  useEffect(() => {
+    if (!Array.isArray(adminRequests) || !Array.isArray(adminSupportThreads) || adminRequests.length === 0) return;
+    const resolvedEmails = new Set(
+      adminSupportThreads
+        .filter((t) => t.status === THREAD_STATUS.RESOLVED || (!t.unreadByAdmin && t.status !== THREAD_STATUS.NEEDS_ATTENTION))
+        .map((t) => (t.userEmail || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    const hasStaleReq = adminRequests.some((r) => {
+      const email = (r.email || '').trim().toLowerCase();
+      return email && resolvedEmails.has(email);
+    });
+
+    if (hasStaleReq) {
+      setAdminRequests((prev) => {
+        const next = prev.filter((r) => {
+          const email = (r.email || '').trim().toLowerCase();
+          return !email || !resolvedEmails.has(email);
+        });
+        safeSetStorageJson(ADMIN_REQUESTS_STORAGE_KEY, next);
+        saveAdminRequestsToCloud(next);
+        return next;
+      });
+    }
+  }, [adminRequests, adminSupportThreads]);
 
   // Handle deep-link to directly open teacher support chat from notification links (?openAdminChat=email)
   useEffect(() => {
@@ -1724,9 +1753,9 @@ export default function App() {
 
   const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
   const unreviewedHealthEventsCount = countUnreviewedHealthEvents(healthEvents, healthReviewedMs);
-  const unreadChatThreadsCount = (adminSupportThreads || []).filter((t) => t.unreadByAdmin).length;
+  const pendingInquiriesCount = computePendingInquiriesCount(adminRequests, adminSupportThreads);
   const totalAdminAlerts =
-    lockedOutUsers.length + (adminRequests || []).length + unreadChatThreadsCount + unreviewedHealthEventsCount;
+    lockedOutUsers.length + pendingInquiriesCount + unreviewedHealthEventsCount;
   const trialRemainingDays = currentUser?.isTrialUser ? getTrialRemainingDays(currentUser) : null;
   const paidRemainingDays = (!currentUser?.isTrialUser && currentUser) ? getPaidRemainingDays(currentUser) : null;
 
@@ -1936,7 +1965,13 @@ export default function App() {
                 type="button"
                 className="header-tool-btn header-admin-btn"
                 onClick={() => {
-                  setAdminModalInitialTab('users');
+                  if (pendingInquiriesCount > 0) {
+                    setAdminModalInitialTab('requests');
+                  } else if (unreviewedHealthEventsCount > 0) {
+                    setAdminModalInitialTab('health');
+                  } else {
+                    setAdminModalInitialTab('users');
+                  }
                   setShowAdminModal(true);
                 }}
                 title="ניהול משתמשים והרשאות מערכת"
@@ -1992,8 +2027,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Admin Security Lockout / Contact Request Notification Banner Under Site ADMIN */}
-      {currentUser.role === 'admin' && totalAdminAlerts > 0 && (
+      {/* Admin Security Lockout Notification Banner Under Site Header */}
+      {currentUser.role === 'admin' && lockedOutUsers.length > 0 && (
         <div
           style={{
             background: '#fef2f2',
@@ -2012,28 +2047,15 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertTriangle size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
             <span>
-              {lockedOutUsers.length > 0 &&
-                `התראת אבטחה למנהל/ת המערכת: ${lockedOutUsers.length} משתמש/ים נחסמו אוטומטית לאחר 5 ניסיונות סיסמה שגויים (${lockedOutUsers
-                  .map((u) => u.name)
-                  .join(', ')}). `}
-              {unreadChatThreadsCount > 0 &&
-                `💬 קיימות ${unreadChatThreadsCount} פניות צ'אט חדשות ממורות הממתינות למענה. `}
-              {adminRequests.length > 0 &&
-                `קיימות ${adminRequests.length} פניות חדשות מדף הכניסה הממתינות לטיפולך. `}
-              {unreviewedHealthEventsCount > 0 &&
-                `⚠️ בריאות המערכת: ${unreviewedHealthEventsCount} תקלות AI / מעברים למנוע מקומי ב-24 השעות האחרונות טרם נסקרו.`}
+              התראת אבטחה למנהל/ת המערכת: {lockedOutUsers.length} משתמש/ים נחסמו אוטומטית לאחר 5 ניסיונות סיסמה שגויים ({lockedOutUsers
+                .map((u) => u.name)
+                .join(', ')}).
             </span>
           </div>
           <button
             type="button"
             onClick={() => {
-              if (unreadChatThreadsCount > 0 || lockedOutUsers.length > 0 || adminRequests.length > 0) {
-                setAdminModalInitialTab('requests');
-              } else if (unreviewedHealthEventsCount > 0) {
-                setAdminModalInitialTab('health');
-              } else {
-                setAdminModalInitialTab('users');
-              }
+              setAdminModalInitialTab('requests');
               setShowAdminModal(true);
             }}
             style={{
@@ -2047,11 +2069,7 @@ export default function App() {
               cursor: 'pointer'
             }}
           >
-            {lockedOutUsers.length > 0
-              ? 'לצפייה ושחרור חסימה בניהול משתמשים'
-              : unreviewedHealthEventsCount > 0 && adminRequests.length === 0
-              ? 'לצפייה ביומן בריאות המערכת'
-              : 'לצפייה בפניות ובניהול משתמשים'}
+            לצפייה ושחרור חסימה בניהול משתמשים
           </button>
         </div>
       )}

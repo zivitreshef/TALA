@@ -11,6 +11,7 @@ import {
   formatAdminChatNotificationMessage,
   buildAdminChatNotificationEmailHtml,
   validateChatImageSecurity,
+  computePendingInquiriesCount,
   MAX_MESSAGE_LENGTH,
   MAX_THREAD_MESSAGES
 } from '../domain/supportChat';
@@ -276,6 +277,62 @@ describe('Support Chat Domain Logic (Bi-directional Messaging)', () => {
       expect(html).toContain('המורה צירפה צילום מסך');
       expect(html).toContain('💬 מענה ישיר למורה ב-TALA');
       expect(html).toContain('https://zivitreshef.github.io/TALA/?openAdminChat=shira%40edu.gov.il');
+    });
+  });
+
+  describe('computePendingInquiriesCount', () => {
+    it('returns 0 when both lists are empty or null', () => {
+      expect(computePendingInquiriesCount([], [])).toBe(0);
+      expect(computePendingInquiriesCount(null, null)).toBe(0);
+    });
+
+    it('counts support threads where unreadByAdmin is true or status is needs_attention', () => {
+      const threads = [
+        { id: 't1', userEmail: 'a@school.org', unreadByAdmin: true, status: THREAD_STATUS.ACTIVE },
+        { id: 't2', userEmail: 'b@school.org', unreadByAdmin: false, status: THREAD_STATUS.NEEDS_ATTENTION },
+        { id: 't3', userEmail: 'c@school.org', unreadByAdmin: false, status: THREAD_STATUS.ACTIVE }
+      ];
+
+      expect(computePendingInquiriesCount([], threads)).toBe(2);
+    });
+
+    it('returns 0 when thread was closed by teacher thumb-up (status: resolved, unreadByAdmin: false)', () => {
+      const threads = [
+        {
+          id: 'thread_moti',
+          userEmail: 'moti@bmc.com',
+          status: THREAD_STATUS.RESOLVED,
+          resolutionFeedback: 'thumbs_up',
+          unreadByAdmin: false
+        }
+      ];
+
+      // Even if adminRequests still has an un-pruned req_chat_ entry for that email
+      const staleRequests = [
+        { id: 'req_chat_moti_bmc_com', email: 'moti@bmc.com', name: 'מוטי' }
+      ];
+
+      expect(computePendingInquiriesCount(staleRequests, threads)).toBe(0);
+    });
+
+    it('counts standalone contact requests from login page that do not have a live chat thread', () => {
+      const standaloneRequests = [
+        { id: 'req_login_1', email: 'guest@edu.il', name: 'אורח' }
+      ];
+
+      expect(computePendingInquiriesCount(standaloneRequests, [])).toBe(1);
+    });
+
+    it('deduplicates matching adminRequest and live thread so it is never double-counted', () => {
+      const threads = [
+        { id: 'thread_sara', userEmail: 'sara@school.org', unreadByAdmin: true, status: THREAD_STATUS.ACTIVE }
+      ];
+      const requests = [
+        { id: 'req_chat_thread_sara', email: 'sara@school.org', name: 'שרה' }
+      ];
+
+      // Should count exactly 1 pending inquiry, not 2
+      expect(computePendingInquiriesCount(requests, threads)).toBe(1);
     });
   });
 });
