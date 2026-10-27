@@ -536,6 +536,21 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
         expect(html).toContain('נתונייך שמורים ומאובטחים במלואם');
         expect(html).toContain('התנתקות מהמערכת');
       });
+      it('renders direct live support chat action button when onOpenChat handler is provided', () => {
+        const user = { name: 'רחל כהן', email: 'rachel@gan.il', isTrialUser: true };
+        const html = renderToStaticMarkup(
+          React.createElement(TrialUpgradeModal, {
+            isOpen: true,
+            currentUser: user,
+            remainingDays: 5,
+            isExpired: false,
+            onClose: () => {},
+            onOpenChat: () => {}
+          })
+        );
+
+        expect(html).toContain('צ&#x27;אט תמיכה ישיר באתר');
+      });
     });
   });
 

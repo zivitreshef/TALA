@@ -174,6 +174,7 @@ export default function App() {
   const [showSelfPasswordModal, setShowSelfPasswordModal] = useState(false);
   const [showFeedbackSurveyModal, setShowFeedbackSurveyModal] = useState(false);
   const [showTrialUpgradeModal, setShowTrialUpgradeModal] = useState(false);
+  const [isSupportChatOpen, setIsSupportChatOpen] = useState(false);
   const [surveySnoozedInSession, setSurveySnoozedInSession] = useState(false);
   const [cloudSyncState, setCloudSyncState] = useState({
     connected: false,
@@ -1641,6 +1642,7 @@ export default function App() {
           onLogout={performLogout}
           onOpenSurvey={() => setShowFeedbackSurveyModal(true)}
           onOpenIntroVideo={() => setShowIntroVideoModal(true)}
+          onOpenChat={() => setIsSupportChatOpen(true)}
           onSubmitSupportMessage={(payload) => {
             handleSubmitAdminRequest({
               id: 'trial_inquiry_' + Date.now(),
@@ -2802,6 +2804,10 @@ export default function App() {
           setShowTrialUpgradeModal(false);
           setShowIntroVideoModal(true);
         }}
+        onOpenChat={() => {
+          setShowTrialUpgradeModal(false);
+          setIsSupportChatOpen(true);
+        }}
         onSubmitSupportMessage={(payload) => {
           handleSubmitAdminRequest({
             id: 'support_inquiry_' + Date.now(),
@@ -3424,6 +3430,8 @@ export default function App() {
           currentUser={currentUser}
           allowedUsers={allowedUsers}
           emailEngineConfig={emailEngineConfig}
+          isOpenControlled={isSupportChatOpen}
+          onToggleOpen={setIsSupportChatOpen}
         />
       )}
     </div>

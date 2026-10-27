@@ -10,7 +10,7 @@ describe('TeacherChatWidget Component (Bi-directional Support Chat)', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders closed by default with floating launcher button and correct text', () => {
+  it('renders closed by default with soft watermarked fade launcher button and correct text', () => {
     const html = renderToStaticMarkup(
       React.createElement(TeacherChatWidget, {
         currentUser: { email: 'teacher@school.org', name: 'שרה כהן' },
@@ -20,6 +20,8 @@ describe('TeacherChatWidget Component (Bi-directional Support Chat)', () => {
 
     expect(html).toContain('צ&#x27;אט תמיכה ועזרה');
     expect(html).toContain('title="פתח צ&#x27;אט תמיכה ישיר מול מנהלת המערכת"');
+    // Watermarked faded background styling
+    expect(html).toContain('rgba(255, 255, 255, 0.78)');
   });
 
   it('does not render anything if neither email nor currentUser is provided', () => {
@@ -33,7 +35,7 @@ describe('TeacherChatWidget Component (Bi-directional Support Chat)', () => {
     expect(html).toBe('');
   });
 
-  it('renders open chat window with pedagogical greeting when defaultOpen is true', () => {
+  it('renders open chat window with Rubik typography and pedagogical greeting when defaultOpen is true', () => {
     const html = renderToStaticMarkup(
       React.createElement(TeacherChatWidget, {
         currentUser: { email: 'teacher@school.org', name: 'מיכל' },
@@ -43,10 +45,24 @@ describe('TeacherChatWidget Component (Bi-directional Support Chat)', () => {
     );
 
     expect(html).toContain('צ&#x27;אט תמיכה TALA');
+    expect(html).toContain('Rubik');
     expect(html).toContain('מענה ישיר ממנהלת המערכת');
     expect(html).toContain('שלום מיכל!');
     expect(html).toContain('ניתן לשאול כל שאלה, לבקש עזרה במערכת או לדווח על תקלה.');
     expect(html).toContain('placeholder="כתוב/י הודעה למנהלת..."');
+  });
+
+  it('honors isOpenControlled when opened externally from Help Modal', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(TeacherChatWidget, {
+        currentUser: { email: 'teacher@school.org', name: 'אורלי' },
+        isOpenControlled: true,
+        allowedUsers: []
+      })
+    );
+
+    expect(html).toContain('צ&#x27;אט תמיכה TALA');
+    expect(html).toContain('שלום אורלי!');
   });
 
   it('renders with initialUserEmail on login screen for unauthenticated teachers', () => {

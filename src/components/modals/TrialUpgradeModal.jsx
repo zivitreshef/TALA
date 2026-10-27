@@ -31,6 +31,7 @@ export default function TrialUpgradeModal({
   onOpenSurvey,
   onOpenIntroVideo,
   onSubmitSupportMessage,
+  onOpenChat,
   remainingDays = null,
   paidRemainingDays = null,
   isExpired = false,
@@ -412,6 +413,32 @@ export default function TrialUpgradeModal({
                 </button>
 
                 {/* Direct WhatsApp Action Button (Phone number masked) */}
+                {onOpenChat && (
+                  <button
+                    type="button"
+                    onClick={onOpenChat}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'rgba(37, 99, 235, 0.08)',
+                      color: '#1e3a5f',
+                      border: '1px solid rgba(37, 99, 235, 0.25)',
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      fontSize: '12.5px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(37, 99, 235, 0.16)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(37, 99, 235, 0.08)')}
+                  >
+                    <MessageCircle size={15} color="#2563eb" />
+                    <span>צ'אט תמיכה ישיר באתר</span>
+                  </button>
+                )}
+
                 <a
                   href={whatsappUrl}
                   target="_blank"
@@ -951,6 +978,49 @@ export default function TrialUpgradeModal({
           {/* TAB 5: CONTACT & SURVEY (Or default when expired) */}
           {(activeTab === 'contact' || isExpired) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Direct Live Chat Option in Help Modal */}
+              {onOpenChat && (
+                <div
+                  style={{
+                    background: '#eff6ff',
+                    border: '1.5px solid #bfdbfe',
+                    borderRadius: '10px',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                  }}
+                >
+                  <div>
+                    <strong style={{ fontSize: '13.5px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <MessageCircle size={16} />
+                      <span>צ'אט חי ישיר עם מנהלת המערכת</span>
+                    </strong>
+                    <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '3px' }}>
+                      זקוקה לעזרה מיידית? פתחי צ'אט חי וקבלי מענה ישירות באתר.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onOpenChat}
+                    className="btn-primary-sm"
+                    style={{
+                      background: '#2563eb',
+                      fontSize: '12.5px',
+                      padding: '6px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <MessageCircle size={14} />
+                    <span>פתח/י צ'אט כעת</span>
+                  </button>
+                </div>
+              )}
+
               {/* Contact Admin Form */}
               <div
                 style={{

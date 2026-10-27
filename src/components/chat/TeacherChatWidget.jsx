@@ -24,12 +24,17 @@ export default function TeacherChatWidget({
   allowedUsers = [],
   emailEngineConfig = null,
   defaultOpen = false,
+  isOpenControlled = null,
+  onToggleOpen = null,
   onCloseCustom = null
 }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isOpen = typeof isOpenControlled === 'boolean' ? isOpenControlled : internalOpen;
+
   const [thread, setThread] = useState(null);
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isButtonHovered, setIsButtonHovered] = useState(false);
   const messagesEndRef = useRef(null);
 
   const effectiveEmail = String(currentUser?.email || initialUserEmail || '').trim().toLowerCase();
@@ -62,10 +67,15 @@ export default function TeacherChatWidget({
     };
   }, [effectiveEmail, isOpen]);
 
-  // Handle opening chat and clearing unread badge
-  const handleToggleOpen = () => {
+  // Handle opening/closing chat and clearing unread badge
+  const handleToggle = () => {
     const nextState = !isOpen;
-    setIsOpen(nextState);
+    if (typeof onToggleOpen === 'function') {
+      onToggleOpen(nextState);
+    } else {
+      setInternalOpen(nextState);
+    }
+
     if (nextState && thread?.unreadByUser) {
       markThreadReadInCloud(thread.id || effectiveEmail, SENDER_ROLES.USER);
     }
@@ -115,37 +125,52 @@ export default function TeacherChatWidget({
       dir="rtl"
       style={{
         position: 'fixed',
-        bottom: '24px',
-        left: '24px',
+        bottom: '22px',
+        left: '22px',
         zIndex: 2100,
-        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif'
+        fontFamily: "'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif"
       }}
     >
-      {/* Floating launcher button when chat is closed */}
+      {/* Floating launcher button with soft "watermarked" faded colors */}
       {!isOpen && (
         <button
           type="button"
-          onClick={handleToggleOpen}
-          className="btn-primary"
+          onClick={handleToggle}
+          onMouseEnter={() => setIsButtonHovered(true)}
+          onMouseLeave={() => setIsButtonHovered(false)}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '10px 18px',
+            padding: '8px 16px',
             borderRadius: '999px',
-            background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
-            color: '#ffffff',
-            boxShadow: '0 8px 24px rgba(37, 99, 235, 0.35)',
-            border: 'none',
+            background: isButtonHovered
+              ? 'rgba(255, 255, 255, 0.95)'
+              : 'rgba(255, 255, 255, 0.78)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            color: isButtonHovered ? '#1e3a5f' : '#475569',
+            border: isButtonHovered
+              ? '1.5px solid #94a3b8'
+              : '1.5px solid rgba(203, 213, 225, 0.75)',
+            boxShadow: isButtonHovered
+              ? '0 6px 20px rgba(15, 23, 42, 0.14)'
+              : '0 4px 14px rgba(15, 23, 42, 0.08)',
             cursor: 'pointer',
-            fontSize: '13.5px',
-            fontWeight: 700,
-            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+            fontSize: '13px',
+            fontWeight: 600,
+            opacity: isButtonHovered ? 1 : 0.88,
+            transition: 'all 0.22s ease-in-out',
+            outline: 'none'
           }}
           title="פתח צ'אט תמיכה ישיר מול מנהלת המערכת"
         >
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <MessageCircle size={18} />
+            <MessageCircle
+              size={17}
+              color={isButtonHovered ? '#2563eb' : '#64748b'}
+              style={{ transition: 'color 0.2s ease' }}
+            />
             {unreadCount > 0 && (
               <span
                 style={{
@@ -154,10 +179,10 @@ export default function TeacherChatWidget({
                   right: '-7px',
                   background: '#ef4444',
                   color: '#ffffff',
-                  fontSize: '10.5px',
+                  fontSize: '10px',
                   fontWeight: 900,
-                  width: '18px',
-                  height: '18px',
+                  width: '17px',
+                  height: '17px',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
@@ -173,7 +198,7 @@ export default function TeacherChatWidget({
         </button>
       )}
 
-      {/* Elegant Chat Window */}
+      {/* Elegant Chat Window matching site's theme & typography */}
       {isOpen && (
         <div
           style={{
@@ -183,14 +208,15 @@ export default function TeacherChatWidget({
             maxHeight: 'calc(100vh - 120px)',
             background: '#ffffff',
             borderRadius: '16px',
-            boxShadow: '0 12px 36px rgba(15, 23, 42, 0.25)',
+            boxShadow: '0 12px 36px rgba(15, 23, 42, 0.22)',
             border: '1px solid #cbd5e1',
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            fontFamily: "'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif"
           }}
         >
-          {/* Header */}
+          {/* Header styled identically to TALA modals & Rubik font */}
           <div
             style={{
               background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
@@ -199,10 +225,11 @@ export default function TeacherChatWidget({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              flexShrink: 0
+              flexShrink: 0,
+              borderBottom: '1px solid rgba(255, 255, 255, 0.15)'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
               <div
                 style={{
                   width: '32px',
@@ -217,10 +244,19 @@ export default function TeacherChatWidget({
                 <ShieldCheck size={18} color="#ffffff" />
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 800 }}>
+                <h4
+                  style={{
+                    margin: 0,
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    fontFamily: "'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif",
+                    letterSpacing: '-0.2px'
+                  }}
+                >
                   צ'אט תמיכה TALA
                 </h4>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#bbf7d0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#bbf7d0', marginTop: '1px' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
                   <span>מענה ישיר ממנהלת המערכת</span>
                 </div>
@@ -230,7 +266,7 @@ export default function TeacherChatWidget({
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <button
                 type="button"
-                onClick={handleToggleOpen}
+                onClick={handleToggle}
                 style={{
                   background: 'rgba(255, 255, 255, 0.2)',
                   border: 'none',
@@ -241,9 +277,12 @@ export default function TeacherChatWidget({
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  transition: 'background 0.15s ease'
                 }}
-                title="מזער חלון"
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.35)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+                title="מזער חלון צ'אט"
               >
                 <Minimize2 size={15} />
               </button>
@@ -263,7 +302,7 @@ export default function TeacherChatWidget({
               gap: '10px'
             }}
           >
-            {/* Introductory pedagogical guidance */}
+            {/* Introductory guidance */}
             {(!thread?.messages || thread.messages.length === 0) && (
               <div
                 style={{
@@ -278,7 +317,7 @@ export default function TeacherChatWidget({
                 }}
               >
                 <Sparkles size={24} color="#2563eb" style={{ marginBottom: '6px' }} />
-                <strong style={{ display: 'block', color: '#1e3a5f', marginBottom: '4px' }}>
+                <strong style={{ display: 'block', color: '#1e3a5f', marginBottom: '4px', fontSize: '13.5px' }}>
                   שלום {effectiveName}!
                 </strong>
                 ניתן לשאול כל שאלה, לבקש עזרה במערכת או לדווח על תקלה. המנהלת תקבל התראה מיידית ותשיב לך כאן בזמן אמת.
@@ -370,6 +409,7 @@ export default function TeacherChatWidget({
                 borderRadius: '8px',
                 border: '1.5px solid #cbd5e1',
                 fontSize: '13px',
+                fontFamily: 'inherit',
                 outline: 'none',
                 transition: 'border-color 0.2s'
               }}
