@@ -915,6 +915,83 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
         expect(html).toContain('כתוב/י מענה ישיר ל-שרה אהרוני...');
         expect(html).toContain('שלח תגובה');
       });
+
+      it('renders segmented inbox filters, rich status badges, school group chip, and alert channels status', () => {
+        const mockSupportThreads = [
+          {
+            id: 'thread_1',
+            userEmail: 't1@school.org',
+            userName: 'מיכל כהן',
+            topic: 'תקלה 1',
+            status: 'needs_attention',
+            lastFeedback: 'needs_help',
+            feedbackNote: 'עדיין יש שגיאה',
+            unreadByAdmin: false,
+            updatedAt: new Date().toISOString(),
+            messages: []
+          },
+          {
+            id: 'thread_2',
+            userEmail: 't2@school.org',
+            userName: 'נועה לוי',
+            topic: 'תקלה 2',
+            status: 'resolved',
+            resolutionFeedback: 'thumbs_up',
+            unreadByAdmin: false,
+            updatedAt: new Date().toISOString(),
+            messages: []
+          }
+        ];
+
+        const mockAllowedUsers = [
+          {
+            role: 'admin',
+            email: 'admin@tala.com',
+            active: true,
+            adminAlerts: {
+              telegram: { enabled: true, botToken: 'tok123' },
+              whatsapp: { enabled: false },
+              email: { enabled: true }
+            }
+          },
+          {
+            role: 'teacher',
+            email: 't1@school.org',
+            name: 'מיכל כהן',
+            group: 'מתי"א מרכז'
+          }
+        ];
+
+        const html = renderToStaticMarkup(
+          React.createElement(AdminAllowlistModal, {
+            isOpen: true,
+            initialTab: 'requests',
+            onClose: () => {},
+            allowedUsers: mockAllowedUsers,
+            currentUser: { role: 'admin', email: 'admin@tala.com' },
+            adminRequests: [],
+            initialSupportThreads: mockSupportThreads
+          })
+        );
+
+        // Segmented filter tabs
+        expect(html).toContain('ממתינות למענה');
+        expect(html).toContain('בטיפול / פעילות');
+        expect(html).toContain('טופלו ונסגרו');
+        expect(html).toContain('כל הפניות');
+
+        // Alert channels status badge
+        expect(html).toContain('ערוצי התראה:');
+        expect(html).toContain('טלגרם');
+        expect(html).toContain('דוא&quot;ל');
+
+        // Teacher context chip
+        expect(html).toContain('🏫 מתי&quot;א מרכז');
+
+        // Status badge for needs_attention
+        expect(html).toContain('⚠️ דורשת המשך מענה');
+        expect(html).toContain('הערת מורה: &quot;עדיין יש שגיאה&quot;');
+      });
     });
 
   });

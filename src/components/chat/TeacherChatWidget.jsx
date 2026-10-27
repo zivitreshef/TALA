@@ -12,21 +12,31 @@ import {
   Minimize2,
   Trash2,
   Paperclip,
-  ZoomIn
+  ZoomIn,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import {
   subscribeToSupportThread,
   sendChatMessageToCloud,
   markThreadReadInCloud,
-  clearSupportThreadInCloud
+  clearSupportThreadInCloud,
+  resolveSupportThreadInCloud,
+  escalateSupportThreadInCloud
 } from '../../services/supportChatService.js';
-import { SENDER_ROLES, countUnreadMessages } from '../../domain/supportChat.js';
+import {
+  SENDER_ROLES,
+  THREAD_STATUS,
+  RESOLUTION_FEEDBACK,
+  countUnreadMessages
+} from '../../domain/supportChat.js';
 import { processChatImageFile } from '../../services/chatImageHelper.js';
 
 export default function TeacherChatWidget({
   currentUser = null,
   initialUserEmail = '',
   initialUserName = '',
+  initialThread = null,
   allowedUsers = [],
   emailEngineConfig = null,
   defaultOpen = false,
@@ -37,7 +47,7 @@ export default function TeacherChatWidget({
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const isOpen = typeof isOpenControlled === 'boolean' ? isOpenControlled : internalOpen;
 
-  const [thread, setThread] = useState(null);
+  const [thread, setThread] = useState(initialThread);
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isButtonHovered, setIsButtonHovered] = useState(false);
@@ -45,6 +55,9 @@ export default function TeacherChatWidget({
   const [isProcessingImg, setIsProcessingImg] = useState(false);
   const [imgError, setImgError] = useState('');
   const [previewImgUrl, setPreviewImgUrl] = useState(null);
+  const [showResolveConfirm, setShowResolveConfirm] = useState(false);
+  const [showEscalatePrompt, setShowEscalatePrompt] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -107,6 +120,54 @@ export default function TeacherChatWidget({
       setThread((prev) => (prev ? { ...prev, messages: [], lastMessageText: '' } : null));
     } catch (err) {
       console.warn('Failed to clear chat history:', err);
+    }
+  };
+
+  // Handle teacher confirming resolution (Thumbs Up)
+  const handleConfirmResolve = async () => {
+    if (!effectiveEmail || isResolving) return;
+    setIsResolving(true);
+    try {
+      await resolveSupportThreadInCloud(effectiveEmail, RESOLUTION_FEEDBACK.THUMBS_UP);
+      setThread((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: THREAD_STATUS.RESOLVED,
+              resolutionFeedback: RESOLUTION_FEEDBACK.THUMBS_UP,
+              resolvedAt: new Date().toISOString()
+            }
+          : null
+      );
+      setShowResolveConfirm(false);
+    } catch (err) {
+      console.warn('Failed to resolve thread:', err);
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  // Handle teacher escalating / asking for more help (Thumbs Down)
+  const handleEscalate = async (note = 'המורה ציינה שדרוש מענה נוסף') => {
+    if (!effectiveEmail || isResolving) return;
+    setIsResolving(true);
+    try {
+      await escalateSupportThreadInCloud(effectiveEmail, note);
+      setThread((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: THREAD_STATUS.NEEDS_ATTENTION,
+              lastFeedback: 'needs_help',
+              feedbackNote: note
+            }
+          : null
+      );
+      setShowEscalatePrompt(false);
+    } catch (err) {
+      console.warn('Failed to escalate thread:', err);
+    } finally {
+      setIsResolving(false);
     }
   };
 
@@ -517,6 +578,273 @@ export default function TeacherChatWidget({
             })}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Resolution & CSAT Feedback Bar (Rendered when admin has replied) */}
+          {Array.isArray(thread?.messages) &&
+            thread.messages.some((m) => m.senderRole === SENDER_ROLES.ADMIN) && (
+              <div style={{ flexShrink: 0, borderTop: '1px solid #e2e8f0', background: '#ffffff' }}>
+                {thread.status === THREAD_STATUS.RESOLVED ? (
+                  <div
+                    style={{
+                      margin: '8px 12px 6px',
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      background: '#ecfdf5',
+                      border: '1px solid #a7f3d0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      fontSize: '11.5px',
+                      color: '#065f46'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle2 size={14} color="#059669" />
+                      <span>הפנייה טופלה לשביעות רצונך 👍</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleEscalate('נפתח מחדש ע"י המורה')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#047857',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        textDecoration: 'underline',
+                        fontWeight: 600,
+                        padding: 0
+                      }}
+                      title="לחץ לפתיחה מחדש של הפנייה"
+                    >
+                      שאלה נוספת?
+                    </button>
+                  </div>
+                ) : thread.status === THREAD_STATUS.NEEDS_ATTENTION ? (
+                  <div
+                    style={{
+                      margin: '8px 12px 6px',
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      background: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      fontSize: '11.5px',
+                      color: '#92400e'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={14} color="#d97706" />
+                      <span>הפנייה בטיפול מנהלת ⚠️</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowResolveConfirm(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#b45309',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        textDecoration: 'underline',
+                        fontWeight: 600,
+                        padding: 0
+                      }}
+                    >
+                      העניין הסתדר?
+                    </button>
+                  </div>
+                ) : showResolveConfirm ? (
+                  <div
+                    style={{
+                      margin: '8px 12px 6px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      background: '#ecfdf5',
+                      border: '1px solid #6ee7b7',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      fontSize: '12px',
+                      color: '#065f46'
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>
+                      שמחה שעזרתי! האם הפנייה טופלה וניתן לסגור אותה?
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={handleConfirmResolve}
+                        disabled={isResolving}
+                        style={{
+                          background: '#059669',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <ThumbsUp size={12} />
+                        <span>כן, לסגור פנייה</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowResolveConfirm(false)}
+                        style={{
+                          background: '#e2e8f0',
+                          color: '#334155',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 8px',
+                          fontSize: '11.5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ביטול
+                      </button>
+                    </div>
+                  </div>
+                ) : showEscalatePrompt ? (
+                  <div
+                    style={{
+                      margin: '8px 12px 6px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      background: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      fontSize: '12px',
+                      color: '#92400e'
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>
+                      נשמח להמשיך לעזור! האם להעביר להמשך בדיקה מול המנהלת?
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleEscalate('המורה ציינה שדרוש מענה נוסף')}
+                        disabled={isResolving}
+                        style={{
+                          background: '#d97706',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <ThumbsDown size={12} />
+                        <span>המשך טיפול מול המנהלת</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowEscalatePrompt(false)}
+                        style={{
+                          background: '#e2e8f0',
+                          color: '#334155',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 8px',
+                          fontSize: '11.5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ביטול
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      margin: '6px 12px 4px',
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                      fontSize: '11.5px',
+                      color: '#334155'
+                    }}
+                  >
+                    <span style={{ fontWeight: 500 }}>האם המענה פתר את שאלתך?</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowResolveConfirm(true);
+                          setShowEscalatePrompt(false);
+                        }}
+                        title="המענה עזר, סגור פנייה"
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '3px 8px',
+                          fontSize: '11px',
+                          color: '#059669',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <ThumbsUp size={12} />
+                        <span>כן, תודה!</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEscalatePrompt(true);
+                          setShowResolveConfirm(false);
+                        }}
+                        title="לא הספיק, דרוש המשך טיפול"
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '3px 8px',
+                          fontSize: '11px',
+                          color: '#dc2626',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <ThumbsDown size={12} />
+                        <span>עדיין זקוק/ה לעזרה</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
           {/* Attachment Preview & Security / Privacy Warning */}
           {attachment && (

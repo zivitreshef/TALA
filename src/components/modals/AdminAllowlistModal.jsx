@@ -33,7 +33,9 @@ import {
   Calendar,
   AlertTriangle,
   Award,
-  Activity
+  Activity,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import {
   createPasswordCredentials,
@@ -60,8 +62,14 @@ import AdminUsageAndSecurityDashboard from './AdminUsageAndSecurityDashboard';
 import { fetchTelemetrySnapshot } from '../../services/telemetryService';
 import { aggregateTelemetryData } from '../../domain/telemetry';
 import { countUnreviewedHealthEvents } from '../../domain/healthEvents.js';
-import { subscribeToAllSupportThreads, sendChatMessageToCloud, markThreadReadInCloud } from '../../services/supportChatService.js';
-import { SENDER_ROLES, sanitizeThreadKey } from '../../domain/supportChat.js';
+import {
+  subscribeToAllSupportThreads,
+  sendChatMessageToCloud,
+  markThreadReadInCloud,
+  resolveSupportThreadInCloud,
+  escalateSupportThreadInCloud
+} from '../../services/supportChatService.js';
+import { SENDER_ROLES, sanitizeThreadKey, THREAD_STATUS } from '../../domain/supportChat.js';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -177,13 +185,17 @@ export default function AdminAllowlistModal({
         (r) => (r.email || '').trim().toLowerCase() === email
       );
 
+      const matchedUser = (allowedUsers || []).find(
+        (u) => (u.email || '').trim().toLowerCase() === email
+      );
+
       const hasMessages = Array.isArray(thread.messages) && thread.messages.length > 0;
       const latestMessage = hasMessages ? thread.messages[thread.messages.length - 1] : null;
 
       list.push({
         id: thread.id || `thread_${sanitizeThreadKey(email)}`,
         threadKey: thread.id || sanitizeThreadKey(email),
-        name: thread.userName || matchedReq?.name || 'מורה',
+        name: thread.userName || matchedReq?.name || matchedUser?.name || 'מורה',
         email: thread.userEmail || matchedReq?.email || email,
         topic: thread.topic || matchedReq?.topic || "💬 פנייה מתוך צ'אט התמיכה",
         notes: matchedReq?.notes || latestMessage?.text || thread.lastMessageText || '',
@@ -192,6 +204,13 @@ export default function AdminAllowlistModal({
         unreadByAdmin: Boolean(thread.unreadByAdmin),
         messages: thread.messages || [],
         adminRequestId: matchedReq?.id || null,
+        status: thread.status || 'active',
+        resolutionFeedback: thread.resolutionFeedback || null,
+        lastFeedback: thread.lastFeedback || null,
+        feedbackNote: thread.feedbackNote || null,
+        resolvedAt: thread.resolvedAt || null,
+        schoolGroup: matchedUser?.group || '',
+        userRole: matchedUser?.role || '',
         isChatThread: true
       });
     });
@@ -202,10 +221,14 @@ export default function AdminAllowlistModal({
       if (email && seenEmails.has(email)) return;
       if (email) seenEmails.add(email);
 
+      const matchedUser = (allowedUsers || []).find(
+        (u) => (u.email || '').trim().toLowerCase() === email
+      );
+
       list.push({
         id: req.id,
         threadKey: sanitizeThreadKey(email),
-        name: req.name || 'מורה',
+        name: req.name || matchedUser?.name || 'מורה',
         email: req.email || email,
         topic: req.topic || 'פנייה מדף הכניסה',
         notes: req.notes || '',
@@ -214,6 +237,13 @@ export default function AdminAllowlistModal({
         unreadByAdmin: true,
         messages: [],
         adminRequestId: req.id,
+        status: 'active',
+        resolutionFeedback: null,
+        lastFeedback: null,
+        feedbackNote: null,
+        resolvedAt: null,
+        schoolGroup: matchedUser?.group || '',
+        userRole: matchedUser?.role || '',
         isChatThread: false
       });
     });
@@ -225,12 +255,70 @@ export default function AdminAllowlistModal({
       }
       return (b.timestamp || 0) - (a.timestamp || 0);
     });
-  }, [supportThreads, adminRequests]);
+  }, [supportThreads, adminRequests, allowedUsers]);
 
-  const unreadInquiriesCount = useMemo(
-    () => unifiedInquiries.filter((inq) => inq.unreadByAdmin).length,
+  const [inquiriesFilter, setInquiriesFilter] = useState('pending'); // 'pending' | 'active' | 'resolved' | 'all'
+  const [inquiriesSearch, setInquiriesSearch] = useState('');
+
+  const countPending = useMemo(
+    () => unifiedInquiries.filter((inq) => inq.unreadByAdmin || inq.status === 'needs_attention').length,
     [unifiedInquiries]
   );
+  const countActive = useMemo(
+    () => unifiedInquiries.filter((inq) => inq.status !== 'resolved' && !inq.unreadByAdmin && inq.status !== 'needs_attention').length,
+    [unifiedInquiries]
+  );
+  const countResolved = useMemo(
+    () => unifiedInquiries.filter((inq) => inq.status === 'resolved' || inq.resolutionFeedback === 'thumbs_up').length,
+    [unifiedInquiries]
+  );
+
+  const displayedInquiries = useMemo(() => {
+    return unifiedInquiries.filter((inq) => {
+      // If a chat thread is explicitly targeted/expanded (e.g. from deep link or user selection), always keep it visible
+      const isTargeted =
+        activeChatReqId &&
+        (inq.id === activeChatReqId ||
+          inq.threadKey === activeChatReqId ||
+          inq.email?.toLowerCase() === activeChatReqId?.toLowerCase());
+      if (isTargeted) return true;
+
+      if (inquiriesFilter === 'pending') {
+        const isPending = inq.unreadByAdmin || inq.status === 'needs_attention';
+        if (!isPending) return false;
+      } else if (inquiriesFilter === 'active') {
+        const isActive = inq.status !== 'resolved' && !inq.unreadByAdmin && inq.status !== 'needs_attention';
+        if (!isActive) return false;
+      } else if (inquiriesFilter === 'resolved') {
+        const isResolved = inq.status === 'resolved' || inq.resolutionFeedback === 'thumbs_up';
+        if (!isResolved) return false;
+      }
+
+      if (inquiriesSearch.trim()) {
+        const q = inquiriesSearch.trim().toLowerCase();
+        const matchName = (inq.name || '').toLowerCase().includes(q);
+        const matchEmail = (inq.email || '').toLowerCase().includes(q);
+        const matchTopic = (inq.topic || '').toLowerCase().includes(q);
+        const matchNotes = (inq.notes || '').toLowerCase().includes(q);
+        const matchGroup = (inq.schoolGroup || '').toLowerCase().includes(q);
+        if (!matchName && !matchEmail && !matchTopic && !matchNotes && !matchGroup) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [unifiedInquiries, inquiriesFilter, inquiriesSearch, activeChatReqId]);
+
+  const alertChannelsSummary = useMemo(() => {
+    const admins = (allowedUsers || []).filter((u) => u.role === 'admin' && u.active !== false);
+    const hasTelegram = admins.some((a) => a.adminAlerts?.telegram?.enabled && a.adminAlerts?.telegram?.botToken);
+    const hasWhatsapp = admins.some((a) => a.adminAlerts?.whatsapp?.enabled && a.adminAlerts?.whatsapp?.apiKey);
+    const hasEmail = admins.some((a) => a.adminAlerts?.email?.enabled);
+    return { hasTelegram, hasWhatsapp, hasEmail };
+  }, [allowedUsers]);
+
+  const unreadInquiriesCount = countPending;
 
   const handleSendAdminReply = async (inquiry) => {
     const cleanText = adminReplyText.trim();
@@ -274,8 +362,16 @@ export default function AdminAllowlistModal({
     if (inquiry.adminRequestId && onDismissAdminRequest) {
       onDismissAdminRequest(inquiry.adminRequestId);
     }
-    if (inquiry.threadKey) {
+    if (inquiry.email) {
+      await resolveSupportThreadInCloud(inquiry.email, 'admin_resolved').catch(() => {});
+    } else if (inquiry.threadKey) {
       await markThreadReadInCloud(inquiry.threadKey, SENDER_ROLES.ADMIN).catch(() => {});
+    }
+  };
+
+  const handleReopenInquiry = async (inquiry) => {
+    if (inquiry.email) {
+      await escalateSupportThreadInCloud(inquiry.email, 'נפתח מחדש ע"י מנהלת').catch(() => {});
     }
   };
 
@@ -2001,13 +2097,14 @@ export default function AdminAllowlistModal({
               )}
 
               {/* Admin Contact Requests & Bi-directional Chat */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Header with Title, Status & Notification Channels */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <strong style={{ fontSize: '14px', color: '#1e3a5f' }}>
-                      📩 פניות שהתקבלו וצ'אט דו-כיווני מול מורות ({unifiedInquiries.length}):
+                    <strong style={{ fontSize: '14.5px', color: '#1e3a5f' }}>
+                      📩 תיבת פניות וצ'אט תמיכה ישיר מול מורות ({unifiedInquiries.length}):
                     </strong>
-                    {unreadInquiriesCount > 0 && (
+                    {countPending > 0 && (
                       <span
                         style={{
                           background: '#dc2626',
@@ -2018,23 +2115,211 @@ export default function AdminAllowlistModal({
                           borderRadius: '999px'
                         }}
                       >
-                        {unreadInquiriesCount} ממתינות למענה
+                        {countPending} ממתינות למענה
                       </span>
                     )}
                   </div>
-                  {replySuccessMsg && (
-                    <span style={{ fontSize: '12.5px', color: '#15803d', fontWeight: 700 }}>
-                      {replySuccessMsg}
-                    </span>
-                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {replySuccessMsg && (
+                      <span style={{ fontSize: '12px', color: '#15803d', fontWeight: 700 }}>
+                        {replySuccessMsg}
+                      </span>
+                    )}
+                    {/* Live notification channels badge */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '11px',
+                        color: '#475569',
+                        background: '#f1f5f9',
+                        padding: '3px 9px',
+                        borderRadius: '6px',
+                        border: '1px solid #e2e8f0'
+                      }}
+                      title="ערוצי התראה מוגדרים עבור מנהלות המערכת"
+                    >
+                      <span style={{ fontWeight: 600 }}>ערוצי התראה:</span>
+                      <span style={{ color: alertChannelsSummary.hasWhatsapp ? '#15803d' : '#94a3b8' }}>
+                        {alertChannelsSummary.hasWhatsapp ? '✓' : '✗'} וואטסאפ
+                      </span>
+                      <span>•</span>
+                      <span style={{ color: alertChannelsSummary.hasTelegram ? '#15803d' : '#94a3b8' }}>
+                        {alertChannelsSummary.hasTelegram ? '✓' : '✗'} טלגרם
+                      </span>
+                      <span>•</span>
+                      <span style={{ color: alertChannelsSummary.hasEmail ? '#15803d' : '#94a3b8' }}>
+                        {alertChannelsSummary.hasEmail ? '✓' : '✗'} דוא"ל
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                {unifiedInquiries.length === 0 ? (
-                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
-                    אין פניות ממתינות כרגע.
+                {/* Segmentation Filter Tabs & Search Bar */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    padding: '10px 12px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => setInquiriesFilter('pending')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: inquiriesFilter === 'pending' ? 800 : 600,
+                          background: inquiriesFilter === 'pending' ? '#fef2f2' : '#ffffff',
+                          color: inquiriesFilter === 'pending' ? '#b91c1c' : '#475569',
+                          border: inquiriesFilter === 'pending' ? '1.5px solid #f87171' : '1px solid #cbd5e1',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <Bell size={12} />
+                        <span>ממתינות למענה</span>
+                        <span style={{ background: inquiriesFilter === 'pending' ? '#dc2626' : '#94a3b8', color: '#ffffff', borderRadius: '999px', padding: '0 5px', fontSize: '10.5px' }}>
+                          {countPending}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInquiriesFilter('active')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: inquiriesFilter === 'active' ? 800 : 600,
+                          background: inquiriesFilter === 'active' ? '#eff6ff' : '#ffffff',
+                          color: inquiriesFilter === 'active' ? '#1d4ed8' : '#475569',
+                          border: inquiriesFilter === 'active' ? '1.5px solid #60a5fa' : '1px solid #cbd5e1',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <Clock size={12} />
+                        <span>בטיפול / פעילות</span>
+                        <span style={{ background: inquiriesFilter === 'active' ? '#2563eb' : '#94a3b8', color: '#ffffff', borderRadius: '999px', padding: '0 5px', fontSize: '10.5px' }}>
+                          {countActive}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInquiriesFilter('resolved')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: inquiriesFilter === 'resolved' ? 800 : 600,
+                          background: inquiriesFilter === 'resolved' ? '#ecfdf5' : '#ffffff',
+                          color: inquiriesFilter === 'resolved' ? '#047857' : '#475569',
+                          border: inquiriesFilter === 'resolved' ? '1.5px solid #34d399' : '1px solid #cbd5e1',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <CheckCircle2 size={12} />
+                        <span>טופלו ונסגרו</span>
+                        <span style={{ background: inquiriesFilter === 'resolved' ? '#059669' : '#94a3b8', color: '#ffffff', borderRadius: '999px', padding: '0 5px', fontSize: '10.5px' }}>
+                          {countResolved}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setInquiriesFilter('all')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '999px',
+                          fontSize: '12px',
+                          fontWeight: inquiriesFilter === 'all' ? 800 : 600,
+                          background: inquiriesFilter === 'all' ? '#e2e8f0' : '#ffffff',
+                          color: inquiriesFilter === 'all' ? '#0f172a' : '#475569',
+                          border: inquiriesFilter === 'all' ? '1.5px solid #64748b' : '1px solid #cbd5e1',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span>כל הפניות</span>
+                        <span style={{ background: inquiriesFilter === 'all' ? '#334155' : '#94a3b8', color: '#ffffff', borderRadius: '999px', padding: '0 5px', fontSize: '10.5px' }}>
+                          {unifiedInquiries.length}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Search Bar */}
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Search size={14} color="#94a3b8" style={{ position: 'absolute', right: '10px' }} />
+                    <input
+                      type="text"
+                      value={inquiriesSearch}
+                      onChange={(e) => setInquiriesSearch(e.target.value)}
+                      placeholder="חיפוש לפי שם מורה, מייל, בית ספר או תוכן הפנייה..."
+                      style={{
+                        width: '100%',
+                        padding: '6px 32px 6px 28px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '12px',
+                        background: '#ffffff'
+                      }}
+                    />
+                    {inquiriesSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setInquiriesSearch('')}
+                        style={{
+                          position: 'absolute',
+                          left: '8px',
+                          background: 'none',
+                          border: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                        title="נקה חיפוש"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {displayedInquiries.length === 0 ? (
+                  <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '10px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                    {inquiriesSearch.trim()
+                      ? `לא נמצאו פניות התואמות את החיפוש "${inquiriesSearch}".`
+                      : inquiriesFilter === 'resolved'
+                      ? 'אין פניות שסומנו כטופלו עדיין.'
+                      : 'אין פניות ממתינות כרגע.'}
                   </div>
                 ) : (
-                  unifiedInquiries.map((inq) => {
+                  displayedInquiries.map((inq) => {
                     const isChatExpanded =
                       activeChatReqId === inq.id ||
                       activeChatReqId === inq.threadKey ||
@@ -2081,28 +2366,124 @@ export default function AdminAllowlistModal({
                           }}
                         >
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '3px' }}>
                               <strong style={{ color: inq.unreadByAdmin ? '#b45309' : '#1e3a5f' }}>{inq.topic}</strong>
-                              {inq.unreadByAdmin && (
+
+                              {/* Rich Status Badges */}
+                              {inq.unreadByAdmin ? (
                                 <span
                                   style={{
                                     background: '#dc2626',
                                     color: '#ffffff',
-                                    fontSize: '10px',
+                                    fontSize: '10.5px',
                                     fontWeight: 800,
-                                    padding: '1px 6px',
+                                    padding: '1px 7px',
                                     borderRadius: '999px'
                                   }}
                                 >
-                                  חדש
+                                  🔴 חדש
+                                </span>
+                              ) : inq.status === 'needs_attention' || inq.lastFeedback === 'needs_help' ? (
+                                <span
+                                  style={{
+                                    background: '#fffbeb',
+                                    color: '#b45309',
+                                    border: '1px solid #fde68a',
+                                    fontSize: '10.5px',
+                                    fontWeight: 800,
+                                    padding: '1px 7px',
+                                    borderRadius: '999px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                >
+                                  <AlertTriangle size={11} />
+                                  <span>⚠️ דורשת המשך מענה</span>
+                                </span>
+                              ) : inq.status === 'resolved' && inq.resolutionFeedback === 'thumbs_up' ? (
+                                <span
+                                  style={{
+                                    background: '#ecfdf5',
+                                    color: '#047857',
+                                    border: '1px solid #a7f3d0',
+                                    fontSize: '10.5px',
+                                    fontWeight: 800,
+                                    padding: '1px 7px',
+                                    borderRadius: '999px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                >
+                                  <ThumbsUp size={11} />
+                                  <span>👍 נסגר ע"י המורה</span>
+                                </span>
+                              ) : inq.status === 'resolved' ? (
+                                <span
+                                  style={{
+                                    background: '#f0fdf4',
+                                    color: '#15803d',
+                                    border: '1px solid #bbf7d0',
+                                    fontSize: '10.5px',
+                                    fontWeight: 700,
+                                    padding: '1px 7px',
+                                    borderRadius: '999px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                >
+                                  <CheckCircle2 size={11} />
+                                  <span>✓ סומן כטופל</span>
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe',
+                                    fontSize: '10.5px',
+                                    fontWeight: 600,
+                                    padding: '1px 6px',
+                                    borderRadius: '999px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                >
+                                  <Clock size={11} />
+                                  <span>ממתין למורה</span>
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: '12.5px', color: '#475569' }}>
-                              מאת <strong>{inq.name}</strong> ({inq.email})
-                              {inq.createdAt ? ` [${inq.createdAt}]` : ''}
-                              {inq.notes ? ` — "${inq.notes}"` : ''}
+
+                            <div style={{ fontSize: '12.5px', color: '#475569', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                              <span>מאת <strong>{inq.name}</strong> ({inq.email})</span>
+                              {inq.schoolGroup && (
+                                <span
+                                  style={{
+                                    background: '#f1f5f9',
+                                    color: '#334155',
+                                    border: '1px solid #cbd5e1',
+                                    padding: '0 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 600
+                                  }}
+                                >
+                                  🏫 {inq.schoolGroup}
+                                </span>
+                              )}
+                              {inq.createdAt ? <span style={{ color: '#64748b' }}>[{inq.createdAt}]</span> : null}
+                              {inq.notes ? <span>— "{inq.notes}"</span> : null}
                             </div>
+
+                            {inq.feedbackNote && (
+                              <div style={{ fontSize: '11.5px', color: '#b45309', marginTop: '3px', fontWeight: 600 }}>
+                                הערת מורה: "{inq.feedbackNote}"
+                              </div>
+                            )}
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2134,16 +2515,29 @@ export default function AdminAllowlistModal({
                               )}
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleDismissInquiry(inq)}
-                              className="btn-secondary-sm"
-                              style={{ padding: '4px 9px', fontSize: '11.5px' }}
-                              title="סמן פנייה זו כטופלה"
-                            >
-                              <Check size={13} />
-                              <span>סמן כטופל</span>
-                            </button>
+                            {inq.status === 'resolved' || inq.resolutionFeedback === 'thumbs_up' ? (
+                              <button
+                                type="button"
+                                onClick={() => handleReopenInquiry(inq)}
+                                className="btn-secondary-sm"
+                                style={{ padding: '4px 9px', fontSize: '11.5px', color: '#b45309', borderColor: '#fde68a' }}
+                                title="פתח פנייה זו מחדש"
+                              >
+                                <Clock size={13} />
+                                <span>פתח מחדש</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleDismissInquiry(inq)}
+                                className="btn-secondary-sm"
+                                style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                                title="סמן פנייה זו כטופלה"
+                              >
+                                <Check size={13} />
+                                <span>סמן כטופל</span>
+                              </button>
+                            )}
                           </div>
                         </div>
 

@@ -17,7 +17,8 @@ import {
   createChatMessage,
   appendMessageToThread,
   markThreadAsRead,
-  SENDER_ROLES
+  SENDER_ROLES,
+  THREAD_STATUS
 } from '../domain/supportChat.js';
 import { dispatchChatAlertToAdmins } from './alertDispatcher.js';
 
@@ -205,6 +206,61 @@ export async function clearSupportThreadInCloud(userEmail) {
     return true;
   } catch (err) {
     console.warn('[supportChat] Failed to clear support thread:', err);
+    return false;
+  }
+}
+
+/**
+ * Resolves a support thread in Firestore with satisfaction feedback.
+ */
+export async function resolveSupportThreadInCloud(userEmail, satisfaction = 'thumbs_up') {
+  const db = getFirestoreDb();
+  if (!db || !userEmail) return false;
+
+  const threadKey = sanitizeThreadKey(userEmail);
+  try {
+    const docRef = doc(db, SUPPORT_THREADS_COLLECTION, threadKey);
+    await setDoc(
+      docRef,
+      {
+        status: THREAD_STATUS.RESOLVED,
+        resolutionFeedback: satisfaction,
+        resolvedAt: new Date().toISOString(),
+        unreadByAdmin: false
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    console.warn('[supportChat] Failed to resolve support thread:', err);
+    return false;
+  }
+}
+
+/**
+ * Marks a support thread as needing further attention when teacher clicks thumbs down.
+ */
+export async function escalateSupportThreadInCloud(userEmail, note = '') {
+  const db = getFirestoreDb();
+  if (!db || !userEmail) return false;
+
+  const threadKey = sanitizeThreadKey(userEmail);
+  try {
+    const docRef = doc(db, SUPPORT_THREADS_COLLECTION, threadKey);
+    await setDoc(
+      docRef,
+      {
+        status: THREAD_STATUS.NEEDS_ATTENTION,
+        lastFeedback: 'needs_help',
+        feedbackNote: String(note || '').slice(0, 500),
+        unreadByAdmin: true,
+        updatedAt: new Date().toISOString()
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    console.warn('[supportChat] Failed to escalate support thread:', err);
     return false;
   }
 }

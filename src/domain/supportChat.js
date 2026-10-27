@@ -10,7 +10,13 @@ export const SENDER_ROLES = {
 
 export const THREAD_STATUS = {
   ACTIVE: 'active',
-  RESOLVED: 'resolved'
+  RESOLVED: 'resolved',
+  NEEDS_ATTENTION: 'needs_attention'
+};
+
+export const RESOLUTION_FEEDBACK = {
+  THUMBS_UP: 'thumbs_up',
+  THUMBS_DOWN: 'thumbs_down'
 };
 
 export const MAX_THREAD_MESSAGES = 100;
@@ -165,7 +171,7 @@ export function appendMessageToThread(thread, newMessage) {
     userEmail: validThread.userEmail || (isFromAdmin ? '' : newMessage.senderEmail),
     userName: validThread.userName || (isFromAdmin ? '' : newMessage.senderName),
     topic: validThread.topic || 'פנייה לתמיכה',
-    status: validThread.status || THREAD_STATUS.ACTIVE,
+    status: THREAD_STATUS.ACTIVE,
     lastMessageText: lastText,
     lastMessageSender: newMessage.senderRole,
     lastMessageAt: new Date(newMessage.timestamp).toISOString(),

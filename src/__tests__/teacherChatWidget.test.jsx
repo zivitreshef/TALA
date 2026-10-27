@@ -83,4 +83,143 @@ describe('TeacherChatWidget Component (Bi-directional Support Chat)', () => {
 
     expect(html).toContain('צ&#x27;אט תמיכה ועזרה');
   });
+
+  it('renders resolution rating bar (thumbs up / down) when an admin has replied', () => {
+    const threadWithAdminReply = {
+      id: 'thread_sara',
+      userEmail: 'sara@school.org',
+      userName: 'שרה',
+      status: 'active',
+      messages: [
+        {
+          id: 'm1',
+          senderRole: 'user',
+          senderName: 'שרה',
+          text: 'שאלה לגבי התחברות',
+          createdAt: '27/10/2026, 18:00',
+          timestamp: 1730000000000
+        },
+        {
+          id: 'm2',
+          senderRole: 'admin',
+          senderName: 'מנהלת המערכת',
+          text: 'היי שרה, הסיסמה עודכנה.',
+          createdAt: '27/10/2026, 18:05',
+          timestamp: 1730000300000
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(TeacherChatWidget, {
+        currentUser: { email: 'sara@school.org', name: 'שרה' },
+        defaultOpen: true,
+        initialThread: threadWithAdminReply,
+        allowedUsers: []
+      })
+    );
+
+    expect(html).toContain('האם המענה פתר את שאלתך?');
+    expect(html).toContain('כן, תודה!');
+    expect(html).toContain('עדיין זקוק/ה לעזרה');
+    expect(html).toContain('title="המענה עזר, סגור פנייה"');
+    expect(html).toContain('title="לא הספיק, דרוש המשך טיפול"');
+  });
+
+  it('does NOT render resolution bar when only teacher messages exist without admin reply', () => {
+    const threadUserOnly = {
+      id: 'thread_sara',
+      userEmail: 'sara@school.org',
+      userName: 'שרה',
+      status: 'active',
+      messages: [
+        {
+          id: 'm1',
+          senderRole: 'user',
+          senderName: 'שרה',
+          text: 'שאלה לגבי התחברות',
+          createdAt: '27/10/2026, 18:00',
+          timestamp: 1730000000000
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(TeacherChatWidget, {
+        currentUser: { email: 'sara@school.org', name: 'שרה' },
+        defaultOpen: true,
+        initialThread: threadUserOnly,
+        allowedUsers: []
+      })
+    );
+
+    expect(html).not.toContain('האם המענה פתר את שאלתך?');
+    expect(html).not.toContain('כן, תודה!');
+  });
+
+  it('renders resolved status banner with reopen action when thread is resolved', () => {
+    const resolvedThread = {
+      id: 'thread_sara',
+      userEmail: 'sara@school.org',
+      userName: 'שרה',
+      status: 'resolved',
+      resolutionFeedback: 'thumbs_up',
+      messages: [
+        {
+          id: 'm1',
+          senderRole: 'user',
+          text: 'עזרה',
+          timestamp: 1730000000000
+        },
+        {
+          id: 'm2',
+          senderRole: 'admin',
+          text: 'נפתר',
+          timestamp: 1730000300000
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(TeacherChatWidget, {
+        currentUser: { email: 'sara@school.org', name: 'שרה' },
+        defaultOpen: true,
+        initialThread: resolvedThread,
+        allowedUsers: []
+      })
+    );
+
+    expect(html).toContain('הפנייה טופלה לשביעות רצונך 👍');
+    expect(html).toContain('שאלה נוספת?');
+  });
+
+  it('renders needs_attention banner when thread is flagged for further assistance', () => {
+    const needsAttentionThread = {
+      id: 'thread_sara',
+      userEmail: 'sara@school.org',
+      userName: 'שרה',
+      status: 'needs_attention',
+      lastFeedback: 'needs_help',
+      messages: [
+        {
+          id: 'm1',
+          senderRole: 'admin',
+          text: 'מענה ראשוני',
+          timestamp: 1730000000000
+        }
+      ]
+    };
+
+    const html = renderToStaticMarkup(
+      React.createElement(TeacherChatWidget, {
+        currentUser: { email: 'sara@school.org', name: 'שרה' },
+        defaultOpen: true,
+        initialThread: needsAttentionThread,
+        allowedUsers: []
+      })
+    );
+
+    expect(html).toContain('הפנייה בטיפול מנהלת ⚠️');
+    expect(html).toContain('העניין הסתדר?');
+  });
 });

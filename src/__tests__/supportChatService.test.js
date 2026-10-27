@@ -5,6 +5,8 @@ import {
   sendChatMessageToCloud,
   markThreadReadInCloud,
   clearSupportThreadInCloud,
+  resolveSupportThreadInCloud,
+  escalateSupportThreadInCloud,
   SUPPORT_THREADS_COLLECTION
 } from '../services/supportChatService';
 import * as firebaseBackend from '../firebaseBackend';
@@ -104,6 +106,24 @@ describe('Support Chat Service (Cloud Firestore & Real-Time Sync)', () => {
     vi.spyOn(firebaseBackend, 'getFirestoreDb').mockReturnValue(null);
     const res = await clearSupportThreadInCloud('teacher@school.org');
     expect(res).toBe(false); // When db is null, returns false gracefully
+  });
+
+  it('resolveSupportThreadInCloud returns false if db or email is missing, and updates status with satisfaction', async () => {
+    vi.spyOn(firebaseBackend, 'getFirestoreDb').mockReturnValue(null);
+    const resNullEmail = await resolveSupportThreadInCloud('');
+    expect(resNullEmail).toBe(false);
+
+    const resNullDb = await resolveSupportThreadInCloud('teacher@school.org', 'thumbs_up');
+    expect(resNullDb).toBe(false);
+  });
+
+  it('escalateSupportThreadInCloud returns false if db or email is missing', async () => {
+    vi.spyOn(firebaseBackend, 'getFirestoreDb').mockReturnValue(null);
+    const resNullEmail = await escalateSupportThreadInCloud('', 'need help');
+    expect(resNullEmail).toBe(false);
+
+    const resNullDb = await escalateSupportThreadInCloud('teacher@school.org', 'need help');
+    expect(resNullDb).toBe(false);
   });
 
 });
