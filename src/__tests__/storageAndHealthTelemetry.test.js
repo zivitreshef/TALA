@@ -4,7 +4,10 @@ import {
   safeSetStorageItem,
   safeRemoveStorageItem,
   safeGetStorageJson,
-  safeSetStorageJson
+  safeSetStorageJson,
+  hasLocalStorageQuotaHeadroom,
+  pruneStaleFirestoreKeys,
+  isSafariOrIos
 } from '../services/storage';
 import { reportHealthEvent } from '../services/healthTelemetry';
 import { HEALTH_EVENT_KINDS } from '../domain/healthEvents';
@@ -384,4 +387,110 @@ describe('Resilient Storage & Health Telemetry Engine Suite', () => {
       }).not.toThrow();
     });
   });
+  describe('Safari & Quota Resilience Utilities', () => {
+    describe('isSafariOrIos', () => {
+      it('identifies iPad from userAgent string', () => {
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (iPad; CPU OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+          platform: 'iPad',
+          maxTouchPoints: 5
+        });
+        expect(isSafariOrIos()).toBe(true);
+      });
+
+      it('identifies modern iPadOS desktop-class user agent (MacIntel + touch points)', () => {
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+          platform: 'MacIntel',
+          maxTouchPoints: 5
+        });
+        expect(isSafariOrIos()).toBe(true);
+      });
+
+      it('identifies iPhone from userAgent string', () => {
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15',
+          platform: 'iPhone',
+          maxTouchPoints: 5
+        });
+        expect(isSafariOrIos()).toBe(true);
+      });
+
+      it('identifies desktop Safari from userAgent string', () => {
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+          platform: 'MacIntel',
+          maxTouchPoints: 0
+        });
+        expect(isSafariOrIos()).toBe(true);
+      });
+
+      it('returns false for Windows Desktop Chrome', () => {
+        vi.stubGlobal('navigator', {
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          platform: 'Win32',
+          maxTouchPoints: 0
+        });
+        expect(isSafariOrIos()).toBe(false);
+      });
+    });
+
+    describe('hasLocalStorageQuotaHeadroom', () => {
+      it('returns true when probe write succeeds and removes probe key', () => {
+        const headroom = hasLocalStorageQuotaHeadroom(1024);
+        expect(headroom).toBe(true);
+        expect(mockLocalStorage.setItem).toHaveBeenCalledWith('__tala_quota_probe__', expect.any(String));
+        expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('__tala_quota_probe__');
+      });
+
+      it('returns false when localStorage.setItem throws QuotaExceededError', () => {
+        mockLocalStorage.setItem.mockImplementationOnce(() => {
+          throw new Error('The quota has been exceeded.');
+        });
+        const headroom = hasLocalStorageQuotaHeadroom(1024);
+        expect(headroom).toBe(false);
+      });
+
+      it('returns false when window or localStorage is missing', () => {
+        vi.stubGlobal('window', {});
+        expect(hasLocalStorageQuotaHeadroom()).toBe(false);
+      });
+    });
+
+    describe('pruneStaleFirestoreKeys', () => {
+      it('removes orphaned firestore_, firebase:, and __sak keys while preserving tala_ keys', () => {
+        mockStorageStore['firestore_clients_123'] = 'client-token';
+        mockStorageStore['firestore_targets_abc'] = 'target-data';
+        mockStorageStore['firestore_mutations_xyz'] = 'mutation-data';
+        mockStorageStore['firebase:authUser:apiKey'] = 'auth-token';
+        mockStorageStore['__sak'] = 'sak-token';
+        mockStorageStore['tala_students_plans_v3'] = '[{"id":"st_1"}]';
+        mockStorageStore['tala_allowed_users_v1'] = '[{"id":"u_1"}]';
+
+        // Set up mock window.localStorage with key(i) and length
+        const getKeys = () => Object.keys(mockStorageStore);
+        mockLocalStorage.key = vi.fn((idx) => getKeys()[idx] || null);
+        Object.defineProperty(mockLocalStorage, 'length', {
+          get: () => getKeys().length,
+          configurable: true
+        });
+
+        const removedCount = pruneStaleFirestoreKeys();
+        expect(removedCount).toBe(5);
+        expect(mockStorageStore['tala_students_plans_v3']).toBe('[{"id":"st_1"}]');
+        expect(mockStorageStore['tala_allowed_users_v1']).toBe('[{"id":"u_1"}]');
+        expect(mockStorageStore['firestore_clients_123']).toBeUndefined();
+        expect(mockStorageStore['firestore_targets_abc']).toBeUndefined();
+        expect(mockStorageStore['firestore_mutations_xyz']).toBeUndefined();
+        expect(mockStorageStore['firebase:authUser:apiKey']).toBeUndefined();
+        expect(mockStorageStore['__sak']).toBeUndefined();
+      });
+
+      it('returns 0 and does not throw when localStorage is missing', () => {
+        vi.stubGlobal('window', {});
+        expect(pruneStaleFirestoreKeys()).toBe(0);
+      });
+    });
+  });
+
 });

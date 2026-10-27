@@ -44,7 +44,9 @@ vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => mockDb),
   initializeFirestore: vi.fn(() => mockDb),
   persistentLocalCache: vi.fn(),
-  persistentMultipleTabManager: vi.fn(),
+  persistentMultipleTabManager: vi.fn(() => ({ type: "mock-multi-tab-manager" })),
+  persistentSingleTabManager: vi.fn(() => ({ type: "mock-single-tab-manager" })),
+  persistentLocalCache: vi.fn((opts) => opts),
   doc: (...args) => mockDoc(...args),
   collection: (...args) => mockCollection(...args),
   setDoc: (...args) => mockSetDoc(...args),
@@ -69,8 +71,11 @@ import {
   deleteStudentFromCloud,
   fetchAllowedUsersFromCloud,
   saveAllowedUsersToCloud,
-  pingFirestore
+  pingFirestore,
+  getFirestoreDb,
+  _resetFirestoreInstanceForTesting
 } from '../firebaseBackend';
+import * as storageService from '../services/storage';
 
 describe('Firebase Backend Cloud Config & Serialization', () => {
   let transactionGetSpy;
@@ -302,4 +307,75 @@ describe('Firebase Backend Cloud Config & Serialization', () => {
       expect(probe.message).toContain('Network timeout');
     });
   });
+  describe('Firestore Initialization & Safari / Quota Resilience', () => {
+    let mockAppInstance;
+
+    beforeEach(() => {
+      _resetFirestoreInstanceForTesting();
+      mockAppInstance = { name: '[DEFAULT]' };
+      vi.spyOn(storageService, 'pruneStaleFirestoreKeys').mockReturnValue(0);
+    });
+
+    afterEach(() => {
+      _resetFirestoreInstanceForTesting();
+      vi.restoreAllMocks();
+    });
+
+    it('prunes stale firestore sync keys from localStorage on initialization', async () => {
+      const { initializeFirestore } = await import('firebase/firestore');
+      const pruneSpy = vi.spyOn(storageService, 'pruneStaleFirestoreKeys').mockReturnValue(3);
+
+      getFirestoreDb();
+
+      expect(pruneSpy).toHaveBeenCalled();
+      expect(initializeFirestore).toHaveBeenCalled();
+    });
+
+    it('selects persistentSingleTabManager with forceOwnership: true on Safari/iOS', async () => {
+      const { persistentSingleTabManager, persistentMultipleTabManager } = await import('firebase/firestore');
+      vi.spyOn(storageService, 'isSafariOrIos').mockReturnValue(true);
+      vi.spyOn(storageService, 'hasLocalStorageQuotaHeadroom').mockReturnValue(true);
+
+      getFirestoreDb();
+
+      expect(persistentSingleTabManager).toHaveBeenCalledWith({ forceOwnership: true });
+      expect(persistentMultipleTabManager).not.toHaveBeenCalled();
+    });
+
+    it('selects persistentSingleTabManager when localStorage quota is exceeded or lacking headroom', async () => {
+      const { persistentSingleTabManager, persistentMultipleTabManager } = await import('firebase/firestore');
+      vi.spyOn(storageService, 'isSafariOrIos').mockReturnValue(false);
+      vi.spyOn(storageService, 'hasLocalStorageQuotaHeadroom').mockReturnValue(false);
+
+      getFirestoreDb();
+
+      expect(persistentSingleTabManager).toHaveBeenCalledWith({ forceOwnership: true });
+      expect(persistentMultipleTabManager).not.toHaveBeenCalled();
+    });
+
+    it('selects persistentMultipleTabManager on desktop browsers with ample quota headroom', async () => {
+      const { persistentSingleTabManager, persistentMultipleTabManager } = await import('firebase/firestore');
+      vi.spyOn(storageService, 'isSafariOrIos').mockReturnValue(false);
+      vi.spyOn(storageService, 'hasLocalStorageQuotaHeadroom').mockReturnValue(true);
+
+      getFirestoreDb();
+
+      expect(persistentMultipleTabManager).toHaveBeenCalled();
+      expect(persistentSingleTabManager).not.toHaveBeenCalled();
+    });
+
+    it('falls back to getFirestore(app) when initializeFirestore throws', async () => {
+      const { initializeFirestore, getFirestore } = await import('firebase/firestore');
+      vi.mocked(initializeFirestore).mockImplementationOnce(() => {
+        throw new Error('Firestore already initialized or unsupported cache');
+      }).mockImplementationOnce(() => {
+        throw new Error('Fallback failed');
+      });
+
+      const db = getFirestoreDb();
+      expect(getFirestore).toHaveBeenCalled();
+      expect(db).toBeDefined();
+    });
+  });
+
 });

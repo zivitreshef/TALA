@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { pruneStaleFirestoreKeys } from '../services/storage';
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -22,8 +23,18 @@ export default class ErrorBoundary extends React.Component {
     }
   };
 
+  handleClearCacheAndReload = () => {
+    pruneStaleFirestoreKeys();
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  };
+
   render() {
     if (this.state.hasError) {
+      const errorMessage = this.state.error?.message || '';
+      const isStorageQuotaError = /quota|exceeded|b815|setItem/i.test(errorMessage);
+
       return (
         <div
           dir="rtl"
@@ -40,22 +51,39 @@ export default class ErrorBoundary extends React.Component {
               <p className="text-xs text-slate-600 leading-relaxed mb-4">
                 הנתונים שלך שמורים בבטחה. ניתן לרענן את התצוגה ולהמשיך בעבודה כרגיל.
               </p>
-              {this.state.error?.message && (
+              {isStorageQuotaError && (
+                <div className="mb-4 p-3 rounded-xl bg-amber-100/90 border border-amber-300 text-xs text-amber-900 leading-relaxed font-medium">
+                  זוהתה מגבלת אחסון מקומי בדפדפן (אופייני ל-Safari באייפד). לחיצה על &quot;ניקוי מטמון וטעינה מחדש&quot; תפנה מפתחות סנכרון ישנים ותרענן את הדף מיידית.
+                </div>
+              )}
+              {errorMessage && (
                 <pre
                   dir="ltr"
                   className="text-[11px] bg-white/80 border border-amber-200 rounded-lg p-2.5 text-slate-600 overflow-x-auto mb-4"
                 >
-                  {this.state.error.message}
+                  {errorMessage}
                 </pre>
               )}
-              <button
-                type="button"
-                onClick={this.handleReset}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                שחזור תצוגה והמשך עבודה
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={this.handleReset}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  שחזור תצוגה והמשך עבודה
+                </button>
+                {isStorageQuotaError && (
+                  <button
+                    type="button"
+                    onClick={this.handleClearCacheAndReload}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    ניקוי מטמון וטעינה מחדש
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
