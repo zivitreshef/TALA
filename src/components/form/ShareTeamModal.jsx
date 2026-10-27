@@ -2,6 +2,12 @@ import React from 'react';
 import { Users, X, ShieldAlert } from 'lucide-react';
 import { getShareableColleagues, getUserGroup } from '../../domain/permissions';
 
+const QUICK_CHIPS = [
+  'נא להוסיף מטרות טיפוליות',
+  'לעיונך והערות לקראת ועדה',
+  'בדיקת סטטוס והתייעצות'
+];
+
 export default function ShareTeamModal({
   isOpen,
   onClose,
@@ -10,6 +16,8 @@ export default function ShareTeamModal({
   allowedUsers,
   onToggleShareColleague
 }) {
+  const [handoffNote, setHandoffNote] = React.useState('');
+
   if (!isOpen) return null;
 
   const myGroup = getUserGroup(currentUser, allowedUsers);
@@ -140,7 +148,13 @@ export default function ShareTeamModal({
                           <input
                             type="checkbox"
                             checked={isShared}
-                            onChange={() => onToggleShareColleague(colEmail)}
+                            onChange={() => {
+                              if (isShared) {
+                                onToggleShareColleague(colEmail);
+                              } else {
+                                onToggleShareColleague(colEmail, handoffNote);
+                              }
+                            }}
                           />
                           <div>
                             <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
@@ -169,6 +183,68 @@ export default function ShareTeamModal({
                       </label>
                     );
                   })}
+                </div>
+              )}
+
+              {visibleUsers.length > 0 && (
+                <div
+                  style={{
+                    marginTop: '14px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>
+                      ✉️ הודעת פתיחה והנחיות לשיתוף (אופציונלי)
+                    </label>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>יישמר בשיח הצוות</span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {QUICK_CHIPS.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => setHandoffNote(chip)}
+                        style={{
+                          background: handoffNote === chip ? '#ede9fe' : '#f8fafc',
+                          border: handoffNote === chip ? '1px solid #a78bfa' : '1px solid #cbd5e1',
+                          color: handoffNote === chip ? '#5b21b6' : '#475569',
+                          borderRadius: '999px',
+                          padding: '3px 9px',
+                          fontSize: '11.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        + {chip}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    value={handoffNote}
+                    onChange={(e) => setHandoffNote(e.target.value)}
+                    placeholder="לדוגמה: היי, שיתפתי איתך את התוכנית לקראת הוועדה. אנא הוסיפי מטרות..."
+                    maxLength={800}
+                    rows={2}
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '8px 10px',
+                      fontSize: '12.5px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      resize: 'none',
+                      fontFamily: 'inherit',
+                      color: '#1e293b'
+                    }}
+                  />
                 </div>
               )}
             </>
