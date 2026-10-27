@@ -6,6 +6,7 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  persistentSingleTabManager,
   doc,
   collection,
   setDoc,
@@ -24,6 +25,11 @@ import {
 } from 'firebase/firestore';
 import { ensureUsersListPasswordsHashed } from './allowedUsers.js';
 import { mergeStudentSnapshots } from './domain/studentSyncMerge.js';
+import {
+  pruneStaleFirestoreKeys,
+  hasLocalStorageQuotaHeadroom,
+  isSafariOrIos
+} from './services/storage.js';
 
 const PRIMARY_ADMIN_EMAIL = 'zivit.reshef@gmail.com';
 // Must match emailKey() in functions/index.js
@@ -121,20 +127,41 @@ function getFirebaseAppInstance() {
   return existingApps.length > 0 ? existingApps[0] : initializeApp(config);
 }
 
+export function _resetFirestoreInstanceForTesting() {
+  dbInstance = null;
+}
+
 export function getFirestoreDb() {
   if (dbInstance) return dbInstance;
   try {
     const app = getFirebaseAppInstance();
     if (!app) return null;
+
+    // Prune stale multi-tab synchronization keys left over by previous sessions
+    // to protect Safari/iOS 5MB quota and prevent QuotaExceededError (b815).
+    pruneStaleFirestoreKeys();
+
     try {
-      // ponytail: native Firestore IndexedDB cache queues offline writes + syncs multi-tab
+      // Prefer single-tab IndexedDB cache on Safari/iOS or when localStorage quota is tight
+      // to avoid WebStorageSharedClientState QuotaExceededError assertion crashes (b815).
+      const shouldUseSingleTab = isSafariOrIos() || !hasLocalStorageQuotaHeadroom();
+      const tabManager = shouldUseSingleTab
+        ? persistentSingleTabManager({ forceOwnership: true })
+        : persistentMultipleTabManager();
+
       dbInstance = initializeFirestore(app, {
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager()
-        })
+        localCache: persistentLocalCache({ tabManager })
       });
     } catch {
-      dbInstance = getFirestore(app);
+      try {
+        dbInstance = initializeFirestore(app, {
+          localCache: persistentLocalCache({
+            tabManager: persistentSingleTabManager({ forceOwnership: true })
+          })
+        });
+      } catch {
+        dbInstance = getFirestore(app);
+      }
     }
     return dbInstance;
   } catch (err) {

@@ -1,3 +1,4 @@
+import { safeGetStorageItem, safeSetStorageItem, safeRemoveStorageItem } from './services/storage.js';
 // מאגר מטרות ויעדים דינמי (מבוסס על סביבות ההשתתפות בגן)
 
 import {
@@ -1131,8 +1132,8 @@ export function deduplicateAndNormalizeGoalBank(rawBank = []) {
 
 export function loadGoalBank() {
   try {
-    localStorage.removeItem('tala_ecological_goal_bank_v1');
-    const saved = localStorage.getItem(GOAL_BANK_STORAGE_KEY);
+    safeRemoveStorageItem('tala_ecological_goal_bank_v1');
+    const saved = safeGetStorageItem(GOAL_BANK_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1161,13 +1162,13 @@ export function loadGoalBank() {
         // Run deduplication & canonicalization pass
         const cleaned = deduplicateAndNormalizeGoalBank(upgraded);
 
-        if (!localStorage.getItem(GOAL_WEIGHTS_RESET_FLAG_KEY)) {
+        if (!safeGetStorageItem(GOAL_WEIGHTS_RESET_FLAG_KEY)) {
           cleaned.forEach((g) => { g.usageCount = 0; });
-          localStorage.setItem(GOAL_WEIGHTS_RESET_FLAG_KEY, 'true');
+          safeSetStorageItem(GOAL_WEIGHTS_RESET_FLAG_KEY, 'true');
         }
 
-        localStorage.setItem(GOAL_DEDUPLICATION_FLAG_KEY, 'true');
-        localStorage.setItem(GOAL_BANK_STORAGE_KEY, JSON.stringify(cleaned));
+        safeSetStorageItem(GOAL_DEDUPLICATION_FLAG_KEY, 'true');
+        safeSetStorageItem(GOAL_BANK_STORAGE_KEY, JSON.stringify(cleaned));
 
         return cleaned;
       }
@@ -1175,12 +1176,12 @@ export function loadGoalBank() {
   } catch (e) {
     console.warn('Failed to load goal bank from localStorage', e);
   }
-  localStorage.setItem(GOAL_WEIGHTS_RESET_FLAG_KEY, 'true');
+  safeSetStorageItem(GOAL_WEIGHTS_RESET_FLAG_KEY, 'true');
   return deduplicateAndNormalizeGoalBank(INITIAL_GOAL_BANK);
 }
 
 export function saveGoalBank(bank) {
-  localStorage.setItem(GOAL_BANK_STORAGE_KEY, JSON.stringify(bank));
+  safeSetStorageItem(GOAL_BANK_STORAGE_KEY, JSON.stringify(bank));
 }
 
 export function getSortedGoalBank(bank) {

@@ -1,3 +1,4 @@
+import { safeGetStorageItem, safeSetStorageItem } from './services/storage.js';
 // ============================================================================
 // Salted Cryptographic Password Hashing (SHA-256 + Per-User Random Salt)
 // Ensures plaintext passwords (`accessCode`) are never stored in Firestore or localStorage.
@@ -260,7 +261,7 @@ const STORAGE_KEY = 'tala_allowed_users_v1';
 
 export function loadAllowedUsers() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = safeGetStorageItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -271,7 +272,7 @@ export function loadAllowedUsers() {
             : u
         );
         const { users: hashedUsers } = ensureUsersListPasswordsHashed(titleMigrated);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(hashedUsers));
+        safeSetStorageItem(STORAGE_KEY, JSON.stringify(hashedUsers));
         return hashedUsers;
       }
     }
@@ -283,7 +284,7 @@ export function loadAllowedUsers() {
 
 export function saveAllowedUsers(users) {
   const { users: hashedUsers } = ensureUsersListPasswordsHashed(users);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(hashedUsers));
+  safeSetStorageItem(STORAGE_KEY, JSON.stringify(hashedUsers));
 }
 
 export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
@@ -702,7 +703,7 @@ export function getDailyQuotaCount(serviceName, date = new Date()) {
   try {
     if (typeof localStorage === 'undefined') return 0;
     const key = getDailyQuotaStorageKey(serviceName, date);
-    return parseInt(localStorage.getItem(key) || '0', 10) || 0;
+    return parseInt(safeGetStorageItem(key) || '0', 10) || 0;
   } catch (_) {
     return 0;
   }
@@ -712,9 +713,9 @@ export function incrementDailyQuotaCount(serviceName, amount = 1, date = new Dat
   try {
     if (typeof localStorage === 'undefined') return 0;
     const key = getDailyQuotaStorageKey(serviceName, date);
-    const current = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+    const current = parseInt(safeGetStorageItem(key) || '0', 10) || 0;
     const next = current + Math.max(1, amount);
-    localStorage.setItem(key, String(next));
+    safeSetStorageItem(key, String(next));
     return next;
   } catch (_) {
     return 0;
