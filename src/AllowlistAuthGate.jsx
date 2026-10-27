@@ -890,6 +890,27 @@ export function UserSelfPasswordModal({
                                   {st.educationalFramework}
                                 </span>
                               )}
+                              {st.isLocked && (
+                                <span
+                                  data-testid="locked-shared-report-badge"
+                                  style={{
+                                    fontSize: '11px',
+                                    background: '#fffbeb',
+                                    color: '#b45309',
+                                    border: '1px solid #fde68a',
+                                    borderRadius: '999px',
+                                    padding: '1px 7px',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                  title="התוכנית נעולה לעריכה - קריאה בלבד"
+                                >
+                                  <Lock size={11} style={{ color: '#d97706' }} />
+                                  <span>קריאה בלבד</span>
+                                </span>
+                              )}
                             </div>
                             <span style={{ fontSize: '12px', color: '#475569' }}>
                               שותף עמך על ידי: <strong>{ownerName}</strong>

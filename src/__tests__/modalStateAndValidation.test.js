@@ -1031,6 +1031,45 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
         expect(html).toContain('כיתת שילוב');
         expect(html).toContain('✉️ הודעה:');
         expect(html).toContain('נא להוסיף מטרות קלינאית תקשורת לקראת הוועדה');
+        expect(html).not.toContain('קריאה בלבד');
+      });
+
+      it('displays read-only badge (קריאה בלבד) when shared plan is locked (isLocked: true)', () => {
+        const lockedReports = [
+          {
+            id: 'st_101',
+            studentName: 'נועם אברהם',
+            ownerName: 'יעל מנהלת',
+            ownerEmail: 'yael@school.org',
+            educationalFramework: 'גן שפתי',
+            schoolYear: '2026-2027',
+            isLocked: true,
+            teamMessages: [
+              {
+                id: 'm2',
+                type: 'share_handoff',
+                authorName: 'יעל מנהלת',
+                text: 'לעיון בלבד (התוכנית נעולה)',
+                recipientEmail: 'therapist@school.org'
+              }
+            ]
+          }
+        ];
+
+        const html = renderToStaticMarkup(
+          React.createElement(UserSelfPasswordModal, {
+            isOpen: true,
+            onClose: () => {},
+            currentUser: { name: 'מיכל המרפאה', email: 'therapist@school.org' },
+            onSubmit: () => {},
+            unreadSharedReports: lockedReports
+          })
+        );
+
+        expect(html).toContain('נועם אברהם');
+        expect(html).toContain('גן שפתי');
+        expect(html).toContain('קריאה בלבד');
+        expect(html).toContain('לעיון בלבד (התוכנית נעולה)');
       });
     });
 

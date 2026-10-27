@@ -84,4 +84,17 @@ describe('Workspace Branding & Unified Blue Theme Contract', () => {
     expect(trackerCss).toMatch(/\.tracker-header-avatar\s*\{[\s\S]*?width:\s*48px;[\s\S]*?height:\s*48px;/);
     expect(goalBankCss).toMatch(/\.goal-bank-header-avatar\s*\{[\s\S]*?width:\s*48px;[\s\S]*?height:\s*48px;/);
   });
+
+  it('verifies read-only banner and student list badge contracts for locked shared plans', () => {
+    const appCode = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
+    const formCode = fs.readFileSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'), 'utf8');
+
+    // App.jsx displays read-only indicator for locked shared students
+    expect(appCode).toContain("st.isLocked ? 'שותף עמך (קריאה בלבד)' : 'שותף עמך'");
+
+    // EcologicalWorkPlanForm.jsx renders amber read-only banner when report is locked for colleague
+    expect(formCode).toContain('data-testid="readonly-shared-plan-banner"');
+    expect(formCode).toContain('קריאה בלבד');
+    expect(formCode).toContain('התוכנית נעולה לעריכה על ידי המורה האחראי/ת');
+  });
 });

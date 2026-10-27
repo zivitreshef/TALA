@@ -2258,6 +2258,31 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       </div>
 
+      {isReportLocked && !userCanLockReport && (
+        <div
+          data-testid="readonly-shared-plan-banner"
+          style={{
+            background: '#fffbeb',
+            border: '1.5px solid #fde68a',
+            borderRadius: '10px',
+            padding: '10px 16px',
+            margin: '0 0 12px 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            color: '#92400e',
+            fontSize: '13.5px',
+            fontWeight: 600,
+            boxShadow: '0 1px 3px rgba(217, 119, 6, 0.08)'
+          }}
+        >
+          <Lock size={18} style={{ color: '#d97706', flexShrink: 0 }} />
+          <span>
+            תוכנית עבודה זו שותפה עמך במצב <strong>קריאה בלבד</strong> (התוכנית נעולה לעריכה על ידי המורה האחראי/ת). ניתן לצפות בכל הסעיפים, לשלוח הודעות בשיח הצוות, או להדפיס.
+          </span>
+        </div>
+      )}
+
       {/* Mobile-Friendly Quick Section Navigator Bar */}
       <nav className="form-section-nav-bar" aria-label="ניווט מהיר בין סעיפי התוכנית">
         <button

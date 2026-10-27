@@ -2787,15 +2787,15 @@ export default function App() {
                               <span
                                 style={{
                                   fontSize: '10.5px',
-                                  background: '#eff6ff',
-                                  color: '#1d4ed8',
-                                  border: '1px solid #bfdbfe',
-                                  borderRadius: '999px',
+                                  background: st.isLocked ? '#fffbeb' : '#eff6ff',
+                                  color: st.isLocked ? '#92400e' : '#1d4ed8',
+                                  border: st.isLocked ? '1px solid #fde68a' : '1px solid #bfdbfe',
+                                  borderRadius: '9999px',
                                   padding: '1px 7px',
                                   fontWeight: 700
                                 }}
                               >
-                                שותף עמך
+                                {st.isLocked ? 'שותף עמך (קריאה בלבד)' : 'שותף עמך'}
                               </span>
                             )}
                             <span className="st-goals-badge">

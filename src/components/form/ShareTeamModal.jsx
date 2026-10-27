@@ -1,9 +1,15 @@
 import React from 'react';
-import { Users, X, ShieldAlert } from 'lucide-react';
+import { Users, X, ShieldAlert, Lock } from 'lucide-react';
 import { getShareableColleagues, getUserGroup } from '../../domain/permissions';
 
 const QUICK_CHIPS = [
   'נא להוסיף מטרות טיפוליות',
+  'לעיונך והערות לקראת ועדה',
+  'בדיקת סטטוס והתייעצות'
+];
+
+const LOCKED_QUICK_CHIPS = [
+  'לעיון בלבד (התוכנית נעולה)',
   'לעיונך והערות לקראת ועדה',
   'בדיקת סטטוס והתייעצות'
 ];
@@ -20,6 +26,8 @@ export default function ShareTeamModal({
 
   if (!isOpen) return null;
 
+  const isLocked = Boolean(formData?.isLocked);
+  const activeChips = isLocked ? LOCKED_QUICK_CHIPS : QUICK_CHIPS;
   const myGroup = getUserGroup(currentUser, allowedUsers);
   const visibleUsers = getShareableColleagues(currentUser, allowedUsers);
   const currentShared = (formData.sharedWith || []).map((e) =>
@@ -56,6 +64,31 @@ export default function ShareTeamModal({
         </div>
 
         <div className="modal-body email-modal-body">
+          {isLocked && (
+            <div
+              data-testid="locked-plan-warning"
+              style={{
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '12px',
+                color: '#92400e',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                lineHeight: 1.4
+              }}
+            >
+              <Lock size={18} style={{ color: '#d97706', flexShrink: 0 }} />
+              <span>
+                שימי לב: תוכנית העבודה נעולה לעריכה. אנשי הצוות שישותפו יוכלו לצפות בתוכנית במצב קריאה בלבד ולא יוכלו לערוך או להוסיף מטרות.
+              </span>
+            </div>
+          )}
+
           {!myGroup ? (
             <div
               style={{
@@ -205,7 +238,7 @@ export default function ShareTeamModal({
                   </div>
 
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {QUICK_CHIPS.map((chip) => (
+                    {activeChips.map((chip) => (
                       <button
                         key={chip}
                         type="button"
@@ -230,7 +263,11 @@ export default function ShareTeamModal({
                   <textarea
                     value={handoffNote}
                     onChange={(e) => setHandoffNote(e.target.value)}
-                    placeholder="לדוגמה: היי, שיתפתי איתך את התוכנית לקראת הוועדה. אנא הוסיפי מטרות..."
+                    placeholder={
+                      isLocked
+                        ? 'לדוגמה: היי, משתפת לעיונך בלבד (התוכנית נעולה לקראת ועדה)...'
+                        : 'לדוגמה: היי, שיתפתי איתך את התוכנית לקראת הוועדה. אנא הוסיפי מטרות...'
+                    }
                     maxLength={800}
                     rows={2}
                     style={{

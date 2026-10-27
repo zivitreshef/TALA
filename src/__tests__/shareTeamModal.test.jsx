@@ -127,4 +127,45 @@ describe('ShareTeamModal Component (Tenant Isolation & Student Sharing)', () => 
     expect(html).toContain('לעיונך והערות');
     expect(html).toContain('בדיקת סטטוס');
   });
+
+  it('renders warning callout and read-only quick chips when plan is locked (isLocked: true)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ShareTeamModal, {
+        isOpen: true,
+        onClose: () => {},
+        formData: { ...sampleStudent, isLocked: true },
+        currentUser: { email: 'zivit@tala.edu.il', group: 'מתי"א מרכז' },
+        allowedUsers,
+        onToggleShareColleague: () => {}
+      })
+    );
+
+    // Displays clear warning callout
+    expect(html).toContain('שימי לב: תוכנית העבודה נעולה לעריכה');
+    expect(html).toContain('קריאה בלבד');
+    expect(html).toContain('ולא יוכלו לערוך או להוסיף מטרות');
+
+    // Contextual chips: provides "לעיון בלבד" and removes "נא להוסיף מטרות"
+    expect(html).toContain('לעיון בלבד (התוכנית נעולה)');
+    expect(html).not.toContain('נא להוסיף מטרות טיפוליות');
+
+    // Placeholder informs sender
+    expect(html).toContain('היי, משתפת לעיונך בלבד (התוכנית נעולה לקראת ועדה)');
+  });
+
+  it('does not render locked warning callout when plan is unlocked (isLocked: false)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ShareTeamModal, {
+        isOpen: true,
+        onClose: () => {},
+        formData: { ...sampleStudent, isLocked: false },
+        currentUser: { email: 'zivit@tala.edu.il', group: 'מתי"א מרכז' },
+        allowedUsers,
+        onToggleShareColleague: () => {}
+      })
+    );
+
+    expect(html).not.toContain('שימי לב: תוכנית העבודה נעולה לעריכה');
+    expect(html).toContain('נא להוסיף מטרות טיפוליות');
+  });
 });
