@@ -3,50 +3,81 @@ import { MessageSquare, Send, Trash2, X, Clock, Pin, AlertCircle } from 'lucide-
 
 export const AUTHOR_COLOR_THEMES = [
   {
-    bg: '#f5f3ff', // Soft violet/purple
-    border: '#ddd6fe',
-    avatarBg: '#7c3aed',
-    badgeBg: '#ede9fe',
-    badgeColor: '#6d28d9'
+    bg: '#faf5ff', // Soft purple/violet (שרה כהן - מחנכת)
+    border: '#d8b4fe',
+    avatarBg: '#8b5cf6',
+    badgeBg: '#f3e8ff',
+    badgeColor: '#7c3aed',
+    nameColor: '#3b0764',
+    pinColor: '#7c3aed'
   },
   {
-    bg: '#eff6ff', // Soft blue
-    border: '#bfdbfe',
+    bg: '#eff6ff', // Soft blue (דנה לוין - קלינאית תקשורת)
+    border: '#93c5fd',
     avatarBg: '#2563eb',
     badgeBg: '#dbeafe',
-    badgeColor: '#1d4ed8'
+    badgeColor: '#1d4ed8',
+    nameColor: '#172554',
+    pinColor: '#1d4ed8'
   },
   {
-    bg: '#f0fdf4', // Soft emerald green
-    border: '#bbf7d0',
+    bg: '#f0fdf4', // Soft emerald green (מיכל רוזן - מרפאה בעיסוק)
+    border: '#86efac',
     avatarBg: '#059669',
     badgeBg: '#dcfce7',
-    badgeColor: '#15803d'
+    badgeColor: '#059669',
+    nameColor: '#022c22',
+    pinColor: '#059669'
   },
   {
     bg: '#fffbeb', // Soft warm amber
     border: '#fde68a',
     avatarBg: '#d97706',
     badgeBg: '#fef3c7',
-    badgeColor: '#b45309'
+    badgeColor: '#b45309',
+    nameColor: '#451a03',
+    pinColor: '#b45309'
   },
   {
     bg: '#fff1f2', // Soft coral rose
     border: '#fecdd3',
     avatarBg: '#e11d48',
     badgeBg: '#ffe4e6',
-    badgeColor: '#be123c'
+    badgeColor: '#be123c',
+    nameColor: '#4c0519',
+    pinColor: '#be123c'
   },
   {
     bg: '#ecfeff', // Soft cyan/aqua
     border: '#a5f3fc',
     avatarBg: '#0891b2',
     badgeBg: '#cffafe',
-    badgeColor: '#0e7490'
+    badgeColor: '#0e7490',
+    nameColor: '#083344',
+    pinColor: '#0e7490'
   }
 ];
 
-export function getAuthorColorTheme(authorEmail = '') {
+export function getAuthorInitials(name = '', email = '') {
+  const cleanName = String(name || '').trim();
+  if (cleanName) {
+    const parts = cleanName.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0].charAt(0)}${parts[1].charAt(0)}`;
+    }
+    return cleanName.slice(0, 2);
+  }
+  const cleanEmail = String(email || '').trim();
+  if (cleanEmail) {
+    return cleanEmail.slice(0, 2).toUpperCase();
+  }
+  return 'צו';
+}
+
+export function getAuthorColorTheme(authorEmail = '', authorIndex) {
+  if (typeof authorIndex === 'number' && authorIndex >= 0) {
+    return AUTHOR_COLOR_THEMES[authorIndex % AUTHOR_COLOR_THEMES.length];
+  }
   const clean = String(authorEmail || '').trim().toLowerCase();
   if (!clean) return AUTHOR_COLOR_THEMES[0];
   let hash = 0;
@@ -59,9 +90,9 @@ export function getAuthorColorTheme(authorEmail = '') {
 }
 
 const DRAWER_QUICK_CHIPS = [
-  'נא לבדוק מטרות טיפוליות',
-  'עודכן לקראת ישיבת צוות',
-  'אשמח להתייעצות בנושא'
+  'נא לבדוק מטרות',
+  'עודכן לקראת ישיבה',
+  'אשמח להתייעצות'
 ];
 
 export default function TeamChatDrawer({
@@ -85,6 +116,24 @@ export default function TeamChatDrawer({
     return da - db;
   });
 
+  // Track unique authors across the thread so each person gets a distinct high-contrast color (0% collision)
+  const uniqueAuthors = [];
+  sortedMessages.forEach((msg) => {
+    const key = (msg.authorEmail || msg.authorName || '').trim().toLowerCase();
+    if (key && !uniqueAuthors.includes(key)) {
+      uniqueAuthors.push(key);
+    }
+  });
+
+  const getThemeForMsg = (msg) => {
+    const key = (msg.authorEmail || msg.authorName || '').trim().toLowerCase();
+    const idx = uniqueAuthors.indexOf(key);
+    if (idx !== -1) {
+      return AUTHOR_COLOR_THEMES[idx % AUTHOR_COLOR_THEMES.length];
+    }
+    return getAuthorColorTheme(msg.authorEmail);
+  };
+
   const handleSend = (e) => {
     e?.preventDefault();
     const trimmed = inputText.trim();
@@ -104,12 +153,22 @@ export default function TeamChatDrawer({
     if (!isoString) return '';
     try {
       const d = new Date(isoString);
-      return d.toLocaleDateString('he-IL', {
-        month: 'numeric',
-        day: 'numeric',
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday = d.toDateString() === yesterday.toDateString();
+
+      const timeStr = d.toLocaleTimeString('he-IL', {
         hour: '2-digit',
         minute: '2-digit'
       });
+
+      if (isToday) return `${timeStr}`;
+      if (isYesterday) return `אתמול ${timeStr}`;
+
+      const dateStr = `${d.getDate()}/${d.getMonth() + 1}`;
+      return `${timeStr} ${dateStr}`;
     } catch {
       return '';
     }
@@ -144,13 +203,14 @@ export default function TeamChatDrawer({
           display: 'flex',
           flexDirection: 'column',
           zIndex: 1051,
-          animation: 'slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+          animation: 'slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          direction: 'rtl'
         }}
       >
         {/* Drawer Header */}
         <div
           style={{
-            padding: '16px',
+            padding: '14px 16px',
             borderBottom: '1px solid #e2e8f0',
             backgroundColor: '#f8fafc',
             display: 'flex',
@@ -159,33 +219,6 @@ export default function TeamChatDrawer({
             gap: '12px'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
-              style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                backgroundColor: '#ede9fe',
-                color: '#6d28d9',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}
-            >
-              <MessageSquare size={18} />
-            </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
-                שיח צוות ותיעוד שיתוף
-              </h3>
-              <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                {studentName ? `${studentName} • ` : ''}
-                {sharedWith.length > 0 ? `${sharedWith.length + 1} אנשי צוות בשיח` : 'צוות התלמיד/ה'}
-              </p>
-            </div>
-          </div>
-
           <button
             type="button"
             onClick={onClose}
@@ -206,6 +239,33 @@ export default function TeamChatDrawer({
           >
             <X size={16} />
           </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ textAlign: 'right' }}>
+              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                שיח צוות ותיעוד שיתוף
+              </h3>
+              <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#64748b' }}>
+                {sharedWith.length > 0 ? `${sharedWith.length + 1} חברי צוות בשיח` : 'צוות התלמיד/ה'}
+                {studentName ? ` • ${studentName}` : ''}
+              </p>
+            </div>
+            <div
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '10px',
+                backgroundColor: '#ede9fe',
+                color: '#6d28d9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <MessageSquare size={17} />
+            </div>
+          </div>
         </div>
 
         {/* Message Stream */}
@@ -259,22 +319,22 @@ export default function TeamChatDrawer({
             sortedMessages.map((msg) => {
               const isMine = myEmail && String(msg.authorEmail || '').trim().toLowerCase() === myEmail;
               const isHandoff = msg.type === 'share_handoff';
-              const initialLetter = (msg.authorName || msg.authorEmail || 'צ').trim().charAt(0);
-              const theme = getAuthorColorTheme(msg.authorEmail);
+              const initials = getAuthorInitials(msg.authorName, msg.authorEmail);
+              const theme = getThemeForMsg(msg);
 
               return (
                 <div
                   key={msg.id}
                   style={{
                     backgroundColor: msg.isDeleted
-                      ? '#f1f5f9'
+                      ? '#f8fafc'
                       : theme.bg,
                     border: msg.isDeleted
                       ? '1px dashed #cbd5e1'
                       : `1.5px solid ${theme.border}`,
                     borderRadius: '12px',
-                    padding: '12px',
-                    boxShadow: msg.isDeleted ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.05)',
+                    padding: '12px 14px',
+                    boxShadow: msg.isDeleted ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.04)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '6px'
@@ -292,9 +352,9 @@ export default function TeamChatDrawer({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <div
                         style={{
-                          width: '26px',
-                          height: '26px',
-                          borderRadius: '8px',
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
                           backgroundColor: theme.avatarBg,
                           color: '#ffffff',
                           display: 'flex',
@@ -305,26 +365,25 @@ export default function TeamChatDrawer({
                           flexShrink: 0
                         }}
                       >
-                        {initialLetter}
+                        {initials}
                       </div>
-                      <div>
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13.5px', fontWeight: 700, color: theme.nameColor || '#1e293b' }}>
                           {msg.authorName || msg.authorEmail}
                         </span>
                         {isMine && (
-                          <span style={{ fontSize: '11px', color: '#64748b', marginRight: '4px' }}>
+                          <span style={{ fontSize: '11px', color: '#64748b' }}>
                             (אני)
                           </span>
                         )}
                         {msg.authorRole && (
                           <span
                             style={{
-                              fontSize: '11px',
+                              fontSize: '10.5px',
                               color: theme.badgeColor,
                               backgroundColor: theme.badgeBg,
                               borderRadius: '4px',
                               padding: '1px 6px',
-                              marginRight: '6px',
                               fontWeight: 600
                             }}
                           >
@@ -337,7 +396,7 @@ export default function TeamChatDrawer({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span
                         style={{
-                          fontSize: '11px',
+                          fontSize: '10.5px',
                           color: '#94a3b8',
                           display: 'flex',
                           alignItems: 'center',
@@ -375,27 +434,6 @@ export default function TeamChatDrawer({
                     </div>
                   </div>
 
-                  {/* Share Handoff Tag */}
-                  {isHandoff && !msg.isDeleted && (
-                    <div
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: '#6d28d9',
-                        marginTop: '2px'
-                      }}
-                    >
-                      <Pin size={11} />
-                      <span>
-                        הודעת שיתוף תוכנית
-                        {msg.recipientName ? ` ➔ ${msg.recipientName}` : ''}
-                      </span>
-                    </div>
-                  )}
-
                   {/* Message Content */}
                   <p
                     style={{
@@ -408,7 +446,16 @@ export default function TeamChatDrawer({
                       wordBreak: 'break-word'
                     }}
                   >
-                    {msg.text}
+                    {isHandoff && !msg.isDeleted && (
+                      <span style={{ fontWeight: 700, color: theme.pinColor || theme.badgeColor, marginLeft: '4px' }}>
+                        📌 שיתפה את התוכנית{msg.recipientName ? ` עם ${msg.recipientName}` : ''}:{' '}
+                      </span>
+                    )}
+                    {msg.isDeleted
+                      ? 'הודעה זו נמחקה על ידי השולח/ת'
+                      : msg.text.startsWith('"')
+                        ? msg.text
+                        : `"${msg.text}"`}
                   </p>
                 </div>
               );
@@ -442,15 +489,16 @@ export default function TeamChatDrawer({
                 type="button"
                 onClick={() => setInputText((prev) => (prev ? `${prev} ${chip}` : chip))}
                 style={{
-                  backgroundColor: '#f1f5f9',
+                  backgroundColor: '#ffffff',
                   border: '1px solid #cbd5e1',
-                  color: '#475569',
+                  color: '#334155',
                   borderRadius: '999px',
-                  padding: '3px 9px',
+                  padding: '3px 10px',
                   fontSize: '11px',
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
                 }}
               >
                 + {chip}
@@ -502,8 +550,8 @@ export default function TeamChatDrawer({
               disabled={!inputText.trim()}
               title="שלח הודעה לצוות"
               style={{
-                width: '36px',
                 height: '36px',
+                padding: '0 16px',
                 borderRadius: '8px',
                 backgroundColor: inputText.trim() ? '#4f46e5' : '#e2e8f0',
                 color: inputText.trim() ? '#ffffff' : '#94a3b8',
@@ -511,12 +559,16 @@ export default function TeamChatDrawer({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                gap: '6px',
+                fontSize: '12.5px',
+                fontWeight: 700,
                 cursor: inputText.trim() ? 'pointer' : 'not-allowed',
                 flexShrink: 0,
                 transition: 'all 0.15s ease'
               }}
             >
-              <Send size={16} />
+              <Send size={14} />
+              <span>שלח</span>
             </button>
           </form>
         </div>

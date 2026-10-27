@@ -64,7 +64,7 @@ describe('TeamChatDrawer Component', () => {
     expect(html).toContain('שרה כהן');
     expect(html).toContain('מחנכת');
     expect(html).toContain('היי מיכל, שיתפתי איתך לקראת ועדת שילוב.');
-    expect(html).toContain('שיתוף תוכנית');
+    expect(html).toContain('שיתפה את התוכנית');
 
     // Message 2 (Comment by Michal)
     expect(html).toContain('מיכל רוזן');
@@ -121,29 +121,43 @@ describe('TeamChatDrawer Component', () => {
   });
 
   it('assigns distinct color themes per author for easy visual tracking', () => {
-    const themeSara = getAuthorColorTheme('sara@school.org');
-    const themeMichal = getAuthorColorTheme('michal@school.org');
-
-    // Both themes should exist and be valid from the theme set
-    expect(AUTHOR_COLOR_THEMES).toContain(themeSara);
-    expect(AUTHOR_COLOR_THEMES).toContain(themeMichal);
-    // Hash consistency: same author always gets identical color
-    expect(getAuthorColorTheme('sara@school.org')).toEqual(themeSara);
-
     const html = renderToStaticMarkup(
       React.createElement(TeamChatDrawer, {
         isOpen: true,
         onClose: () => {},
         studentName: 'דניאל לוי',
-        teamMessages: sampleMessages,
+        teamMessages: [
+          ...sampleMessages,
+          {
+            id: 'msg_3',
+            authorEmail: 'dana@school.org',
+            authorName: 'דנה לוין',
+            authorRole: 'קלינאית תקשורת',
+            text: 'מעולה שרה, עדכנתי את מטרה 2.',
+            createdAt: '2026-10-22T14:00:00Z',
+            type: 'comment'
+          }
+        ],
         currentUser // Sara
       })
     );
 
     // Sara's card has (אני) indicator
     expect(html).toContain('(אני)');
-    // Contains distinct background colors from the themes
-    expect(html).toContain(themeSara.bg);
-    expect(html).toContain(themeMichal.bg);
+
+    // 3 distinct authors get 3 distinct theme colors matching the mockup (Purple, Blue, Emerald Green)
+    expect(html).toContain(AUTHOR_COLOR_THEMES[0].bg); // Author 1 (Sara): Purple #faf5ff
+    expect(html).toContain(AUTHOR_COLOR_THEMES[1].bg); // Author 2 (Michal): Blue #eff6ff
+    expect(html).toContain(AUTHOR_COLOR_THEMES[2].bg); // Author 3 (Dana): Emerald Green #f0fdf4
+
+    // Distinct borders matching the mock
+    expect(html).toContain(AUTHOR_COLOR_THEMES[0].border); // #d8b4fe
+    expect(html).toContain(AUTHOR_COLOR_THEMES[1].border); // #93c5fd
+    expect(html).toContain(AUTHOR_COLOR_THEMES[2].border); // #86efac
+
+    // Circular avatar 2-letter initials
+    expect(html).toContain('שכ'); // שרה כהן
+    expect(html).toContain('מר'); // מיכל רוזן
+    expect(html).toContain('דל'); // דנה לוין
   });
 });
