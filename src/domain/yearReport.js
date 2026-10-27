@@ -194,7 +194,8 @@ export const normalizeStudentForForm = (st) => {
     statusReportUpdatedAt: st?.statusReportUpdatedAt || '',
     lastSavedAt: st?.lastSavedAt || '',
     goals: normalizedGoals,
-    diagnosticDocuments: Array.isArray(st?.diagnosticDocuments) ? st.diagnosticDocuments : []
+    diagnosticDocuments: Array.isArray(st?.diagnosticDocuments) ? st.diagnosticDocuments : [],
+    teamMessages: Array.isArray(st?.teamMessages) ? st.teamMessages : []
   };
 
   const stageInfo = detectStudentStage(
@@ -235,6 +236,7 @@ export const normalizeStudentForForm = (st) => {
       stageReason: resolvedStageReason,
       stageUpdatedAt: resolvedStageUpdatedAt,
       sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
+      teamMessages: Array.isArray(st?.teamMessages) ? st.teamMessages : [],
       reportsByYear: existingReports,
       reportsByPlanType: existingReportsByPlanType
     };
@@ -250,6 +252,7 @@ export const normalizeStudentForForm = (st) => {
     schoolYear: currentYear,
     gender: initialGender,
     sharedWith: Array.isArray(st?.sharedWith) ? st.sharedWith : [],
+    teamMessages: Array.isArray(st?.teamMessages) ? st.teamMessages : [],
     reportsByYear: existingReports,
     reportsByPlanType: existingReportsByPlanType,
     stage: resolvedStage,
