@@ -29,6 +29,7 @@ import {
   Lock,
   Unlock,
   MessageCircle,
+  MessageSquare,
   ClipboardCopy,
   Home,
   Info,
@@ -115,6 +116,7 @@ import { INITIAL_GOAL_BANK } from './goalBankData';
 import { canLockReport } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
+import TeamChatDrawer from './components/form/TeamChatDrawer';
 import ParentVoiceControl from './components/form/ParentVoiceControl';
 import MinistryCopyModal from './components/form/MinistryCopyModal';
 import QuickObservationModal from './components/form/QuickObservationModal';
@@ -159,6 +161,9 @@ import {
   removeGoalRow,
   buildNewGoalRow,
   applyShareToggle,
+  createTeamMessage,
+  appendTeamMessage,
+  retractTeamMessage,
   updateStatusSection,
   removeStatusSection,
   addManualStatusSection
@@ -328,6 +333,7 @@ export default function EcologicalWorkPlanForm({
 
   // State for lightweight Team Sharing modal (Option C)
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showTeamChatDrawer, setShowTeamChatDrawer] = useState(false);
 
   // State for Collapsible Mid-Year / End-of-Year Evaluation per goal card (Option A)
   const [expandedEvalMap, setExpandedEvalMap] = useState({});
@@ -565,12 +571,19 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Toggle sharing this student with a colleague email (Option C)
-  const handleToggleShareColleague = (colleagueEmail) => {
+  const handleToggleShareColleague = (colleagueEmail, messageText = '') => {
     const nowStamp = new Date().toLocaleString('he-IL', {
       dateStyle: 'short',
       timeStyle: 'short'
     });
-    const res = applyShareToggle(formData, colleagueEmail, currentUser, nowStamp, { allowedUsers });
+    const targetColleague = (allowedUsers || []).find(
+      (u) => (u.email || '').trim().toLowerCase() === String(colleagueEmail || '').trim().toLowerCase()
+    );
+    const res = applyShareToggle(formData, colleagueEmail, currentUser, nowStamp, {
+      allowedUsers,
+      handoffNote: messageText,
+      recipientName: targetColleague?.name || ''
+    });
     if (!res) return;
     savedSnapshotRef.current = JSON.stringify(res.next);
     setFormData(res.next);
@@ -578,6 +591,32 @@ export default function EcologicalWorkPlanForm({
     if (onNotifySharedColleague) {
       onNotifySharedColleague(formData.id, res.cleanEmail, res.isNewlyShared);
     }
+  };
+
+  // Send a message in the Team Collaboration Thread
+  const handleSendTeamMessage = (text) => {
+    const msg = createTeamMessage({
+      authorEmail: currentUser?.email || '',
+      authorName: currentUser?.name || currentUser?.email || 'צוות חינוכי',
+      authorRole: currentUser?.title || currentUser?.role || 'צוות',
+      text,
+      type: 'comment',
+      schoolYear: formData?.schoolYear || ''
+    });
+    if (!msg) return;
+    const next = appendTeamMessage(formData, msg);
+    savedSnapshotRef.current = JSON.stringify(next);
+    setFormData(next);
+    onSaveStudentPlan(next);
+  };
+
+  // Retract author's own message in the Team Collaboration Thread
+  const handleRetractTeamMessage = (messageId) => {
+    const next = retractTeamMessage(formData, messageId, currentUser?.email || '');
+    if (next === formData) return;
+    savedSnapshotRef.current = JSON.stringify(next);
+    setFormData(next);
+    onSaveStudentPlan(next);
   };
 
   // Switch between תל"א and תח"י: keep each plan type completely separate (empty form if the target plan type hasn't been created yet)
@@ -2364,6 +2403,32 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   שיתוף צוות
                   {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
                     ? ` • ${formData.sharedWith.length}`
+                    : ''}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTeamChatDrawer(true)}
+                title="שיח צוות ותיעוד שיתוף"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: Array.isArray(formData.teamMessages) && formData.teamMessages.length > 0 ? '#eff6ff' : '#f1f5f9',
+                  color: Array.isArray(formData.teamMessages) && formData.teamMessages.length > 0 ? '#1d4ed8' : '#334155',
+                  border: Array.isArray(formData.teamMessages) && formData.teamMessages.length > 0 ? '1px solid #bfdbfe' : '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <MessageSquare size={15} />
+                <span>
+                  שיח צוות
+                  {Array.isArray(formData.teamMessages) && formData.teamMessages.length > 0
+                    ? ` • ${formData.teamMessages.length}`
                     : ''}
                 </span>
               </button>
@@ -6265,6 +6330,18 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         currentUser={currentUser}
         allowedUsers={allowedUsers}
         onToggleShareColleague={handleToggleShareColleague}
+      />
+
+      {/* Team Chat Drawer ("שיח צוות") */}
+      <TeamChatDrawer
+        isOpen={showTeamChatDrawer}
+        onClose={() => setShowTeamChatDrawer(false)}
+        studentName={formData.name || ''}
+        teamMessages={formData.teamMessages || []}
+        currentUser={currentUser}
+        sharedWith={formData.sharedWith || []}
+        onSendMessage={handleSendTeamMessage}
+        onRetractMessage={handleRetractTeamMessage}
       />
 
 
