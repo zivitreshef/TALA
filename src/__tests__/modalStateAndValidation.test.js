@@ -872,6 +872,49 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
 
         expect(html).toContain('אין פניות ממתינות כרגע.');
       });
+
+      it('automatically expands target teacher chat thread when initialActiveChatReqId is passed as teacher email (deep link)', () => {
+        const mockSupportThreads = [
+          {
+            id: 'thread_sarah_school_org',
+            userEmail: 'sarah@school.org',
+            userName: 'שרה אהרוני',
+            topic: "💬 בעיית גישה",
+            unreadByAdmin: true,
+            updatedAt: new Date().toISOString(),
+            messages: [
+              {
+                id: 'm1',
+                senderRole: 'user',
+                senderEmail: 'sarah@school.org',
+                senderName: 'שרה אהרוני',
+                text: 'לא מצליחה להתחבר',
+                createdAt: '27/10/2026, 18:20',
+                timestamp: Date.now()
+              }
+            ]
+          }
+        ];
+
+        const html = renderToStaticMarkup(
+          React.createElement(AdminAllowlistModal, {
+            isOpen: true,
+            initialTab: 'requests',
+            onClose: () => {},
+            allowedUsers: [{ role: 'admin', email: 'admin@tala.com' }],
+            currentUser: { role: 'admin', email: 'admin@tala.com' },
+            adminRequests: [],
+            initialSupportThreads: mockSupportThreads,
+            initialActiveChatReqId: 'sarah@school.org'
+          })
+        );
+
+        // Expanded panel should render reply input and quick chips
+        expect(html).toContain('שרה אהרוני');
+        expect(html).toContain('לא מצליחה להתחבר');
+        expect(html).toContain('כתוב/י מענה ישיר ל-שרה אהרוני...');
+        expect(html).toContain('שלח תגובה');
+      });
     });
 
   });

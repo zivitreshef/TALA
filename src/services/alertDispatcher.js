@@ -221,7 +221,8 @@ export async function dispatchChatAlertToAdmins({
   messageText = '',
   hasAttachment = false,
   admins = [],
-  emailConfig = null
+  emailConfig = null,
+  siteUrl = ''
 }) {
   if (!Array.isArray(admins) || admins.length === 0 || (!messageText && !hasAttachment)) return [];
 
@@ -230,14 +231,16 @@ export async function dispatchChatAlertToAdmins({
     teacherEmail,
     topic,
     messageText: messageText || '📷 [צילום מסך מצורף]',
-    hasAttachment
+    hasAttachment,
+    siteUrl
   });
   const emailHtml = buildAdminChatNotificationEmailHtml({
     teacherName,
     teacherEmail,
     topic,
     messageText: messageText || '📷 [צילום מסך מצורף]',
-    hasAttachment
+    hasAttachment,
+    siteUrl
   });
   const cfg = emailConfig || loadEmailEngineConfig();
 
