@@ -175,3 +175,33 @@ export async function markThreadReadInCloud(threadKey, role = SENDER_ROLES.USER)
     console.warn('[supportChat] Failed to mark thread as read:', err);
   }
 }
+
+
+/**
+ * Clears/resets the support thread history for a teacher in Firestore.
+ */
+export async function clearSupportThreadInCloud(userEmail) {
+  const db = getFirestoreDb();
+  if (!db || !userEmail) return false;
+
+  const threadKey = sanitizeThreadKey(userEmail);
+  try {
+    const docRef = doc(db, SUPPORT_THREADS_COLLECTION, threadKey);
+    await setDoc(
+      docRef,
+      {
+        messages: [],
+        lastMessageText: '',
+        lastMessageSender: '',
+        updatedAt: new Date().toISOString(),
+        unreadByAdmin: false,
+        unreadByUser: false
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    console.warn('[supportChat] Failed to clear support thread:', err);
+    return false;
+  }
+}

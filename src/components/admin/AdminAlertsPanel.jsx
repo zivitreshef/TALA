@@ -56,6 +56,34 @@ export default function AdminAlertsPanel({
     });
   }, [allowedUsers]);
 
+  const handleToggleChatNotification = (adminKey, enabled) => {
+    setAlertsState((prev) => {
+      const current = prev[adminKey] || normalizeAdminAlerts({});
+      return {
+        ...prev,
+        [adminKey]: {
+          ...current,
+          notifyOnChat: enabled
+        }
+      };
+    });
+    setSaveSuccess(false);
+  };
+
+  const handleToggleHealthNotification = (adminKey, enabled) => {
+    setAlertsState((prev) => {
+      const current = prev[adminKey] || normalizeAdminAlerts({});
+      return {
+        ...prev,
+        [adminKey]: {
+          ...current,
+          notifyOnHealth: enabled
+        }
+      };
+    });
+    setSaveSuccess(false);
+  };
+
   const handleToggleChannel = (adminKey, channel) => {
     setAlertsState((prev) => {
       const currentAdmin = prev[adminKey] || normalizeAdminAlerts({});
@@ -389,6 +417,44 @@ export default function AdminAlertsPanel({
               {isExpanded && (
                 <div style={{ padding: '16px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   
+                  {/* Notification Event Types Selector */}
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '10px',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}
+                  >
+                    <strong style={{ fontSize: '13.5px', color: '#1e3a5f' }}>
+                      סוגי ההתרעות שיועברו לערוצים המסומנים של חשבון זה:
+                    </strong>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '4px' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155' }}>
+                        <input
+                          type="checkbox"
+                          checked={alerts.notifyOnChat !== false}
+                          onChange={(e) => handleToggleChatNotification(adminKey, e.target.checked)}
+                          style={{ width: '17px', height: '17px', accentColor: '#2563eb', cursor: 'pointer' }}
+                        />
+                        <span>💬 <strong>פניות צ'אט והודעות ממורות</strong></span>
+                      </label>
+
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#334155' }}>
+                        <input
+                          type="checkbox"
+                          checked={alerts.notifyOnHealth !== false}
+                          onChange={(e) => handleToggleHealthNotification(adminKey, e.target.checked)}
+                          style={{ width: '17px', height: '17px', accentColor: '#2563eb', cursor: 'pointer' }}
+                        />
+                        <span>🚨 <strong>תקלות מערכת, שגיאות AI וחריגת מכסה</strong></span>
+                      </label>
+                    </div>
+                  </div>
+
                   {/* Channel 1: Email */}
                   <div
                     style={{

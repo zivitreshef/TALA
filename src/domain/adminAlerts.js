@@ -12,6 +12,8 @@ export const ALERT_CHANNELS = {
 };
 
 export const DEFAULT_ADMIN_ALERTS = {
+  notifyOnHealth: true,
+  notifyOnChat: true,
   email: {
     enabled: false,
     address: ''
@@ -35,6 +37,8 @@ export const DEFAULT_ADMIN_ALERTS = {
 export function normalizeAdminAlerts(alerts, fallbackEmail = '') {
   if (!alerts || typeof alerts !== 'object') {
     return {
+      notifyOnHealth: true,
+      notifyOnChat: true,
       email: { enabled: false, address: String(fallbackEmail || '').trim().toLowerCase() },
       whatsapp: { enabled: false, phone: '', apiKey: '' },
       telegram: { enabled: false, chatId: '', botToken: '' }
@@ -46,6 +50,8 @@ export function normalizeAdminAlerts(alerts, fallbackEmail = '') {
   const tgObj = alerts.telegram || {};
 
   return {
+    notifyOnHealth: alerts.notifyOnHealth !== false,
+    notifyOnChat: alerts.notifyOnChat !== false,
     email: {
       enabled: Boolean(emailObj.enabled),
       address: String(emailObj.address || fallbackEmail || '').trim().toLowerCase()

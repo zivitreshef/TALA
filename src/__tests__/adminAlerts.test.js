@@ -318,6 +318,53 @@ describe('Admin Real-Time Alerts Domain & Dispatcher', () => {
       const res2 = await dispatchChatAlertToAdmins({ admins: [{ role: 'admin' }], messageText: '' });
       expect(res2).toEqual([]);
     });
+
+    it('dispatchChatAlertToAdmins skips admins who opted out with notifyOnChat: false', async () => {
+      const mockAdmins = [
+        {
+          id: 'admin_opt_out',
+          name: 'מנהלת בדיקה',
+          email: 'admin_opt@tala.edu.il',
+          role: 'admin',
+          active: true,
+          adminAlerts: {
+            notifyOnChat: false,
+            whatsapp: { enabled: true, phone: '972501111111', apiKey: 'key1' }
+          }
+        }
+      ];
+
+      const results = await dispatchChatAlertToAdmins({
+        teacherName: 'הדר',
+        teacherEmail: 'hadar@school.org',
+        messageText: 'הודעה',
+        admins: mockAdmins
+      });
+
+      expect(results).toEqual([]);
+    });
+
+    it('dispatchAlertsToAdmins skips admins who opted out with notifyOnHealth: false', async () => {
+      const mockAdmins = [
+        {
+          id: 'admin_health_opt_out',
+          role: 'admin',
+          active: true,
+          adminAlerts: {
+            notifyOnHealth: false,
+            email: { enabled: true, address: 'adm@tala.edu' }
+          }
+        }
+      ];
+
+      const results = await dispatchAlertsToAdmins({
+        event: { kind: 'ai_error' },
+        admins: mockAdmins
+      });
+
+      expect(results).toEqual([]);
+    });
+
   });
 
   describe('AdminAlertsPanel Component Rendering', () => {
@@ -351,6 +398,8 @@ describe('Admin Real-Time Alerts Domain & Dispatcher', () => {
         );
         expect(html).toContain('התרעות מנהל בזמן אמת');
         expect(html).toContain('זיוית רשף');
+        expect(html).toContain('פניות צ&#x27;אט והודעות ממורות');
+        expect(html).toContain('תקלות מערכת, שגיאות AI וחריגת מכסה');
       }).not.toThrow();
     });
   });

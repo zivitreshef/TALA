@@ -167,6 +167,7 @@ export async function dispatchAlertsToAdmins({ event, admins = [], emailConfig =
     if (!isExplicitAdmin) continue;
 
     const alerts = normalizeAdminAlerts(adminUser.adminAlerts, adminUser.email);
+    if (alerts.notifyOnHealth === false) continue;
 
     // 1. Email channel
     if (alerts.email.enabled && alerts.email.address) {
@@ -245,6 +246,7 @@ export async function dispatchChatAlertToAdmins({
     if (!isExplicitAdmin) continue;
 
     const alerts = normalizeAdminAlerts(adminUser.adminAlerts, adminUser.email);
+    if (alerts.notifyOnChat === false) continue;
 
     // 1. WhatsApp channel (immediate phone notification)
     if (alerts.whatsapp.enabled && alerts.whatsapp.phone && alerts.whatsapp.apiKey) {

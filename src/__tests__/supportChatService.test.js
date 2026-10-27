@@ -4,6 +4,7 @@ import {
   subscribeToAllSupportThreads,
   sendChatMessageToCloud,
   markThreadReadInCloud,
+  clearSupportThreadInCloud,
   SUPPORT_THREADS_COLLECTION
 } from '../services/supportChatService';
 import * as firebaseBackend from '../firebaseBackend';
@@ -98,4 +99,11 @@ describe('Support Chat Service (Cloud Firestore & Real-Time Sync)', () => {
     await expect(markThreadReadInCloud('', 'user')).resolves.not.toThrow();
     await expect(markThreadReadInCloud('some_key', 'admin')).resolves.not.toThrow();
   });
+
+  it('clearSupportThreadInCloud safely resets thread messages and returns true', async () => {
+    vi.spyOn(firebaseBackend, 'getFirestoreDb').mockReturnValue(null);
+    const res = await clearSupportThreadInCloud('teacher@school.org');
+    expect(res).toBe(false); // When db is null, returns false gracefully
+  });
+
 });

@@ -8,12 +8,14 @@ import {
   Clock,
   Sparkles,
   CheckCircle2,
-  Minimize2
+  Minimize2,
+  Trash2
 } from 'lucide-react';
 import {
   subscribeToSupportThread,
   sendChatMessageToCloud,
-  markThreadReadInCloud
+  markThreadReadInCloud,
+  clearSupportThreadInCloud
 } from '../../services/supportChatService.js';
 import { SENDER_ROLES, countUnreadMessages } from '../../domain/supportChat.js';
 
@@ -81,6 +83,20 @@ export default function TeacherChatWidget({
     }
     if (!nextState && typeof onCloseCustom === 'function') {
       onCloseCustom();
+    }
+  };
+
+  // Clear chat history
+  const handleClearHistory = async () => {
+    if (!thread?.messages || thread.messages.length === 0) return;
+    const confirmed = window.confirm('האם לסיים את הפנייה ולנקות את היסטוריית השיחה בצ\'אט?');
+    if (!confirmed) return;
+
+    try {
+      await clearSupportThreadInCloud(effectiveEmail);
+      setThread((prev) => (prev ? { ...prev, messages: [], lastMessageText: '' } : null));
+    } catch (err) {
+      console.warn('Failed to clear chat history:', err);
     }
   };
 
@@ -264,6 +280,30 @@ export default function TeacherChatWidget({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {thread?.messages && thread.messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    color: '#ffffff',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'background 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239, 68, 68, 0.45)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+                  title="סיום פנייה וניקוי היסטוריית השיחה"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleToggle}
