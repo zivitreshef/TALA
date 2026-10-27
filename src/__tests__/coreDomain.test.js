@@ -16,7 +16,10 @@ import {
   getStudentsForUser,
   getArchivedStudentsForUser,
   getUnreadSharedReportsForUser,
-  markSharedReportAsRead
+  markSharedReportAsRead,
+  getUserGroup,
+  getShareableColleagues,
+  canShareWithColleague
 } from '../domain/permissions';
 import {
   resolveStudentAgeAndDateInfo,
@@ -121,6 +124,45 @@ describe('Permissions & Shared Student Guards', () => {
     expect(getArchivedStudentsForUser(all, ownerTeacher).map((s) => s.id)).toEqual(['st_101']);
     expect(getStudentsForUser(all, sharedTeacher).map((s) => s.id)).toEqual(['st_100']);
     expect(getArchivedStudentsForUser(all, unrelatedTeacher)).toEqual([]);
+  });
+
+  describe('Tenant Boundary & Colleague Sharing Permissions', () => {
+    const directory = [
+      { email: 'teacher1@center.org', group: 'מתי"א מרכז', active: true },
+      { email: 'teacher2@center.org', group: 'מתי"א מרכז', active: true },
+      { email: 'inactive@center.org', group: 'מתי"א מרכז', active: false },
+      { email: 'teacher3@north.org', group: 'מתי"א צפון', active: true },
+      { email: 'admin@tala.org', group: '', active: true }
+    ];
+
+    it('resolves effective user group correctly', () => {
+      expect(getUserGroup({ group: 'מתי"א מרכז' })).toBe('מתי"א מרכז');
+      expect(getUserGroup({ email: 'teacher1@center.org' }, directory)).toBe('מתי"א מרכז');
+      expect(getUserGroup({ email: 'admin@tala.org' }, directory)).toBe('');
+      expect(getUserGroup(null)).toBe('');
+    });
+
+    it('returns empty shareable list when user has no group', () => {
+      expect(getShareableColleagues({ email: 'admin@tala.org', group: '' }, directory)).toEqual([]);
+      expect(getShareableColleagues({ email: 'unknown@tala.org' }, directory)).toEqual([]);
+      expect(getShareableColleagues(null, directory)).toEqual([]);
+    });
+
+    it('returns only active colleagues from the exact same group, excluding self', () => {
+      const shareable = getShareableColleagues(
+        { email: 'teacher1@center.org', group: 'מתי"א מרכז' },
+        directory
+      );
+      expect(shareable.map((u) => u.email)).toEqual(['teacher2@center.org']);
+    });
+
+    it('canShareWithColleague strictly validates same-group membership', () => {
+      const user = { email: 'teacher1@center.org', group: 'מתי"א מרכז' };
+      expect(canShareWithColleague(user, 'teacher2@center.org', directory)).toBe(true);
+      expect(canShareWithColleague(user, 'teacher3@north.org', directory)).toBe(false);
+      expect(canShareWithColleague(user, 'inactive@center.org', directory)).toBe(false);
+      expect(canShareWithColleague({ email: 'admin@tala.org' }, 'teacher1@center.org', directory)).toBe(false);
+    });
   });
 });
 

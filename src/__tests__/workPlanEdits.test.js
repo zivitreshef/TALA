@@ -69,6 +69,61 @@ describe('sharing & status sections', () => {
     expect(r2.next.sharedWith).toEqual([]);
     expect(applyShareToggle({}, '   ', {}, 'x')).toBeNull();
   });
+
+  it('strictly blocks sharing with colleagues from different groups or when user has no group', () => {
+    const allowedUsers = [
+      { email: 'teacher1@center.org', group: 'מתי"א מרכז', active: true },
+      { email: 'teacher2@center.org', group: 'מתי"א מרכז', active: true },
+      { email: 'teacher3@north.org', group: 'מתי"א צפון', active: true },
+      { email: 'admin@tala.org', group: '', active: true }
+    ];
+
+    const student = { sharedWith: [] };
+
+    // 1. Success: same group (מתי"א מרכז -> מתי"א מרכז)
+    const success = applyShareToggle(
+      student,
+      'teacher2@center.org',
+      { email: 'teacher1@center.org', group: 'מתי"א מרכז' },
+      'now',
+      { allowedUsers }
+    );
+    expect(success).not.toBeNull();
+    expect(success.next.sharedWith).toEqual(['teacher2@center.org']);
+
+    // 2. Blocked: cross-group (מתי"א מרכז -> מתי"א צפון)
+    const crossGroup = applyShareToggle(
+      student,
+      'teacher3@north.org',
+      { email: 'teacher1@center.org', group: 'מתי"א מרכז' },
+      'now',
+      { allowedUsers }
+    );
+    expect(crossGroup).toBeNull();
+
+    // 3. Blocked: user without group (admin with no group cannot share with teachers)
+    const noGroup = applyShareToggle(
+      student,
+      'teacher1@center.org',
+      { email: 'admin@tala.org', group: '' },
+      'now',
+      { allowedUsers }
+    );
+    expect(noGroup).toBeNull();
+
+    // 4. Unsharing: always allowed even if groups differed or changed
+    const unshare = applyShareToggle(
+      { sharedWith: ['teacher3@north.org'] },
+      'teacher3@north.org',
+      { email: 'teacher1@center.org', group: 'מתי"א מרכז' },
+      'now',
+      { allowedUsers }
+    );
+    expect(unshare).not.toBeNull();
+    expect(unshare.isNewlyShared).toBe(false);
+    expect(unshare.next.sharedWith).toEqual([]);
+  });
+
   it('adds a manual status section once, sorted; ignores unknown numbers', () => {
     const [first, second] = STATUS_REPORT_SECTIONS_SCHEMA;
     const a = addManualStatusSection({ statusReportSections: [] }, String(second.sectionNumber));

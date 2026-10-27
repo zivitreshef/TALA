@@ -11,6 +11,7 @@ import {
   getDefaultPartnersForStage
 } from './stageGuard.js';
 import { syncActiveReportSnapshot } from './yearReport';
+import { canShareWithColleague } from './permissions';
 
 export const LOCKED_EDITABLE_FIELDS = new Set([
   'evalReportFreeText',
@@ -147,11 +148,25 @@ export const buildNewGoalRow = ({ id, stage, isTalaMode, isKindergarten, plus3Mo
   };
 };
 
-export const applyShareToggle = (data, colleagueEmail, actor = {}, nowStamp = '') => {
+export const applyShareToggle = (
+  data,
+  colleagueEmail,
+  actor = {},
+  nowStamp = '',
+  options = {}
+) => {
   const cleanEmail = String(colleagueEmail || '').trim().toLowerCase();
   if (!cleanEmail) return null;
   const currentShared = Array.isArray(data?.sharedWith) ? data.sharedWith : [];
   const exists = currentShared.some((em) => String(em || '').toLowerCase() === cleanEmail);
+
+  // Tenant Boundary Check: when adding a new share, if allowedUsers is provided
+  if (!exists && options.allowedUsers) {
+    if (!canShareWithColleague(actor, cleanEmail, options.allowedUsers)) {
+      return null;
+    }
+  }
+
   const nextShared = exists
     ? currentShared.filter((em) => String(em || '').toLowerCase() !== cleanEmail)
     : [...currentShared, cleanEmail];

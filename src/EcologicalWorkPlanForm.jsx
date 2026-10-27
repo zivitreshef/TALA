@@ -328,7 +328,6 @@ export default function EcologicalWorkPlanForm({
 
   // State for lightweight Team Sharing modal (Option C)
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showAllShareUsers, setShowAllShareUsers] = useState(false);
 
   // State for Collapsible Mid-Year / End-of-Year Evaluation per goal card (Option A)
   const [expandedEvalMap, setExpandedEvalMap] = useState({});
@@ -571,7 +570,7 @@ export default function EcologicalWorkPlanForm({
       dateStyle: 'short',
       timeStyle: 'short'
     });
-    const res = applyShareToggle(formData, colleagueEmail, currentUser, nowStamp);
+    const res = applyShareToggle(formData, colleagueEmail, currentUser, nowStamp, { allowedUsers });
     if (!res) return;
     savedSnapshotRef.current = JSON.stringify(res.next);
     setFormData(res.next);
@@ -6265,8 +6264,6 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         formData={formData}
         currentUser={currentUser}
         allowedUsers={allowedUsers}
-        showAllShareUsers={showAllShareUsers}
-        setShowAllShareUsers={setShowAllShareUsers}
         onToggleShareColleague={handleToggleShareColleague}
       />
 

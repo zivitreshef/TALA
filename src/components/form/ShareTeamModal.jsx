@@ -1,5 +1,6 @@
 import React from 'react';
-import { Users, X } from 'lucide-react';
+import { Users, X, ShieldAlert } from 'lucide-react';
+import { getShareableColleagues, getUserGroup } from '../../domain/permissions';
 
 export default function ShareTeamModal({
   isOpen,
@@ -7,27 +8,12 @@ export default function ShareTeamModal({
   formData,
   currentUser,
   allowedUsers,
-  showAllShareUsers,
-  setShowAllShareUsers,
   onToggleShareColleague
 }) {
   if (!isOpen) return null;
 
-  const myEmail = (currentUser?.email || '').trim().toLowerCase();
-  const myUserRecord = (allowedUsers || []).find(
-    (u) => (u.email || '').trim().toLowerCase() === myEmail
-  );
-  const myGroup = (myUserRecord?.group || currentUser?.group || '').trim();
-  const otherUsers = (allowedUsers || []).filter(
-    (u) => u.active !== false && (u.email || '').trim().toLowerCase() !== myEmail
-  );
-  const sameGroupUsers = myGroup
-    ? otherUsers.filter((u) => (u.group || '').trim() === myGroup)
-    : [];
-  const visibleUsers =
-    myGroup && sameGroupUsers.length > 0 && !showAllShareUsers
-      ? sameGroupUsers
-      : otherUsers;
+  const myGroup = getUserGroup(currentUser, allowedUsers);
+  const visibleUsers = getShareableColleagues(currentUser, allowedUsers);
   const currentShared = (formData.sharedWith || []).map((e) =>
     String(e || '').trim().toLowerCase()
   );
@@ -62,115 +48,130 @@ export default function ShareTeamModal({
         </div>
 
         <div className="modal-body email-modal-body">
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '10px',
-              flexWrap: 'wrap',
-              gap: '8px'
-            }}
-          >
-            <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
-              {myGroup && sameGroupUsers.length > 0 && !showAllShareUsers
-                ? `חברי צוות: ${myGroup}`
-                : 'כל אנשי הצוות במערכת'}
-            </span>
-            {myGroup &&
-              sameGroupUsers.length > 0 &&
-              otherUsers.length > sameGroupUsers.length && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllShareUsers(!showAllShareUsers)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#2563eb',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    padding: 0
-                  }}
-                >
-                  {showAllShareUsers ? `הצג רק את ${myGroup}` : 'הצג את כל הצוותים'}
-                </button>
-              )}
-          </div>
-
-          {visibleUsers.length === 0 ? (
-            <p
-              style={{
-                fontSize: '13.5px',
-                color: '#64748b',
-                textAlign: 'center',
-                padding: '16px 0'
-              }}
-            >
-              לא נמצאו אנשי צוות נוספים לשיתוף.
-            </p>
-          ) : (
+          {!myGroup ? (
             <div
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '8px',
-                maxHeight: '280px',
-                overflowY: 'auto',
-                paddingLeft: '4px'
+                alignItems: 'center',
+                textAlign: 'center',
+                padding: '24px 16px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '10px',
+                color: '#991b1b',
+                gap: '10px'
               }}
             >
-              {visibleUsers.map((colleague) => {
-                const colEmail = (colleague.email || '').trim().toLowerCase();
-                const isShared = currentShared.includes(colEmail);
-                return (
-                  <label
-                    key={colEmail}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: isShared ? '1.5px solid #8b5cf6' : '1px solid #e2e8f0',
-                      background: isShared ? '#f5f3ff' : '#ffffff',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <input
-                        type="checkbox"
-                        checked={isShared}
-                        onChange={() => onToggleShareColleague(colEmail)}
-                      />
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
-                          {colleague.name || colleague.email}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>
-                          {colleague.role || 'איש/אשת צוות'}
-                          {colleague.group ? ` • ${colleague.group}` : ''}
-                        </div>
-                      </div>
-                    </div>
-                    {isShared && (
-                      <span
+              <ShieldAlert size={36} color="#dc2626" />
+              <div style={{ fontWeight: 700, fontSize: '15px' }}>
+                אינך משויך/ת לצוות או מתי"א
+              </div>
+              <p style={{ fontSize: '13px', margin: 0, color: '#7f1d1d', lineHeight: 1.5 }}>
+                מטעמי אבטחת מידע והגנת פרטיות התלמידים, שיתוף תוכניות עבודה מתאפשר אך ורק בין אנשי צוות השייכים לאותו צוות או מתי"א.
+              </p>
+              <p style={{ fontSize: '12px', margin: 0, color: '#991b1b', fontWeight: 500 }}>
+                כדי לשתף תוכניות עבודה, יש להגדיר שיוך צוות/מתי"א בפרופיל המשתמש דרך מנהלת המערכת.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '10px',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}
+              >
+                <span style={{ fontSize: '13px', color: '#475569', fontWeight: 600 }}>
+                  חברי צוות: <strong>{myGroup}</strong>
+                </span>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  ({visibleUsers.length} אנשי צוות)
+                </span>
+              </div>
+
+              {visibleUsers.length === 0 ? (
+                <p
+                  style={{
+                    fontSize: '13.5px',
+                    color: '#64748b',
+                    textAlign: 'center',
+                    padding: '20px 0',
+                    background: '#f8fafc',
+                    borderRadius: '8px',
+                    border: '1px dashed #cbd5e1'
+                  }}
+                >
+                  לא נמצאו אנשי צוות נוספים הרשומים ב<strong>{myGroup}</strong> לשיתוף.
+                </p>
+              ) : (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    maxHeight: '280px',
+                    overflowY: 'auto',
+                    paddingLeft: '4px'
+                  }}
+                >
+                  {visibleUsers.map((colleague) => {
+                    const colEmail = (colleague.email || '').trim().toLowerCase();
+                    const isShared = currentShared.includes(colEmail);
+                    return (
+                      <label
+                        key={colEmail}
                         style={{
-                          fontSize: '11.5px',
-                          fontWeight: 600,
-                          color: '#6d28d9',
-                          background: '#ede9fe',
-                          padding: '2px 8px',
-                          borderRadius: '999px'
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          border: isShared ? '1.5px solid #8b5cf6' : '1px solid #e2e8f0',
+                          background: isShared ? '#f5f3ff' : '#ffffff',
+                          cursor: 'pointer'
                         }}
                       >
-                        משותף
-                      </span>
-                    )}
-                  </label>
-                );
-              })}
-            </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <input
+                            type="checkbox"
+                            checked={isShared}
+                            onChange={() => onToggleShareColleague(colEmail)}
+                          />
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
+                              {colleague.name || colleague.email}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b' }}>
+                              {colleague.role || 'איש/אשת צוות'}
+                              {colleague.title ? ` • ${colleague.title}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                        {isShared && (
+                          <span
+                            style={{
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              color: '#6d28d9',
+                              background: '#ede9fe',
+                              padding: '2px 8px',
+                              borderRadius: '999px'
+                            }}
+                          >
+                            משותף
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
