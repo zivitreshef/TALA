@@ -27,6 +27,9 @@ import {
   FileSignature,
   Settings,
   MessageSquareHeart,
+  MessageCircle,
+  ChevronDown,
+  ChevronUp,
   Calendar,
   AlertTriangle,
   Award,
@@ -57,6 +60,8 @@ import AdminUsageAndSecurityDashboard from './AdminUsageAndSecurityDashboard';
 import { fetchTelemetrySnapshot } from '../../services/telemetryService';
 import { aggregateTelemetryData } from '../../domain/telemetry';
 import { countUnreviewedHealthEvents } from '../../domain/healthEvents.js';
+import { subscribeToAllSupportThreads, sendChatMessageToCloud } from '../../services/supportChatService.js';
+import { SENDER_ROLES, sanitizeThreadKey } from '../../domain/supportChat.js';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);
@@ -130,6 +135,53 @@ export default function AdminAllowlistModal({
   onUpdateAiFreeze
 }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'users'); // 'users' | 'groups' | 'analytics' | 'requests' | 'health' | 'settings'
+  const [supportThreads, setSupportThreads] = useState([]);
+  const [activeChatReqId, setActiveChatReqId] = useState(null);
+  const [adminReplyText, setAdminReplyText] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [replySuccessMsg, setReplySuccessMsg] = useState('');
+
+  // Subscribe to all live support threads when admin modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = subscribeToAllSupportThreads((threads) => {
+      setSupportThreads(threads || []);
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [isOpen]);
+
+  const handleSendAdminReply = async (req) => {
+    const cleanText = adminReplyText.trim();
+    if (!cleanText || isSendingReply || !req?.email) return;
+
+    setIsSendingReply(true);
+    try {
+      const existingThread = supportThreads.find(
+        (t) => t.userEmail?.toLowerCase() === req.email?.toLowerCase() || t.id === sanitizeThreadKey(req.email)
+      );
+
+      await sendChatMessageToCloud({
+        existingThread,
+        userEmail: req.email,
+        userName: req.name,
+        topic: req.topic || 'פנייה לתמיכה',
+        text: cleanText,
+        senderRole: SENDER_ROLES.ADMIN,
+        senderName: 'מנהלת המערכת',
+        admins: allowedUsers.filter((u) => u.role === 'admin')
+      });
+
+      setAdminReplyText('');
+      setReplySuccessMsg(`✓ התגובה נשלחה בהצלחה למורה (${req.name})!`);
+      setTimeout(() => setReplySuccessMsg(''), 3500);
+    } catch (err) {
+      console.warn('Failed to send admin reply:', err);
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && initialTab) {
@@ -681,7 +733,8 @@ export default function AdminAllowlistModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: 'none'
+            borderBottom: 'none',
+            flexShrink: 0
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -755,7 +808,8 @@ export default function AdminAllowlistModal({
             borderBottom: '1px solid #e2e8f0',
             padding: '0 16px',
             gap: '8px',
-            overflowX: 'auto'
+            overflowX: 'auto',
+            flexShrink: 0
           }}
         >
           <button
@@ -929,7 +983,8 @@ export default function AdminAllowlistModal({
               color: '#065f46',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              flexShrink: 0
             }}
           >
             <span>{inviteStatusBanner}</span>
@@ -947,6 +1002,8 @@ export default function AdminAllowlistModal({
         <div
           className="modal-body"
           style={{
+            flex: 1,
+            minHeight: 0,
             overflowY: 'auto',
             padding: '18px 22px',
             display: 'flex',
@@ -1847,52 +1904,220 @@ export default function AdminAllowlistModal({
                 </div>
               )}
 
-              {/* Admin Contact Requests */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <strong style={{ fontSize: '14px', color: '#1e3a5f' }}>
-                  📩 פניות שהתקבלו מדף הכניסה ומתוך המערכת ({adminRequests.length}):
-                </strong>
+              {/* Admin Contact Requests & Bi-directional Chat */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <strong style={{ fontSize: '14px', color: '#1e3a5f' }}>
+                    📩 פניות שהתקבלו וצ'אט דו-כיווני מול מורות ({adminRequests.length}):
+                  </strong>
+                  {replySuccessMsg && (
+                    <span style={{ fontSize: '12.5px', color: '#15803d', fontWeight: 700 }}>
+                      {replySuccessMsg}
+                    </span>
+                  )}
+                </div>
+
                 {adminRequests.length === 0 ? (
                   <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
                     אין פניות ממתינות כרגע.
                   </div>
                 ) : (
-                  adminRequests.map((req) => (
-                    <div
-                      key={req.id}
-                      style={{
-                        background: '#fffbeb',
-                        border: '1px solid #fde68a',
-                        borderRadius: '10px',
-                        padding: '12px 14px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '8px'
-                      }}
-                    >
-                      <div>
-                        <strong style={{ color: '#92400e' }}>{req.topic}:</strong>{' '}
-                        <span>
-                          מאת <strong>{req.name}</strong> ({req.email})
-                          {req.createdAt ? ` [${req.createdAt}]` : ''}
-                          {req.notes ? ` — "${req.notes}"` : ''}
-                        </span>
-                      </div>
-                      {onDismissAdminRequest && (
-                        <button
-                          type="button"
-                          onClick={() => onDismissAdminRequest(req.id)}
-                          className="btn-secondary-sm"
-                          style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                  adminRequests.map((req) => {
+                    const isChatExpanded = activeChatReqId === req.id;
+                    const matchedThread = supportThreads.find(
+                      (t) => t.userEmail?.toLowerCase() === req.email?.toLowerCase() || t.id === sanitizeThreadKey(req.email)
+                    );
+                    const messages = matchedThread?.messages || [];
+
+                    return (
+                      <div
+                        key={req.id}
+                        style={{
+                          background: isChatExpanded ? '#ffffff' : '#fffbeb',
+                          border: isChatExpanded ? '1.5px solid #2563eb' : '1px solid #fde68a',
+                          borderRadius: '12px',
+                          padding: '12px 14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isChatExpanded ? '0 4px 14px rgba(37, 99, 235, 0.12)' : 'none'
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '8px'
+                          }}
                         >
-                          <Check size={13} />
-                          <span>סמן כטופל</span>
-                        </button>
-                      )}
-                    </div>
-                  ))
+                          <div>
+                            <strong style={{ color: '#92400e' }}>{req.topic}:</strong>{' '}
+                            <span>
+                              מאת <strong>{req.name}</strong> ({req.email})
+                              {req.createdAt ? ` [${req.createdAt}]` : ''}
+                              {req.notes ? ` — "${req.notes}"` : ''}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setActiveChatReqId(isChatExpanded ? null : req.id)}
+                              className="btn-primary-sm"
+                              style={{
+                                background: isChatExpanded ? '#1e3a5f' : '#2563eb',
+                                fontSize: '12px',
+                                padding: '5px 11px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <MessageCircle size={13} />
+                              <span>{isChatExpanded ? "סגור צ'אט" : "מענה למורה (צ'אט)"}</span>
+                              {messages.length > 0 && (
+                                <span style={{ background: 'rgba(255,255,255,0.25)', padding: '1px 5px', borderRadius: '10px', fontSize: '10.5px' }}>
+                                  {messages.length}
+                                </span>
+                              )}
+                            </button>
+
+                            {onDismissAdminRequest && (
+                              <button
+                                type="button"
+                                onClick={() => onDismissAdminRequest(req.id)}
+                                className="btn-secondary-sm"
+                                style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                              >
+                                <Check size={13} />
+                                <span>סמן כטופל</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Expanded Live Chat Panel */}
+                        {isChatExpanded && (
+                          <div
+                            style={{
+                              borderTop: '1px solid #e2e8f0',
+                              paddingTop: '12px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '10px'
+                            }}
+                          >
+                            <div
+                              style={{
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                padding: '10px',
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px'
+                              }}
+                            >
+                              {messages.length === 0 ? (
+                                <div style={{ fontSize: '12.5px', color: '#64748b', textAlign: 'center', padding: '10px' }}>
+                                  עדיין אין הודעות קודמות בשרשור זה. ההודעה המקורית של המורה: "{req.notes || req.topic}".
+                                </div>
+                              ) : (
+                                messages.map((m) => {
+                                  const isAdmin = m.senderRole === SENDER_ROLES.ADMIN;
+                                  return (
+                                    <div
+                                      key={m.id}
+                                      style={{
+                                        alignSelf: isAdmin ? 'flex-start' : 'flex-end',
+                                        background: isAdmin ? '#dbeafe' : '#ffffff',
+                                        border: isAdmin ? '1px solid #bfdbfe' : '1px solid #cbd5e1',
+                                        borderRadius: '8px',
+                                        padding: '7px 10px',
+                                        maxWidth: '85%',
+                                        fontSize: '12.5px'
+                                      }}
+                                    >
+                                      <div style={{ fontSize: '10.5px', color: isAdmin ? '#1e40af' : '#64748b', fontWeight: 700, marginBottom: '2px' }}>
+                                        {isAdmin ? '🛡️ מנהלת המערכת' : `👤 ${m.senderName || req.name}`} • {m.createdAt}
+                                      </div>
+                                      <div style={{ color: '#1e293b', whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                            {/* Quick response chips */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {[
+                                'שלום, בדקתי והעניין סודר. תוכלי לרענן את העמוד ולבדוק שוב.',
+                                'הסיסמה הזמנית נשלחה למייל שלך. אנא נסי להתחבר כעת.',
+                                'שחררתי את חסימת החשבון. תוכלי להתחבר שוב עם הסיסמה שלך.',
+                                'אשמח לעזור! מה בדיוק התקלה שמופיעה אצלך?'
+                              ].map((chip, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setAdminReplyText(chip)}
+                                  style={{
+                                    background: '#f1f5f9',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '6px',
+                                    padding: '3px 8px',
+                                    fontSize: '11px',
+                                    color: '#334155',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {chip}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Reply Input */}
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <textarea
+                                rows={2}
+                                value={adminReplyText}
+                                onChange={(e) => setAdminReplyText(e.target.value)}
+                                placeholder={`כתוב/י מענה ישיר ל-${req.name}...`}
+                                style={{
+                                  flex: 1,
+                                  padding: '8px 10px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '12.5px',
+                                  resize: 'vertical'
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSendAdminReply(req)}
+                                disabled={!adminReplyText.trim() || isSendingReply}
+                                className="btn-primary-sm"
+                                style={{
+                                  background: !adminReplyText.trim() || isSendingReply ? '#cbd5e1' : '#15803d',
+                                  padding: '0 14px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '5px'
+                                }}
+                              >
+                                <Send size={13} style={{ transform: 'rotate(180deg)' }} />
+                                <span>{isSendingReply ? 'שולח...' : 'שלח תגובה'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>

@@ -134,6 +134,7 @@ import {
 } from './components/modals/StudentActionModals';
 import TrialNdaModal from './components/modals/TrialNdaModal';
 import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
+import TeacherChatWidget from './components/chat/TeacherChatWidget';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import { appendBankGoalToStudent } from './domain/bankGoalApplication';
@@ -3417,6 +3418,14 @@ export default function App() {
         onDiscardAndLogout={performLogout}
         onSaveAndLogout={handleSaveAndLogout}
       />
+      {/* Live Bi-directional Support Chat Widget for Teachers (Non-intrusive floating launcher) */}
+      {currentUser && (
+        <TeacherChatWidget
+          currentUser={currentUser}
+          allowedUsers={allowedUsers}
+          emailEngineConfig={emailEngineConfig}
+        />
+      )}
     </div>
   );
 }

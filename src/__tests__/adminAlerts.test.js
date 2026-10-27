@@ -12,7 +12,8 @@ import {
   dispatchWhatsAppAlert,
   dispatchEmailAlert,
   sendTestAdminAlert,
-  dispatchAlertsToAdmins
+  dispatchAlertsToAdmins,
+  dispatchChatAlertToAdmins
 } from '../services/alertDispatcher.js';
 import * as emailService from '../emailService.js';
 
@@ -280,6 +281,42 @@ describe('Admin Real-Time Alerts Domain & Dispatcher', () => {
       // admin1 has 3 enabled channels: email, whatsapp, telegram
       expect(results.length).toBe(3);
       expect(results.every((r) => r.ok)).toBe(true);
+    });
+
+    it('dispatchChatAlertToAdmins dispatches WhatsApp, Telegram, and Email alerts when a teacher chats', async () => {
+      const mockAdmins = [
+        {
+          id: 'admin1',
+          name: 'מנהלת ראשית',
+          email: 'admin1@tala.edu.il',
+          role: 'admin',
+          active: true,
+          adminAlerts: {
+            email: { enabled: true, address: 'admin1@tala.edu.il' },
+            whatsapp: { enabled: true, phone: '972501111111', apiKey: 'key1' },
+            telegram: { enabled: true, chatId: 'chat123' }
+          }
+        }
+      ];
+
+      const results = await dispatchChatAlertToAdmins({
+        teacherName: 'מיכל שרון',
+        teacherEmail: 'michal@school.org',
+        topic: 'התחברות לאתר',
+        messageText: 'שכחתי את הסיסמה הזמנית',
+        admins: mockAdmins
+      });
+
+      expect(results.length).toBe(3);
+      expect(results.every((r) => r.ok)).toBe(true);
+    });
+
+    it('dispatchChatAlertToAdmins handles empty admins or message gracefully without throwing', async () => {
+      const res1 = await dispatchChatAlertToAdmins({ admins: [] });
+      expect(res1).toEqual([]);
+
+      const res2 = await dispatchChatAlertToAdmins({ admins: [{ role: 'admin' }], messageText: '' });
+      expect(res2).toEqual([]);
     });
   });
 

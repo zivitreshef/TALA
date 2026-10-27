@@ -1,3 +1,7 @@
+import {
+  formatAdminChatNotificationMessage,
+  buildAdminChatNotificationEmailHtml
+} from '../domain/supportChat.js';
 /**
  * Dispatcher service for Admin Real-Time Alerts across Email, WhatsApp, and Telegram.
  * Non-blocking, secure, and resilient.
@@ -196,6 +200,84 @@ export async function dispatchAlertsToAdmins({ event, admins = [], emailConfig =
           chatId: alerts.telegram.chatId,
           text: textMessage
         }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.TELEGRAM, error: err.message }))
+      );
+    }
+  }
+
+  const results = await Promise.allSettled(promises);
+  return results.map((r) => (r.status === 'fulfilled' ? r.value : { ok: false, error: r.reason }));
+}
+
+
+/**
+ * Dispatches real-time chat notifications to all configured admins across WhatsApp, Telegram, and Email.
+ * Never throws (fire-and-forget).
+ */
+export async function dispatchChatAlertToAdmins({
+  teacherName = 'מורה',
+  teacherEmail = '',
+  topic = 'פנייה לתמיכה',
+  messageText = '',
+  admins = [],
+  emailConfig = null
+}) {
+  if (!Array.isArray(admins) || admins.length === 0 || !messageText) return [];
+
+  const textMessage = formatAdminChatNotificationMessage({
+    teacherName,
+    teacherEmail,
+    topic,
+    messageText
+  });
+  const emailHtml = buildAdminChatNotificationEmailHtml({
+    teacherName,
+    teacherEmail,
+    topic,
+    messageText
+  });
+  const cfg = emailConfig || loadEmailEngineConfig();
+
+  const promises = [];
+
+  for (const adminUser of admins) {
+    if (!adminUser || adminUser.active === false) continue;
+    const isExplicitAdmin = adminUser.role === 'admin';
+    if (!isExplicitAdmin) continue;
+
+    const alerts = normalizeAdminAlerts(adminUser.adminAlerts, adminUser.email);
+
+    // 1. WhatsApp channel (immediate phone notification)
+    if (alerts.whatsapp.enabled && alerts.whatsapp.phone && alerts.whatsapp.apiKey) {
+      promises.push(
+        dispatchWhatsAppAlert({
+          phone: alerts.whatsapp.phone,
+          apiKey: alerts.whatsapp.apiKey,
+          text: textMessage
+        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.WHATSAPP, error: err.message }))
+      );
+    }
+
+    // 2. Telegram channel (immediate push)
+    if (alerts.telegram.enabled && alerts.telegram.chatId) {
+      promises.push(
+        dispatchTelegramAlert({
+          botToken: alerts.telegram.botToken,
+          chatId: alerts.telegram.chatId,
+          text: textMessage
+        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.TELEGRAM, error: err.message }))
+      );
+    }
+
+    // 3. Email channel
+    if (alerts.email.enabled && alerts.email.address) {
+      promises.push(
+        dispatchEmailAlert({
+          toEmail: alerts.email.address,
+          subject: `💬 פניית צ'אט חדשה ממורה ב-TALA: ${teacherName}`,
+          htmlBody: emailHtml,
+          textBody: textMessage,
+          config: cfg
+        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.EMAIL, error: err.message }))
       );
     }
   }
