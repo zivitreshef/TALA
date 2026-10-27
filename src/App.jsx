@@ -172,6 +172,7 @@ export default function App() {
   const [allowedUsers, setAllowedUsers] = useState(() => loadAllowedUsers());
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminModalInitialTab, setAdminModalInitialTab] = useState('users');
+  const [adminModalInitialActiveChatReqId, setAdminModalInitialActiveChatReqId] = useState(null);
   const [showSelfPasswordModal, setShowSelfPasswordModal] = useState(false);
   const [showFeedbackSurveyModal, setShowFeedbackSurveyModal] = useState(false);
   const [showTrialUpgradeModal, setShowTrialUpgradeModal] = useState(false);
@@ -600,6 +601,45 @@ export default function App() {
       setAdminSupportThreads(threads || []);
     });
   }, [currentUser?.email, currentUser?.role]);
+
+  // Handle deep-link to directly open teacher support chat from notification links (?openAdminChat=email)
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const chatEmailParam = urlParams.get('openAdminChat');
+      if (chatEmailParam && !currentUser) {
+        sessionStorage.setItem('tala_pending_admin_chat', chatEmailParam);
+      }
+    } catch (_) {}
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') return;
+
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pendingFromSession = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('tala_pending_admin_chat') : null;
+      const chatEmail = urlParams.get('openAdminChat') || pendingFromSession;
+
+      if (chatEmail) {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('tala_pending_admin_chat');
+        }
+        const cleanEmail = chatEmail.trim().toLowerCase();
+        setAdminModalInitialTab('requests');
+        setAdminModalInitialActiveChatReqId(cleanEmail);
+        setShowAdminModal(true);
+
+        if (urlParams.has('openAdminChat')) {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('openAdminChat');
+          window.history.replaceState({}, document.title, newUrl.toString());
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to parse openAdminChat deep link:', err);
+    }
+  }, [currentUser?.role, currentUser?.email]);
 
   const handleMarkHealthReviewed = () => {
     const now = Date.now();
@@ -2843,8 +2883,12 @@ export default function App() {
         <AdminAllowlistModal
           isOpen={showAdminModal}
           initialTab={adminModalInitialTab}
+          initialActiveChatReqId={adminModalInitialActiveChatReqId}
           initialSupportThreads={adminSupportThreads}
-          onClose={() => setShowAdminModal(false)}
+          onClose={() => {
+            setShowAdminModal(false);
+            setAdminModalInitialActiveChatReqId(null);
+          }}
           allowedUsers={allowedUsers}
           onUpdateAllowedUsers={handleUpdateAllowedUsers}
           onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}

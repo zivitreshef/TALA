@@ -3,6 +3,7 @@ import {
   SENDER_ROLES,
   THREAD_STATUS,
   sanitizeThreadKey,
+  buildAdminChatDeepLink,
   createChatMessage,
   appendMessageToThread,
   countUnreadMessages,
@@ -240,8 +241,16 @@ describe('Support Chat Domain Logic (Bi-directional Messaging)', () => {
     });
   });
 
-  describe('Alert Notifications with Attachments', () => {
-    it('includes screenshot indicator in messaging alerts when hasAttachment is true', () => {
+  describe('Alert Notifications with Attachments & Deep Links', () => {
+    it('buildAdminChatDeepLink generates valid query parameter URL', () => {
+      const url = buildAdminChatDeepLink('teacher.special@school.org');
+      expect(url).toBe('https://zivitreshef.github.io/TALA/?openAdminChat=teacher.special%40school.org');
+
+      const customUrl = buildAdminChatDeepLink('teacher@test.com', 'https://tala-d9aaa.web.app/#/some-route');
+      expect(customUrl).toBe('https://tala-d9aaa.web.app/?openAdminChat=teacher%40test.com');
+    });
+
+    it('includes screenshot indicator and direct reply deep-link in messaging alerts', () => {
       const text = formatAdminChatNotificationMessage({
         teacherName: 'שירה',
         teacherEmail: 'shira@edu.gov.il',
@@ -251,9 +260,11 @@ describe('Support Chat Domain Logic (Bi-directional Messaging)', () => {
       });
 
       expect(text).toContain("📎 *צילום מסך:* מצורף צילום מסך בצ'אט המערכת");
+      expect(text).toContain("👉 *מענה ישיר למורה:*");
+      expect(text).toContain("https://zivitreshef.github.io/TALA/?openAdminChat=shira%40edu.gov.il");
     });
 
-    it('renders screenshot badge in email alerts when hasAttachment is true', () => {
+    it('renders screenshot badge and direct reply CTA button in email alerts', () => {
       const html = buildAdminChatNotificationEmailHtml({
         teacherName: 'שירה',
         teacherEmail: 'shira@edu.gov.il',
@@ -263,6 +274,8 @@ describe('Support Chat Domain Logic (Bi-directional Messaging)', () => {
       });
 
       expect(html).toContain('המורה צירפה צילום מסך');
+      expect(html).toContain('💬 מענה ישיר למורה ב-TALA');
+      expect(html).toContain('https://zivitreshef.github.io/TALA/?openAdminChat=shira%40edu.gov.il');
     });
   });
 });

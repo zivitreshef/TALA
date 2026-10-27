@@ -2035,7 +2035,11 @@ export default function AdminAllowlistModal({
                   </div>
                 ) : (
                   unifiedInquiries.map((inq) => {
-                    const isChatExpanded = activeChatReqId === inq.id;
+                    const isChatExpanded =
+                      activeChatReqId === inq.id ||
+                      activeChatReqId === inq.threadKey ||
+                      activeChatReqId === sanitizeThreadKey(inq.email) ||
+                      (Boolean(activeChatReqId) && activeChatReqId?.toLowerCase() === inq.email?.toLowerCase());
                     const matchedThread = supportThreads.find(
                       (t) =>
                         t.userEmail?.toLowerCase() === inq.email?.toLowerCase() ||

@@ -198,6 +198,24 @@ export function markThreadAsRead(thread, viewerRole = SENDER_ROLES.USER) {
   return { ...thread, unreadByUser: false };
 }
 
+export const DEFAULT_TALA_SITE_URL = 'https://zivitreshef.github.io/TALA/';
+
+/**
+ * Builds a direct deep-link URL for an admin to view and reply to a specific teacher's chat thread.
+ */
+export function buildAdminChatDeepLink(teacherEmail = '', baseUrl = '') {
+  let base = baseUrl;
+  if (!base && typeof window !== 'undefined' && window.location?.origin) {
+    base = `${window.location.origin}${window.location.pathname}`;
+  }
+  if (!base) {
+    base = DEFAULT_TALA_SITE_URL;
+  }
+  const cleanBase = base.split('#')[0].split('?')[0].replace(/\/+$/, '/');
+  const emailParam = encodeURIComponent(String(teacherEmail || '').trim().toLowerCase());
+  return `${cleanBase}?openAdminChat=${emailParam}`;
+}
+
 /**
  * Formats a real-time alert text for WhatsApp & Telegram when a teacher initiates or chats.
  */
@@ -206,12 +224,15 @@ export function formatAdminChatNotificationMessage({
   teacherEmail = '',
   topic = 'פנייה לתמיכה',
   messageText = '',
-  hasAttachment = false
+  hasAttachment = false,
+  siteUrl = ''
 } = {}) {
   const timeStr = new Date().toLocaleString('he-IL', {
     dateStyle: 'short',
     timeStyle: 'short'
   });
+
+  const chatUrl = buildAdminChatDeepLink(teacherEmail, siteUrl);
 
   const lines = [
     `💬 *הודעת צ'אט חדשה ממורה במערכת TALA*`,
@@ -229,26 +250,29 @@ export function formatAdminChatNotificationMessage({
     `💬 *הודעה:*`,
     `"${messageText}"`,
     `━━━━━━━━━━━━━━━━━━━`,
-    `_למענה ישיר היכנס/י ללשונית "פניות והתראות" במרכז הבקרה של TALA._`
+    `👉 *מענה ישיר למורה:*`,
+    `${chatUrl}`
   );
 
   return lines.join('\n');
 }
 
 /**
- * Builds an accessible HTML email alert for new chat messages.
+ * Builds an accessible HTML email alert for new chat messages with a direct reply CTA button.
  */
 export function buildAdminChatNotificationEmailHtml({
   teacherName = 'מורה',
   teacherEmail = '',
   topic = 'פנייה לתמיכה',
   messageText = '',
-  hasAttachment = false
+  hasAttachment = false,
+  siteUrl = ''
 } = {}) {
   const safeName = escapeHtml(teacherName || 'מורה');
   const safeEmail = escapeHtml(teacherEmail || '');
   const safeTopic = escapeHtml(topic || 'פנייה לתמיכה');
   const safeMessage = escapeHtml(messageText || '');
+  const chatUrl = buildAdminChatDeepLink(teacherEmail, siteUrl);
 
   const timeStr = new Date().toLocaleString('he-IL', {
     dateStyle: 'short',
@@ -277,8 +301,14 @@ export function buildAdminChatNotificationEmailHtml({
         ${hasAttachment ? `<div style="margin-top: 10px; padding: 6px 10px; background: #ede9fe; color: #5b21b6; border-radius: 6px; font-size: 13px; font-weight: bold;">📎 המורה צירפה צילום מסך בצ'אט המערכת.</div>` : ""}
       </div>
 
-      <p style="font-size: 13.5px; color: #64748b; text-align: center; margin: 0;">
-        ניתן להשיב ישירות למורה דרך לשונית "פניות והתראות" במרכז הניהול של TALA.
+      <div style="text-align: center; margin: 25px 0;">
+        <a href="${chatUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 12px 26px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14.5px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);">
+          💬 מענה ישיר למורה ב-TALA
+        </a>
+      </div>
+
+      <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0; direction: ltr;">
+        <a href="${chatUrl}" style="color: #64748b; text-decoration: underline;">${chatUrl}</a>
       </p>
     </div>
   `;
