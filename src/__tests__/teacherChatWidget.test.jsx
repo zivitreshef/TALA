@@ -48,8 +48,11 @@ describe('TeacherChatWidget Component (Bi-directional Support Chat)', () => {
     expect(html).toContain('Rubik');
     expect(html).toContain('מענה ישיר ממנהלת המערכת');
     expect(html).toContain('שלום מיכל!');
-    expect(html).toContain('ניתן לשאול כל שאלה, לבקש עזרה במערכת או לדווח על תקלה.');
-    expect(html).toContain('placeholder="כתוב/י הודעה למנהלת..."');
+    expect(html).toContain('להדביק צילום מסך');
+    // Verifies paperclip attachment button
+    expect(html).toContain('title="צרף צילום מסך (או הדבק ב-Ctrl+V)"');
+    // Verifies green circle is replaced with subtle message icon (no green circle #4ade80)
+    expect(html).not.toContain('#4ade80');
   });
 
   it('honors isOpenControlled when opened externally from Help Modal', () => {

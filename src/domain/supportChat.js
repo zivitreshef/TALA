@@ -15,6 +15,53 @@ export const THREAD_STATUS = {
 
 export const MAX_THREAD_MESSAGES = 100;
 export const MAX_MESSAGE_LENGTH = 2000;
+export const MAX_IMAGE_RAW_SIZE_BYTES = 10 * 1024 * 1024; // 10MB raw max
+
+export const ALLOWED_CHAT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+export const ALLOWED_CHAT_IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp']);
+
+/**
+ * Validates image metadata for chat attachments according to Security-First principles.
+ */
+export function validateChatImageSecurity(fileOrMeta = {}) {
+  if (!fileOrMeta || typeof fileOrMeta !== 'object') {
+    return { valid: false, reason: 'קובץ לא תקין.' };
+  }
+
+  const size = Number(fileOrMeta.size) || 0;
+  if (size <= 0) {
+    return { valid: false, reason: 'הקובץ ריק או לא נקרא כראוי.' };
+  }
+  if (size > MAX_IMAGE_RAW_SIZE_BYTES) {
+    return { valid: false, reason: 'גודל הקובץ חורג מהמגבלה (עד 10MB).' };
+  }
+
+  const name = String(fileOrMeta.name || '').trim().toLowerCase();
+  const parts = name.split('.').filter(Boolean);
+  if (parts.length < 2) {
+    return { valid: false, reason: 'הקובץ חסר סיומת תמונה תקנית (PNG, JPG, WebP).' };
+  }
+
+  const ext = parts[parts.length - 1];
+  if (!ALLOWED_CHAT_IMAGE_EXTS.has(ext)) {
+    return { valid: false, reason: `סוג הקובץ (.${ext}) אינו נתמך. ניתן לצרף צילומי מסך ותמונות בלבד (PNG, JPG, WebP).` };
+  }
+
+  // Detect executable/dangerous double extensions (e.g. evil.exe.png)
+  const FORBIDDEN_SUB_EXTS = new Set(['exe', 'dll', 'bat', 'cmd', 'sh', 'ps1', 'vbs', 'js', 'html', 'htm', 'php', 'py', 'jar', 'apk']);
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (FORBIDDEN_SUB_EXTS.has(parts[i])) {
+      return { valid: false, reason: `זוהתה סיומת כפולה חשודה (${parts[i]}.${ext}). הקובץ נחסם מטעמי אבטחה.` };
+    }
+  }
+
+  const type = String(fileOrMeta.type || '').trim().toLowerCase();
+  if (type && !ALLOWED_CHAT_IMAGE_TYPES.has(type)) {
+    return { valid: false, reason: 'סוג התוכן הבינארי אינו תואם תמונה נתמכת.' };
+  }
+
+  return { valid: true, extension: ext };
+}
 
 /**
  * Escapes HTML characters to prevent XSS.
@@ -46,20 +93,39 @@ export function createChatMessage({
   senderEmail = '',
   senderName = '',
   text = '',
+  attachment = null,
   timestamp = null
 }) {
   const cleanRole = senderRole === SENDER_ROLES.ADMIN ? SENDER_ROLES.ADMIN : SENDER_ROLES.USER;
-  const cleanText = String(text || '').slice(0, MAX_MESSAGE_LENGTH).trim();
+  let cleanText = String(text || '').slice(0, MAX_MESSAGE_LENGTH).trim();
   const cleanEmail = String(senderEmail || '').trim().toLowerCase();
   const cleanName = String(senderName || '').trim() || (cleanRole === SENDER_ROLES.ADMIN ? 'מנהלת המערכת' : 'מורה');
   const now = typeof timestamp === 'number' && !Number.isNaN(timestamp) ? timestamp : Date.now();
+
+  let cleanAttachment = null;
+  if (attachment && typeof attachment === 'object') {
+    const rawUrl = String(attachment.url || attachment.dataUrl || '');
+    if (rawUrl.startsWith('data:image/') || rawUrl.startsWith('https://') || rawUrl.startsWith('http://')) {
+      cleanAttachment = {
+        id: String(attachment.id || `att_${now}_${Math.random().toString(36).slice(2, 6)}`),
+        name: String(attachment.name || 'screenshot.jpg').slice(0, 100).replace(/[<>"']/g, ''),
+        url: rawUrl,
+        type: String(attachment.type || 'image/jpeg'),
+        sizeKb: Number(attachment.sizeKb) || Math.round((rawUrl.length * 3 / 4) / 1024) || 0
+      };
+    }
+  }
+
+  if (!cleanText && cleanAttachment) {
+    cleanText = '📷 [צילום מסך מצורף]';
+  }
 
   const createdAt = new Date(now).toLocaleString('he-IL', {
     dateStyle: 'short',
     timeStyle: 'short'
   });
 
-  return {
+  const msg = {
     id: `msg_${now}_${Math.random().toString(36).slice(2, 8)}`,
     senderRole: cleanRole,
     senderEmail: cleanEmail,
@@ -68,13 +134,19 @@ export function createChatMessage({
     createdAt,
     timestamp: now
   };
+
+  if (cleanAttachment) {
+    msg.attachment = cleanAttachment;
+  }
+
+  return msg;
 }
 
 /**
  * Appends a new message to a thread and updates metadata, maintaining bounds.
  */
 export function appendMessageToThread(thread, newMessage) {
-  if (!newMessage || typeof newMessage !== 'object' || !newMessage.text) {
+  if (!newMessage || typeof newMessage !== 'object' || (!newMessage.text && !newMessage.attachment)) {
     return thread || {};
   }
 
@@ -83,6 +155,9 @@ export function appendMessageToThread(thread, newMessage) {
   const updatedMessages = [...existingMessages, newMessage].slice(-MAX_THREAD_MESSAGES);
 
   const isFromAdmin = newMessage.senderRole === SENDER_ROLES.ADMIN;
+  const lastText = newMessage.attachment
+    ? (newMessage.text && newMessage.text !== '📷 [צילום מסך מצורף]' ? `📷 ${newMessage.text}` : '📷 צילום מסך מצורף')
+    : newMessage.text;
 
   return {
     ...validThread,
@@ -91,7 +166,7 @@ export function appendMessageToThread(thread, newMessage) {
     userName: validThread.userName || (isFromAdmin ? '' : newMessage.senderName),
     topic: validThread.topic || 'פנייה לתמיכה',
     status: validThread.status || THREAD_STATUS.ACTIVE,
-    lastMessageText: newMessage.text,
+    lastMessageText: lastText,
     lastMessageSender: newMessage.senderRole,
     lastMessageAt: new Date(newMessage.timestamp).toISOString(),
     updatedAt: new Date(newMessage.timestamp).toISOString(),
@@ -130,24 +205,34 @@ export function formatAdminChatNotificationMessage({
   teacherName = 'מורה',
   teacherEmail = '',
   topic = 'פנייה לתמיכה',
-  messageText = ''
+  messageText = '',
+  hasAttachment = false
 } = {}) {
   const timeStr = new Date().toLocaleString('he-IL', {
     dateStyle: 'short',
     timeStyle: 'short'
   });
 
-  return [
+  const lines = [
     `💬 *הודעת צ'אט חדשה ממורה במערכת TALA*`,
     `━━━━━━━━━━━━━━━━━━━`,
     `👤 *מאת:* ${teacherName} (${teacherEmail || 'ללא מייל'})`,
     `📌 *נושא:* ${topic}`,
-    `⏰ *מועד:* ${timeStr}`,
+    `⏰ *מועד:* ${timeStr}`
+  ];
+
+  if (hasAttachment) {
+    lines.push(`📎 *צילום מסך:* מצורף צילום מסך בצ'אט המערכת`);
+  }
+
+  lines.push(
     `💬 *הודעה:*`,
     `"${messageText}"`,
     `━━━━━━━━━━━━━━━━━━━`,
     `_למענה ישיר היכנס/י ללשונית "פניות והתראות" במרכז הבקרה של TALA._`
-  ].join('\n');
+  );
+
+  return lines.join('\n');
 }
 
 /**
@@ -157,7 +242,8 @@ export function buildAdminChatNotificationEmailHtml({
   teacherName = 'מורה',
   teacherEmail = '',
   topic = 'פנייה לתמיכה',
-  messageText = ''
+  messageText = '',
+  hasAttachment = false
 } = {}) {
   const safeName = escapeHtml(teacherName || 'מורה');
   const safeEmail = escapeHtml(teacherEmail || '');
@@ -188,6 +274,7 @@ export function buildAdminChatNotificationEmailHtml({
       <div style="background: #f0fdf4; border-right: 4px solid #16a34a; padding: 14px 18px; border-radius: 6px; margin-bottom: 24px;">
         <strong style="color: #166534; font-size: 14px;">תוכן ההודעה:</strong>
         <p style="margin: 8px 0 0 0; color: #1e293b; font-size: 14.5px; white-space: pre-wrap;">${safeMessage}</p>
+        ${hasAttachment ? `<div style="margin-top: 10px; padding: 6px 10px; background: #ede9fe; color: #5b21b6; border-radius: 6px; font-size: 13px; font-weight: bold;">📎 המורה צירפה צילום מסך בצ'אט המערכת.</div>` : ""}
       </div>
 
       <p style="font-size: 13.5px; color: #64748b; text-align: center; margin: 0;">

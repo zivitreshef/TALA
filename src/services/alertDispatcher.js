@@ -219,22 +219,25 @@ export async function dispatchChatAlertToAdmins({
   teacherEmail = '',
   topic = 'פנייה לתמיכה',
   messageText = '',
+  hasAttachment = false,
   admins = [],
   emailConfig = null
 }) {
-  if (!Array.isArray(admins) || admins.length === 0 || !messageText) return [];
+  if (!Array.isArray(admins) || admins.length === 0 || (!messageText && !hasAttachment)) return [];
 
   const textMessage = formatAdminChatNotificationMessage({
     teacherName,
     teacherEmail,
     topic,
-    messageText
+    messageText: messageText || '📷 [צילום מסך מצורף]',
+    hasAttachment
   });
   const emailHtml = buildAdminChatNotificationEmailHtml({
     teacherName,
     teacherEmail,
     topic,
-    messageText
+    messageText: messageText || '📷 [צילום מסך מצורף]',
+    hasAttachment
   });
   const cfg = emailConfig || loadEmailEngineConfig();
 

@@ -140,6 +140,7 @@ export default function AdminAllowlistModal({
   const [adminReplyText, setAdminReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [replySuccessMsg, setReplySuccessMsg] = useState('');
+  const [adminPreviewImgUrl, setAdminPreviewImgUrl] = useState(null);
 
   // Subscribe to all live support threads when admin modal is open
   useEffect(() => {
@@ -2362,6 +2363,81 @@ export default function AdminAllowlistModal({
           ))}
         </datalist>
       </div>
+
+      {/* Admin Screenshot Lightbox */}
+      {adminPreviewImgUrl && (
+        <div
+          onClick={() => setAdminPreviewImgUrl(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '92vw',
+              maxHeight: '90vh',
+              background: '#ffffff',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.35)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 16px',
+                background: '#1e293b',
+                color: '#ffffff'
+              }}
+            >
+              <span style={{ fontSize: '13.5px', fontWeight: 600 }}>צילום מסך שהתקבל מהמורה</span>
+              <button
+                type="button"
+                onClick={() => setAdminPreviewImgUrl(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="סגור תצוגה מקדימה"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '10px', overflow: 'auto', textAlign: 'center', background: '#0f172a' }}>
+              <img
+                src={adminPreviewImgUrl}
+                alt="צילום מסך מוגדל"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '78vh',
+                  objectFit: 'contain',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

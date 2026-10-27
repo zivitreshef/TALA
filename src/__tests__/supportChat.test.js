@@ -9,6 +9,7 @@ import {
   markThreadAsRead,
   formatAdminChatNotificationMessage,
   buildAdminChatNotificationEmailHtml,
+  validateChatImageSecurity,
   MAX_MESSAGE_LENGTH,
   MAX_THREAD_MESSAGES
 } from '../domain/supportChat';
@@ -179,6 +180,89 @@ describe('Support Chat Domain Logic (Bi-directional Messaging)', () => {
       expect(html).toContain('שאלה &amp; תמיכה');
       expect(html).toContain('בדיקה &lt;b&gt;הודעה&lt;/b&gt;');
       expect(html).not.toContain('<script>');
+    });
+  });
+  describe('validateChatImageSecurity', () => {
+    it('approves legitimate image attachments (PNG, JPG, WebP) under size limit', () => {
+      expect(validateChatImageSecurity({ name: 'error_screen.png', type: 'image/png', size: 1024 * 500 }).valid).toBe(true);
+      expect(validateChatImageSecurity({ name: 'photo.jpg', type: 'image/jpeg', size: 1024 * 300 }).valid).toBe(true);
+      expect(validateChatImageSecurity({ name: 'ui.webp', type: 'image/webp', size: 1024 * 200 }).valid).toBe(true);
+    });
+
+    it('rejects files larger than 10MB raw limit', () => {
+      const res = validateChatImageSecurity({ name: 'huge.png', type: 'image/png', size: 11 * 1024 * 1024 });
+      expect(res.valid).toBe(false);
+      expect(res.reason).toContain('חורג מהמגבלה');
+    });
+
+    it('rejects forbidden non-image extensions', () => {
+      expect(validateChatImageSecurity({ name: 'script.exe', type: 'application/octet-stream', size: 1000 }).valid).toBe(false);
+      expect(validateChatImageSecurity({ name: 'doc.pdf', type: 'application/pdf', size: 1000 }).valid).toBe(false);
+    });
+
+    it('detects and blocks dangerous double-extension spoofing (e.g. malware.exe.png)', () => {
+      const res = validateChatImageSecurity({ name: 'virus.exe.png', type: 'image/png', size: 5000 });
+      expect(res.valid).toBe(false);
+      expect(res.reason).toContain('סיומת כפולה חשודה');
+    });
+  });
+
+  describe('createChatMessage and appendMessageToThread with image attachments', () => {
+    it('attaches image metadata cleanly and provides fallback text if text is omitted', () => {
+      const msg = createChatMessage({
+        senderRole: SENDER_ROLES.USER,
+        text: '',
+        attachment: {
+          name: 'bug.png',
+          url: 'data:image/jpeg;base64,12345',
+          sizeKb: 45
+        }
+      });
+
+      expect(msg.text).toBe('📷 [צילום מסך מצורף]');
+      expect(msg.attachment).toBeDefined();
+      expect(msg.attachment.name).toBe('bug.png');
+      expect(msg.attachment.sizeKb).toBe(45);
+    });
+
+    it('updates lastMessageText with camera prefix when message contains attachment', () => {
+      const msg = createChatMessage({
+        senderRole: SENDER_ROLES.USER,
+        text: 'תראי מה מופיע לי',
+        attachment: {
+          name: 'error.png',
+          url: 'data:image/jpeg;base64,12345'
+        }
+      });
+
+      const thread = appendMessageToThread(null, msg);
+      expect(thread.lastMessageText).toBe('📷 תראי מה מופיע לי');
+    });
+  });
+
+  describe('Alert Notifications with Attachments', () => {
+    it('includes screenshot indicator in messaging alerts when hasAttachment is true', () => {
+      const text = formatAdminChatNotificationMessage({
+        teacherName: 'שירה',
+        teacherEmail: 'shira@edu.gov.il',
+        topic: 'תקלה בטופס',
+        messageText: 'הנה צילום המסך',
+        hasAttachment: true
+      });
+
+      expect(text).toContain("📎 *צילום מסך:* מצורף צילום מסך בצ'אט המערכת");
+    });
+
+    it('renders screenshot badge in email alerts when hasAttachment is true', () => {
+      const html = buildAdminChatNotificationEmailHtml({
+        teacherName: 'שירה',
+        teacherEmail: 'shira@edu.gov.il',
+        topic: 'תקלה בטופס',
+        messageText: 'הנה צילום המסך',
+        hasAttachment: true
+      });
+
+      expect(html).toContain('המורה צירפה צילום מסך');
     });
   });
 });

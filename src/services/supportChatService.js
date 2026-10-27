@@ -94,6 +94,7 @@ export async function sendChatMessageToCloud({
   userName = '',
   topic = 'פנייה לתמיכה',
   text = '',
+  attachment = null,
   senderRole = SENDER_ROLES.USER,
   senderName = '',
   admins = [],
@@ -108,7 +109,8 @@ export async function sendChatMessageToCloud({
     senderRole,
     senderEmail: senderRole === SENDER_ROLES.ADMIN ? 'admin@tala.edu.il' : cleanEmail,
     senderName: senderName || (senderRole === SENDER_ROLES.ADMIN ? 'מנהלת המערכת' : cleanName),
-    text
+    text,
+    attachment
   });
 
   const baseThread = existingThread || {
@@ -149,7 +151,8 @@ export async function sendChatMessageToCloud({
       teacherName: cleanName,
       teacherEmail: cleanEmail,
       topic: cleanTopic,
-      messageText: text,
+      messageText: text || '📷 [צילום מסך מצורף]',
+      hasAttachment: Boolean(attachment),
       admins,
       emailConfig
     }).catch((err) => {

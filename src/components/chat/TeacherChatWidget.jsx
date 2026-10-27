@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   MessageCircle,
+  MessageSquare,
   X,
   Send,
   User,
@@ -9,7 +10,9 @@ import {
   Sparkles,
   CheckCircle2,
   Minimize2,
-  Trash2
+  Trash2,
+  Paperclip,
+  ZoomIn
 } from 'lucide-react';
 import {
   subscribeToSupportThread,
@@ -18,6 +21,7 @@ import {
   clearSupportThreadInCloud
 } from '../../services/supportChatService.js';
 import { SENDER_ROLES, countUnreadMessages } from '../../domain/supportChat.js';
+import { processChatImageFile } from '../../services/chatImageHelper.js';
 
 export default function TeacherChatWidget({
   currentUser = null,
@@ -37,6 +41,12 @@ export default function TeacherChatWidget({
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isButtonHovered, setIsButtonHovered] = useState(false);
+  const [attachment, setAttachment] = useState(null);
+  const [isProcessingImg, setIsProcessingImg] = useState(false);
+  const [imgError, setImgError] = useState('');
+  const [previewImgUrl, setPreviewImgUrl] = useState(null);
+
+  const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   const effectiveEmail = String(currentUser?.email || initialUserEmail || '').trim().toLowerCase();
@@ -100,11 +110,62 @@ export default function TeacherChatWidget({
     }
   };
 
+  // Handle clipboard paste (Ctrl+V) for screenshots
+  const handlePaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type && item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          setIsProcessingImg(true);
+          setImgError('');
+          try {
+            const res = await processChatImageFile(file);
+            if (res.success && res.attachment) {
+              setAttachment(res.attachment);
+            } else {
+              setImgError(res.error || 'שגיאה בעיבוד התמונה.');
+              setTimeout(() => setImgError(''), 4500);
+            }
+          } finally {
+            setIsProcessingImg(false);
+          }
+        }
+        break;
+      }
+    }
+  };
+
+  // Handle file picker selection
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessingImg(true);
+    setImgError('');
+    try {
+      const res = await processChatImageFile(file);
+      if (res.success && res.attachment) {
+        setAttachment(res.attachment);
+      } else {
+        setImgError(res.error || 'שגיאה בעיבוד התמונה.');
+        setTimeout(() => setImgError(''), 4500);
+      }
+    } finally {
+      setIsProcessingImg(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   // Send message
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
     const cleanText = inputMessage.trim();
-    if (!cleanText || isSending || !effectiveEmail) return;
+    if ((!cleanText && !attachment) || isSending || isProcessingImg || !effectiveEmail) return;
 
     setIsSending(true);
     try {
@@ -116,6 +177,7 @@ export default function TeacherChatWidget({
         userName: effectiveName,
         topic: '💬 פנייה מתוך צ\'אט התמיכה',
         text: cleanText,
+        attachment,
         senderRole: SENDER_ROLES.USER,
         senderName: effectiveName,
         admins,
@@ -123,6 +185,7 @@ export default function TeacherChatWidget({
       });
 
       setInputMessage('');
+      setAttachment(null);
     } catch (err) {
       console.warn('Error sending support message:', err);
     } finally {
@@ -136,6 +199,8 @@ export default function TeacherChatWidget({
     return null;
   }
 
+  const canSend = (inputMessage.trim() || attachment) && !isSending && !isProcessingImg;
+
   return (
     <div
       dir="rtl"
@@ -147,7 +212,7 @@ export default function TeacherChatWidget({
         fontFamily: "'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif"
       }}
     >
-      {/* Floating launcher button in blue & purple theme (watermarked fade when idle, vibrant on hover) */}
+      {/* Floating launcher button in blue & purple theme */}
       {!isOpen && (
         <button
           type="button"
@@ -220,7 +285,7 @@ export default function TeacherChatWidget({
           style={{
             width: '360px',
             maxWidth: 'calc(100vw - 32px)',
-            height: '480px',
+            height: '490px',
             maxHeight: 'calc(100vh - 120px)',
             background: '#ffffff',
             borderRadius: '16px',
@@ -232,7 +297,7 @@ export default function TeacherChatWidget({
             fontFamily: "'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif"
           }}
         >
-          {/* Header styled with exact Blue & Purple gradient (#4a88c7 -> #7c65b8) */}
+          {/* Header styled with subtle message icon (replacing green dot) */}
           <div
             style={{
               background: 'linear-gradient(135deg, #4a88c7 0%, #7c65b8 100%)',
@@ -273,7 +338,7 @@ export default function TeacherChatWidget({
                   צ'אט תמיכה TALA
                 </h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#e0e7ff', marginTop: '1px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }} />
+                  <MessageSquare size={11} color="#e0e7ff" style={{ opacity: 0.9 }} />
                   <span>מענה ישיר ממנהלת המערכת</span>
                 </div>
               </div>
@@ -360,13 +425,15 @@ export default function TeacherChatWidget({
                 <strong style={{ display: 'block', color: '#1e3a5f', marginBottom: '4px', fontSize: '13.5px' }}>
                   שלום {effectiveName}!
                 </strong>
-                ניתן לשאול כל שאלה, לבקש עזרה במערכת או לדווח על תקלה. המנהלת תקבל התראה מיידית ותשיב לך כאן בזמן אמת.
+                ניתן לשאול כל שאלה, לבקש עזרה במערכת, או להדביק צילום מסך של תקלה. המנהלת תקבל התראה מיידית ותשיב לך כאן.
               </div>
             )}
 
             {/* Messages list */}
             {(thread?.messages || []).map((msg) => {
               const isAdmin = msg.senderRole === SENDER_ROLES.ADMIN;
+              const hasAttachment = Boolean(msg.attachment?.url);
+
               return (
                 <div
                   key={msg.id}
@@ -418,7 +485,32 @@ export default function TeacherChatWidget({
                       boxShadow: isAdmin ? 'none' : '0 2px 6px rgba(74, 136, 199, 0.2)'
                     }}
                   >
-                    {msg.text}
+                    {msg.text && msg.text !== '📷 [צילום מסך מצורף]' && (
+                      <div>{msg.text}</div>
+                    )}
+
+                    {hasAttachment && (
+                      <div style={{ marginTop: msg.text && msg.text !== '📷 [צילום מסך מצורף]' ? '6px' : '0' }}>
+                        <img
+                          src={msg.attachment.url}
+                          alt={msg.attachment.name || 'צילום מסך'}
+                          onClick={() => setPreviewImgUrl(msg.attachment.url)}
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: '170px',
+                            borderRadius: '6px',
+                            cursor: 'zoom-in',
+                            display: 'block',
+                            border: '1px solid rgba(0,0,0,0.1)'
+                          }}
+                          title="לחץ/י להגדלת התמונה"
+                        />
+                        <div style={{ fontSize: '10px', color: isAdmin ? '#6b7280' : '#e0e7ff', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <ZoomIn size={10} />
+                          <span>צילום מסך ({msg.attachment.sizeKb}KB) • לחץ/י להגדלה</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -426,32 +518,121 @@ export default function TeacherChatWidget({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Footer */}
+          {/* Attachment Preview & Security / Privacy Warning */}
+          {attachment && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#f5f3ff',
+                borderTop: '1px solid #ddd6fe',
+                borderBottom: '1px solid #ddd6fe',
+                padding: '6px 12px',
+                fontSize: '11.5px',
+                flexShrink: 0
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                <img
+                  src={attachment.url}
+                  alt="תצוגה מקדימה"
+                  onClick={() => setPreviewImgUrl(attachment.url)}
+                  style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #c4b5fd', cursor: 'zoom-in' }}
+                  title="לחץ להגדלה"
+                />
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontWeight: 600, color: '#4c1d95', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
+                    📷 {attachment.name} ({attachment.sizeKb}KB)
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#6d28d9' }}>
+                    🔒 נא לוודא שאין פרטי תלמידים
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAttachment(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#7c65b8',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="הסר צילום מסך"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          )}
+
+          {imgError && (
+            <div style={{ padding: '5px 12px', background: '#fef2f2', borderTop: '1px solid #fecaca', fontSize: '11px', color: '#dc2626', flexShrink: 0 }}>
+              ⚠️ {imgError}
+            </div>
+          )}
+
+          {/* Input Footer with Attachment & Paste Support */}
           <form
             onSubmit={handleSendMessage}
+            onPaste={handlePaste}
             style={{
               padding: '10px 12px',
               background: '#ffffff',
-              borderTop: '1px solid #e2e8f0',
+              borderTop: attachment ? 'none' : '1px solid #e2e8f0',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '6px',
               flexShrink: 0
             }}
           >
+            {/* Paperclip button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isSending || isProcessingImg}
+              title="צרף צילום מסך (או הדבק ב-Ctrl+V)"
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '8px',
+                background: '#f8fafc',
+                border: '1.5px solid #cbd5e1',
+                color: '#7c65b8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: isSending || isProcessingImg ? 'not-allowed' : 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.2s'
+              }}
+            >
+              <Paperclip size={15} />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              style={{ display: 'none' }}
+              onChange={handleFileSelected}
+            />
+
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="כתוב/י הודעה למנהלת..."
-              disabled={isSending}
+              placeholder={attachment ? 'הוסף/י הערה לצילום המסך (אופציונלי)...' : "כתוב/י הודעה (ניתן להדביק צילום מסך ב-Ctrl+V)..."}
+              disabled={isSending || isProcessingImg}
               maxLength={2000}
               style={{
                 flex: 1,
-                padding: '9px 12px',
+                padding: '8px 10px',
                 borderRadius: '8px',
                 border: '1.5px solid #cbd5e1',
-                fontSize: '13px',
+                fontSize: '12.5px',
                 fontFamily: 'inherit',
                 outline: 'none',
                 transition: 'border-color 0.2s'
@@ -462,28 +643,103 @@ export default function TeacherChatWidget({
 
             <button
               type="submit"
-              disabled={!inputMessage.trim() || isSending}
+              disabled={!canSend}
               style={{
                 width: '36px',
                 height: '36px',
                 borderRadius: '8px',
-                background: !inputMessage.trim() || isSending
+                background: !canSend
                   ? '#cbd5e1'
                   : 'linear-gradient(135deg, #4a88c7 0%, #7c65b8 100%)',
                 color: '#ffffff',
                 border: 'none',
-                cursor: !inputMessage.trim() || isSending ? 'not-allowed' : 'pointer',
+                cursor: !canSend ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
-                boxShadow: !inputMessage.trim() || isSending ? 'none' : '0 2px 8px rgba(74, 136, 199, 0.3)'
+                boxShadow: !canSend ? 'none' : '0 2px 8px rgba(74, 136, 199, 0.3)'
               }}
               title="שלח הודעה"
             >
               <Send size={15} style={{ transform: 'rotate(180deg)' }} />
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Lightbox Preview Modal for Zooming In on Screenshots */}
+      {previewImgUrl && (
+        <div
+          onClick={() => setPreviewImgUrl(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '92vw',
+              maxHeight: '90vh',
+              background: '#ffffff',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.35)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 16px',
+                background: '#1e293b',
+                color: '#ffffff'
+              }}
+            >
+              <span style={{ fontSize: '13.5px', fontWeight: 600 }}>צילום מסך מוגדל</span>
+              <button
+                type="button"
+                onClick={() => setPreviewImgUrl(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="סגור תצוגה מקדימה"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '10px', overflow: 'auto', textAlign: 'center', background: '#0f172a' }}>
+              <img
+                src={previewImgUrl}
+                alt="צילום מסך מוגדל"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '78vh',
+                  objectFit: 'contain',
+                  borderRadius: '4px'
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
