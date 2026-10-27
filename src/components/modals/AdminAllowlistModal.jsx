@@ -60,7 +60,7 @@ import AdminUsageAndSecurityDashboard from './AdminUsageAndSecurityDashboard';
 import { fetchTelemetrySnapshot } from '../../services/telemetryService';
 import { aggregateTelemetryData } from '../../domain/telemetry';
 import { countUnreviewedHealthEvents } from '../../domain/healthEvents.js';
-import { subscribeToAllSupportThreads, sendChatMessageToCloud } from '../../services/supportChatService.js';
+import { subscribeToAllSupportThreads, sendChatMessageToCloud, markThreadReadInCloud } from '../../services/supportChatService.js';
 import { SENDER_ROLES, sanitizeThreadKey } from '../../domain/supportChat.js';
 
 function PasswordPolicyChecklist({ password }) {
@@ -121,6 +121,8 @@ export default function AdminAllowlistModal({
   geminiApiKey,
   onChangeGeminiApiKey,
   adminRequests = [],
+  initialSupportThreads = [],
+  initialActiveChatReqId = null,
   onDismissAdminRequest,
   cloudSyncState,
   emailEngineConfig,
@@ -135,12 +137,19 @@ export default function AdminAllowlistModal({
   onUpdateAiFreeze
 }) {
   const [activeTab, setActiveTab] = useState(initialTab || 'users'); // 'users' | 'groups' | 'analytics' | 'requests' | 'health' | 'settings'
-  const [supportThreads, setSupportThreads] = useState([]);
-  const [activeChatReqId, setActiveChatReqId] = useState(null);
+  const [supportThreads, setSupportThreads] = useState(initialSupportThreads || []);
+  const [activeChatReqId, setActiveChatReqId] = useState(initialActiveChatReqId);
   const [adminReplyText, setAdminReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [replySuccessMsg, setReplySuccessMsg] = useState('');
   const [adminPreviewImgUrl, setAdminPreviewImgUrl] = useState(null);
+
+  // Sync initial threads if updated from parent
+  useEffect(() => {
+    if (Array.isArray(initialSupportThreads) && initialSupportThreads.length > 0) {
+      setSupportThreads(initialSupportThreads);
+    }
+  }, [initialSupportThreads]);
 
   // Subscribe to all live support threads when admin modal is open
   useEffect(() => {
@@ -153,34 +162,120 @@ export default function AdminAllowlistModal({
     };
   }, [isOpen]);
 
-  const handleSendAdminReply = async (req) => {
+  // Unify real-time support chat threads and legacy contact requests
+  const unifiedInquiries = useMemo(() => {
+    const list = [];
+    const seenEmails = new Set();
+
+    // 1. All live support chat threads
+    (supportThreads || []).forEach((thread) => {
+      const email = (thread.userEmail || '').trim().toLowerCase();
+      if (!email && !thread.id) return;
+      if (email) seenEmails.add(email);
+
+      const matchedReq = (adminRequests || []).find(
+        (r) => (r.email || '').trim().toLowerCase() === email
+      );
+
+      const hasMessages = Array.isArray(thread.messages) && thread.messages.length > 0;
+      const latestMessage = hasMessages ? thread.messages[thread.messages.length - 1] : null;
+
+      list.push({
+        id: thread.id || `thread_${sanitizeThreadKey(email)}`,
+        threadKey: thread.id || sanitizeThreadKey(email),
+        name: thread.userName || matchedReq?.name || 'מורה',
+        email: thread.userEmail || matchedReq?.email || email,
+        topic: thread.topic || matchedReq?.topic || "💬 פנייה מתוך צ'אט התמיכה",
+        notes: matchedReq?.notes || latestMessage?.text || thread.lastMessageText || '',
+        createdAt: latestMessage?.createdAt || thread.updatedAt || matchedReq?.createdAt || '',
+        timestamp: latestMessage?.timestamp || (thread.updatedAt ? new Date(thread.updatedAt).getTime() : 0),
+        unreadByAdmin: Boolean(thread.unreadByAdmin),
+        messages: thread.messages || [],
+        adminRequestId: matchedReq?.id || null,
+        isChatThread: true
+      });
+    });
+
+    // 2. Any login-form contact requests that do not yet have an active supportThread
+    (adminRequests || []).forEach((req) => {
+      const email = (req.email || '').trim().toLowerCase();
+      if (email && seenEmails.has(email)) return;
+      if (email) seenEmails.add(email);
+
+      list.push({
+        id: req.id,
+        threadKey: sanitizeThreadKey(email),
+        name: req.name || 'מורה',
+        email: req.email || email,
+        topic: req.topic || 'פנייה מדף הכניסה',
+        notes: req.notes || '',
+        createdAt: req.createdAt || '',
+        timestamp: req.createdAt ? new Date(req.createdAt).getTime() || 0 : 0,
+        unreadByAdmin: true,
+        messages: [],
+        adminRequestId: req.id,
+        isChatThread: false
+      });
+    });
+
+    // Sort: unread first, then latest by timestamp
+    return list.sort((a, b) => {
+      if (a.unreadByAdmin !== b.unreadByAdmin) {
+        return a.unreadByAdmin ? -1 : 1;
+      }
+      return (b.timestamp || 0) - (a.timestamp || 0);
+    });
+  }, [supportThreads, adminRequests]);
+
+  const unreadInquiriesCount = useMemo(
+    () => unifiedInquiries.filter((inq) => inq.unreadByAdmin).length,
+    [unifiedInquiries]
+  );
+
+  const handleSendAdminReply = async (inquiry) => {
     const cleanText = adminReplyText.trim();
-    if (!cleanText || isSendingReply || !req?.email) return;
+    if (!cleanText || isSendingReply || !inquiry?.email) return;
 
     setIsSendingReply(true);
     try {
       const existingThread = supportThreads.find(
-        (t) => t.userEmail?.toLowerCase() === req.email?.toLowerCase() || t.id === sanitizeThreadKey(req.email)
+        (t) =>
+          t.userEmail?.toLowerCase() === inquiry.email?.toLowerCase() ||
+          t.id === inquiry.threadKey ||
+          t.id === sanitizeThreadKey(inquiry.email)
       );
 
       await sendChatMessageToCloud({
         existingThread,
-        userEmail: req.email,
-        userName: req.name,
-        topic: req.topic || 'פנייה לתמיכה',
+        userEmail: inquiry.email,
+        userName: inquiry.name,
+        topic: inquiry.topic || 'פנייה לתמיכה',
         text: cleanText,
         senderRole: SENDER_ROLES.ADMIN,
         senderName: 'מנהלת המערכת',
         admins: allowedUsers.filter((u) => u.role === 'admin')
       });
 
+      if (inquiry.threadKey) {
+        markThreadReadInCloud(inquiry.threadKey, SENDER_ROLES.ADMIN).catch(() => {});
+      }
+
       setAdminReplyText('');
-      setReplySuccessMsg(`✓ התגובה נשלחה בהצלחה למורה (${req.name})!`);
+      setReplySuccessMsg(`✓ התגובה נשלחה בהצלחה למורה (${inquiry.name})!`);
       setTimeout(() => setReplySuccessMsg(''), 3500);
     } catch (err) {
       console.warn('Failed to send admin reply:', err);
     } finally {
       setIsSendingReply(false);
+    }
+  };
+
+  const handleDismissInquiry = async (inquiry) => {
+    if (inquiry.adminRequestId && onDismissAdminRequest) {
+      onDismissAdminRequest(inquiry.adminRequestId);
+    }
+    if (inquiry.threadKey) {
+      await markThreadReadInCloud(inquiry.threadKey, SENDER_ROLES.ADMIN).catch(() => {});
     }
   };
 
@@ -705,7 +800,7 @@ export default function AdminAllowlistModal({
   };
 
   const unreviewedHealthEventsCount = countUnreviewedHealthEvents(healthEvents, healthReviewedMs);
-  const userAlertsCount = lockedOutUsers.length + (adminRequests || []).length;
+  const userAlertsCount = lockedOutUsers.length + unreadInquiriesCount;
 
   return (
     <div className="modal-backdrop" onClick={onClose} dir="rtl" style={{ zIndex: 2500, padding: '16px' }}>
@@ -1908,9 +2003,25 @@ export default function AdminAllowlistModal({
               {/* Admin Contact Requests & Bi-directional Chat */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <strong style={{ fontSize: '14px', color: '#1e3a5f' }}>
-                    📩 פניות שהתקבלו וצ'אט דו-כיווני מול מורות ({adminRequests.length}):
-                  </strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <strong style={{ fontSize: '14px', color: '#1e3a5f' }}>
+                      📩 פניות שהתקבלו וצ'אט דו-כיווני מול מורות ({unifiedInquiries.length}):
+                    </strong>
+                    {unreadInquiriesCount > 0 && (
+                      <span
+                        style={{
+                          background: '#dc2626',
+                          color: '#ffffff',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          padding: '1px 7px',
+                          borderRadius: '999px'
+                        }}
+                      >
+                        {unreadInquiriesCount} ממתינות למענה
+                      </span>
+                    )}
+                  </div>
                   {replySuccessMsg && (
                     <span style={{ fontSize: '12.5px', color: '#15803d', fontWeight: 700 }}>
                       {replySuccessMsg}
@@ -1918,31 +2029,42 @@ export default function AdminAllowlistModal({
                   )}
                 </div>
 
-                {adminRequests.length === 0 ? (
+                {unifiedInquiries.length === 0 ? (
                   <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
                     אין פניות ממתינות כרגע.
                   </div>
                 ) : (
-                  adminRequests.map((req) => {
-                    const isChatExpanded = activeChatReqId === req.id;
+                  unifiedInquiries.map((inq) => {
+                    const isChatExpanded = activeChatReqId === inq.id;
                     const matchedThread = supportThreads.find(
-                      (t) => t.userEmail?.toLowerCase() === req.email?.toLowerCase() || t.id === sanitizeThreadKey(req.email)
+                      (t) =>
+                        t.userEmail?.toLowerCase() === inq.email?.toLowerCase() ||
+                        t.id === inq.threadKey ||
+                        t.id === sanitizeThreadKey(inq.email)
                     );
-                    const messages = matchedThread?.messages || [];
+                    const messages = matchedThread?.messages || inq.messages || [];
 
                     return (
                       <div
-                        key={req.id}
+                        key={inq.id}
                         style={{
-                          background: isChatExpanded ? '#ffffff' : '#fffbeb',
-                          border: isChatExpanded ? '1.5px solid #2563eb' : '1px solid #fde68a',
+                          background: isChatExpanded ? '#ffffff' : inq.unreadByAdmin ? '#fffbeb' : '#f8fafc',
+                          border: isChatExpanded
+                            ? '1.5px solid #2563eb'
+                            : inq.unreadByAdmin
+                            ? '1.5px solid #f59e0b'
+                            : '1px solid #e2e8f0',
                           borderRadius: '12px',
                           padding: '12px 14px',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '10px',
                           transition: 'all 0.2s ease',
-                          boxShadow: isChatExpanded ? '0 4px 14px rgba(37, 99, 235, 0.12)' : 'none'
+                          boxShadow: isChatExpanded
+                            ? '0 4px 14px rgba(37, 99, 235, 0.12)'
+                            : inq.unreadByAdmin
+                            ? '0 2px 6px rgba(245, 158, 11, 0.15)'
+                            : 'none'
                         }}
                       >
                         <div
@@ -1955,21 +2077,43 @@ export default function AdminAllowlistModal({
                           }}
                         >
                           <div>
-                            <strong style={{ color: '#92400e' }}>{req.topic}:</strong>{' '}
-                            <span>
-                              מאת <strong>{req.name}</strong> ({req.email})
-                              {req.createdAt ? ` [${req.createdAt}]` : ''}
-                              {req.notes ? ` — "${req.notes}"` : ''}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                              <strong style={{ color: inq.unreadByAdmin ? '#b45309' : '#1e3a5f' }}>{inq.topic}</strong>
+                              {inq.unreadByAdmin && (
+                                <span
+                                  style={{
+                                    background: '#dc2626',
+                                    color: '#ffffff',
+                                    fontSize: '10px',
+                                    fontWeight: 800,
+                                    padding: '1px 6px',
+                                    borderRadius: '999px'
+                                  }}
+                                >
+                                  חדש
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '12.5px', color: '#475569' }}>
+                              מאת <strong>{inq.name}</strong> ({inq.email})
+                              {inq.createdAt ? ` [${inq.createdAt}]` : ''}
+                              {inq.notes ? ` — "${inq.notes}"` : ''}
+                            </div>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <button
                               type="button"
-                              onClick={() => setActiveChatReqId(isChatExpanded ? null : req.id)}
+                              onClick={() => {
+                                const nextExpanded = isChatExpanded ? null : inq.id;
+                                setActiveChatReqId(nextExpanded);
+                                if (!isChatExpanded && inq.unreadByAdmin && inq.threadKey) {
+                                  markThreadReadInCloud(inq.threadKey, SENDER_ROLES.ADMIN).catch(() => {});
+                                }
+                              }}
                               className="btn-primary-sm"
                               style={{
-                                background: isChatExpanded ? '#1e3a5f' : '#2563eb',
+                                background: isChatExpanded ? '#1e3a5f' : inq.unreadByAdmin ? '#2563eb' : '#475569',
                                 fontSize: '12px',
                                 padding: '5px 11px',
                                 display: 'flex',
@@ -1986,17 +2130,16 @@ export default function AdminAllowlistModal({
                               )}
                             </button>
 
-                            {onDismissAdminRequest && (
-                              <button
-                                type="button"
-                                onClick={() => onDismissAdminRequest(req.id)}
-                                className="btn-secondary-sm"
-                                style={{ padding: '4px 9px', fontSize: '11.5px' }}
-                              >
-                                <Check size={13} />
-                                <span>סמן כטופל</span>
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleDismissInquiry(inq)}
+                              className="btn-secondary-sm"
+                              style={{ padding: '4px 9px', fontSize: '11.5px' }}
+                              title="סמן פנייה זו כטופלה"
+                            >
+                              <Check size={13} />
+                              <span>סמן כטופל</span>
+                            </button>
                           </div>
                         </div>
 
@@ -2017,7 +2160,7 @@ export default function AdminAllowlistModal({
                                 border: '1px solid #e2e8f0',
                                 borderRadius: '8px',
                                 padding: '10px',
-                                maxHeight: '200px',
+                                maxHeight: '260px',
                                 overflowY: 'auto',
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -2026,28 +2169,70 @@ export default function AdminAllowlistModal({
                             >
                               {messages.length === 0 ? (
                                 <div style={{ fontSize: '12.5px', color: '#64748b', textAlign: 'center', padding: '10px' }}>
-                                  עדיין אין הודעות קודמות בשרשור זה. ההודעה המקורית של המורה: "{req.notes || req.topic}".
+                                  עדיין אין הודעות קודמות בשרשור זה. ההודעה המקורית של המורה: "{inq.notes || inq.topic}".
                                 </div>
                               ) : (
                                 messages.map((m) => {
                                   const isAdmin = m.senderRole === SENDER_ROLES.ADMIN;
+                                  const hasAttachment = Boolean(m.attachment?.url);
                                   return (
                                     <div
                                       key={m.id}
                                       style={{
                                         alignSelf: isAdmin ? 'flex-start' : 'flex-end',
                                         background: isAdmin ? '#dbeafe' : '#ffffff',
-                                        border: isAdmin ? '1px solid #bfdbfe' : '1px solid #cbd5e1',
+                                        border: isAdmin ? '1.5px solid #93c5fd' : '1px solid #cbd5e1',
                                         borderRadius: '8px',
                                         padding: '7px 10px',
                                         maxWidth: '85%',
-                                        fontSize: '12.5px'
+                                        fontSize: '12.5px',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                                       }}
                                     >
                                       <div style={{ fontSize: '10.5px', color: isAdmin ? '#1e40af' : '#64748b', fontWeight: 700, marginBottom: '2px' }}>
-                                        {isAdmin ? '🎧 מנהלת המערכת' : `👤 ${m.senderName || req.name}`} • {m.createdAt}
+                                        {isAdmin ? '🎧 מנהלת המערכת' : `👤 ${m.senderName || inq.name}`} • {m.createdAt}
                                       </div>
-                                      <div style={{ color: '#1e293b', whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                                      {m.text && m.text !== '📷 [צילום מסך מצורף]' && (
+                                        <div style={{ color: '#1e293b', whiteSpace: 'pre-wrap' }}>{m.text}</div>
+                                      )}
+                                      {hasAttachment && (
+                                        <div style={{ marginTop: '6px' }}>
+                                          <img
+                                            src={m.attachment.url}
+                                            alt={m.attachment.name || 'צילום מסך'}
+                                            onClick={() => setAdminPreviewImgUrl(m.attachment.url)}
+                                            style={{
+                                              maxWidth: '100%',
+                                              maxHeight: '180px',
+                                              borderRadius: '6px',
+                                              border: '1px solid #94a3b8',
+                                              cursor: 'pointer',
+                                              objectFit: 'contain',
+                                              background: '#0f172a',
+                                              display: 'block'
+                                            }}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => setAdminPreviewImgUrl(m.attachment.url)}
+                                            style={{
+                                              background: 'transparent',
+                                              border: 'none',
+                                              padding: '3px 0',
+                                              fontSize: '11px',
+                                              color: '#2563eb',
+                                              cursor: 'pointer',
+                                              fontWeight: 600,
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '4px',
+                                              marginTop: '2px'
+                                            }}
+                                          >
+                                            <span>📷 {m.attachment.name || 'צילום מסך'} ({m.attachment.sizeKb || Math.round((m.attachment.url.length * 0.75) / 1024)}KB) • לחץ/י להגדלה</span>
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })
@@ -2087,7 +2272,7 @@ export default function AdminAllowlistModal({
                                 rows={2}
                                 value={adminReplyText}
                                 onChange={(e) => setAdminReplyText(e.target.value)}
-                                placeholder={`כתוב/י מענה ישיר ל-${req.name}...`}
+                                placeholder={`כתוב/י מענה ישיר ל-${inq.name}...`}
                                 style={{
                                   flex: 1,
                                   padding: '8px 10px',
@@ -2099,7 +2284,7 @@ export default function AdminAllowlistModal({
                               />
                               <button
                                 type="button"
-                                onClick={() => handleSendAdminReply(req)}
+                                onClick={() => handleSendAdminReply(inq)}
                                 disabled={!adminReplyText.trim() || isSendingReply}
                                 className="btn-primary-sm"
                                 style={{

@@ -135,6 +135,7 @@ import {
 import TrialNdaModal from './components/modals/TrialNdaModal';
 import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import TeacherChatWidget from './components/chat/TeacherChatWidget';
+import { subscribeToAllSupportThreads } from './services/supportChatService';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import { appendBankGoalToStudent } from './domain/bankGoalApplication';
@@ -587,6 +588,17 @@ export default function App() {
       return undefined;
     }
     return subscribeToHealthEvents((events) => setHealthEvents(events));
+  }, [currentUser?.email, currentUser?.role]);
+
+  const [adminSupportThreads, setAdminSupportThreads] = useState([]);
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') {
+      setAdminSupportThreads([]);
+      return undefined;
+    }
+    return subscribeToAllSupportThreads((threads) => {
+      setAdminSupportThreads(threads || []);
+    });
   }, [currentUser?.email, currentUser?.role]);
 
   const handleMarkHealthReviewed = () => {
@@ -1672,8 +1684,9 @@ export default function App() {
 
   const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
   const unreviewedHealthEventsCount = countUnreviewedHealthEvents(healthEvents, healthReviewedMs);
+  const unreadChatThreadsCount = (adminSupportThreads || []).filter((t) => t.unreadByAdmin).length;
   const totalAdminAlerts =
-    lockedOutUsers.length + (adminRequests || []).length + unreviewedHealthEventsCount;
+    lockedOutUsers.length + (adminRequests || []).length + unreadChatThreadsCount + unreviewedHealthEventsCount;
   const trialRemainingDays = currentUser?.isTrialUser ? getTrialRemainingDays(currentUser) : null;
   const paidRemainingDays = (!currentUser?.isTrialUser && currentUser) ? getPaidRemainingDays(currentUser) : null;
 
@@ -1963,6 +1976,8 @@ export default function App() {
                 `התראת אבטחה למנהל/ת המערכת: ${lockedOutUsers.length} משתמש/ים נחסמו אוטומטית לאחר 5 ניסיונות סיסמה שגויים (${lockedOutUsers
                   .map((u) => u.name)
                   .join(', ')}). `}
+              {unreadChatThreadsCount > 0 &&
+                `💬 קיימות ${unreadChatThreadsCount} פניות צ'אט חדשות ממורות הממתינות למענה. `}
               {adminRequests.length > 0 &&
                 `קיימות ${adminRequests.length} פניות חדשות מדף הכניסה הממתינות לטיפולך. `}
               {unreviewedHealthEventsCount > 0 &&
@@ -1972,10 +1987,10 @@ export default function App() {
           <button
             type="button"
             onClick={() => {
-              if (unreviewedHealthEventsCount > 0 && lockedOutUsers.length === 0 && adminRequests.length === 0) {
-                setAdminModalInitialTab('health');
-              } else if (lockedOutUsers.length > 0 || adminRequests.length > 0) {
+              if (unreadChatThreadsCount > 0 || lockedOutUsers.length > 0 || adminRequests.length > 0) {
                 setAdminModalInitialTab('requests');
+              } else if (unreviewedHealthEventsCount > 0) {
+                setAdminModalInitialTab('health');
               } else {
                 setAdminModalInitialTab('users');
               }
@@ -2828,6 +2843,7 @@ export default function App() {
         <AdminAllowlistModal
           isOpen={showAdminModal}
           initialTab={adminModalInitialTab}
+          initialSupportThreads={adminSupportThreads}
           onClose={() => setShowAdminModal(false)}
           allowedUsers={allowedUsers}
           onUpdateAllowedUsers={handleUpdateAllowedUsers}

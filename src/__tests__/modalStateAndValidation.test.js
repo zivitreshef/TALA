@@ -762,5 +762,117 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
       });
     });
 
+    describe('AdminAllowlistModal Inquiries & Support Chat Bi-directional Handling (Regression Tests)', () => {
+      it('renders incoming support chat threads when adminRequests is empty and displays unread indicator', () => {
+        const mockSupportThreads = [
+          {
+            id: 'teacher_tala_org',
+            userEmail: 'teacher@tala.org',
+            userName: 'מיכל כהן',
+            topic: "💬 פנייה מתוך צ'אט התמיכה",
+            unreadByAdmin: true,
+            updatedAt: new Date().toISOString(),
+            messages: [
+              {
+                id: 'msg_1',
+                senderRole: 'user',
+                senderEmail: 'teacher@tala.org',
+                senderName: 'מיכל כהן',
+                text: 'שלום, נתקלתי בבעיה בעת שמירת תוכנית העבודה',
+                createdAt: '27/10/2026, 18:00',
+                timestamp: Date.now()
+              }
+            ]
+          }
+        ];
+
+        const html = renderToStaticMarkup(
+          React.createElement(AdminAllowlistModal, {
+            isOpen: true,
+            initialTab: 'requests',
+            onClose: () => {},
+            allowedUsers: [{ role: 'admin', email: 'admin@tala.com' }],
+            currentUser: { role: 'admin', email: 'admin@tala.com' },
+            adminRequests: [],
+            initialSupportThreads: mockSupportThreads
+          })
+        );
+
+        // Must display the teacher thread, not "אין פניות ממתינות כרגע"
+        expect(html).not.toContain('אין פניות ממתינות כרגע.');
+        expect(html).toContain('מיכל כהן');
+        expect(html).toContain('teacher@tala.org');
+        expect(html).toContain('💬 פנייה מתוך צ&#x27;אט התמיכה');
+        expect(html).toContain('שלום, נתקלתי בבעיה בעת שמירת תוכנית העבודה');
+        expect(html).toContain('חדש');
+        expect(html).toContain('מענה למורה (צ&#x27;אט)');
+        expect(html).toContain('1 ממתינות למענה');
+      });
+
+      it('renders screenshot attachment thumbnail and zoom preview button in admin chat thread', () => {
+        const mockSupportThreadsWithScreenshot = [
+          {
+            id: 'screenshot_thread',
+            userEmail: 'teacher_img@tala.org',
+            userName: 'רונית לוי',
+            topic: '💬 תקלה עם תמונה',
+            unreadByAdmin: false,
+            updatedAt: new Date().toISOString(),
+            messages: [
+              {
+                id: 'msg_img_1',
+                senderRole: 'user',
+                senderEmail: 'teacher_img@tala.org',
+                senderName: 'רונית לוי',
+                text: 'הנה צילום המסך של השגיאה',
+                createdAt: '27/10/2026, 18:05',
+                timestamp: Date.now(),
+                attachment: {
+                  name: 'error_screen.jpg',
+                  url: 'data:image/jpeg;base64,mockImageData123',
+                  sizeKb: 45
+                }
+              }
+            ]
+          }
+        ];
+
+        const html = renderToStaticMarkup(
+          React.createElement(AdminAllowlistModal, {
+            isOpen: true,
+            initialTab: 'requests',
+            onClose: () => {},
+            allowedUsers: [{ role: 'admin', email: 'admin@tala.com' }],
+            currentUser: { role: 'admin', email: 'admin@tala.com' },
+            adminRequests: [],
+            initialSupportThreads: mockSupportThreadsWithScreenshot,
+            initialActiveChatReqId: 'screenshot_thread'
+          })
+        );
+
+        expect(html).toContain('רונית לוי');
+        expect(html).toContain('data:image/jpeg;base64,mockImageData123');
+        expect(html).toContain('error_screen.jpg');
+        expect(html).toContain('45KB');
+        expect(html).toContain('לחץ/י להגדלה');
+      });
+
+      it('shows empty state when both adminRequests and supportThreads are empty', () => {
+        const html = renderToStaticMarkup(
+          React.createElement(AdminAllowlistModal, {
+            isOpen: true,
+            initialTab: 'requests',
+            onClose: () => {},
+            allowedUsers: [{ role: 'admin', email: 'admin@tala.com' }],
+            currentUser: { role: 'admin', email: 'admin@tala.com' },
+            adminRequests: [],
+            initialSupportThreads: []
+          })
+        );
+
+        expect(html).toContain('אין פניות ממתינות כרגע.');
+      });
+    });
+
   });
 });
