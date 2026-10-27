@@ -20,8 +20,8 @@ describe('TeacherChatWidget Component (Bi-directional Support Chat)', () => {
 
     expect(html).toContain('צ&#x27;אט תמיכה ועזרה');
     expect(html).toContain('title="פתח צ&#x27;אט תמיכה ישיר מול מנהלת המערכת"');
-    // Watermarked faded background styling
-    expect(html).toContain('rgba(255, 255, 255, 0.78)');
+    // Watermarked faded background styling in signature blue & purple theme
+    expect(html).toContain('rgba(74, 136, 199, 0.16)');
   });
 
   it('does not render anything if neither email nor currentUser is provided', () => {

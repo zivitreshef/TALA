@@ -147,7 +147,7 @@ export default function TeacherChatWidget({
         fontFamily: "'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif"
       }}
     >
-      {/* Floating launcher button with soft "watermarked" faded colors */}
+      {/* Floating launcher button in blue & purple theme (watermarked fade when idle, vibrant on hover) */}
       {!isOpen && (
         <button
           type="button"
@@ -161,21 +161,21 @@ export default function TeacherChatWidget({
             padding: '8px 16px',
             borderRadius: '999px',
             background: isButtonHovered
-              ? 'rgba(255, 255, 255, 0.95)'
-              : 'rgba(255, 255, 255, 0.78)',
+              ? 'linear-gradient(135deg, #4a88c7 0%, #7c65b8 100%)'
+              : 'linear-gradient(135deg, rgba(74, 136, 199, 0.16) 0%, rgba(124, 101, 184, 0.18) 100%)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
-            color: isButtonHovered ? '#1e3a5f' : '#475569',
+            color: isButtonHovered ? '#ffffff' : '#334e68',
             border: isButtonHovered
-              ? '1.5px solid #94a3b8'
-              : '1.5px solid rgba(203, 213, 225, 0.75)',
+              ? '1.5px solid #7c65b8'
+              : '1.5px solid rgba(124, 101, 184, 0.35)',
             boxShadow: isButtonHovered
-              ? '0 6px 20px rgba(15, 23, 42, 0.14)'
-              : '0 4px 14px rgba(15, 23, 42, 0.08)',
+              ? '0 8px 24px rgba(74, 136, 199, 0.32)'
+              : '0 4px 14px rgba(124, 101, 184, 0.1)',
             cursor: 'pointer',
             fontSize: '13px',
-            fontWeight: 600,
-            opacity: isButtonHovered ? 1 : 0.88,
+            fontWeight: 700,
+            opacity: isButtonHovered ? 1 : 0.9,
             transition: 'all 0.22s ease-in-out',
             outline: 'none'
           }}
@@ -184,7 +184,7 @@ export default function TeacherChatWidget({
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <MessageCircle
               size={17}
-              color={isButtonHovered ? '#2563eb' : '#64748b'}
+              color={isButtonHovered ? '#ffffff' : '#7c65b8'}
               style={{ transition: 'color 0.2s ease' }}
             />
             {unreadCount > 0 && (
@@ -214,7 +214,7 @@ export default function TeacherChatWidget({
         </button>
       )}
 
-      {/* Elegant Chat Window matching site's theme & typography */}
+      {/* Elegant Chat Window in signature blue & purple theme */}
       {isOpen && (
         <div
           style={{
@@ -224,7 +224,7 @@ export default function TeacherChatWidget({
             maxHeight: 'calc(100vh - 120px)',
             background: '#ffffff',
             borderRadius: '16px',
-            boxShadow: '0 12px 36px rgba(15, 23, 42, 0.22)',
+            boxShadow: '0 12px 36px rgba(124, 101, 184, 0.24)',
             border: '1px solid #cbd5e1',
             display: 'flex',
             flexDirection: 'column',
@@ -232,17 +232,17 @@ export default function TeacherChatWidget({
             fontFamily: "'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif"
           }}
         >
-          {/* Header styled identically to TALA modals & Rubik font */}
+          {/* Header styled with exact Blue & Purple gradient (#4a88c7 -> #7c65b8) */}
           <div
             style={{
-              background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
+              background: 'linear-gradient(135deg, #4a88c7 0%, #7c65b8 100%)',
               color: '#ffffff',
               padding: '12px 16px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               flexShrink: 0,
-              borderBottom: '1px solid rgba(255, 255, 255, 0.15)'
+              boxShadow: '0 2px 8px rgba(74, 136, 199, 0.2)'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
@@ -251,7 +251,7 @@ export default function TeacherChatWidget({
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
-                  background: 'rgba(255, 255, 255, 0.2)',
+                  background: 'rgba(255, 255, 255, 0.22)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -272,8 +272,8 @@ export default function TeacherChatWidget({
                 >
                   צ'אט תמיכה TALA
                 </h4>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#bbf7d0', marginTop: '1px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#e0e7ff', marginTop: '1px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }} />
                   <span>מענה ישיר ממנהלת המערכת</span>
                 </div>
               </div>
@@ -356,7 +356,7 @@ export default function TeacherChatWidget({
                   lineHeight: '1.5'
                 }}
               >
-                <Sparkles size={24} color="#2563eb" style={{ marginBottom: '6px' }} />
+                <Sparkles size={24} color="#7c65b8" style={{ marginBottom: '6px' }} />
                 <strong style={{ display: 'block', color: '#1e3a5f', marginBottom: '4px', fontSize: '13.5px' }}>
                   שלום {effectiveName}!
                 </strong>
@@ -390,8 +390,8 @@ export default function TeacherChatWidget({
                   >
                     {isAdmin ? (
                       <>
-                        <ShieldCheck size={11} color="#2563eb" />
-                        <strong style={{ color: '#2563eb' }}>{msg.senderName}</strong>
+                        <ShieldCheck size={11} color="#7c65b8" />
+                        <strong style={{ color: '#7c65b8' }}>{msg.senderName}</strong>
                       </>
                     ) : (
                       <>
@@ -404,15 +404,18 @@ export default function TeacherChatWidget({
 
                   <div
                     style={{
-                      background: isAdmin ? '#eff6ff' : '#2563eb',
-                      color: isAdmin ? '#1e3a5f' : '#ffffff',
-                      border: isAdmin ? '1px solid #bfdbfe' : 'none',
+                      background: isAdmin
+                        ? '#f3f0fb'
+                        : 'linear-gradient(135deg, #4a88c7 0%, #7c65b8 100%)',
+                      color: isAdmin ? '#2e1065' : '#ffffff',
+                      border: isAdmin ? '1px solid #ddd6fe' : 'none',
                       borderRadius: isAdmin ? '14px 14px 14px 2px' : '14px 14px 2px 14px',
                       padding: '9px 13px',
                       fontSize: '13px',
                       lineHeight: '1.45',
                       wordBreak: 'break-word',
-                      whiteSpace: 'pre-wrap'
+                      whiteSpace: 'pre-wrap',
+                      boxShadow: isAdmin ? 'none' : '0 2px 6px rgba(74, 136, 199, 0.2)'
                     }}
                   >
                     {msg.text}
@@ -453,26 +456,28 @@ export default function TeacherChatWidget({
                 outline: 'none',
                 transition: 'border-color 0.2s'
               }}
-              onFocus={(e) => (e.target.style.borderColor = '#2563eb')}
+              onFocus={(e) => (e.target.style.borderColor = '#7c65b8')}
               onBlur={(e) => (e.target.style.borderColor = '#cbd5e1')}
             />
 
             <button
               type="submit"
               disabled={!inputMessage.trim() || isSending}
-              className="btn-primary"
               style={{
                 width: '36px',
                 height: '36px',
                 borderRadius: '8px',
-                background: !inputMessage.trim() || isSending ? '#cbd5e1' : '#2563eb',
+                background: !inputMessage.trim() || isSending
+                  ? '#cbd5e1'
+                  : 'linear-gradient(135deg, #4a88c7 0%, #7c65b8 100%)',
                 color: '#ffffff',
                 border: 'none',
                 cursor: !inputMessage.trim() || isSending ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: !inputMessage.trim() || isSending ? 'none' : '0 2px 8px rgba(74, 136, 199, 0.3)'
               }}
               title="שלח הודעה"
             >
