@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   DEFAULT_USER_PREFERENCES,
@@ -402,5 +404,11 @@ describe('Teacher Profile in Reports and Exports', () => {
     const student = applyPreferencesToNewStudent({ name: 'רוני' }, prefs);
     expect(student.homeroomTeacher).toBe('מוטי גל רשף');
     expect(student.integrationTeacher).toBe('מוטי גל רשף');
+  });
+
+  it('ensures App.jsx imports useMemo to prevent runtime ReferenceError (Regression #useMemo)', () => {
+    const appSource = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
+    const firstLines = appSource.slice(0, 500);
+    expect(firstLines).toMatch(/import\s+React,\s*\{[^}]*useMemo[^}]*\}\s+from\s+['"]react['"]/);
   });
 });
