@@ -20,6 +20,12 @@ export function generateSessionId() {
 let cachedClientIp = null;
 let clientIpPromise = null;
 
+export function setCachedClientIp(ip) {
+  if (ip && typeof ip === 'string' && !ip.startsWith('IP לא זמין')) {
+    cachedClientIp = ip.trim();
+  }
+}
+
 // Lightweight public IP detection with quick timeout, in-memory caching and local fallback
 export async function getClientIp() {
   if (cachedClientIp) return cachedClientIp;
@@ -34,7 +40,7 @@ export async function getClientIp() {
           try {
             controller.abort();
           } catch (_) {}
-        }, 2000);
+        }, 1200);
       }
       const res = await fetch('https://api.ipify.org?format=json', {
         signal: controller ? controller.signal : undefined
@@ -61,13 +67,18 @@ export async function getClientIp() {
 /**
  * Checks whether an active session is currently running on another host or tab.
  */
-export async function checkActiveSession(email, currentSessionId) {
+export async function checkActiveSession(email, currentSessionId, knownClientIp) {
+  if (knownClientIp) {
+    setCachedClientIp(knownClientIp);
+  }
   const key = sessionDocKey(email);
   const db = getFirestoreDb();
 
-  // Parallelize IP resolution and Firestore session lookup to cut login latency
+  // If client IP is already known, resolve immediately without calling external ipify
+  const ipPromise = knownClientIp ? Promise.resolve(knownClientIp) : getClientIp();
+
   const [clientIp, snap] = await Promise.all([
-    getClientIp(),
+    ipPromise,
     db
       ? getDoc(doc(db, 'tala_sessions', key)).catch((err) => {
           console.warn('Firestore active session check warning:', err);
@@ -131,7 +142,7 @@ export async function checkActiveSession(email, currentSessionId) {
  */
 export async function activateSession(email, sessionId, clientIp) {
   const key = sessionDocKey(email);
-  const ip = clientIp || await getClientIp();
+  const ip = clientIp || cachedClientIp || 'IP לא זמין / רשת מקומית';
   const nowIso = new Date().toISOString();
 
   const payload = {
@@ -154,14 +165,12 @@ export async function activateSession(email, sessionId, clientIp) {
     }
   } catch (e) {}
 
-  // Sync to Firestore (parallelize doc write and user presence)
+  // Sync to Firestore (record presence in background, await session doc write)
   const db = getFirestoreDb();
   if (db) {
     try {
-      await Promise.all([
-        setDoc(doc(db, 'tala_sessions', key), payload, { merge: true }),
-        recordUserPresence({ email, sessionId, ipAddress: ip })
-      ]);
+      recordUserPresence({ email, sessionId, ipAddress: ip }).catch(() => {});
+      await setDoc(doc(db, 'tala_sessions', key), payload, { merge: true });
     } catch (err) {
       console.warn('Failed to record session activation in Firestore:', err);
     }

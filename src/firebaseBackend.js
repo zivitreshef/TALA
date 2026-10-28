@@ -222,7 +222,41 @@ export async function loginWithTala(email, accessCode) {
   }
   if (!data?.allowed || !data.token) return { ...data, allowed: false };
   await signInWithCustomToken(auth, data.token);
-  return { allowed: true, user: data.user };
+  return { allowed: true, user: data.user, clientIp: data.clientIp };
+}
+
+let lastLoginPrewarmMs = 0;
+
+export function _resetLoginPrewarmThrottleForTesting() {
+  lastLoginPrewarmMs = 0;
+}
+const LOGIN_PREWARM_THROTTLE_MS = 60 * 1000;
+
+/**
+ * Pre-warms the `talaLogin` Cloud Function in the background while the teacher
+ * views or interacts with the login page. Completely eliminates cold-start delay.
+ */
+export async function prewarmTalaLogin() {
+  const now = Date.now();
+  if (now - lastLoginPrewarmMs < LOGIN_PREWARM_THROTTLE_MS) return;
+  lastLoginPrewarmMs = now;
+
+  const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
+  const url =
+    import.meta.env?.VITE_TALA_LOGIN_URL ||
+    `https://us-central1-${projectId}.cloudfunctions.net/talaLogin`;
+
+  try {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => { try { controller.abort(); } catch (_) {} }, 4000) : null;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ping: true }),
+      signal: controller ? controller.signal : undefined
+    }).catch(() => {});
+    if (timer) clearTimeout(timer);
+  } catch (_) {}
 }
 
 /**
