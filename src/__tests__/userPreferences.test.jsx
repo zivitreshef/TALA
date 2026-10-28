@@ -257,7 +257,7 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
 
     expect(html).toContain('data-testid="daily-digest-time-select"');
     expect(html).toContain('value="13:30"');
-    expect(html).toContain('תזכורת פדגוגית');
+    expect(html).toContain('תזכורת וסיכום פדגוגי');
     expect(html).not.toContain('תזכורת פדגוגית חודשית למעקב יעדים:');
   });
 
@@ -307,7 +307,7 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
   });
 
   
-  it('renders "Send Now" button for pedagogical reminder and generates rich reminder HTML', () => {
+  it('renders "Send Now" button for pedagogical summary and generates rich team-meeting ready HTML', () => {
     const html = renderToStaticMarkup(
       <TeacherPreferencesModal
         isOpen={true}
@@ -319,9 +319,9 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
     );
 
     expect(html).toContain('data-testid="send-pedagogical-reminder-now-btn"');
-    expect(html).toContain('שלח תזכורת כעת למייל');
+    expect(html).toContain('שלח סיכום פדגוגי כעת למייל');
 
-    // Test email template builder
+    // Test email template builder with accomplishments and adhoc notes
     const sampleGaps = [
       {
         studentId: 'st_1',
@@ -337,24 +337,64 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
       }
     ];
 
+    const sampleAccomplishments = {
+      advancedGoals: [
+        {
+          studentId: 'st_1',
+          studentName: 'דניאל ישראלי',
+          framework: 'כיתת שילוב ב׳',
+          goalTitle: 'עצמאות בהתארגנות בבוקר',
+          environment: 'עצמאות',
+          currentProgress: 85,
+          targetProgress: 80
+        }
+      ],
+      recentObservations: [
+        {
+          studentId: 'st_1',
+          studentName: 'דניאל ישראלי',
+          framework: 'כיתת שילוב ב׳',
+          goalTitle: 'משחק חברתי בהפסקה',
+          environment: 'חברתי',
+          timestamp: '2026-10-25T11:00:00Z',
+          progress: 75,
+          note: 'הגיב מצוין לתיווך חזותי והשתלב במשחק כדורגל',
+          supportLevel: 'תיווך חלקי'
+        }
+      ]
+    };
+
     const emailHtmlFullName = buildPedagogicalReminderEmailHtml({
       teacherName: 'מיכל כהן',
       gaps: sampleGaps,
+      accomplishments: sampleAccomplishments,
       totalStudents: 1,
       privacyMode: 'full_name'
     });
 
-    expect(emailHtmlFullName).toContain('ריכוז רציפות פדגוגית ומעקב יעדים');
-    expect(emailHtmlFullName).toContain('שלום מיכל כהן');
-    expect(emailHtmlFullName).toContain('דניאל ישראלי');
-    expect(emailHtmlFullName).toContain('קריאת טקסט שוטפת ברמת גיל');
+    // Positive and team-ready headers
+    expect(emailHtmlFullName).toContain('סיכום פדגוגי שבועי • מוכנות לישיבות צוות');
+    expect(emailHtmlFullName).toContain('הישגים והתקדמות לפי התוכנית');
+    expect(emailHtmlFullName).toContain('עצמאות בהתארגנות בבוקר');
+    expect(emailHtmlFullName).toContain('85%');
+
+    // Ad-hoc observation notes from individual sessions
+    expect(emailHtmlFullName).toContain('תובנות ודגשים מהעבודה הפרטנית בזמן אמת');
+    expect(emailHtmlFullName).toContain('הגיב מצוין לתיווך חזותי והשתלב במשחק כדורגל');
+    expect(emailHtmlFullName).toContain('תיווך חלקי');
+
+    // Team meeting preparation checklist
+    expect(emailHtmlFullName).toContain('נקודות מפתח להצגה בישיבת צוות');
+
+    // Continuity gaps
+    expect(emailHtmlFullName).toContain('מוקדים מומלצים לתצפית בימים הקרובים');
     expect(emailHtmlFullName).toContain('52 ימים');
-    expect(emailHtmlFullName).toContain('40% מתוך 80%');
 
     // Test acronym mode
     const emailHtmlAcronym = buildPedagogicalReminderEmailHtml({
       teacherName: 'מיכל כהן',
       gaps: sampleGaps,
+      accomplishments: sampleAccomplishments,
       totalStudents: 1,
       privacyMode: 'acronym'
     });

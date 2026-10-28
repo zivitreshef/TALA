@@ -125,17 +125,19 @@ export default function TeacherPreferencesModal({
 
     try {
       const gaps = getObservationGaps(students || [], 45, new Date());
+      const accomplishments = getPedagogicalAccomplishmentsSummary(students || [], 30, new Date());
       await sendPedagogicalReminderEmailInBackground({
         toEmail: recipient,
         teacherName: draftPrefs.fullName || currentUser?.name || 'צוות חינוכי',
         gaps,
+        accomplishments,
         totalStudents: (students || []).length,
         privacyMode: draftPrefs.defaultPrivacyMode || 'full_name'
       });
 
       setReminderStatusMessage({
         type: 'success',
-        text: `תזכורת פדגוגית נשלחה בהצלחה למייל ${recipient} (${gaps.length} יעדים לתשומת לב).`
+        text: `סיכום פדגוגי נשלח בהצלחה למייל ${recipient} (${accomplishments.advancedGoals.length} יעדים בתנופה, ${accomplishments.recentObservations.length} תצפיות).`
       });
     } catch (err) {
       setReminderStatusMessage({
@@ -1259,7 +1261,7 @@ export default function TeacherPreferencesModal({
             {/* 2. Pedagogical Reminder */}
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <strong style={{ fontSize: '14px', color: '#1e293b' }}>תזכורת פדגוגית</strong>
+                <strong style={{ fontSize: '14px', color: '#1e293b' }}>תזכורת וסיכום פדגוגי (מוכנות לישיבות צוות)</strong>
               </div>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
@@ -1273,7 +1275,7 @@ export default function TeacherPreferencesModal({
                   }}
                   style={{ width: '16px', height: '16px', accentColor: '#3b6ea5' }}
                 />
-                <span>הפעל תזכורת פדגוגית במייל (ריכוז תלמידים שלא עודכנו מעל 45 יום)</span>
+                <span>הפעל סיכום פדגוגי שבועי/חודשי במייל (הישגים, תובנות מהעבודה הפרטנית ורציפות יעדים)</span>
               </label>
 
               {(draftPrefs.pedagogicalReminderEnabled || draftPrefs.monthlyPedagogicalReminder) && (
@@ -1435,7 +1437,7 @@ export default function TeacherPreferencesModal({
                   }}
                 >
                   <Send size={14} />
-                  <span>{isSendingReminder ? 'שולח תזכורת כעת...' : 'שלח תזכורת כעת למייל'}</span>
+                  <span>{isSendingReminder ? 'שולח סיכום כעת...' : 'שלח סיכום פדגוגי כעת למייל'}</span>
                 </button>
                 {reminderStatusMessage && (
                   <span

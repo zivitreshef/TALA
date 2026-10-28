@@ -165,6 +165,78 @@ export function getObservationGaps(students = [], thresholdDays = 21, referenceD
 /**
  * Creates deep link URL for Outlook 365 Calendar web interface.
  */
+
+/**
+ * Summarizes pedagogical accomplishments, recent observations, adhoc notes,
+ * and progress milestones across students for weekly/monthly digests and team meetings.
+ */
+export function getPedagogicalAccomplishmentsSummary(students = [], windowDays = 30, referenceDate = new Date()) {
+  const nowMs = referenceDate.getTime();
+  const windowMs = windowDays * 24 * 60 * 60 * 1000;
+
+  const recentObservations = [];
+  const advancedGoals = [];
+  let totalGoals = 0;
+  let onTrackGoalsCount = 0;
+
+  for (const student of students) {
+    const goals = Array.isArray(student.goals) ? student.goals : [];
+    for (const goal of goals) {
+      if (!goal.title || !goal.title.trim()) continue;
+      totalGoals++;
+
+      const currentProg = Number(goal.currentProgress ?? 0);
+      const targetProg = Number(goal.targetProgress ?? 80);
+      if (currentProg >= 60) {
+        onTrackGoalsCount++;
+      }
+      if (currentProg >= 70) {
+        advancedGoals.push({
+          studentId: student.id,
+          studentName: student.name || 'תלמיד/ה',
+          framework: student.educationalFramework || '',
+          goalTitle: goal.title,
+          environment: goal.environment || 'כללי',
+          currentProgress: currentProg,
+          targetProgress: targetProg
+        });
+      }
+
+      const observations = Array.isArray(goal.observations) ? goal.observations : [];
+      for (const obs of observations) {
+        if (!obs.timestamp) continue;
+        const obsMs = new Date(obs.timestamp).getTime();
+        if (Number.isNaN(obsMs)) continue;
+
+        if (nowMs - obsMs <= windowMs) {
+          recentObservations.push({
+            studentId: student.id,
+            studentName: student.name || 'תלמיד/ה',
+            framework: student.educationalFramework || '',
+            goalTitle: goal.title,
+            environment: goal.environment || 'כללי',
+            timestamp: obs.timestamp,
+            progress: obs.progress ?? currentProg,
+            note: String(obs.note || '').trim(),
+            supportLevel: obs.supportLevel || ''
+          });
+        }
+      }
+    }
+  }
+
+  // Sort recent observations by newest first
+  recentObservations.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  return {
+    totalStudents: students.length,
+    totalGoals,
+    onTrackGoalsCount,
+    recentObservations,
+    advancedGoals
+  };
+}
+
 export function createOutlook365CalendarUrl({
   title = '',
   startIso = '',

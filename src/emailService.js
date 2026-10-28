@@ -859,30 +859,96 @@ export async function sendUserSurveyEmailToAdmin({
 /**
  * Build rich HTML email for Pedagogical Reminder (מעקב יעדים ורציפות פדגוגית)
  */
+/**
+ * Build rich HTML email for Pedagogical Summary & Team Meeting Preparation
+ * Includes positive accomplishments, recent ad-hoc observations from individual work,
+ * milestone progress, and observation gaps for continuity.
+ */
 export function buildPedagogicalReminderEmailHtml({
   teacherName = 'צוות חינוכי',
   gaps = [],
+  accomplishments = null,
   totalStudents = 0,
   privacyMode = 'full_name',
   siteUrl = 'https://zivitreshef.github.io/TALA/'
 }) {
   const appUrl = siteUrl || 'https://zivitreshef.github.io/TALA/';
 
+  const recentObs = Array.isArray(accomplishments?.recentObservations)
+    ? accomplishments.recentObservations
+    : [];
+  const advancedGoals = Array.isArray(accomplishments?.advancedGoals)
+    ? accomplishments.advancedGoals
+    : [];
+
+  // 1. Observations rows / cards
+  const observationCards = recentObs.slice(0, 8).map((obs) => {
+    const studentName = privacyMode === 'acronym'
+      ? toHebrewAcronym(obs.studentName || '')
+      : (obs.studentName || 'תלמיד/ה');
+
+    const supportBadge = obs.supportLevel
+      ? `<span style="display:inline-block; background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; margin-right:6px;">${obs.supportLevel}</span>`
+      : '';
+
+    const dateStr = obs.timestamp ? new Date(obs.timestamp).toLocaleDateString('he-IL') : '';
+
+    return `
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-right:4px solid #3b82f6; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+          <div>
+            <strong style="color:#1e3a5f; font-size:13.5px;">${studentName}</strong>
+            <span style="color:#64748b; font-size:12px; margin-right:6px;">(${obs.framework || 'מסגרת'})</span>
+            ${supportBadge}
+          </div>
+          <div style="color:#94a3b8; font-size:11.5px;">${dateStr}</div>
+        </div>
+        <div style="font-size:12.5px; color:#334155; margin-bottom:4px;">
+          <strong>יעד:</strong> ${obs.goalTitle} <span style="color:#64748b; font-size:11.5px;">[${obs.environment || 'כללי'}]</span>
+        </div>
+        ${obs.note ? `<div style="background:#ffffff; border:1px dashed #cbd5e1; border-radius:6px; padding:8px 10px; font-size:12.5px; color:#1e293b; line-height:1.5;">
+          💬 <em>"${obs.note}"</em>
+        </div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // 2. Advanced Goals rows
+  const advancedGoalsRows = advancedGoals.slice(0, 8).map((goal, idx) => {
+    const studentName = privacyMode === 'acronym'
+      ? toHebrewAcronym(goal.studentName || '')
+      : (goal.studentName || 'תלמיד/ה');
+
+    return `
+      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f0fdf4'}; border-bottom:1px solid #dcfce7;">
+        <td style="padding:10px 12px; font-weight:700; color:#14532d;">${studentName}</td>
+        <td style="padding:10px 12px; color:#166534; font-size:13px;">${goal.goalTitle}</td>
+        <td style="padding:10px 12px; color:#475569; font-size:12px;">${goal.environment || 'כללי'}</td>
+        <td style="padding:10px 12px; text-align:center;">
+          <span style="display:inline-block; background:#dcfce7; color:#15803d; font-weight:800; font-size:12.5px; padding:3px 10px; border-radius:999px;">
+            ${goal.currentProgress}%
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // 3. Observation Gaps rows
   const gapsRows = gaps.map((gap, idx) => {
     const studentDisplayName = privacyMode === 'acronym'
       ? toHebrewAcronym(gap.studentName || '')
       : (gap.studentName || 'תלמיד/ה');
 
     const daysText = gap.neverObserved ? 'טרם נרשמה תצפית' : `${gap.daysSinceObservation} ימים`;
-    const progressText = `${gap.currentProgress ?? 0}% מתוך ${gap.targetProgress ?? 80}%`;
+    const progressText = `${gap.currentProgress ?? 0}%`;
 
     return `
-      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'}; border-bottom:1px solid #e2e8f0;">
-        <td style="padding:10px 12px; font-weight:700; color:#1e3a5f;">${studentDisplayName}</td>
-        <td style="padding:10px 12px; color:#475569; font-size:12.5px;">${gap.framework || '—'}</td>
-        <td style="padding:10px 12px; color:#334155; font-size:13px;">${gap.goalTitle || 'יעד ללא כותרת'} <span style="font-size:11.5px; color:#64748b;">(${gap.environment || 'כללי'})</span></td>
-        <td style="padding:10px 12px; text-align:center; font-weight:700; color:#dc2626; font-size:12.5px;">${daysText}</td>
-        <td style="padding:10px 12px; text-align:center; color:#2563eb; font-weight:700; font-size:12.5px;">${progressText}</td>
+      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#fffbeb'}; border-bottom:1px solid #fef3c7;">
+        <td style="padding:9px 12px; font-weight:700; color:#1e3a5f;">${studentDisplayName}</td>
+        <td style="padding:9px 12px; color:#475569; font-size:12.5px;">${gap.framework || '—'}</td>
+        <td style="padding:9px 12px; color:#334155; font-size:12.5px;">${gap.goalTitle || 'יעד ללא כותרת'} <span style="font-size:11px; color:#64748b;">(${gap.environment || 'כללי'})</span></td>
+        <td style="padding:9px 12px; text-align:center; font-weight:700; color:#d97706; font-size:12px;">${daysText}</td>
+        <td style="padding:9px 12px; text-align:center; color:#2563eb; font-weight:700; font-size:12px;">${progressText}</td>
       </tr>
     `;
   }).join('');
@@ -902,51 +968,107 @@ export function buildPedagogicalReminderEmailHtml({
         <!-- Header Banner -->
         <div style="background:linear-gradient(135deg, #1b365d 0%, #3b6ea5 55%, #6b46c1 100%); color:#ffffff; padding:26px 24px; text-align:right;">
           <div style="display:inline-block; background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.3); border-radius:999px; padding:3px 12px; font-size:12px; font-weight:bold; margin-bottom:10px;">
-            📌 תזכורת פדגוגית למעקב יעדים
+            🌟 סיכום פדגוגי שבועי • מוכנות לישיבות צוות
           </div>
-          <h1 style="margin:0 0 6px 0; font-size:22px; font-weight:800; color:#ffffff;">ריכוז רציפות פדגוגית ומעקב יעדים</h1>
+          <h1 style="margin:0 0 6px 0; font-size:22px; font-weight:800; color:#ffffff;">הישגים, תצפיות מהעבודה הפרטנית ורציפות יעדים</h1>
           <p style="margin:0; font-size:13.5px; color:#e2e8f0; line-height:1.5;">
-            מערכת TALA – תוכנית עבודה שנתית אקולוגית
+            מערכת TALA – תוכנית עבודה שנתית בגישה האקולוגית
           </p>
         </div>
 
         <!-- Body Content -->
         <div style="padding:24px; text-align:right;">
-          <p style="margin:0 0 12px 0; font-size:16px; font-weight:bold; color:#1e3a5f;">
+          <p style="margin:0 0 10px 0; font-size:16px; font-weight:bold; color:#1e3a5f;">
             שלום ${teacherName},
           </p>
-          <p style="margin:0 0 18px 0; font-size:14px; line-height:1.65; color:#334155;">
-            זוהי תזכורת פדגוגית שנועדה לסייע לך לשמור על רציפות תיעוד, מעקב והערכה בעיצוב תוכניות הלימודים של תלמידייך.
+          <p style="margin:0 0 18px 0; font-size:13.5px; line-height:1.65; color:#334155;">
+            סיכום זה מרכז את עשייתך הפדגוגית: מה שהושג בפועל, תובנות שנרשמו בעבודה הפרטנית, ומוקדים לתשומת לב – מוכן ומאורגן לקראת ישיבות צוות ושיח עם עמיתים והורים.
           </p>
 
-          <!-- KPI Summary Badges -->
-          <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:130px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px; text-align:center;">
-              <div style="font-size:11.5px; color:#1e40af; font-weight:700;">תלמידים במעקב</div>
-              <div style="font-size:20px; font-weight:800; color:#1d4ed8; margin-top:2px;">${totalStudents}</div>
+          <!-- Positive KPI Badges -->
+          <div style="display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:125px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px; text-align:center;">
+              <div style="font-size:11px; color:#1e40af; font-weight:700;">תלמידים במעקב</div>
+              <div style="font-size:19px; font-weight:800; color:#1d4ed8; margin-top:2px;">${totalStudents}</div>
             </div>
-            <div style="flex:1; min-width:130px; background:${gaps.length > 0 ? '#fef2f2' : '#f0fdf4'}; border:1px solid ${gaps.length > 0 ? '#fecaca' : '#bbf7d0'}; border-radius:10px; padding:12px; text-align:center;">
-              <div style="font-size:11.5px; color:${gaps.length > 0 ? '#991b1b' : '#166534'}; font-weight:700;">יעדים ללא עדכון (45+ יום)</div>
-              <div style="font-size:20px; font-weight:800; color:${gaps.length > 0 ? '#dc2626' : '#15803d'}; margin-top:2px;">${gaps.length}</div>
+            <div style="flex:1; min-width:125px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px; text-align:center;">
+              <div style="font-size:11px; color:#166534; font-weight:700;">תצפיות שתועדו</div>
+              <div style="font-size:19px; font-weight:800; color:#15803d; margin-top:2px;">${recentObs.length}</div>
+            </div>
+            <div style="flex:1; min-width:125px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px; text-align:center;">
+              <div style="font-size:11px; color:#6b21a8; font-weight:700;">יעדים בתנופה (70%+)</div>
+              <div style="font-size:19px; font-weight:800; color:#7e22ce; margin-top:2px;">${advancedGoals.length}</div>
+            </div>
+            <div style="flex:1; min-width:125px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px; text-align:center;">
+              <div style="font-size:11px; color:#92400e; font-weight:700;">לרציפות (45+ יום)</div>
+              <div style="font-size:19px; font-weight:800; color:#d97706; margin-top:2px;">${gaps.length}</div>
             </div>
           </div>
 
+          <!-- Section 1: Accomplishments & Advanced Goals -->
+          ${
+            advancedGoals.length > 0
+              ? `
+              <div style="margin-bottom:22px;">
+                <div style="font-size:14.5px; font-weight:bold; color:#15803d; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                  <span>🎯</span>
+                  <span>הישגים והתקדמות לפי התוכנית (מה שבוצע בהצלחה):</span>
+                </div>
+                <div style="overflow-x:auto; border:1px solid #bbf7d0; border-radius:10px;">
+                  <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                      <tr style="background:#f0fdf4; color:#166534; font-weight:700; border-bottom:1.5px solid #bbf7d0;">
+                        <th style="padding:9px 12px; text-align:right;">תלמיד/ה</th>
+                        <th style="padding:9px 12px; text-align:right;">יעד שהתקדם</th>
+                        <th style="padding:9px 12px; text-align:right;">סביבה</th>
+                        <th style="padding:9px 12px; text-align:center;">התקדמות</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${advancedGoalsRows}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              `
+              : ''
+          }
+
+          <!-- Section 2: Recent Ad-hoc Observations from Individual Sessions -->
+          ${
+            recentObs.length > 0
+              ? `
+              <div style="margin-bottom:22px;">
+                <div style="font-size:14.5px; font-weight:bold; color:#1d4ed8; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                  <span>💬</span>
+                  <span>תובנות ודגשים מהעבודה הפרטנית בזמן אמת (Ad-hoc Insights):</span>
+                </div>
+                <div>
+                  ${observationCards}
+                </div>
+              </div>
+              `
+              : ''
+          }
+
+          <!-- Section 3: Continuity & Recommended Observational Focus -->
           ${
             gaps.length > 0
               ? `
-              <div style="margin-bottom:20px;">
-                <div style="font-size:14px; font-weight:bold; color:#1e3a5f; margin-bottom:10px;">
-                  📋 פירוט יעדים הדורשים עדכון מעקב ותצפית:
+              <div style="margin-bottom:22px;">
+                <div style="font-size:14px; font-weight:bold; color:#92400e; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                  <span>📌</span>
+                  <span>מוקדים מומלצים לתצפית בימים הקרובים (שמירה על רציפות פדגוגית):</span>
                 </div>
-                <div style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:10px;">
-                  <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:13px;">
+                <div style="overflow-x:auto; border:1px solid #fde68a; border-radius:10px;">
+                  <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:12.5px;">
                     <thead>
-                      <tr style="background:#f1f5f9; color:#475569; font-weight:700; border-bottom:1.5px solid #cbd5e1;">
-                        <th style="padding:10px 12px; text-align:right;">שם תלמיד/ה</th>
-                        <th style="padding:10px 12px; text-align:right;">מסגרת</th>
-                        <th style="padding:10px 12px; text-align:right;">יעד פדגוגי</th>
-                        <th style="padding:10px 12px; text-align:center;">זמן ללא עדכון</th>
-                        <th style="padding:10px 12px; text-align:center;">התקדמות</th>
+                      <tr style="background:#fffbeb; color:#92400e; font-weight:700; border-bottom:1.5px solid #fde68a;">
+                        <th style="padding:8px 10px; text-align:right;">תלמיד/ה</th>
+                        <th style="padding:8px 10px; text-align:right;">מסגרת</th>
+                        <th style="padding:8px 10px; text-align:right;">יעד</th>
+                        <th style="padding:8px 10px; text-align:center;">זמן ללא עדכון</th>
+                        <th style="padding:8px 10px; text-align:center;">מצב נוכחי</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -957,27 +1079,39 @@ export function buildPedagogicalReminderEmailHtml({
               </div>
               `
               : `
-              <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:16px 20px; margin-bottom:20px; text-align:center;">
-                <div style="font-size:16px; font-weight:bold; color:#15803d; margin-bottom:4px;">
-                  🎉 כל הכבוד! כל היעדים מעודכנים
+              <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:14px 18px; margin-bottom:20px; text-align:center;">
+                <div style="font-size:15px; font-weight:bold; color:#15803d; margin-bottom:3px;">
+                  🎉 רציפות פדגוגית מלאה!
                 </div>
-                <div style="font-size:13.5px; color:#166534;">
-                  לא נמצאו יעדים ללא תצפית מעל 45 יום. הרציפות הפדגוגית נשמרת באופן מופתי.
+                <div style="font-size:13px; color:#166534;">
+                  כל היעדים הפדגוגיים של כל התלמידים עודכנו לאחרונה. אין יעדים שממתינים לעדכון מעל 45 יום.
                 </div>
               </div>
               `
           }
 
+          <!-- Section 4: Team Meeting Readiness Checklist -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; margin-bottom:24px;">
+            <div style="font-size:14px; font-weight:bold; color:#1e3a5f; margin-bottom:8px;">
+              🤝 נקודות מפתח להצגה בישיבת צוות / שיתוף הורים:
+            </div>
+            <ul style="margin:0; padding-right:20px; font-size:13px; color:#334155; line-height:1.65;">
+              <li><strong>להציג בגאווה:</strong> את היעדים שבתנופה ואת דרכי התיווך שהוכיחו את עצמן בפועל.</li>
+              <li><strong>לשתף מהשטח:</strong> את התובנות שנרשמו בזמן אמת בעבודה הפרטנית עם התלמידים.</li>
+              <li><strong>לגייס שותפים:</strong> לתאם עם המחנכת והצוות הפרא-רפואי תצפית משותפת על היעדים שממתינים לעדכון.</li>
+            </ul>
+          </div>
+
           <!-- 1-Click Action Button -->
-          <div style="text-align:center; margin:28px 0 16px 0;">
-            <a href="${appUrl}" style="display:inline-block; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color:#ffffff; font-weight:bold; font-size:14.5px; text-decoration:none; padding:12px 30px; border-radius:10px; box-shadow:0 4px 14px rgba(37, 99, 235, 0.35);">
+          <div style="text-align:center; margin:24px 0 16px 0;">
+            <a href="${appUrl}" style="display:inline-block; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color:#ffffff; font-weight:bold; font-size:14.5px; text-decoration:none; padding:12px 32px; border-radius:10px; box-shadow:0 4px 14px rgba(37, 99, 235, 0.35);">
               🚀 כניסה למעקב יעדים באפליקציה
             </a>
           </div>
 
           <div style="border-top:1px solid #e2e8f0; margin-top:24px; padding-top:14px; font-size:11.5px; color:#64748b; text-align:center; line-height:1.6;">
-            הודעה זו נשלחה אליך על פי העדפות התזכורת האישיות שהגדרת במערכת TALA.<br/>
-            ניתן לשנות את תדירות התזכורות או לבטלן בכל עת דרך תפריט "העדפות מורה".
+            סיכום זה הופק ונשלח בהתאם להגדרות האישיות שלך במערכת TALA.<br/>
+            ניתן להתאים את מועד קבלת הסיכום (שבועי/חודשי) בכל עת במסך "העדפות מורה".
           </div>
         </div>
       </div>
@@ -994,6 +1128,7 @@ export async function sendPedagogicalReminderEmailInBackground({
   toEmail,
   teacherName = 'צוות חינוכי',
   gaps = [],
+  accomplishments = null,
   totalStudents = 0,
   privacyMode = 'full_name',
   siteUrl = 'https://zivitreshef.github.io/TALA/'
@@ -1001,17 +1136,27 @@ export async function sendPedagogicalReminderEmailInBackground({
   const htmlBody = buildPedagogicalReminderEmailHtml({
     teacherName,
     gaps,
+    accomplishments,
     totalStudents,
     privacyMode,
     siteUrl
   });
 
+  const recentObsCount = Array.isArray(accomplishments?.recentObservations)
+    ? accomplishments.recentObservations.length
+    : 0;
+  const advancedCount = Array.isArray(accomplishments?.advancedGoals)
+    ? accomplishments.advancedGoals.length
+    : 0;
+
   const textBody = [
     `שלום ${teacherName},`,
     '',
-    `זוהי תזכורת פדגוגית למעקב יעדים ממערכת TALA.`,
+    `סיכום פדגוגי שבועי ומוכנות לישיבות צוות ממערכת TALA.`,
     `סה"כ תלמידים במעקב: ${totalStudents}`,
-    `יעדים הדורשים עדכון מעקב (מעל 45 יום): ${gaps.length}`,
+    `תצפיות שתועדו לאחרונה: ${recentObsCount}`,
+    `יעדים בהתקדמות מרשימה: ${advancedCount}`,
+    `יעדים לתשומת לב (45+ יום): ${gaps.length}`,
     '',
     `לכניסה למערכת: ${siteUrl || 'https://zivitreshef.github.io/TALA/'}`
   ].join('\r\n');
@@ -1019,10 +1164,10 @@ export async function sendPedagogicalReminderEmailInBackground({
   return sendReportEmailInBackground({
     config,
     toEmail,
-    subject: `📌 תזכורת פדגוגית – ריכוז מעקב יעדים (${gaps.length} יעדים לתשומת לב)`,
+    subject: `🌟 סיכום פדגוגי שבועי ומוכנות לישיבות צוות (${advancedCount} יעדים בתנופה, ${recentObsCount} תצפיות)`,
     htmlBody,
     textBody,
-    filename: 'PedagogicalReminder.html',
+    filename: 'PedagogicalSummary.html',
     mimeType: 'text/html'
   });
 }

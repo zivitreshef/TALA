@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getObservationGaps,
+  getPedagogicalAccomplishmentsSummary,
   createOutlook365CalendarUrl,
   createGoogleCalendarUrl,
   generateIcsFileContent,
@@ -297,4 +298,63 @@ describe('dailyPedagogicalTracking domain tests', () => {
       expect(getEventBarThickness('', '')).toBe(4.5);
     });
   });
+
+  describe('getPedagogicalAccomplishmentsSummary', () => {
+    it('summarizes accomplishments, advanced goals and recent adhoc observations for team meetings', () => {
+      const sampleStudents = [
+        {
+          id: 'st_1',
+          name: 'דניאל ישראלי',
+          educationalFramework: 'כיתת שילוב',
+          goals: [
+            {
+              id: 'g_1',
+              title: 'קריאת טקסט שוטפת',
+              environment: 'לימודי',
+              currentProgress: 85,
+              targetProgress: 80,
+              observations: [
+                {
+                  timestamp: '2026-10-25T10:00:00Z',
+                  progress: 85,
+                  note: 'קרא פרק שלם ברצף ללא סיוע',
+                  supportLevel: 'עצמאי'
+                }
+              ]
+            },
+            {
+              id: 'g_2',
+              title: 'השתתפות בדיון במליאה',
+              environment: 'חברתי',
+              currentProgress: 40,
+              targetProgress: 75,
+              observations: [
+                {
+                  timestamp: '2026-08-01T10:00:00Z', // Old observation (>60 days ago)
+                  progress: 30,
+                  note: 'התבייש',
+                  supportLevel: 'תיווך מלא'
+                }
+              ]
+            }
+          ]
+        }
+      ];
+
+      const refDate = new Date('2026-10-28T10:00:00Z');
+      const summary = getPedagogicalAccomplishmentsSummary(sampleStudents, 30, refDate);
+
+      expect(summary.totalStudents).toBe(1);
+      expect(summary.totalGoals).toBe(2);
+      expect(summary.onTrackGoalsCount).toBe(1);
+      expect(summary.advancedGoals).toHaveLength(1);
+      expect(summary.advancedGoals[0].goalTitle).toBe('קריאת טקסט שוטפת');
+      expect(summary.advancedGoals[0].currentProgress).toBe(85);
+
+      expect(summary.recentObservations).toHaveLength(1);
+      expect(summary.recentObservations[0].note).toBe('קרא פרק שלם ברצף ללא סיוע');
+      expect(summary.recentObservations[0].supportLevel).toBe('עצמאי');
+    });
+  });
+
 });
