@@ -6,7 +6,10 @@
 export const INVITE_COLLECTION = 'tala_invites';
 export const INVITE_TTL_DAYS = 7;
 export const MAX_ANSWER_LENGTH = 1500;
+export const MAX_CUSTOM_QUESTIONS = 3;
+export const MAX_QUESTION_LENGTH = 150;
 export const INVITE_ANSWER_KEYS = ['strengths', 'challenges', 'goal'];
+export const CUSTOM_ANSWER_KEYS = ['custom_0', 'custom_1', 'custom_2'];
 
 const TOKEN_REGEX = /^[A-Za-z0-9_-]{22}$/;
 const SHARE_ROUTE_PREFIX = '#/share-input/';
@@ -56,9 +59,23 @@ function pick(gender, boyText, girlText) {
   return gender === 'girl' ? girlText : boyText;
 }
 
-export function getInviteQuestions({ childName = '', gender = 'boy' } = {}) {
+export function sanitizeCustomQuestions(questions = []) {
+  if (!Array.isArray(questions)) return [];
+  return questions
+    .map((q) =>
+      String(q || '')
+        .replace(/<[^>]*>/g, '')
+        .replace(/[<>]/g, '')
+        .trim()
+        .slice(0, MAX_QUESTION_LENGTH)
+    )
+    .filter(Boolean)
+    .slice(0, MAX_CUSTOM_QUESTIONS);
+}
+
+export function getInviteQuestions({ childName = '', gender = 'boy', customQuestions = [] } = {}) {
   const name = String(childName || '').trim() || pick(gender, 'הילד', 'הילדה');
-  return [
+  const base = [
     {
       key: 'strengths',
       label: pick(
@@ -70,6 +87,14 @@ export function getInviteQuestions({ childName = '', gender = 'boy' } = {}) {
     { key: 'challenges', label: `באילו מצבים קשה ל${name} כרגע?` },
     { key: 'goal', label: `מה הכי חשוב לכם שנעבוד עליו עם ${name} השנה?` }
   ];
+
+  const custom = sanitizeCustomQuestions(customQuestions).map((label, idx) => ({
+    key: `custom_${idx}`,
+    label,
+    isCustom: true
+  }));
+
+  return [...base, ...custom];
 }
 
 export function buildInviteDoc({
@@ -77,11 +102,14 @@ export function buildInviteDoc({
   studentId,
   childFirstName = '',
   gender = 'boy',
+  customQuestions = [],
   now = new Date()
 }) {
   const owner = String(ownerEmail || '').trim().toLowerCase();
   if (!owner || !studentId) throw new Error('ownerEmail and studentId are required');
-  return {
+  const cleanQuestions = sanitizeCustomQuestions(customQuestions);
+
+  const docData = {
     ownerEmail: owner,
     studentId: String(studentId),
     // שם פרטי בלבד - מוצג להורה בדף הציבורי
@@ -91,22 +119,32 @@ export function buildInviteDoc({
     createdAt: now,
     expiresAt: new Date(now.getTime() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000)
   };
+
+  if (cleanQuestions.length > 0) {
+    docData.customQuestions = cleanQuestions;
+  }
+
+  return docData;
 }
 
-export function sanitizeResponses(rawResponses = {}) {
+export function sanitizeResponses(rawResponses = {}, customQuestions = []) {
   const clean = {};
   INVITE_ANSWER_KEYS.forEach((key) => {
+    const value = String(rawResponses?.[key] ?? '').trim().slice(0, MAX_ANSWER_LENGTH);
+    if (value) clean[key] = value;
+  });
+  CUSTOM_ANSWER_KEYS.forEach((key) => {
     const value = String(rawResponses?.[key] ?? '').trim().slice(0, MAX_ANSWER_LENGTH);
     if (value) clean[key] = value;
   });
   return clean;
 }
 
-export function hasAnyAnswer(responses) {
-  return Object.keys(sanitizeResponses(responses)).length > 0;
+export function hasAnyAnswer(responses, customQuestions = []) {
+  return Object.keys(sanitizeResponses(responses, customQuestions)).length > 0;
 }
 
-function toMillis(value) {
+export function toMillis(value) {
   if (!value) return NaN;
   if (value instanceof Date) return value.getTime();
   if (typeof value.toMillis === 'function') return value.toMillis();
@@ -129,18 +167,30 @@ export function getInviteState(invite, now = Date.now()) {
 export function summarizeInvites(invites = [], now = Date.now()) {
   const list = [...invites].sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0));
   const unreviewed = list.filter(
-    (i) => i.status === 'submitted' && !i.reviewedAction && hasAnyAnswer(i.responses)
+    (i) => i.status === 'submitted' && !i.reviewedAction && hasAnyAnswer(i.responses, i.customQuestions)
+  );
+  const history = list.filter(
+    (i) => i.status === 'submitted' && i.reviewedAction && hasAnyAnswer(i.responses, i.customQuestions)
   );
   const pending = list.find((i) => getInviteState(i, now) === 'pending') || null;
   const status = unreviewed.length ? 'received' : pending ? 'waiting' : 'none';
-  return { status, unreviewed, pending };
+  return { status, unreviewed, history, pending };
 }
 
 export function buildVoiceMergeText(invite) {
-  const responses = sanitizeResponses(invite?.responses);
+  const responses = sanitizeResponses(invite?.responses, invite?.customQuestions);
   const lines = INVITE_ANSWER_KEYS.filter((key) => responses[key]).map(
     (key) => `• ${MERGE_LABELS[key]}: ${responses[key].replace(/\s*\n\s*/g, ' ')}`
   );
+
+  const customQuestions = sanitizeCustomQuestions(invite?.customQuestions);
+  CUSTOM_ANSWER_KEYS.forEach((key, idx) => {
+    if (responses[key]) {
+      const qLabel = customQuestions[idx] || `שאלה מותאמת ${idx + 1}`;
+      lines.push(`• ${qLabel}: ${responses[key].replace(/\s*\n\s*/g, ' ')}`);
+    }
+  });
+
   if (lines.length === 0) return '';
   return ['— קול ההורים (כפי שנמסר על ידי ההורים) —', ...lines].join('\n');
 }

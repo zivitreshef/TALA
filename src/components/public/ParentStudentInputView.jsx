@@ -108,7 +108,8 @@ export default function ParentStudentInputView({ token }) {
 
   const questions = getInviteQuestions({
     childName: invite?.childFirstName,
-    gender: invite?.gender
+    gender: invite?.gender,
+    customQuestions: invite?.customQuestions
   });
   const sending = phase === 'sending';
 
@@ -135,7 +136,7 @@ export default function ParentStudentInputView({ token }) {
           : 'נשמח לשמוע אתכם'}
       </h1>
       <p className="pi-text">
-        שלוש שאלות קצרות, כמה דקות בלבד. אפשר לענות רק על חלק מהן.
+        {questions.length === 3 ? 'שלוש שאלות קצרות, כמה דקות בלבד.' : 'שאלות קצרות, מספר דקות בלבד.'} אפשר לענות רק על חלק מהן.
       </p>
 
       <form onSubmit={handleSubmit}>

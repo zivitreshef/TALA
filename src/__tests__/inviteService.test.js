@@ -76,6 +76,24 @@ describe('inviteService - Parent Invite & Respondent Cloud Service Suite', () =>
     );
   });
 
+  it('createInvite: propagates customQuestions to document', async () => {
+    const params = {
+      ownerEmail: 'teacher@test.com',
+      studentId: 's_789',
+      childFirstName: 'מיכל',
+      gender: 'girl',
+      customQuestions: ['מה התחביב שלה?']
+    };
+
+    const result = await createInvite(params);
+    expect(firestore.setDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ id: result.token }),
+      expect.objectContaining({
+        customQuestions: ['מה התחביב שלה?']
+      })
+    );
+  });
+
   it('fetchInviteForRespondent: rejects invalid token format with { state: "missing", invite: null }', async () => {
     const result = await fetchInviteForRespondent('invalid_short_token');
     expect(result).toEqual({ state: 'missing', invite: null });

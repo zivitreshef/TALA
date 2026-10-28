@@ -170,6 +170,8 @@ service cloud.firestore {
         request.resource.data.status == 'pending' &&
         request.resource.data.expiresAt is timestamp &&
         request.resource.data.expiresAt <= request.time + duration.value(8, 'd') &&
+        (!('customQuestions' in request.resource.data) ||
+          (request.resource.data.customQuestions is list && request.resource.data.customQuestions.size() <= 3)) &&
         !('responses' in request.resource.data);
 
       // Owner may manage freely. The anonymous respondent may do exactly one thing:
@@ -182,10 +184,13 @@ service cloud.firestore {
         request.resource.data.status == 'submitted' &&
         request.resource.data.submittedAt == request.time &&
         request.resource.data.responses is map &&
-        request.resource.data.responses.keys().hasOnly(['strengths', 'challenges', 'goal']) &&
+        request.resource.data.responses.keys().hasOnly(['strengths', 'challenges', 'goal', 'custom_0', 'custom_1', 'custom_2']) &&
         answerOk(request.resource.data.responses, 'strengths') &&
         answerOk(request.resource.data.responses, 'challenges') &&
-        answerOk(request.resource.data.responses, 'goal')
+        answerOk(request.resource.data.responses, 'goal') &&
+        answerOk(request.resource.data.responses, 'custom_0') &&
+        answerOk(request.resource.data.responses, 'custom_1') &&
+        answerOk(request.resource.data.responses, 'custom_2')
       );
 
       allow delete: if isInviteOwner(resource.data);

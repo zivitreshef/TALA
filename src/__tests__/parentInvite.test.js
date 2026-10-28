@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   INVITE_TTL_DAYS,
   MAX_ANSWER_LENGTH,
+  MAX_CUSTOM_QUESTIONS,
+  MAX_QUESTION_LENGTH,
   buildInviteDoc,
   buildInviteUrl,
   buildWhatsAppShareUrl,
@@ -11,6 +13,7 @@ import {
   hasAnyAnswer,
   isValidInviteToken,
   parseInviteTokenFromHash,
+  sanitizeCustomQuestions,
   sanitizeResponses,
   summarizeInvites,
   buildVoiceMergeText,
@@ -43,7 +46,7 @@ describe('parentInvite - token & URL', () => {
   });
 });
 
-describe('parentInvite - invite doc', () => {
+describe('parentInvite - invite doc & custom questions', () => {
   const now = new Date('2026-10-16T12:00:00Z');
 
   it('builds a pending doc with 7-day expiry, lowercase owner, first name only', () => {
@@ -60,6 +63,28 @@ describe('parentInvite - invite doc', () => {
     expect(d.status).toBe('pending');
     expect(d.expiresAt.getTime() - now.getTime()).toBe(INVITE_TTL_DAYS * 86400000);
     expect(JSON.stringify(d)).not.toContain('ישראלי');
+  });
+
+  it('sanitizes and stores custom questions capped at MAX_CUSTOM_QUESTIONS', () => {
+    const questions = [
+      '  איך הוא נרדם בלילה?  ',
+      '<script>alert("xss")</script>מה המאכל האהוב עליו?',
+      'שאלה שלישית תקינה',
+      'שאלה רביעית מיותרת'
+    ];
+    const sanitized = sanitizeCustomQuestions(questions);
+    expect(sanitized).toHaveLength(MAX_CUSTOM_QUESTIONS);
+    expect(sanitized[0]).toBe('איך הוא נרדם בלילה?');
+    expect(sanitized[1]).not.toContain('<script>');
+    expect(sanitized[1]).toBe('alert("xss")מה המאכל האהוב עליו?');
+
+    const doc = buildInviteDoc({
+      ownerEmail: 'teacher@example.com',
+      studentId: 's1',
+      customQuestions: questions,
+      now
+    });
+    expect(doc.customQuestions).toEqual(sanitized);
   });
 
   it('rejects missing owner or student', () => {
@@ -86,46 +111,75 @@ describe('parentInvite - responses & questions', () => {
       strengths: '  אוהב לצייר  ',
       challenges: '   ',
       goal: 'א'.repeat(MAX_ANSWER_LENGTH + 50),
+      custom_0: '  תשובה מותאמת  ',
       evil: 'x'
     });
-    expect(Object.keys(clean).sort()).toEqual(['goal', 'strengths']);
+    expect(Object.keys(clean).sort()).toEqual(['custom_0', 'goal', 'strengths']);
     expect(clean.strengths).toBe('אוהב לצייר');
+    expect(clean.custom_0).toBe('תשובה מותאמת');
     expect(clean.goal.length).toBe(MAX_ANSWER_LENGTH);
   });
 
-  it('hasAnyAnswer is false for blank input', () => {
+  it('hasAnyAnswer is false for blank input and true for custom answers', () => {
     expect(hasAnyAnswer({})).toBe(false);
     expect(hasAnyAnswer({ goal: '  ' })).toBe(false);
     expect(hasAnyAnswer({ goal: 'x' })).toBe(true);
+    expect(hasAnyAnswer({ custom_0: 'תשובה אישית' })).toBe(true);
   });
 
-  it('returns 3 gendered questions', () => {
-    const girl = getInviteQuestions({ childName: 'נועה', gender: 'girl' });
-    expect(girl.map((q) => q.key)).toEqual(['strengths', 'challenges', 'goal']);
+  it('returns 3 gendered questions plus custom questions', () => {
+    const girl = getInviteQuestions({
+      childName: 'נועה',
+      gender: 'girl',
+      customQuestions: ['במה היא הכי מתגאה בבית?']
+    });
+    expect(girl.map((q) => q.key)).toEqual(['strengths', 'challenges', 'goal', 'custom_0']);
     expect(girl[0].label).toContain('אוהבת');
+    expect(girl[3].label).toBe('במה היא הכי מתגאה בבית?');
+    expect(girl[3].isCustom).toBe(true);
+
     const boy = getInviteQuestions({ childName: 'נועם', gender: 'boy' });
     expect(boy[0].label).toContain('אוהב לעשות');
     expect(boy[0].label).not.toContain('אוהבת');
   });
 });
 
-describe('parentInvite - teacher side', () => {
+describe('parentInvite - teacher side & history archive', () => {
   const now = Date.parse('2026-10-16T12:00:00Z');
   const future = new Date(now + 86400000);
   const mk = (over) => ({ token: 't', status: 'pending', expiresAt: future, createdAt: new Date(now), ...over });
 
-  it('summarizes none / waiting / received', () => {
+  it('summarizes none / waiting / received and collects past submissions into history', () => {
     expect(summarizeInvites([], now).status).toBe('none');
     expect(summarizeInvites([mk()], now).status).toBe('waiting');
     expect(summarizeInvites([mk({ expiresAt: new Date(now - 1) })], now).status).toBe('none');
     const received = mk({ status: 'submitted', responses: { goal: 'לקרוא' } });
-    expect(summarizeInvites([mk(), received], now).status).toBe('received');
-  });
+    const summary = summarizeInvites([mk(), received], now);
+    expect(summary.status).toBe('received');
+    expect(summary.unreviewed).toHaveLength(1);
+    expect(summary.history).toHaveLength(0);
 
-  it('ignores reviewed or empty submissions', () => {
-    const reviewed = mk({ status: 'submitted', responses: { goal: 'x' }, reviewedAction: 'merged' });
-    const empty = mk({ status: 'submitted', responses: {} });
-    expect(summarizeInvites([reviewed, empty], now).status).toBe('none');
+    const reviewedMerged = mk({
+      token: 'rev1',
+      status: 'submitted',
+      responses: { goal: 'ללמוד' },
+      reviewedAction: 'merged',
+      createdAt: new Date(now - 10000)
+    });
+    const reviewedArchived = mk({
+      token: 'rev2',
+      status: 'submitted',
+      responses: { goal: 'לצייר' },
+      reviewedAction: 'archived',
+      createdAt: new Date(now - 20000)
+    });
+
+    const summaryWithHistory = summarizeInvites([mk(), reviewedMerged, reviewedArchived], now);
+    expect(summaryWithHistory.status).toBe('waiting');
+    expect(summaryWithHistory.unreviewed).toHaveLength(0);
+    expect(summaryWithHistory.history).toHaveLength(2);
+    expect(summaryWithHistory.history[0].token).toBe('rev1');
+    expect(summaryWithHistory.history[1].token).toBe('rev2');
   });
 
   it('keeps only the newest pending invite', () => {
@@ -134,12 +188,18 @@ describe('parentInvite - teacher side', () => {
     expect(summarizeInvites([older, newer], now).pending.token).toBe('new');
   });
 
-  it('builds a labeled merge block and appends without clobbering existing text', () => {
+  it('builds a labeled merge block with custom questions and appends without clobbering existing text', () => {
     const block = buildVoiceMergeText({
-      responses: { strengths: 'אוהב\nלצייר', goal: 'לקרוא' }
+      customQuestions: ['במה הוא אוהב לשחק בבית?'],
+      responses: {
+        strengths: 'אוהב\nלצייר',
+        goal: 'לקרוא',
+        custom_0: 'משחקי קופסה'
+      }
     });
     expect(block).toContain('קול ההורים');
     expect(block).toContain('• חוזקות ותחומי עניין: אוהב לצייר');
+    expect(block).toContain('• במה הוא אוהב לשחק בבית?: משחקי קופסה');
     expect(block).not.toContain('קשיים');
     expect(buildVoiceMergeText({ responses: {} })).toBe('');
     expect(appendToFreeText('  טקסט קיים ', block)).toBe(`טקסט קיים\n\n${block}`);
