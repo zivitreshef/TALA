@@ -32,9 +32,9 @@ function getFirstName(name) {
  * Single header pill + one modal. Adds no fields to the student form:
  * answers are merged into the existing teacher free-text via `onMerge`.
  */
-export default function ParentVoiceControl({ student, currentUser, disabled, onMerge }) {
-  const [invites, setInvites] = useState([]);
-  const [open, setOpen] = useState(false);
+export default function ParentVoiceControl({ student, currentUser, disabled, onMerge, initialOpen = false, initialInvites = null }) {
+  const [invites, setInvites] = useState(() => initialInvites || []);
+  const [open, setOpen] = useState(initialOpen);
   const [busyKey, setBusyKey] = useState('');
   const [error, setError] = useState('');
   const [copiedToken, setCopiedToken] = useState('');
@@ -51,9 +51,10 @@ export default function ParentVoiceControl({ student, currentUser, disabled, onM
   }, []);
 
   useEffect(() => {
+    if (initialInvites) return undefined;
     setInvites([]);
     return subscribeToStudentInvites(ownerEmail, studentId, setInvites, () => {});
-  }, [ownerEmail, studentId, authedEmail]);
+  }, [ownerEmail, studentId, authedEmail, initialInvites]);
 
   const summary = summarizeInvites(invites);
   const childFirstName = getFirstName(student?.name);
@@ -204,7 +205,7 @@ export default function ParentVoiceControl({ student, currentUser, disabled, onM
                           cursor: 'pointer'
                         }}
                       >
-                        ארכבי ללא שילוב
+                        העברה לארכיון בלבד
                       </button>
                     </div>
                   </div>
