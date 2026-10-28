@@ -10,6 +10,12 @@ import {
   TALA_FOCUS_DOMAINS,
   buildDefaultTalaProfileRows
 } from '../goalBankData';
+import { formatDateWithPreferences } from '../domain/userPreferences';
+
+export function getDisplayReportDate(formData = {}) {
+  if (!formData.date) return '__________';
+  return formatDateWithPreferences(formData.date, formData.reportDateFormat || 'both') || formData.date;
+}
 
 export function getAdditionalMetadataItems(formData = {}, hideDetails = false) {
   const isKindergarten = formData.stage === 'kindergarten';
@@ -538,7 +544,7 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
         ` : ''}
         <div class="stained-glass-strip"></div>
         <div class="print-banner">
-          <div class="doc-meta-side"><strong>תאריך:</strong> ${formData.date || '__________'}</div>
+          <div class="doc-meta-side"><strong>תאריך:</strong> ${getDisplayReportDate(formData)}</div>
           <div class="print-banner-center">
             <img src="${logoUrl}" alt="TALA Logo" class="print-logo" />
             <h1 class="doc-main-title">${fullDocTitle}</h1>
@@ -845,7 +851,7 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
         <div style="background-color:#3b6ea5; color:#ffffff; padding:12pt 16pt; margin-bottom:10pt; text-align:center;">
           <h1 style="margin:0; font-size:16pt;">${fullDocTitle}</h1>
           <div style="font-size:10.5pt; margin-top:4pt;">
-            <strong>תאריך:</strong> ${formData.date || '__________'} &nbsp;|&nbsp;
+            <strong>תאריך:</strong> ${getDisplayReportDate(formData)} &nbsp;|&nbsp;
             <strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}
           </div>
         </div>
@@ -961,7 +967,7 @@ export function buildEvalWordDocumentHtml(formData = {}, hideDetails = false) {
         <div style="background-color:#4e4376; color:#ffffff; padding:12pt 16pt; margin-bottom:10pt; text-align:center;">
           <h1 style="margin:0; font-size:16pt;">${evalDocTitle}</h1>
           <div style="font-size:10.5pt; margin-top:4pt;">
-            <strong>תאריך:</strong> ${formData.date || '__________'} &nbsp;|&nbsp;
+            <strong>תאריך:</strong> ${getDisplayReportDate(formData)} &nbsp;|&nbsp;
             <strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}
           </div>
         </div>
@@ -1178,7 +1184,7 @@ export function buildEvalReportPrintHtml(formData = {}, hideDetails = false, log
       <body>
         <div class="stained-glass-strip"></div>
         <div class="print-banner">
-          <div class="doc-meta-side"><strong>תאריך:</strong> ${formData.date || '__________'}</div>
+          <div class="doc-meta-side"><strong>תאריך:</strong> ${getDisplayReportDate(formData)}</div>
           <div class="print-banner-center">
             <img src="${logoUrl}" alt="TALA Logo" class="print-logo" />
             <h1 class="doc-main-title">${evalDocTitle}</h1>
@@ -1305,7 +1311,7 @@ export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = f
         <div style="background-color:#2b4c73; color:#ffffff; padding:12pt 16pt; margin-bottom:10pt; text-align:center;">
           <h1 style="margin:0; font-size:16pt;">${statusDocTitle}</h1>
           <div style="font-size:10.5pt; margin-top:4pt;">
-            <strong>תאריך:</strong> ${formData.date || '__________'} &nbsp;|&nbsp;
+            <strong>תאריך:</strong> ${getDisplayReportDate(formData)} &nbsp;|&nbsp;
             <strong>שנת לימודים:</strong> ${formData.schoolYear || '__________'}
           </div>
         </div>
@@ -1480,7 +1486,7 @@ export function buildStatusReportPrintHtml(formData = {}, hideDetails = false, l
       <body>
         <div class="stained-glass-strip"></div>
         <div class="print-banner">
-          <div class="doc-meta-side"><strong>תאריך:</strong> ${formData.date || '__________'}</div>
+          <div class="doc-meta-side"><strong>תאריך:</strong> ${getDisplayReportDate(formData)}</div>
           <div class="print-banner-center">
             <img src="${logoUrl}" alt="TALA Logo" class="print-logo" />
             <h1 class="doc-main-title">${statusDocTitle}</h1>

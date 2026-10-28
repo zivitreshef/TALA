@@ -170,6 +170,7 @@ import {
   addManualStatusSection
 } from './domain/workPlanEdits';
 import { personalizeBankItem, fillGoalRowFromBank } from './domain/bankGoalApplication';
+import { formatDateWithPreferences } from './domain/userPreferences';
 import { callAiJson } from './services/aiJsonClient';
 import {
   buildSummaryTablePrompt,
@@ -1975,33 +1976,35 @@ ${JSON.stringify(studentCardPayload, null, 2)}
   const getSafeReportFilename = (ext = 'doc', mode = 'tala') => buildSafeReportFilename(formData, hideStudentDetailsOnPrint, ext, mode);
   const getActiveStatusReportSections = () => buildActiveStatusReportSections(formData);
 
-  const buildWordDocumentHtml = () => renderWordDocumentHtml(formData, hideStudentDetailsOnPrint);
-  const buildEvalWordDocumentHtml = () => renderEvalWordDocumentHtml(formData, hideStudentDetailsOnPrint);
-  const buildStatusReportWordDocumentHtml = () => renderStatusReportWordDocumentHtml(formData, hideStudentDetailsOnPrint);
+  const getExportPayload = (baseData = formData) => ({
+    ...baseData,
+    showBesad: userPreferences?.showBesad,
+    besadText: userPreferences?.besadText,
+    signatureImage: userPreferences?.signatureImage,
+    reportDateFormat: userPreferences?.reportDateFormat || 'both',
+    teacherName: userPreferences?.fullName || currentUser?.name || baseData.teacherName
+  });
+
+  const buildWordDocumentHtml = () => renderWordDocumentHtml(getExportPayload(), hideStudentDetailsOnPrint);
+  const buildEvalWordDocumentHtml = () => renderEvalWordDocumentHtml(getExportPayload(), hideStudentDetailsOnPrint);
+  const buildStatusReportWordDocumentHtml = () => renderStatusReportWordDocumentHtml(getExportPayload(), hideStudentDetailsOnPrint);
 
   const handlePrintDocument = () => {
     handleSaveProgress();
     const logoUrl = new URL('./tala-logo.png', window.location.href).href;
-    const printPayload = {
-      ...formData,
-      showBesad: userPreferences?.showBesad,
-      besadText: userPreferences?.besadText,
-      signatureImage: userPreferences?.signatureImage,
-      teacherName: userPreferences?.fullName || currentUser?.name || formData.teacherName
-    };
-    openHtmlPrintWindow(buildWorkPlanPrintHtml(printPayload, hideStudentDetailsOnPrint, logoUrl));
+    openHtmlPrintWindow(buildWorkPlanPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, logoUrl));
   };
 
   const handlePrintEvalReport = () => {
     handleSaveProgress();
     const logoUrl = new URL('./tala-logo.png', window.location.href).href;
-    openHtmlPrintWindow(buildEvalReportPrintHtml(formData, hideStudentDetailsOnPrint, logoUrl));
+    openHtmlPrintWindow(buildEvalReportPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, logoUrl));
   };
 
   const handlePrintStatusReport = () => {
     handleSaveProgress();
     const logoUrl = new URL('./tala-logo.png', window.location.href).href;
-    openHtmlPrintWindow(buildStatusReportPrintHtml(formData, hideStudentDetailsOnPrint, logoUrl));
+    openHtmlPrintWindow(buildStatusReportPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, logoUrl));
   };
 
   const createWordBlob = (mode = 'tala') => {

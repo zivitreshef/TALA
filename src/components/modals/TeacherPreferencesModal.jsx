@@ -353,30 +353,41 @@ export default function TeacherPreferencesModal({
         style={{
           maxWidth: '820px',
           width: '95vw',
+          height: '660px',
           maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
-          borderTop: '4px solid #2563eb',
           borderRadius: '16px',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
           overflow: 'hidden'
         }}
       >
-        {/* Header */}
+        {/* Harmonious Top Stained Glass Strip */}
+        <div
+          style={{
+            height: '5px',
+            background: 'linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%)',
+            flexShrink: 0
+          }}
+        />
+
+        {/* Header - Harmonious Theme Gradient */}
         <div
           className="modal-header"
           style={{
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
+            background: 'linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 50%, #8e7cc3 100%)',
             color: '#ffffff',
-            padding: '16px 22px'
+            padding: '16px 22px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
           }}
         >
           <div className="modal-header-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <FileText size={22} style={{ color: '#ffffff' }} />
             <div>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
-                אזור אישי והתראות – {currentUser.name || currentUser.email}
+                אזור אישי והגדרות מורה – {currentUser.name || currentUser.email}
               </h3>
-              <div style={{ fontSize: '12px', color: '#bfdbfe', marginTop: '2px' }}>
+              <div style={{ fontSize: '12px', color: '#eef3fb', marginTop: '2px' }}>
                 {currentUser.title || 'מורת שילוב / גננת'} • {currentUser.group || 'מתי"א מרכז'}
               </div>
             </div>
@@ -399,7 +410,8 @@ export default function TeacherPreferencesModal({
             borderBottom: '1px solid #e2e8f0',
             padding: '0 16px',
             gap: '6px',
-            overflowX: 'auto'
+            overflowX: 'auto',
+            flexShrink: 0
           }}
         >
           <button
@@ -410,10 +422,10 @@ export default function TeacherPreferencesModal({
               padding: '12px 14px',
               fontSize: '13.5px',
               fontWeight: 700,
-              color: activeTab === 0 ? '#1d4ed8' : '#64748b',
+              color: activeTab === 0 ? '#2b4c73' : '#64748b',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 0 ? '3px solid #2563eb' : '3px solid transparent',
+              borderBottom: activeTab === 0 ? '3px solid #3b6ea5' : '3px solid transparent',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -422,7 +434,7 @@ export default function TeacherPreferencesModal({
             }}
           >
             <FileText size={16} />
-            <span>1. ברירות מחדל לדוחות</span>
+            <span>ברירות מחדל לדוחות</span>
           </button>
 
           <button
@@ -433,10 +445,10 @@ export default function TeacherPreferencesModal({
               padding: '12px 14px',
               fontSize: '13.5px',
               fontWeight: 700,
-              color: activeTab === 1 ? '#1d4ed8' : '#64748b',
+              color: activeTab === 1 ? '#2b4c73' : '#64748b',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 1 ? '3px solid #2563eb' : '3px solid transparent',
+              borderBottom: activeTab === 1 ? '3px solid #3b6ea5' : '3px solid transparent',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -445,7 +457,7 @@ export default function TeacherPreferencesModal({
             }}
           >
             <Bookmark size={16} />
-            <span>2. בנק מטרות אישי ({draftPrefs.privateGoals?.length || 0})</span>
+            <span>בנק מטרות אישי ({draftPrefs.privateGoals?.length || 0})</span>
           </button>
 
           <button
@@ -456,10 +468,10 @@ export default function TeacherPreferencesModal({
               padding: '12px 14px',
               fontSize: '13.5px',
               fontWeight: 700,
-              color: activeTab === 2 ? '#1d4ed8' : '#64748b',
+              color: activeTab === 2 ? '#2b4c73' : '#64748b',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 2 ? '3px solid #2563eb' : '3px solid transparent',
+              borderBottom: activeTab === 2 ? '3px solid #3b6ea5' : '3px solid transparent',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -469,7 +481,7 @@ export default function TeacherPreferencesModal({
             }}
           >
             <Bell size={16} />
-            <span>3. התראות ותקשורת</span>
+            <span>התראות ותקשורת</span>
             {unreadSharedReports.length > 0 && (
               <span
                 style={{
@@ -495,10 +507,10 @@ export default function TeacherPreferencesModal({
               padding: '12px 14px',
               fontSize: '13.5px',
               fontWeight: 700,
-              color: activeTab === 3 ? '#1d4ed8' : '#64748b',
+              color: activeTab === 3 ? '#2b4c73' : '#64748b',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === 3 ? '3px solid #2563eb' : '3px solid transparent',
+              borderBottom: activeTab === 3 ? '3px solid #3b6ea5' : '3px solid transparent',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -507,12 +519,12 @@ export default function TeacherPreferencesModal({
             }}
           >
             <PenTool size={16} />
-            <span>4. פרופיל, בס"ד וחתימה</span>
+            <span>פרופיל מקצועי וחתימה</span>
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px' }}>
           
           {/* TAB 0: REPORT DEFAULTS */}
           <div style={{ display: activeTab === 0 ? 'flex' : 'none', flexDirection: 'column', gap: '16px' }}>
@@ -1092,60 +1104,121 @@ export default function TeacherPreferencesModal({
               )}
             </div>
 
-            {/* Email Notifications Settings */}
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <strong style={{ fontSize: '14px', color: '#1e293b' }}>התראות דוא"ל ישירות (לכתובת {currentUser.email}):</strong>
+            {/* 1. Team Chat & Shared Reports Email Alerts */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <strong style={{ fontSize: '14px', color: '#1e293b' }}>התראות דוא"ל על תקשורת צוותית (לכתובת {currentUser.email}):</strong>
+                <span style={{ fontSize: '11px', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                  Team Chat & שיתופים
+                </span>
+              </div>
               
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={draftPrefs.notifyOnTeamMessage}
                   onChange={(e) => handleFieldChange('notifyOnTeamMessage', e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                  style={{ width: '16px', height: '16px', accentColor: '#3b6ea5' }}
                 />
-                <span>שלח מייל כאשר איש צוות כותב הודעה חדשה ב-Team Chat (צ'אט צוותי)</span>
+                <span>קבלת עדכוני דוא"ל כאשר איש צוות כותב הודעה חדשה בצ'אט הצוותי</span>
               </label>
 
+              {draftPrefs.notifyOnTeamMessage && (
+                <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>
+                    תדירות קבלת עדכוני צ'אט צוותי:
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {[
+                      { id: 'instant', label: 'מיידי (בכל הודעה)' },
+                      { id: 'daily_digest', label: 'סיכום יומי מרוכז' },
+                      { id: 'in_app_only', label: 'בתוך המערכת בלבד' }
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleFieldChange('notificationFrequency', opt.id)}
+                        style={{
+                          flex: 1,
+                          padding: '7px 10px',
+                          borderRadius: '6px',
+                          border: draftPrefs.notificationFrequency === opt.id ? '2px solid #3b6ea5' : '1px solid #cbd5e1',
+                          background: draftPrefs.notificationFrequency === opt.id ? '#eff6ff' : '#ffffff',
+                          color: draftPrefs.notificationFrequency === opt.id ? '#1e3a8a' : '#334155',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {draftPrefs.notificationFrequency === 'daily_digest' && (
+                    <div
+                      style={{
+                        marginTop: '6px',
+                        padding: '10px 12px',
+                        background: '#f0f9ff',
+                        border: '1px solid #bae6fd',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '10px',
+                        flexWrap: 'wrap'
+                      }}
+                    >
+                      <div style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
+                        שעת קבלת הסיכום היומי למייל:
+                      </div>
+                      <select
+                        value={draftPrefs.dailyDigestTime || '14:00'}
+                        onChange={(e) => handleFieldChange('dailyDigestTime', e.target.value)}
+                        data-testid="daily-digest-time-select"
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          border: '1.5px solid #0284c7',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          color: '#0369a1',
+                          background: '#ffffff',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="13:00">13:00 (סיום יום לימודים מוקדם)</option>
+                        <option value="14:00">14:00 (ברירת מחדל מומלצת)</option>
+                        <option value="15:00">15:00 (אחר הצהריים)</option>
+                        <option value="16:00">16:00 (סוף יום)</option>
+                        <option value="17:00">17:00 (שעות הערב)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Monthly Pedagogical Reminder (Completely Separate Card) */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <strong style={{ fontSize: '14px', color: '#1e293b' }}>תזכורת פדגוגית חודשית למעקב יעדים:</strong>
+                <span style={{ fontSize: '11px', background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                  אחת לחודש
+                </span>
+              </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={draftPrefs.monthlyPedagogicalReminder}
                   onChange={(e) => handleFieldChange('monthlyPedagogicalReminder', e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                  style={{ width: '16px', height: '16px', accentColor: '#3b6ea5' }}
                 />
                 <span>תזכורת חודשית במייל למעקב יעדים (ריכוז תלמידים שלא עודכנו מעל 45 יום)</span>
               </label>
-
-              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-                  תדירות התראות דוא"ל:
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {[
-                    { id: 'instant', label: 'מיידי' },
-                    { id: 'daily_digest', label: 'סיכום יומי (16:00)' },
-                    { id: 'in_app_only', label: 'בתוך המערכת בלבד' }
-                  ].map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => handleFieldChange('notificationFrequency', opt.id)}
-                      style={{
-                        flex: 1,
-                        padding: '6px 10px',
-                        borderRadius: '6px',
-                        border: draftPrefs.notificationFrequency === opt.id ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                        background: draftPrefs.notificationFrequency === opt.id ? '#eff6ff' : '#ffffff',
-                        color: draftPrefs.notificationFrequency === opt.id ? '#1d4ed8' : '#334155',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+              <div style={{ fontSize: '11.5px', color: '#64748b', paddingRight: '24px' }}>
+                התזכורת נשלחת ב-1 לכל חודש קלנדרי ומסייעת לשמור על רצף מעקב פדגוגי שוטף בהתאם לדרישות חוזר מנכ"ל.
               </div>
             </div>
           </div>
@@ -1444,7 +1517,15 @@ export default function TeacherPreferencesModal({
               className="btn-primary-sm"
               data-testid="save-teacher-preferences-btn"
               onClick={handleSaveAllPreferences}
-              style={{ background: '#2563eb', color: '#ffffff', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              style={{
+                background: 'linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 2px 6px rgba(59, 110, 165, 0.3)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
             >
               <Check size={15} />
               <span>שמור את כל ההגדרות</span>
