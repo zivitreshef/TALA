@@ -1,3 +1,8 @@
+import {
+  getObservationGaps,
+  getPedagogicalAccomplishmentsSummary
+} from '../../domain/dailyPedagogicalTracking';
+import { sendPedagogicalReminderEmailInBackground } from '../../emailService';
 import React, { useState, useEffect } from 'react';
 import {
   X,

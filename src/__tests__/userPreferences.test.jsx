@@ -503,6 +503,14 @@ describe('Teacher Profile in Reports and Exports', () => {
     expect(student.integrationTeacher).toBe('מוטי גל רשף');
   });
 
+  it('ensures TeacherPreferencesModal imports getObservationGaps and pedagogical helpers', () => {
+    const modalSource = fs.readFileSync(path.resolve(__dirname, '../components/modals/TeacherPreferencesModal.jsx'), 'utf8');
+    const firstLines = modalSource.slice(0, 500);
+    expect(firstLines).toContain('getObservationGaps');
+    expect(firstLines).toContain('getPedagogicalAccomplishmentsSummary');
+    expect(firstLines).toContain('sendPedagogicalReminderEmailInBackground');
+  });
+
   it('ensures App.jsx imports useMemo to prevent runtime ReferenceError (Regression #useMemo)', () => {
     const appSource = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
     const firstLines = appSource.slice(0, 500);
