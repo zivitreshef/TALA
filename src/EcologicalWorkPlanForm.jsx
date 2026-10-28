@@ -161,6 +161,7 @@ import {
   removeGoalRow,
   buildNewGoalRow,
   applyShareToggle,
+  applyShareSettings,
   createTeamMessage,
   appendTeamMessage,
   retractTeamMessage,
@@ -604,6 +605,31 @@ export default function EcologicalWorkPlanForm({
     onSaveStudentPlan(rolled);
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 2500);
+  };
+
+  // Save all sharing settings and deliver handoff note atomically
+  const handleSaveShareSettings = ({ selectedEmails, handoffNote }) => {
+    const nowStamp = new Date().toLocaleString('he-IL', {
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+    const res = applyShareSettings(formData, {
+      selectedEmails,
+      handoffNote,
+      actor: currentUser,
+      nowStamp,
+      allowedUsers
+    });
+    if (!res) return;
+    savedSnapshotRef.current = JSON.stringify(res.next);
+    setFormData(res.next);
+    onSaveStudentPlan(res.next);
+    if (onNotifySharedColleague) {
+      const targets = res.notifiedEmails || res.newlyAdded || [];
+      targets.forEach((email) => {
+        onNotifySharedColleague(formData.id, email, true);
+      });
+    }
   };
 
   // Toggle sharing this student with a colleague email (Option C)
@@ -6494,6 +6520,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         formData={formData}
         currentUser={currentUser}
         allowedUsers={allowedUsers}
+        onSaveShareSettings={handleSaveShareSettings}
         onToggleShareColleague={handleToggleShareColleague}
       />
 

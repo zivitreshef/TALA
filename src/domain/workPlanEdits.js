@@ -214,6 +214,110 @@ export const applyShareToggle = (
   };
 };
 
+export const applyShareSettings = (
+  data,
+  {
+    selectedEmails = [],
+    handoffNote = '',
+    actor = {},
+    nowStamp = '',
+    allowedUsers = []
+  } = {}
+) => {
+  if (!data) return null;
+
+  const currentShared = (Array.isArray(data.sharedWith) ? data.sharedWith : []).map((e) =>
+    String(e || '').trim().toLowerCase()
+  );
+
+  const cleanSelected = Array.from(
+    new Set((selectedEmails || []).map((e) => String(e || '').trim().toLowerCase()).filter(Boolean))
+  );
+
+  // Security Tenant Boundary Check: verify any newly added colleague belongs to actor's group
+  const newlyAdded = [];
+  for (const email of cleanSelected) {
+    if (!currentShared.includes(email)) {
+      if (allowedUsers && allowedUsers.length > 0) {
+        if (!canShareWithColleague(actor, email, allowedUsers)) {
+          return null;
+        }
+      }
+      newlyAdded.push(email);
+    }
+  }
+
+  const removed = currentShared.filter((e) => !cleanSelected.includes(e));
+
+  // Next sharedWith array
+  const nextShared = cleanSelected;
+
+  // Next sharedReadBy: keep only those still in sharedWith, and remove newlyAdded so they get an unread alert
+  const currentReadBy = (Array.isArray(data.sharedReadBy) ? data.sharedReadBy : []).map((e) =>
+    String(e || '').trim().toLowerCase()
+  );
+  const nextReadBy = currentReadBy.filter(
+    (em) => nextShared.includes(em) && !newlyAdded.includes(em)
+  );
+
+  // Next sharedAtByEmail
+  const nextSharedAtByEmail = { ...(data.sharedAtByEmail || {}) };
+  newlyAdded.forEach((em) => {
+    nextSharedAtByEmail[em] = nowStamp || new Date().toISOString();
+  });
+  removed.forEach((em) => {
+    delete nextSharedAtByEmail[em];
+  });
+
+  // Handoff message creation
+  let nextTeamMessages = Array.isArray(data.teamMessages) ? [...data.teamMessages] : [];
+  const cleanNote = String(handoffNote || '').trim();
+  let messageCreated = false;
+
+  if (cleanNote) {
+    // If colleagues were newly added in this action, target the newly added colleagues.
+    // If no colleagues were newly added (e.g. colleagues were already shared), target all cleanSelected.
+    const recipients = newlyAdded.length > 0 ? newlyAdded : cleanSelected;
+
+    recipients.forEach((recEmail) => {
+      const recUser = (allowedUsers || []).find(
+        (u) => (u.email || '').trim().toLowerCase() === recEmail
+      );
+      const handoffMsg = createTeamMessage({
+        authorEmail: actor?.email || data?.ownerEmail || '',
+        authorName: actor?.name || actor?.email || 'מחבר/ת התוכנית',
+        authorRole: actor?.title || actor?.role || 'צוות חינוכי',
+        text: cleanNote,
+        type: 'share_handoff',
+        recipientEmail: recEmail,
+        recipientName: recUser?.name || '',
+        schoolYear: data?.schoolYear || ''
+      });
+      if (handoffMsg) {
+        nextTeamMessages.push(handoffMsg);
+        messageCreated = true;
+      }
+    });
+  }
+
+  const next = {
+    ...syncActiveReportSnapshot(data),
+    sharedWith: nextShared,
+    sharedReadBy: nextReadBy,
+    sharedByName: actor?.name || actor?.email || data?.sharedByName || '',
+    sharedAtByEmail: nextSharedAtByEmail,
+    teamMessages: nextTeamMessages
+  };
+
+  return {
+    next,
+    newlyAdded,
+    removed,
+    messageCreated,
+    notifiedEmails: cleanNote && newlyAdded.length === 0 ? cleanSelected : newlyAdded
+  };
+};
+
 export const updateStatusSection = (prev, sectionNumber, content) => {
   return {
     ...prev,

@@ -6,6 +6,7 @@ import {
   removeGoalRow,
   toggleFocusDomain,
   applyShareToggle,
+  applyShareSettings,
   createTeamMessage,
   appendTeamMessage,
   retractTeamMessage,
@@ -256,6 +257,161 @@ describe('sharing & status sections', () => {
       expect(note.text).toBe('נא להוסיף מטרות לקראת ועדת שילוב');
       expect(note.recipientEmail).toBe('therapist@center.org');
       expect(note.authorEmail).toBe('teacher1@center.org');
+    });
+
+    it('applyShareSettings safely adds colleague and attaches handoff note to teamMessages (Bug Fix)', () => {
+      const allowedUsers = [
+        { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז', active: true },
+        { email: 'teacher2@center.org', name: 'מיכל כהן', group: 'מתי"א מרכז', active: true },
+        { email: 'cross@other.org', name: 'רונית לוי', group: 'מתי"א צפון', active: true }
+      ];
+      const student = {
+        id: 'st_1',
+        name: 'דניאל',
+        schoolYear: 'תשפ"ו (2025-2026)',
+        sharedWith: [],
+        teamMessages: []
+      };
+
+      // 1. Share with teacher2 and provide handoff note
+      const res = applyShareSettings(student, {
+        selectedEmails: ['teacher2@center.org'],
+        handoffNote: 'היי מיכל, שיתפתי איתך את התוכנית לקראת הוועדה. נא להוסיף מטרות.',
+        actor: { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז' },
+        nowStamp: '28.10.26',
+        allowedUsers
+      });
+
+      expect(res).not.toBeNull();
+      expect(res.next.sharedWith).toEqual(['teacher2@center.org']);
+      expect(res.next.teamMessages).toHaveLength(1);
+      const msg = res.next.teamMessages[0];
+      expect(msg.type).toBe('share_handoff');
+      expect(msg.text).toBe('היי מיכל, שיתפתי איתך את התוכנית לקראת הוועדה. נא להוסיף מטרות.');
+      expect(msg.recipientEmail).toBe('teacher2@center.org');
+      expect(msg.recipientName).toBe('מיכל כהן');
+      expect(msg.authorEmail).toBe('teacher1@center.org');
+      expect(res.notifiedEmails).toEqual(['teacher2@center.org']);
+    });
+
+    it('applyShareSettings attaches note when colleague was already checked without unsharing them', () => {
+      const allowedUsers = [
+        { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז', active: true },
+        { email: 'teacher2@center.org', name: 'מיכל כהן', group: 'מתי"א מרכז', active: true }
+      ];
+      const student = {
+        id: 'st_1',
+        name: 'דניאל',
+        sharedWith: ['teacher2@center.org'],
+        teamMessages: []
+      };
+
+      // Colleague is already shared; user adds a handoff note and commits
+      const res = applyShareSettings(student, {
+        selectedEmails: ['teacher2@center.org'],
+        handoffNote: 'עדכון נוסף לגבי המטרות הלימודיות',
+        actor: { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז' },
+        allowedUsers
+      });
+
+      expect(res).not.toBeNull();
+      expect(res.next.sharedWith).toEqual(['teacher2@center.org']);
+      expect(res.next.teamMessages).toHaveLength(1);
+      expect(res.next.teamMessages[0].text).toBe('עדכון נוסף לגבי המטרות הלימודיות');
+      expect(res.next.teamMessages[0].recipientEmail).toBe('teacher2@center.org');
+    });
+
+    it('applyShareSettings handles multiple colleagues and delivers note to all without dropping state', () => {
+      const allowedUsers = [
+        { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז', active: true },
+        { email: 'teacher2@center.org', name: 'מיכל כהן', group: 'מתי"א מרכז', active: true },
+        { email: 'teacher3@center.org', name: 'דנה ישראלי', group: 'מתי"א מרכז', active: true }
+      ];
+      const student = {
+        id: 'st_1',
+        sharedWith: [],
+        teamMessages: []
+      };
+
+      const res = applyShareSettings(student, {
+        selectedEmails: ['teacher2@center.org', 'teacher3@center.org'],
+        handoffNote: 'נא להוסיף מטרות טיפוליות',
+        actor: { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז' },
+        allowedUsers
+      });
+
+      expect(res).not.toBeNull();
+      expect(res.next.sharedWith).toEqual(['teacher2@center.org', 'teacher3@center.org']);
+      expect(res.next.teamMessages).toHaveLength(2);
+      expect(res.next.teamMessages.map((m) => m.recipientEmail)).toEqual([
+        'teacher2@center.org',
+        'teacher3@center.org'
+      ]);
+    });
+
+    it('applyShareSettings strictly blocks cross-group colleagues (tenant isolation boundary)', () => {
+      const allowedUsers = [
+        { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז', active: true },
+        { email: 'cross@other.org', name: 'רונית לוי', group: 'מתי"א צפון', active: true }
+      ];
+      const student = { sharedWith: [], teamMessages: [] };
+
+      const res = applyShareSettings(student, {
+        selectedEmails: ['cross@other.org'],
+        handoffNote: 'הודעה אסורה',
+        actor: { email: 'teacher1@center.org', group: 'מתי"א מרכז' },
+        allowedUsers
+      });
+
+      expect(res).toBeNull();
+    });
+
+    it('applyShareSettings cleanly handles unsharing (removing) colleagues', () => {
+      const allowedUsers = [
+        { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז', active: true },
+        { email: 'teacher2@center.org', name: 'מיכל כהן', group: 'מתי"א מרכז', active: true }
+      ];
+      const student = {
+        id: 'st_1',
+        sharedWith: ['teacher2@center.org'],
+        sharedReadBy: ['teacher2@center.org'],
+        sharedAtByEmail: { 'teacher2@center.org': '20.10.26' },
+        teamMessages: []
+      };
+
+      const res = applyShareSettings(student, {
+        selectedEmails: [],
+        handoffNote: '',
+        actor: { email: 'teacher1@center.org', group: 'מתי"א מרכז' },
+        allowedUsers
+      });
+
+      expect(res).not.toBeNull();
+      expect(res.next.sharedWith).toEqual([]);
+      expect(res.next.sharedReadBy).toEqual([]);
+      expect(res.next.sharedAtByEmail['teacher2@center.org']).toBeUndefined();
+      expect(res.removed).toEqual(['teacher2@center.org']);
+      expect(res.next.teamMessages).toHaveLength(0);
+    });
+
+    it('applyShareSettings does not create team messages when handoffNote is empty or whitespace', () => {
+      const allowedUsers = [
+        { email: 'teacher1@center.org', name: 'שרה המחנכת', group: 'מתי"א מרכז', active: true },
+        { email: 'teacher2@center.org', name: 'מיכל כהן', group: 'מתי"א מרכז', active: true }
+      ];
+      const student = { sharedWith: [], teamMessages: [] };
+
+      const res = applyShareSettings(student, {
+        selectedEmails: ['teacher2@center.org'],
+        handoffNote: '    ',
+        actor: { email: 'teacher1@center.org', group: 'מתי"א מרכז' },
+        allowedUsers
+      });
+
+      expect(res).not.toBeNull();
+      expect(res.next.sharedWith).toEqual(['teacher2@center.org']);
+      expect(res.next.teamMessages).toHaveLength(0);
+      expect(res.messageCreated).toBe(false);
     });
   });
 });
