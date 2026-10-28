@@ -113,7 +113,7 @@ import {
   adaptTextToSchoolStage
 } from './domain/stageGuard.js';
 import { INITIAL_GOAL_BANK } from './goalBankData';
-import { canLockReport } from './domain/permissions';
+import { canLockReport, isStudentSharedWithUser, isStudentPlanShared } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 import TeamChatDrawer from './components/form/TeamChatDrawer';
@@ -335,6 +335,28 @@ export default function EcologicalWorkPlanForm({
   // State for lightweight Team Sharing modal (Option C)
   const [showShareModal, setShowShareModal] = useState(false);
   const [showTeamChatDrawer, setShowTeamChatDrawer] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const exportDropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!showExportDropdown) return;
+    const handleClickOutside = (e) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) {
+        setShowExportDropdown(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowExportDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showExportDropdown]);
 
   // State for Collapsible Mid-Year / End-of-Year Evaluation per goal card (Option A)
   const [expandedEvalMap, setExpandedEvalMap] = useState({});
@@ -483,6 +505,7 @@ export default function EcologicalWorkPlanForm({
   const isReportLocked = Boolean(formData.isLocked);
   const userCanLockReport = canLockReport(formData, currentUser);
   const isTalaMode = isTalaPlanType(formData.planType);
+  const isPlanShared = isStudentPlanShared(formData, currentUser);
 
   // === Stage guard helpers (the student's stage is chosen explicitly by the teacher) ===
   // Every write to the shared goal bank carries the stage the goal actually belongs to.
@@ -2274,64 +2297,26 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
 
         <div className="action-bar-left">
-          {/* Privacy Redaction Checkbox (Default Checked) */}
-          <label
-            className={`privacy-checkbox-label ${hideStudentDetailsOnPrint ? 'checked' : 'unchecked'}`}
-            title="כאשר מסומן, בהדפסה יוצגו ראשי תיבות במקום שם הילד ויושחרו ת.ז, ת.ל, כתובת וטלפון"
-          >
-            <input
-              type="checkbox"
-              checked={hideStudentDetailsOnPrint}
-              onChange={(e) => setHideStudentDetailsOnPrint(e.target.checked)}
-            />
-            {hideStudentDetailsOnPrint ? <EyeOff size={16} /> : <Eye size={16} />}
-            <span>
-              הסתר פרטים מזהים בהדפסה
-            </span>
-          </label>
+          {/* Team Chat Button (Visible only when document is shared) */}
+          {isPlanShared && (
+            <button
+              type="button"
+              className="btn-team-chat"
+              data-testid="top-action-bar-team-chat-btn"
+              onClick={() => setShowTeamChatDrawer(true)}
+              title="שיח צוות ותיעוד שיתוף"
+            >
+              <MessageSquare size={16} style={{ color: '#2563eb' }} />
+              <span>שיח צוות</span>
+              {Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 && (
+                <span className="team-chat-badge">
+                  {formData.teamMessages.filter(m => !m.isDeleted).length}
+                </span>
+              )}
+            </button>
+          )}
 
-          <button
-            type="button"
-            className="btn-team-chat"
-            data-testid="top-action-bar-team-chat-btn"
-            onClick={() => setShowTeamChatDrawer(true)}
-            title="שיח צוות ותיעוד שיתוף"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '#eff6ff' : '#ffffff',
-              color: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '#1d4ed8' : '#334155',
-              border: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '1.5px solid #93c5fd' : '1px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-            }}
-          >
-            <MessageSquare size={16} style={{ color: '#2563eb' }} />
-            <span>שיח צוות</span>
-            {Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 && (
-              <span
-                style={{
-                  background: '#2563eb',
-                  color: '#ffffff',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  padding: '1px 6px',
-                  borderRadius: '999px',
-                  minWidth: '16px',
-                  textAlign: 'center'
-                }}
-              >
-                {formData.teamMessages.filter(m => !m.isDeleted).length}
-              </span>
-            )}
-          </button>
-
+          {/* Full Document Preview Toggle */}
           <button
             type="button"
             className="btn-preview-doc"
@@ -2345,24 +2330,79 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </span>
           </button>
 
-          <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
-            <Printer size={17} />
-            <span>הדפס תוכנית עבודה</span>
-          </button>
+          {/* Unified Export & Print Dropdown */}
+          <div className="export-dropdown-wrapper" ref={exportDropdownRef}>
+            <button
+              type="button"
+              className={`btn-export-dropdown ${showExportDropdown ? 'active' : ''}`}
+              data-testid="top-action-bar-export-dropdown-btn"
+              onClick={() => setShowExportDropdown((prev) => !prev)}
+              title="הדפסה, הורדת Word ושליחה למייל"
+              aria-expanded={showExportDropdown}
+            >
+              <Printer size={16} />
+              <span>הדפסה וייצוא</span>
+              <ChevronDown size={14} className={`export-dropdown-arrow ${showExportDropdown ? 'open' : ''}`} />
+            </button>
 
-          <button
-            type="button"
-            className="btn-send-email-doc"
-            onClick={handleOpenEmailModal}
-            title={
-              formData.lastSavedAt
-                ? 'שלח את תוכנית העבודה במייל בפורמט Word או PDF'
-                : 'שמור ושלח את תוכנית העבודה במייל בפורמט Word או PDF'
-            }
-          >
-            <Mail size={17} />
-            <span>שלח למייל</span>
-          </button>
+            {showExportDropdown && (
+              <div className="export-dropdown-menu" role="menu" data-testid="top-action-bar-export-menu">
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  data-testid="export-menu-print-btn"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    handlePrintDocument();
+                  }}
+                >
+                  <Printer size={15} style={{ color: '#2563eb' }} />
+                  <span>הדפס תוכנית עבודה</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  data-testid="export-menu-email-btn"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    handleOpenEmailModal('tala');
+                  }}
+                >
+                  <Mail size={15} style={{ color: '#7c3aed' }} />
+                  <span>שלח למייל (Word / PDF)</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  data-testid="export-menu-word-btn"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    downloadWordFile('tala');
+                  }}
+                >
+                  <Download size={15} style={{ color: '#059669' }} />
+                  <span>הורד קובץ Word (.doc)</span>
+                </button>
+
+                <div className="export-dropdown-divider" />
+
+                <label
+                  className={`export-dropdown-privacy ${hideStudentDetailsOnPrint ? 'checked' : 'unchecked'}`}
+                  title="כאשר מסומן, בהדפסה ובייצוא יוצגו ראשי תיבות במקום שם הילד ויושחרו פרטים מזהים"
+                >
+                  <input
+                    type="checkbox"
+                    checked={hideStudentDetailsOnPrint}
+                    onChange={(e) => setHideStudentDetailsOnPrint(e.target.checked)}
+                  />
+                  {hideStudentDetailsOnPrint ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                  <span>הסתר פרטים מזהים בהדפסה</span>
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -2570,6 +2610,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     : ''}
                 </span>
               </button>
+              {isPlanShared && (
               <button
                 type="button"
                 onClick={() => setShowTeamChatDrawer(true)}
@@ -2596,6 +2637,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     : ''}
                 </span>
               </button>
+            )}
               <button
                 type="button"
                 className="btn-print-doc"
@@ -3479,33 +3521,6 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               שיתוף צוות
               {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
                 ? ` • ${formData.sharedWith.length}`
-                : ''}
-            </span>
-          </button>
-          <button
-            type="button"
-            data-testid="section1-team-chat-btn"
-            onClick={() => setShowTeamChatDrawer(true)}
-            title="שיח צוות ותיעוד שיתוף"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '#eff6ff' : '#f1f5f9',
-              color: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '#1d4ed8' : '#334155',
-              border: Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 ? '1px solid #bfdbfe' : '1px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            <MessageSquare size={15} />
-            <span>
-              שיח צוות
-              {Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0
-                ? ` • ${formData.teamMessages.filter(m => !m.isDeleted).length}`
                 : ''}
             </span>
           </button>

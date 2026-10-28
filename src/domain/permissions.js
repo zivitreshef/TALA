@@ -100,6 +100,15 @@ export function canLockReport(studentObj, userObj) {
   return isStudentOwnedByUser(studentObj, userObj);
 }
 
+export function isStudentPlanShared(studentObj, userObj) {
+  if (!studentObj) return false;
+  const hasCollaborators = Array.isArray(studentObj.sharedWith) && studentObj.sharedWith.length > 0;
+  const hasMessages = Array.isArray(studentObj.teamMessages) && studentObj.teamMessages.some((m) => !m.isDeleted);
+  const isCollaborator = isStudentSharedWithUser(studentObj, userObj);
+  const cannotLock = Boolean(userObj?.email && studentObj.ownerEmail && !canLockReport(studentObj, userObj));
+  return Boolean(hasCollaborators || hasMessages || isCollaborator || cannotLock);
+}
+
 export function getStudentsForUser(allStudents, userObj) {
   if (!userObj || !userObj.email) return [];
   return (allStudents || []).filter((s) => canViewStudent(s, userObj) && !s.archived);
