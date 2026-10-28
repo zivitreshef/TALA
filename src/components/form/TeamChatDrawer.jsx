@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageSquare, Send, Trash2, X, Clock, Pin, AlertCircle } from 'lucide-react';
 
 export const AUTHOR_COLOR_THEMES = [
@@ -107,6 +107,18 @@ export default function TeamChatDrawer({
 }) {
   const [inputText, setInputText] = useState('');
 
+  // Prevent background support chat launcher or other floating elements from overlapping
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('team-chat-drawer-open');
+    } else {
+      document.body.classList.remove('team-chat-drawer-open');
+    }
+    return () => {
+      document.body.classList.remove('team-chat-drawer-open');
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const myEmail = String(currentUser?.email || '').trim().toLowerCase();
@@ -182,7 +194,7 @@ export default function TeamChatDrawer({
         position: 'fixed',
         inset: 0,
         backgroundColor: 'rgba(15, 23, 42, 0.45)',
-        zIndex: 1050,
+        zIndex: 3500,
         display: 'flex',
         justifyContent: 'flex-end', // Aligns to the LEFT side in RTL mode
         backdropFilter: 'blur(2px)',
@@ -202,7 +214,7 @@ export default function TeamChatDrawer({
           borderRight: '1px solid #cbd5e1',
           display: 'flex',
           flexDirection: 'column',
-          zIndex: 1051,
+          zIndex: 3501,
           animation: 'slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
           direction: 'rtl'
         }}

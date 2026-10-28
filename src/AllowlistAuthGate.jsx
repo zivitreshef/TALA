@@ -667,6 +667,7 @@ export function UserSelfPasswordModal({
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isPasswordSectionOpen, setIsPasswordSectionOpen] = useState(false);
 
   if (!isOpen || !currentUser) return null;
 
@@ -1100,71 +1101,204 @@ export function UserSelfPasswordModal({
                   fontWeight: 700
                 }}
               >
-                ✓ הסיסמה האישית נשמרה בהצלחה! מעביר אותך למערכת...
+                ✓ הסיסמה עודכנה בהצלחה!
               </div>
             )}
 
-            <div>
-              <label style={{ display: 'block', fontWeight: 700, fontSize: '13px', marginBottom: '6px' }}>
-                {isMandatoryFirstLogin ? 'בחר/י סיסמה אישית חדשה:' : 'שינוי סיסמה אישית (אופציונלי):'}
-              </label>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required={isMandatoryFirstLogin}
-                  autoFocus={isMandatoryFirstLogin}
-                  placeholder="הזן סיסמה חדשה..."
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
+            {!isMandatoryFirstLogin ? (
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  transition: 'all 0.18s ease'
+                }}
+              >
+                <button
+                  type="button"
+                  data-testid="toggle-change-password-section-btn"
+                  onClick={() => {
+                    setIsPasswordSectionOpen((prev) => !prev);
                     setErrorMsg('');
                   }}
                   style={{
-                    width: '100%',
-                    padding: '9px 12px 9px 36px',
-                    borderRadius: '8px',
-                    border: '1.5px solid #4a859e',
-                    fontSize: '13.5px',
-                    outline: 'none'
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  title={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-                  aria-label={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-                  style={{
-                    position: 'absolute',
-                    left: '8px',
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#64748b',
-                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '4px'
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    textAlign: 'right'
                   }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <KeyRound size={16} style={{ color: '#64748b' }} />
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                      שינוי סיסמה אישית
+                    </span>
+                    <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                      (אופציונלי)
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      color: '#2563eb',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {isPasswordSectionOpen ? 'סגור עריכה' : 'החלף סיסמה...'}
+                  </span>
                 </button>
-              </div>
 
-              {enforcePasswordPolicy && (isMandatoryFirstLogin || newPassword) && (
-                <PasswordPolicyChecklist password={newPassword} />
-              )}
-            </div>
+                {isPasswordSectionOpen && (
+                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          placeholder="הזן סיסמה חדשה..."
+                          value={newPassword}
+                          onChange={(e) => {
+                            setNewPassword(e.target.value);
+                            setErrorMsg('');
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '9px 12px 9px 36px',
+                            borderRadius: '8px',
+                            border: '1.5px solid #4a859e',
+                            fontSize: '13.5px',
+                            outline: 'none'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          title={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                          aria-label={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                          style={{
+                            position: 'absolute',
+                            left: '8px',
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#64748b',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '4px'
+                          }}
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      <button
+                        type="submit"
+                        data-testid="save-new-password-inline-btn"
+                        disabled={!newPassword.trim()}
+                        style={{
+                          background: newPassword.trim() ? '#2563eb' : '#cbd5e1',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '9px 14px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          cursor: newPassword.trim() ? 'pointer' : 'not-allowed',
+                          whiteSpace: 'nowrap',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <Check size={14} />
+                        <span>שמור סיסמה</span>
+                      </button>
+                    </div>
+
+                    {enforcePasswordPolicy && newPassword && (
+                      <PasswordPolicyChecklist password={newPassword} />
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '13px', marginBottom: '6px' }}>
+                  בחר/י סיסמה אישית חדשה:
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    autoFocus
+                    placeholder="הזן סיסמה חדשה..."
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setErrorMsg('');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px 9px 36px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #4a859e',
+                      fontSize: '13.5px',
+                      outline: 'none'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    title={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                    aria-label={showPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                    style={{
+                      position: 'absolute',
+                      left: '8px',
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#64748b',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '4px'
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                {enforcePasswordPolicy && newPassword && (
+                  <PasswordPolicyChecklist password={newPassword} />
+                )}
+              </div>
+            )}
           </div>
 
           <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            {!isMandatoryFirstLogin && (
-              <button type="button" className="btn-secondary-sm" onClick={onClose}>
+            {isMandatoryFirstLogin ? (
+              <button type="submit" className="btn-primary-sm">
+                <Check size={15} />
+                <span>שמור סיסמה אישית והמשך למערכת</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                data-testid="user-profile-modal-close-btn"
+                className="btn-primary-sm"
+                onClick={onClose}
+                style={{ minWidth: '85px' }}
+              >
                 סגור
               </button>
             )}
-            <button type="submit" className="btn-primary-sm">
-              <Check size={15} />
-              <span>{isMandatoryFirstLogin ? 'שמור סיסמה אישית והמשך למערכת' : 'שמור סיסמה חדשה'}</span>
-            </button>
           </div>
         </form>
       </div>

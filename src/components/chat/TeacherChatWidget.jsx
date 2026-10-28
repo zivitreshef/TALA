@@ -265,6 +265,8 @@ export default function TeacherChatWidget({
   return (
     <div
       dir="rtl"
+      className="teacher-chat-widget-root"
+      data-testid="teacher-support-chat-root"
       style={{
         position: 'fixed',
         bottom: '22px',

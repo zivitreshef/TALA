@@ -2182,25 +2182,29 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <div className="report-lock-hover-tooltip" role="tooltip">
               {isReportLocked ? (
                 <>
-                  <strong>🔒 הדו"ח נעול לעריכה</strong>
-                  <span>
+                  <div className="report-lock-tooltip-title">
+                    🔒 הדו"ח נעול לעריכה
+                  </div>
+                  <div className="report-lock-tooltip-body">
                     תכנית העבודה אושרה וננעלה. כפתורי{' '}
                     <strong>"הערכת מחצית / סוף שנה"</strong> ו<strong>"תצפית מהירה"</strong>{' '}
                     נותרים זמינים לשימוש, ולחיצה עליהם תפתח את הדו"ח לעריכה באופן אוטומטי.
                     {userCanLockReport
                       ? ' לחצי על הסמל לפתיחת הנעילה.'
                       : ' רק המורה האחראי/ת על הדו"ח יכול/ה לפתוח או לנעול אותו.'}
-                  </span>
+                  </div>
                 </>
               ) : (
                 <>
-                  <strong>🔓 הדו"ח פתוח לעריכה</strong>
-                  <span>
+                  <div className="report-lock-tooltip-title">
+                    🔓 הדו"ח פתוח לעריכה
+                  </div>
+                  <div className="report-lock-tooltip-body">
                     הדו"ח פתוח לעריכה ולסקירה משותפת.
                     {userCanLockReport
                       ? ' לאחר הסכמת הצוות, לחצי על הסמל לנעילת הדו"ח (גם במצב נעול ניתן לעדכן "הערכת מחצית / סוף שנה").'
                       : ' רק המורה האחראי/ת על הדו"ח יכול/ה לנעול אותו.'}
-                  </span>
+                  </div>
                 </>
               )}
             </div>

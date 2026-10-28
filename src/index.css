@@ -4463,6 +4463,24 @@ body {
   transform: translateY(0);
 }
 
+.report-lock-tooltip-title {
+  display: block;
+  font-weight: 800;
+  color: #fef08a;
+  margin-bottom: 5px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(250, 204, 21, 0.25);
+  padding-bottom: 3px;
+}
+
+.report-lock-tooltip-body {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #f8fafc;
+}
+
 /* Student list right pane lock/unlock indicator */
 .st-lock-indicator {
   display: inline-flex;
@@ -4683,4 +4701,12 @@ body {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+/* Hide floating support chat widget when team collaboration drawer is open */
+body.team-chat-drawer-open .teacher-chat-widget-root,
+body.team-chat-drawer-open [data-testid="teacher-support-chat-root"],
+body:has([data-testid="team-chat-drawer-panel"]) .teacher-chat-widget-root,
+body:has([data-testid="team-chat-drawer-panel"]) [data-testid="teacher-support-chat-root"] {
+  display: none !important;
 }

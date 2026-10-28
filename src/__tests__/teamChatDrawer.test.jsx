@@ -160,4 +160,19 @@ describe('TeamChatDrawer Component', () => {
     expect(html).toContain('מר'); // מיכל רוזן
     expect(html).toContain('דל'); // דנה לוין
   });
+
+  it('sets high stacking context (z-index 3500) so floating support widgets do not overlap team chat input', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(TeamChatDrawer, {
+        isOpen: true,
+        onClose: () => {},
+        studentName: 'דניאל לוי',
+        teamMessages: sampleMessages,
+        currentUser
+      })
+    );
+
+    expect(html).toContain('z-index:3500');
+    expect(html).toContain('z-index:3501');
+  });
 });

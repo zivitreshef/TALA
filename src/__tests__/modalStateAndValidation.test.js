@@ -1105,6 +1105,43 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
         expect(html).toContain('סמן הכל כנקרא');
         expect(html).toContain('פתח דו&quot;ח');
       });
+
+      it('renders clean calm "סגור" button in footer in normal mode, eliminating loud confusing "שמור סיסמה חדשה" footer button', () => {
+        const html = renderToStaticMarkup(
+          React.createElement(UserSelfPasswordModal, {
+            isOpen: true,
+            onClose: () => {},
+            currentUser: { name: 'זיוית רשף', email: 'zivit@school.org' },
+            isMandatoryFirstLogin: false,
+            unreadSharedReports: []
+          })
+        );
+
+        // Footer should have the clean "סגור" button
+        expect(html).toContain('data-testid="user-profile-modal-close-btn"');
+        expect(html).toContain('סגור');
+        // Footer should NOT have the loud primary button "שמור סיסמה חדשה"
+        expect(html).not.toContain('class="btn-primary-sm"><span>שמור סיסמה חדשה');
+        // Has the collapsible "שינוי סיסמה אישית" toggle
+        expect(html).toContain('data-testid="toggle-change-password-section-btn"');
+        expect(html).toContain('שינוי סיסמה אישית');
+        expect(html).toContain('(אופציונלי)');
+      });
+
+      it('renders mandatory save password primary button only when isMandatoryFirstLogin is true', () => {
+        const html = renderToStaticMarkup(
+          React.createElement(UserSelfPasswordModal, {
+            isOpen: true,
+            onClose: () => {},
+            currentUser: { name: 'מורה חדשה', email: 'new@school.org', mustChangePassword: true },
+            isMandatoryFirstLogin: true,
+            unreadSharedReports: []
+          })
+        );
+
+        expect(html).toContain('שמור סיסמה אישית והמשך למערכת');
+        expect(html).toContain('כניסה ראשונה באמצעות סיסמה זמנית');
+      });
     });
 
   });
