@@ -87,19 +87,26 @@ export function mergeStudentSnapshots({
 
   const merged = { ...serverStudent, ...localStudent };
 
-  // 1. SharedWith array union
-  const sharedSet = new Set([
-    ...(Array.isArray(serverStudent.sharedWith) ? serverStudent.sharedWith : []),
-    ...(Array.isArray(localStudent.sharedWith) ? localStudent.sharedWith : [])
-  ]);
-  merged.sharedWith = Array.from(sharedSet);
+  // 1. SharedWith reconciliation:
+  // Local student reflects authoritative sharing actions (both adding and unsharing).
+  // If localStudent.sharedWith is an array, respect it directly so unsharing works permanently;
+  // otherwise fallback to serverStudent.sharedWith.
+  merged.sharedWith = Array.isArray(localStudent.sharedWith)
+    ? localStudent.sharedWith
+    : (Array.isArray(serverStudent.sharedWith) ? serverStudent.sharedWith : []);
 
-  // 1b. SharedReadBy array union so colleague read receipts are never erased on plan save/lock
+  // 1b. SharedReadBy array reconciliation:
+  // Colleague read receipts are preserved as a union, but strictly filtered to users currently in sharedWith.
   const sharedReadBySet = new Set([
     ...(Array.isArray(serverStudent.sharedReadBy) ? serverStudent.sharedReadBy : []),
     ...(Array.isArray(localStudent.sharedReadBy) ? localStudent.sharedReadBy : [])
   ]);
-  merged.sharedReadBy = Array.from(sharedReadBySet);
+  const currentSharedEmails = new Set(
+    merged.sharedWith.map((e) => String(e || '').trim().toLowerCase())
+  );
+  merged.sharedReadBy = Array.from(sharedReadBySet).filter((email) =>
+    currentSharedEmails.has(String(email || '').trim().toLowerCase())
+  );
 
   // 2. Goal-by-goal non-destructive reconciliation
   const localGoals = Array.isArray(localStudent.goals) ? localStudent.goals : [];

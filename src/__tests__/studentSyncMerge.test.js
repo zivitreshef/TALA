@@ -175,4 +175,31 @@ describe('studentSyncMerge (Multi-Disciplinary & Field-Level Saves)', () => {
     expect(reconciled.sharedReadBy).toContain('colleague@tala.edu.il');
     expect(reconciled.sharedWith).toContain('colleague@tala.edu.il');
   });
+
+  it('allows unsharing a colleague in mergeStudentSnapshots without server union resurrecting the unshared user', () => {
+    // Owner explicitly unshares the colleague, so localStudent has empty sharedWith
+    const local = {
+      id: 'st_unshare_1',
+      name: 'תמר',
+      sharedWith: [],
+      sharedReadBy: []
+    };
+
+    // Server still holds the previous snapshot where colleague was shared
+    const server = {
+      id: 'st_unshare_1',
+      name: 'תמר',
+      sharedWith: ['colleague@tala.edu.il'],
+      sharedReadBy: ['colleague@tala.edu.il']
+    };
+
+    const reconciled = mergeStudentSnapshots({
+      localStudent: local,
+      serverStudent: server
+    });
+
+    // Unshared colleague must not be revived
+    expect(reconciled.sharedWith).toEqual([]);
+    expect(reconciled.sharedReadBy).toEqual([]);
+  });
 });
