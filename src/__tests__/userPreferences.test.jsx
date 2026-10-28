@@ -254,7 +254,7 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
       />
     );
 
-    expect(html).toContain('data-testid="daily-digest-time-input"');
+    expect(html).toContain('data-testid="daily-digest-time-select"');
     expect(html).toContain('value="13:30"');
     expect(html).toContain('תזכורת פדגוגית');
     expect(html).not.toContain('תזכורת פדגוגית חודשית למעקב יעדים:');
