@@ -47,7 +47,7 @@ export function getTeacherSignaturePrintBlock(formData = {}, defaultRole = 'צו
     return `
       <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
         <div>חתימת ${role}:</div>
-        <img src="${formData.signatureImage}" alt="חתימה" style="max-height: 42px; max-width: 120px; object-fit: contain;" />
+        <img src="${formData.signatureImage}" alt="חתימה" style="max-height: 42px; max-width: 120px; object-fit: contain; mix-blend-mode: multiply; background-color: transparent;" />
         ${name ? `<div style="font-size: 11px; font-weight: 700; color: #1e3a5f;">${name}</div>` : ''}
         ${aff ? `<div style="font-size: 9.5px; color: #64748b;">${aff}</div>` : ''}
       </div>

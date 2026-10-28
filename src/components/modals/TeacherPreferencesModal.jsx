@@ -27,7 +27,8 @@ import {
   DEFAULT_USER_PREFERENCES,
   normalizeUserPreferences,
   addPrivateGoal,
-  removePrivateGoal
+  removePrivateGoal,
+  makeSignatureBackgroundTransparent
 } from '../../domain/userPreferences';
 import {
   verifyUserPassword,
@@ -246,7 +247,9 @@ export default function TeacherPreferencesModal({
     reader.onload = () => {
       const result = reader.result;
       if (typeof result === 'string') {
-        handleFieldChange('signatureImage', result);
+        makeSignatureBackgroundTransparent(result, (transparentResult) => {
+          handleFieldChange('signatureImage', transparentResult);
+        });
       }
     };
     reader.readAsDataURL(file);
@@ -1625,7 +1628,7 @@ export default function TeacherPreferencesModal({
                       <img
                         src={draftPrefs.signatureImage}
                         alt="חתימה אישית שמורה"
-                        style={{ maxHeight: '36px', maxWidth: '130px', objectFit: 'contain' }}
+                        style={{ maxHeight: '36px', maxWidth: '130px', objectFit: 'contain', mixBlendMode: 'multiply', backgroundColor: 'transparent' }}
                       />
                     </div>
                     <button

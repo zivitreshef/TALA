@@ -303,3 +303,58 @@ export function formatDateWithPreferences(dateStr, formatPref = 'both') {
   if (formatPref === 'hebrew') return heb;
   return `${heb} | ${greg}`;
 }
+
+/**
+ * Automatically removes white and near-white backgrounds from an uploaded signature
+ * image and converts it into a clean, transparent PNG with smooth antialiased edges.
+ */
+export function makeSignatureBackgroundTransparent(dataUrl, callback) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
+    callback(dataUrl);
+    return;
+  }
+
+  // Graceful fallback for non-browser environments (e.g. Node tests)
+  if (typeof Image === 'undefined' || typeof document === 'undefined') {
+    callback(dataUrl);
+    return;
+  }
+
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        callback(dataUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imgData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const brightness = (r + g + b) / 3;
+        // Near-white and white pixels fade to 0 alpha for a seamless transparent signature
+        if (brightness > 215) {
+          const alphaFactor = Math.max(0, 1 - (brightness - 215) / 40);
+          data[i + 3] = Math.round(data[i + 3] * alphaFactor);
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+      const transparentDataUrl = canvas.toDataURL('image/png');
+      callback(transparentDataUrl);
+    } catch {
+      callback(dataUrl);
+    }
+  };
+  img.onerror = () => callback(dataUrl);
+  img.src = dataUrl;
+}

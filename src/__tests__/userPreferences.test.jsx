@@ -16,7 +16,8 @@ import {
   getBesadHeaderHtml,
   toHebrewGematria,
   formatHebrewCalendarDate,
-  formatDateWithPreferences
+  formatDateWithPreferences,
+  makeSignatureBackgroundTransparent
 } from '../domain/userPreferences';
 import {
   getDisplayReportDate,
@@ -480,6 +481,16 @@ describe('Teacher Profile in Reports and Exports', () => {
     expect(blockWithImg).toContain('מוטי גל רשף');
     expect(blockWithImg).toContain('קיבוץ עמיר');
     expect(blockWithImg).toContain('<img');
+    expect(blockWithImg).toContain('mix-blend-mode: multiply');
+    expect(blockWithImg).toContain('background-color: transparent');
+  });
+
+  it('handles signature background transparency gracefully in node/test environments', () => {
+    let output = null;
+    makeSignatureBackgroundTransparent('data:image/png;base64,sample', (res) => {
+      output = res;
+    });
+    expect(output).toBe('data:image/png;base64,sample');
   });
 
   it('includes teacher name, title and institution in full work plan print HTML', () => {
