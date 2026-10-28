@@ -394,6 +394,16 @@ export default function App() {
     });
   };
 
+  const effectiveCurrentUser = useMemo(() => {
+    if (!currentUser) return null;
+    return {
+      ...currentUser,
+      name: userPreferences?.fullName || currentUser.name,
+      title: userPreferences?.professionalTitle || currentUser.title,
+      group: userPreferences?.institutionalAffiliation || currentUser.group
+    };
+  }, [currentUser, userPreferences?.fullName, userPreferences?.professionalTitle, userPreferences?.institutionalAffiliation]);
+
   // All students across users (each student is strictly scoped by ownerEmail)
   const [students, setStudents] = useState(() => {
     try {
@@ -1470,6 +1480,8 @@ export default function App() {
       idNumber: '',
       birthDate: '',
       educationalFramework: defaultFramework,
+      homeroomTeacher: userPreferences?.fullName || '',
+      integrationTeacher: isTachiPref ? (userPreferences?.fullName || '') : '',
       address: '',
       phone: '',
       teacherFreeText: '',
@@ -2159,11 +2171,11 @@ export default function App() {
               tabIndex={0}
             >
               <div className="header-user-avatar">
-                {currentUser.name ? currentUser.name.trim().charAt(0) : <UserCheck size={13} />}
+                {effectiveCurrentUser.name ? effectiveCurrentUser.name.trim().charAt(0) : <UserCheck size={13} />}
               </div>
               <div className="header-user-meta">
-                <strong className="header-user-name">{currentUser.name}</strong>
-                <span className="header-user-role">{currentUser.title || 'משתמש'}</span>
+                <strong className="header-user-name">{effectiveCurrentUser.name}</strong>
+                <span className="header-user-role">{effectiveCurrentUser.title || 'משתמש'}</span>
               </div>
               {currentUser.notifyOnSharedReport !== false && unreadSharedReports.length > 0 ? (
                 <span className="header-unread-badge">
@@ -2567,7 +2579,7 @@ export default function App() {
                 userPreferences={userPreferences}
                 privateGoals={userPreferences?.privateGoals || []}
                 isAdmin={currentUser.role === 'admin'}
-                currentUser={currentUser}
+                currentUser={effectiveCurrentUser}
                 allowedUsers={allowedUsers}
                 onOpenGoalBankManager={() => {
                   if (selectedStudent?.id) setTargetBankStudentId(selectedStudent.id);
@@ -2590,7 +2602,7 @@ export default function App() {
             <ErrorBoundary componentName="DailyPedagogicalTracker">
               <DailyPedagogicalTracker
                 students={userStudents}
-                currentUser={currentUser}
+                currentUser={effectiveCurrentUser}
                 onUpdateStudent={(updatedStudent) => {
                   handleSaveStudentPlan(updatedStudent);
                 }}
@@ -2606,7 +2618,7 @@ export default function App() {
             <ErrorBoundary componentName="GoalBankPage">
               <GoalBankPage
                 goalBank={goalBank}
-                currentUser={currentUser}
+                currentUser={effectiveCurrentUser}
                 userStudents={userStudents}
                 targetBankStudentId={targetBankStudentId}
                 setTargetBankStudentId={setTargetBankStudentId}
@@ -2646,7 +2658,7 @@ export default function App() {
                   </div>
                   <div className="inside-landing-title-box">
                     <h2>
-                      <span>שלום, {currentUser.name} 👋</span>
+                      <span>שלום, {effectiveCurrentUser.name} 👋</span>
                       <span className="inside-landing-badge">
                         <Sparkles size={12} />
                         מרחב ניהול תלמידים
@@ -2981,7 +2993,7 @@ export default function App() {
             setShowSelfPasswordModal(false);
           }
         }}
-        currentUser={currentUser}
+        currentUser={effectiveCurrentUser}
         userPreferences={userPreferences}
         onSavePreferences={handleSaveUserPreferences}
         enforcePasswordPolicy={enforcePasswordPolicy}

@@ -17,7 +17,10 @@ import {
 } from '../domain/userPreferences';
 import {
   getDisplayReportDate,
-  buildWorkPlanPrintHtml
+  buildWorkPlanPrintHtml,
+  getTeacherMetaBadge,
+  getTeacherSignaturePrintBlock,
+  getTeacherSignatureWordCell
 } from '../export/wordAndPrintBuilders';
 import TeacherPreferencesModal from '../components/modals/TeacherPreferencesModal';
 
@@ -265,5 +268,62 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
     );
     expect(htmlWithSig).toContain('data-testid="remove-signature-btn"');
     expect(htmlWithSig).not.toContain('data-testid="upload-signature-label"');
+  });
+});
+
+describe('Teacher Profile in Reports and Exports', () => {
+  const teacherData = {
+    teacherName: 'מוטי גל רשף',
+    teacherTitle: 'ממלא מקום ראש הממשלה',
+    institutionalAffiliation: 'קיבוץ עמיר'
+  };
+
+  it('generates teacher meta badge for student details bar', () => {
+    const badge = getTeacherMetaBadge(teacherData);
+    expect(badge).toContain('עורך/ת התוכנית:');
+    expect(badge).toContain('מוטי גל רשף');
+    expect(badge).toContain('(ממלא מקום ראש הממשלה)');
+    expect(badge).toContain('קיבוץ עמיר');
+  });
+
+  it('generates teacher signature print block with and without signature image', () => {
+    // 1. Without image
+    const blockNoImg = getTeacherSignaturePrintBlock(teacherData, 'מחנכת הכיתה');
+    expect(blockNoImg).toContain('חתימת ממלא מקום ראש הממשלה');
+    expect(blockNoImg).toContain('מוטי גל רשף • קיבוץ עמיר');
+
+    // 2. With image
+    const blockWithImg = getTeacherSignaturePrintBlock({
+      ...teacherData,
+      signatureImage: 'data:image/png;base64,sample'
+    });
+    expect(blockWithImg).toContain('חתימת ממלא מקום ראש הממשלה:');
+    expect(blockWithImg).toContain('מוטי גל רשף');
+    expect(blockWithImg).toContain('קיבוץ עמיר');
+    expect(blockWithImg).toContain('<img');
+  });
+
+  it('includes teacher name, title and institution in full work plan print HTML', () => {
+    const sampleStudent = {
+      studentName: 'יונתן כהן',
+      date: '2026-10-28',
+      ...teacherData
+    };
+    const html = buildWorkPlanPrintHtml(sampleStudent, false, 'https://example.com/logo.png');
+    expect(html).toContain('עורך/ת התוכנית:');
+    expect(html).toContain('מוטי גל רשף');
+    expect(html).toContain('(ממלא מקום ראש הממשלה)');
+    expect(html).toContain('קיבוץ עמיר');
+    expect(html).toContain('חתימת ממלא מקום ראש הממשלה');
+  });
+
+  it('applies teacher fullName to new student homeroomTeacher and integrationTeacher', () => {
+    const prefs = {
+      defaultReportType: 'tachi',
+      fullName: 'מוטי גל רשף'
+    };
+    const student = applyPreferencesToNewStudent({ name: 'רוני' }, prefs);
+    expect(student.homeroomTeacher).toBe('מוטי גל רשף');
+    expect(student.integrationTeacher).toBe('מוטי גל רשף');
   });
 });

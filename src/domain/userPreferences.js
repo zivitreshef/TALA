@@ -187,6 +187,14 @@ export function applyPreferencesToNewStudent(studentData = {}, prefs = {}) {
     result.educationalFramework = normalizedPrefs.defaultEducationalFramework;
   }
 
+  // Set default teacher name
+  if (!result.homeroomTeacher && normalizedPrefs.fullName) {
+    result.homeroomTeacher = normalizedPrefs.fullName;
+  }
+  if (!result.integrationTeacher && normalizedPrefs.fullName && normalizedPrefs.defaultReportType === 'tachi') {
+    result.integrationTeacher = normalizedPrefs.fullName;
+  }
+
   return result;
 }
 

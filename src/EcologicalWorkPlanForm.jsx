@@ -683,7 +683,12 @@ export default function EcologicalWorkPlanForm({
     const targetColleague = (allowedUsers || []).find(
       (u) => (u.email || '').trim().toLowerCase() === String(colleagueEmail || '').trim().toLowerCase()
     );
-    const res = applyShareToggle(formData, colleagueEmail, currentUser, nowStamp, {
+    const effectiveActor = {
+      ...currentUser,
+      name: userPreferences?.fullName || currentUser?.name,
+      title: [userPreferences?.professionalTitle || currentUser?.title, userPreferences?.institutionalAffiliation || currentUser?.group].filter(Boolean).join(' • ')
+    };
+    const res = applyShareToggle(formData, colleagueEmail, effectiveActor, nowStamp, {
       allowedUsers,
       handoffNote: messageText,
       recipientName: targetColleague?.name || ''
@@ -699,10 +704,14 @@ export default function EcologicalWorkPlanForm({
 
   // Send a message in the Team Collaboration Thread
   const handleSendTeamMessage = (text) => {
+    const authorName = userPreferences?.fullName || currentUser?.name || currentUser?.email || 'צוות חינוכי';
+    const authorRole = [userPreferences?.professionalTitle || currentUser?.title, userPreferences?.institutionalAffiliation || currentUser?.group]
+      .filter(Boolean)
+      .join(' • ') || currentUser?.role || 'צוות';
     const msg = createTeamMessage({
       authorEmail: currentUser?.email || '',
-      authorName: currentUser?.name || currentUser?.email || 'צוות חינוכי',
-      authorRole: currentUser?.title || currentUser?.role || 'צוות',
+      authorName,
+      authorRole,
       text,
       type: 'comment',
       schoolYear: formData?.schoolYear || ''
@@ -1982,7 +1991,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     besadText: userPreferences?.besadText,
     signatureImage: userPreferences?.signatureImage,
     reportDateFormat: userPreferences?.reportDateFormat || 'both',
-    teacherName: userPreferences?.fullName || currentUser?.name || baseData.teacherName
+    teacherName: userPreferences?.fullName || currentUser?.name || baseData.teacherName,
+    teacherTitle: userPreferences?.professionalTitle || currentUser?.title || baseData.teacherTitle || '',
+    institutionalAffiliation: userPreferences?.institutionalAffiliation || currentUser?.group || baseData.institutionalAffiliation || ''
   });
 
   const buildWordDocumentHtml = () => renderWordDocumentHtml(getExportPayload(), hideStudentDetailsOnPrint);
@@ -2140,6 +2151,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         attachmentInfo = await createPdfBlob(activeMode);
       }
 
+      const senderSignOff = [
+        userPreferences?.fullName || currentUser?.name || activeEngineCfg.senderName || 'מערכת TALA – תוכנית עבודה אקולוגית',
+        [userPreferences?.professionalTitle || currentUser?.title, userPreferences?.institutionalAffiliation || currentUser?.group]
+          .filter(Boolean)
+          .join(' • ')
+      ].filter(Boolean).join('\r\n');
+
       const textBody = [
         'שלום רב,',
         '',
@@ -2149,7 +2167,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           : '',
         '',
         'בברכה,',
-        activeEngineCfg.senderName || 'מערכת TALA – תוכנית עבודה אקולוגית'
+        senderSignOff
       ]
         .filter(Boolean)
         .join('\r\n');
@@ -2163,6 +2181,11 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               ? '<p style="color: #4c1d95; font-size: 12px;">🔒 המסמך הופק במצב הגנת פרטיות (ראשי תיבות והשחרת פרטים מזהים).</p>'
               : ''
           }
+          <div style="margin: 14px 0; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <div style="font-weight: 700; color: #1e3a5f;">בברכה, ${userPreferences?.fullName || currentUser?.name || 'צוות חינוכי'}</div>
+            ${(userPreferences?.professionalTitle || currentUser?.title) ? `<div style="font-size: 12px; color: #475569;">${userPreferences?.professionalTitle || currentUser?.title}</div>` : ''}
+            ${(userPreferences?.institutionalAffiliation || currentUser?.group) ? `<div style="font-size: 12px; color: #64748b;">${userPreferences?.institutionalAffiliation || currentUser?.group}</div>` : ''}
+          </div>
           <hr style="border: none; border-top: 1px solid #cbd5e1; margin: 16px 0;" />
           ${attachmentInfo.htmlContent}
         </div>

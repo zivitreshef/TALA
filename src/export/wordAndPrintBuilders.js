@@ -17,6 +17,62 @@ export function getDisplayReportDate(formData = {}) {
   return formatDateWithPreferences(formData.date, formData.reportDateFormat || 'both') || formData.date;
 }
 
+export function getTeacherMetaBadge(formData = {}) {
+  if (!formData.teacherName) return '';
+  const parts = [
+    formData.teacherName,
+    formData.teacherTitle ? `(${formData.teacherTitle})` : '',
+    formData.institutionalAffiliation ? `• ${formData.institutionalAffiliation}` : ''
+  ].filter(Boolean);
+  return `<div><strong>עורך/ת התוכנית:</strong> ${parts.join(' ')}</div>`;
+}
+
+export function getTeacherMetaWordText(formData = {}) {
+  if (!formData.teacherName) return '';
+  const parts = [
+    formData.teacherName,
+    formData.teacherTitle ? `(${formData.teacherTitle})` : '',
+    formData.institutionalAffiliation ? `• ${formData.institutionalAffiliation}` : ''
+  ].filter(Boolean);
+  return ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>עורך/ת התוכנית:</strong> ${parts.join(' ')}`;
+}
+
+export function getTeacherSignaturePrintBlock(formData = {}, defaultRole = 'צוות חינוכי') {
+  const role = formData.teacherTitle || defaultRole;
+  const name = formData.teacherName || '';
+  const aff = formData.institutionalAffiliation || '';
+  const meta = [name, aff].filter(Boolean).join(' • ');
+
+  if (formData.signatureImage) {
+    return `
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+        <div>חתימת ${role}:</div>
+        <img src="${formData.signatureImage}" alt="חתימה" style="max-height: 42px; max-width: 120px; object-fit: contain;" />
+        ${name ? `<div style="font-size: 11px; font-weight: 700; color: #1e3a5f;">${name}</div>` : ''}
+        ${aff ? `<div style="font-size: 9.5px; color: #64748b;">${aff}</div>` : ''}
+      </div>
+    `;
+  }
+
+  if (name) {
+    return `<div>חתימת ${role} (${meta}): _________________________</div>`;
+  }
+
+  return `<div>חתימת ${role}: _________________________</div>`;
+}
+
+export function getTeacherSignatureWordCell(formData = {}, defaultRole = 'צוות חינוכי') {
+  const role = formData.teacherTitle || defaultRole;
+  const name = formData.teacherName || '';
+  const aff = formData.institutionalAffiliation || '';
+  const meta = [name, aff].filter(Boolean).join(' • ');
+
+  if (name) {
+    return `חתימת ${role} (${meta}): ______________`;
+  }
+  return `חתימת ${role}: ______________`;
+}
+
 export function getAdditionalMetadataItems(formData = {}, hideDetails = false) {
   const isKindergarten = formData.stage === 'kindergarten';
   const rawItems = [
@@ -358,15 +414,7 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
   const signaturesPrintHtml = isTala
     ? `
       <div class="signatures-row" style="flex-wrap: wrap; gap: 16px;">
-        ${formData.signatureImage ? `
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-            <div>חתימת מחנכת/מורת שילוב:</div>
-            <img src="${formData.signatureImage}" alt="חתימה" style="max-height: 42px; max-width: 120px; object-fit: contain;" />
-            <div style="font-size: 10px; color: #64748b;">${formData.teacherName || ''}</div>
-          </div>
-        ` : `
-          <div>חתימת מחנכת הכיתה: __________________</div>
-        `}
+        ${getTeacherSignaturePrintBlock(formData, 'מחנכת/מורת שילוב')}
         <div>חתימת מנהלת בית הספר: __________________</div>
         <div>חתימת ההורים: __________________</div>
         <div>חתימת התלמיד/ה: __________________</div>
@@ -374,15 +422,7 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
     `
     : `
       <div class="signatures-row">
-        ${formData.signatureImage ? `
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-            <div>חתימת צוות חינוכי:</div>
-            <img src="${formData.signatureImage}" alt="חתימה" style="max-height: 42px; max-width: 120px; object-fit: contain;" />
-            <div style="font-size: 10px; color: #64748b;">${formData.teacherName || ''}</div>
-          </div>
-        ` : `
-          <div>חתימת צוות חינוכי: _________________________</div>
-        `}
+        ${getTeacherSignaturePrintBlock(formData, 'צוות חינוכי')}
         <div>חתימת הורים: _________________________</div>
       </div>
     `;
@@ -558,6 +598,7 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
           <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
           <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
           ${formData.planType ? `<div><strong>סוג תוכנית:</strong> ${formData.planType}</div>` : ''}
+          ${getTeacherMetaBadge(formData)}
           ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
           ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
         </div>
@@ -805,7 +846,7 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
       <table dir="rtl" border="0" style="width:100%; margin-top:18pt; font-weight:bold; color:#2b4c73; font-size:10.5pt;">
         <tr>
           <td style="width:25%; text-align:right;">חתימת מנהלת ביה"ס: ______________</td>
-          <td style="width:25%; text-align:right;">חתימת מחנכת הכיתה: ______________</td>
+          <td style="width:25%; text-align:right;">${getTeacherSignatureWordCell(formData, 'מחנכת הכיתה')}</td>
           <td style="width:25%; text-align:right;">חתימת ההורים: ______________</td>
           <td style="width:25%; text-align:right;">חתימת התלמיד/ה: ______________</td>
         </tr>
@@ -814,7 +855,7 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
     : `
       <table dir="rtl" border="0" style="width:100%; margin-top:18pt; font-weight:bold; color:#2b4c73; font-size:11pt;">
         <tr>
-          <td style="width:50%; text-align:right;">חתימת צוות חינוכי: _________________________</td>
+          <td style="width:50%; text-align:right;">${getTeacherSignatureWordCell(formData, 'צוות חינוכי')}</td>
           <td style="width:50%; text-align:left;">חתימת הורים: _________________________</td>
         </tr>
       </table>
@@ -861,6 +902,7 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
           <strong>ת.ז:</strong> ${displayId} &nbsp;&nbsp;|&nbsp;&nbsp;
           <strong>ת.ל:</strong> ${displayBirthDate} &nbsp;&nbsp;|&nbsp;&nbsp;
           <strong>מסגרת חינוכית:</strong> ${displayFramework}
+          ${getTeacherMetaWordText(formData)}
           ${formData.address ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
           ${formData.phone ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
         </div>
@@ -977,6 +1019,7 @@ export function buildEvalWordDocumentHtml(formData = {}, hideDetails = false) {
           <strong>ת.ז:</strong> ${displayId} &nbsp;&nbsp;|&nbsp;&nbsp;
           <strong>ת.ל:</strong> ${displayBirthDate} &nbsp;&nbsp;|&nbsp;&nbsp;
           <strong>מסגרת חינוכית:</strong> ${displayFramework}
+          ${getTeacherMetaWordText(formData)}
           ${formData.address ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
           ${formData.phone ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
         </div>
@@ -1014,7 +1057,7 @@ export function buildEvalWordDocumentHtml(formData = {}, hideDetails = false) {
 
         <table dir="rtl" border="0" style="width:100%; margin-top:18pt; font-weight:bold; color:#2b4c73; font-size:11pt;">
           <tr>
-            <td style="width:50%; text-align:right;">חתימת צוות חינוכי: _________________________</td>
+            <td style="width:50%; text-align:right;">${getTeacherSignatureWordCell(formData, 'צוות חינוכי')}</td>
             <td style="width:50%; text-align:left;">חתימת הורים: _________________________</td>
           </tr>
         </table>
@@ -1198,6 +1241,7 @@ export function buildEvalReportPrintHtml(formData = {}, hideDetails = false, log
           <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
           <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
           ${formData.planType ? `<div><strong>סוג תוכנית:</strong> ${formData.planType}</div>` : ''}
+          ${getTeacherMetaBadge(formData)}
           ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
           ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
         </div>
@@ -1228,7 +1272,7 @@ export function buildEvalReportPrintHtml(formData = {}, hideDetails = false, log
           ${getRedactedText(formData.recommendations, formData, hideDetails)}
         </div>
         <div class="signatures-row">
-          <div>חתימת צוות חינוכי: _________________________</div>
+          ${getTeacherSignaturePrintBlock(formData, 'צוות חינוכי')}
           <div>חתימת הורים: _________________________</div>
         </div>
       </body>
@@ -1321,6 +1365,7 @@ export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = f
           <strong>ת.ז:</strong> ${displayId} &nbsp;&nbsp;|&nbsp;&nbsp;
           <strong>ת.ל:</strong> ${displayBirthDate} &nbsp;&nbsp;|&nbsp;&nbsp;
           <strong>מסגרת חינוכית:</strong> ${displayFramework}
+          ${getTeacherMetaWordText(formData)}
           ${formData.address ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
           ${formData.phone ? ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
         </div>
@@ -1329,7 +1374,7 @@ export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = f
 
         <table dir="rtl" border="0" style="width:100%; margin-top:18pt; font-weight:bold; color:#2b4c73; font-size:11pt;">
           <tr>
-            <td style="width:50%; text-align:right;">חתימת צוות חינוכי: _________________________</td>
+            <td style="width:50%; text-align:right;">${getTeacherSignatureWordCell(formData, 'צוות חינוכי')}</td>
             <td style="width:50%; text-align:left;">חתימת הורים / גורם מקצועי: _________________________</td>
           </tr>
         </table>
@@ -1500,6 +1545,7 @@ export function buildStatusReportPrintHtml(formData = {}, hideDetails = false, l
           <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
           <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
           ${formData.planType ? `<div><strong>סוג תוכנית:</strong> ${formData.planType}</div>` : ''}
+          ${getTeacherMetaBadge(formData)}
           ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
           ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
         </div>
@@ -1507,7 +1553,7 @@ export function buildStatusReportPrintHtml(formData = {}, hideDetails = false, l
         ${sectionsHtml}
 
         <div class="signatures-row">
-          <div>חתימת צוות חינוכי: _________________________</div>
+          ${getTeacherSignaturePrintBlock(formData, 'צוות חינוכי')}
           <div>חתימת הורים / גורם מקצועי: _________________________</div>
         </div>
       </body>
