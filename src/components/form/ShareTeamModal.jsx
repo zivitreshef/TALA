@@ -20,9 +20,23 @@ export default function ShareTeamModal({
   formData,
   currentUser,
   allowedUsers,
+  onSaveShareSettings,
   onToggleShareColleague
 }) {
+  const [selectedEmails, setSelectedEmails] = React.useState(() =>
+    (formData?.sharedWith || []).map((e) => String(e || '').trim().toLowerCase())
+  );
   const [handoffNote, setHandoffNote] = React.useState('');
+
+  React.useEffect(() => {
+    if (isOpen && formData) {
+      const current = (formData.sharedWith || []).map((e) =>
+        String(e || '').trim().toLowerCase()
+      );
+      setSelectedEmails(current);
+      setHandoffNote('');
+    }
+  }, [isOpen, formData?.id]);
 
   if (!isOpen) return null;
 
@@ -30,9 +44,40 @@ export default function ShareTeamModal({
   const activeChips = isLocked ? LOCKED_QUICK_CHIPS : QUICK_CHIPS;
   const myGroup = getUserGroup(currentUser, allowedUsers);
   const visibleUsers = getShareableColleagues(currentUser, allowedUsers);
-  const currentShared = (formData.sharedWith || []).map((e) =>
-    String(e || '').trim().toLowerCase()
-  );
+
+  const handleToggleColleague = (colEmail) => {
+    setSelectedEmails((prev) =>
+      prev.includes(colEmail)
+        ? prev.filter((e) => e !== colEmail)
+        : [...prev, colEmail]
+    );
+  };
+
+  const handleFinish = () => {
+    const initialShared = (formData?.sharedWith || []).map((e) =>
+      String(e || '').trim().toLowerCase()
+    );
+    const cleanNote = handoffNote.trim();
+    const hasChanges =
+      selectedEmails.length !== initialShared.length ||
+      selectedEmails.some((e) => !initialShared.includes(e)) ||
+      initialShared.some((e) => !selectedEmails.includes(e));
+
+    if (hasChanges || cleanNote) {
+      if (onSaveShareSettings) {
+        onSaveShareSettings({
+          selectedEmails,
+          handoffNote: cleanNote
+        });
+      } else if (onToggleShareColleague) {
+        const newlyAdded = selectedEmails.filter((e) => !initialShared.includes(e));
+        const removed = initialShared.filter((e) => !selectedEmails.includes(e));
+        removed.forEach((e) => onToggleShareColleague(e));
+        newlyAdded.forEach((e) => onToggleShareColleague(e, cleanNote));
+      }
+    }
+    onClose();
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -49,7 +94,7 @@ export default function ShareTeamModal({
               <h3>שיתוף תוכנית עם צוות / מתי"א</h3>
               <p className="modal-subtitle">
                 בחרי אנשי צוות שיוכלו לצפות ולעבוד על התוכנית של{' '}
-                <strong>{formData.name || 'התלמיד/ה'}</strong>
+                <strong>{formData?.name || 'התלמיד/ה'}</strong>
               </p>
             </div>
           </div>
@@ -162,7 +207,7 @@ export default function ShareTeamModal({
                 >
                   {visibleUsers.map((colleague) => {
                     const colEmail = (colleague.email || '').trim().toLowerCase();
-                    const isShared = currentShared.includes(colEmail);
+                    const isShared = selectedEmails.includes(colEmail);
                     return (
                       <label
                         key={colEmail}
@@ -181,13 +226,7 @@ export default function ShareTeamModal({
                           <input
                             type="checkbox"
                             checked={isShared}
-                            onChange={() => {
-                              if (isShared) {
-                                onToggleShareColleague(colEmail);
-                              } else {
-                                onToggleShareColleague(colEmail, handoffNote);
-                              }
-                            }}
+                            onChange={() => handleToggleColleague(colEmail)}
                           />
                           <div>
                             <div style={{ fontWeight: 600, fontSize: '13.5px', color: '#1e293b' }}>
@@ -234,7 +273,7 @@ export default function ShareTeamModal({
                     <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155' }}>
                       ✉️ הודעת פתיחה והנחיות לשיתוף (אופציונלי)
                     </label>
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>יישמר בשיח הצוות</span>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>יישמר בשיח הצוות ויישלח בלחיצה על סיום</span>
                   </div>
 
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -288,7 +327,7 @@ export default function ShareTeamModal({
           )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-            <button type="button" className="btn-submit-email" onClick={onClose}>
+            <button type="button" className="btn-submit-email" onClick={handleFinish}>
               <span>סיום</span>
             </button>
           </div>

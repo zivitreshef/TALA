@@ -168,4 +168,36 @@ describe('ShareTeamModal Component (Tenant Isolation & Student Sharing)', () => 
     expect(html).not.toContain('שימי לב: תוכנית העבודה נעולה לעריכה');
     expect(html).toContain('נא להוסיף מטרות טיפוליות');
   });
+
+  it('renders helper indicating the opening note will be saved and sent on finish (סיום)', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ShareTeamModal, {
+        isOpen: true,
+        onClose: () => {},
+        formData: sampleStudent,
+        currentUser: { email: 'zivit@tala.edu.il', group: 'מתי"א מרכז' },
+        allowedUsers,
+        onSaveShareSettings: () => {}
+      })
+    );
+
+    expect(html).toContain('יישמר בשיח הצוות ויישלח בלחיצה על סיום');
+    expect(html).toContain('סיום');
+  });
+
+  it('renders correctly when onSaveShareSettings is provided instead of legacy onToggleShareColleague', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ShareTeamModal, {
+        isOpen: true,
+        onClose: () => {},
+        formData: sampleStudent,
+        currentUser: { email: 'zivit@tala.edu.il', group: 'מתי"א מרכז' },
+        allowedUsers,
+        onSaveShareSettings: () => {}
+      })
+    );
+
+    expect(html).toContain('מיכל כהן');
+    expect(html).toContain('משותף');
+  });
 });
