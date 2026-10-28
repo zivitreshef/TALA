@@ -237,7 +237,12 @@ export async function loginWithTala(email, accessCode) {
   }
   if (!data?.allowed || !data.token) return { ...data, allowed: false };
   await signInWithCustomToken(auth, data.token);
-  return { allowed: true, user: data.user, clientIp: data.clientIp };
+  return {
+    allowed: true,
+    user: data.user,
+    clientIp: data.clientIp,
+    sessionCheck: data.sessionCheck || { takeoverRequired: false, clientIp: data.clientIp }
+  };
 }
 
 let lastLoginPrewarmMs = 0;

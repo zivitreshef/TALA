@@ -133,7 +133,25 @@ describe('Login Latency Optimization & Pre-warm Pipeline', () => {
       expect(res.allowed).toBe(true);
       expect(res.user.email).toBe('teacher@school.edu');
       expect(res.clientIp).toBe('82.80.12.34');
+      expect(res.sessionCheck).toEqual({ takeoverRequired: false, clientIp: '82.80.12.34' });
       expect(mockSignInWithCustomToken).toHaveBeenCalledWith(mockAuth, 'custom-jwt-token-xyz');
+    });
+
+    it('defaults sessionCheck when not provided in server response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          allowed: true,
+          token: 'custom-jwt-token-xyz',
+          user: { email: 'teacher@school.edu', name: 'מורה' },
+          clientIp: '82.80.12.34'
+        })
+      });
+
+      const res = await loginWithTala('teacher@school.edu', 'secret123');
+
+      expect(res.allowed).toBe(true);
+      expect(res.sessionCheck).toEqual({ takeoverRequired: false, clientIp: '82.80.12.34' });
     });
 
     it('handles denied login without signing into Firebase Auth', async () => {

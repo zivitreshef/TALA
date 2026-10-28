@@ -264,8 +264,39 @@ async function handleTalaLogin(req,res){
       verifiedAuthUsers.add(targetUid);
     }catch(err){console.warn("Auth user ensure warning:",err.message);}
   }
+  // Server-side active session check (eliminates client Firestore read latency)
+  const sessionKey=emailKey(email);
+  let sessionCheck={takeoverRequired:false,clientIp};
+  try{
+    const sessionSnap=await db.collection("tala_sessions").doc(sessionKey).get();
+    if(sessionSnap.exists){
+      const sData=sessionSnap.data();
+      const now=Date.now();
+      const lastActiveTime=sData.lastActiveIso?new Date(sData.lastActiveIso).getTime():(sData.lastActiveMs||0);
+      const isStillActive=(now-lastActiveTime)<15*60*1000;
+      const isDifferentIp=Boolean(
+        clientIp&&
+        sData.ipAddress&&
+        sData.ipAddress!=="IP לא זמין / רשת מקומית"&&
+        sData.ipAddress!=="לא ידועה"&&
+        sData.ipAddress!==clientIp
+      );
+      if(isStillActive&&sData.sessionId&&isDifferentIp){
+        sessionCheck={
+          takeoverRequired:true,
+          clientIp,
+          existingSession:{
+            sessionId:sData.sessionId,
+            ipAddress:sData.ipAddress||"לא ידועה",
+            lastActiveIso:sData.lastActiveIso||new Date(lastActiveTime).toISOString(),
+            userAgent:sData.userAgent||""
+          }
+        };
+      }
+    }
+  }catch(err){console.warn("Server session check warning:",err.message);}
   const token=await admin.auth().createCustomToken(targetUid,{email,role});
-  res.status(200).json({allowed:true,token,user:outcome.user,clientIp});
+  res.status(200).json({allowed:true,token,user:outcome.user,clientIp,sessionCheck});
 }
 exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaLogin);
 

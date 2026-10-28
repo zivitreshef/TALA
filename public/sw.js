@@ -1,5 +1,5 @@
 // ponytail: minimal network-first service worker for offline app-shell resilience
-const CACHE_NAME = 'tala-shell-v1';
+const CACHE_NAME = 'tala-shell-v2';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

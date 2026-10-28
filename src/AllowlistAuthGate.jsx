@@ -144,20 +144,21 @@ export function AllowlistAuthGate({
         return;
       }
 
-      // Single active session check (no multiple logins from different hosts/IPs)
+      // Single active session check (evaluated by server in result.sessionCheck without extra round trips)
       try {
         const sessionId = generateSessionId();
-        const sessionCheck = await checkActiveSession(result.user.email, sessionId, result.clientIp);
+        const sessionCheck = result.sessionCheck || await checkActiveSession(result.user.email, sessionId, result.clientIp);
 
         if (sessionCheck.takeoverRequired) {
-          setPendingUser({ ...result.user, sessionId, clientIp: sessionCheck.clientIp });
+          setPendingUser({ ...result.user, sessionId, clientIp: sessionCheck.clientIp || result.clientIp });
           setExistingSession(sessionCheck.existingSession);
           setShowTakeoverModal(true);
           setIsLoggingIn(false);
           return;
         }
 
-        await activateSession(result.user.email, sessionId, sessionCheck.clientIp);
+        // Fire session activation in background, transition UI immediately!
+        activateSession(result.user.email, sessionId, sessionCheck.clientIp || result.clientIp);
         onLoginSuccess({ ...result.user, sessionId });
       } catch (sessionErr) {
         console.warn('Session check exception, proceeding with login:', sessionErr);
