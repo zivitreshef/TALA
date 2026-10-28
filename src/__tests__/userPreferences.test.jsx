@@ -281,6 +281,9 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
     expect(htmlWeekly).toContain('data-testid="reminder-freq-weekly"');
     expect(htmlWeekly).toContain('data-testid="reminder-weekly-day-select"');
     expect(htmlWeekly).toContain('יום שלישי');
+    expect(htmlWeekly).toContain('data-testid="weekly-reminder-time-09:00"');
+    expect(htmlWeekly).toContain('data-testid="weekly-reminder-time-12:00"');
+    expect(htmlWeekly).toContain('data-testid="weekly-reminder-time-17:00"');
 
     // 2. Monthly recurrence (exact day 1-31 and time 09:00 / 12:00 / 17:00)
     const monthlyPrefs = {

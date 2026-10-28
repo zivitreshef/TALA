@@ -1325,35 +1325,65 @@ export default function TeacherPreferencesModal({
                     </div>
                   </div>
 
-                  {/* WEEKLY RECURRENCE: SELECT DAY (Sunday - Saturday) */}
+                  {/* WEEKLY RECURRENCE: SELECT DAY (Sunday - Saturday) & TIME (09:00 / 12:00 / 17:00) */}
                   {draftPrefs.pedagogicalReminderFrequency === 'weekly' && (
-                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
-                        באיזה יום בשבוע לשלוח?
-                      </span>
-                      <select
-                        value={draftPrefs.pedagogicalReminderWeeklyDay || 'sunday'}
-                        onChange={(e) => handleFieldChange('pedagogicalReminderWeeklyDay', e.target.value)}
-                        data-testid="reminder-weekly-day-select"
-                        style={{
-                          padding: '5px 12px',
-                          borderRadius: '6px',
-                          border: '1.5px solid #0284c7',
-                          fontSize: '12.5px',
-                          fontWeight: 700,
-                          color: '#0369a1',
-                          background: '#ffffff',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="sunday">יום ראשון</option>
-                        <option value="monday">יום שני</option>
-                        <option value="tuesday">יום שלישי</option>
-                        <option value="wednesday">יום רביעי</option>
-                        <option value="thursday">יום חמישי</option>
-                        <option value="friday">יום שישי</option>
-                        <option value="saturday">יום שבת</option>
-                      </select>
+                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
+                          באיזה יום בשבוע לשלוח?
+                        </span>
+                        <select
+                          value={draftPrefs.pedagogicalReminderWeeklyDay || 'sunday'}
+                          onChange={(e) => handleFieldChange('pedagogicalReminderWeeklyDay', e.target.value)}
+                          data-testid="reminder-weekly-day-select"
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            border: '1.5px solid #0284c7',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            color: '#0369a1',
+                            background: '#ffffff',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="sunday">יום ראשון</option>
+                          <option value="monday">יום שני</option>
+                          <option value="tuesday">יום שלישי</option>
+                          <option value="wednesday">יום רביעי</option>
+                          <option value="thursday">יום חמישי</option>
+                          <option value="friday">יום שישי</option>
+                          <option value="saturday">יום שבת</option>
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', borderTop: '1px dashed #bae6fd', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
+                          שעת שליחה:
+                        </span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {['09:00', '12:00', '17:00'].map((time) => (
+                            <button
+                              key={time}
+                              type="button"
+                              data-testid={`weekly-reminder-time-${time}`}
+                              onClick={() => handleFieldChange('pedagogicalReminderTime', time)}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                border: (draftPrefs.pedagogicalReminderTime || '09:00') === time ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                                background: (draftPrefs.pedagogicalReminderTime || '09:00') === time ? '#e0f2fe' : '#ffffff',
+                                color: (draftPrefs.pedagogicalReminderTime || '09:00') === time ? '#0369a1' : '#334155',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
 
