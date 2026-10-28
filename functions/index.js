@@ -267,7 +267,7 @@ async function handleTalaLogin(req,res){
   const token=await admin.auth().createCustomToken(targetUid,{email,role});
   res.status(200).json({allowed:true,token,user:outcome.user,clientIp});
 }
-exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",memory:"256MiB",minInstances:1,cors:false},handleTalaLogin);
+exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaLogin);
 
 // ---- onHealthEventCreated: Real-time Admin Alerts (Email, Telegram, WhatsApp) ----
 const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwp3HLCO9kErrN-vS2odXYcco1B5KMlbTw7qeJWrSSKg5nqZocfrsvyUOIO-LurJJtg/exec';
