@@ -15,7 +15,8 @@ import {
   EyeOff,
   Trash2,
   Plus,
-  PenTool
+  PenTool,
+  Send
 } from 'lucide-react';
 import {
   DEFAULT_USER_PREFERENCES,
@@ -85,6 +86,7 @@ export default function TeacherPreferencesModal({
   onClose,
   currentUser,
   userPreferences = DEFAULT_USER_PREFERENCES,
+  students = [],
   onSavePreferences,
   enforcePasswordPolicy,
   onChangeOwnPassword,
@@ -108,6 +110,42 @@ export default function TeacherPreferencesModal({
     normalizeUserPreferences(userPreferences)
   );
   const [saveToast, setSaveToast] = useState(false);
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+  const [reminderStatusMessage, setReminderStatusMessage] = useState(null);
+
+  const handleSendPedagogicalReminderNow = async () => {
+    const recipient = (currentUser?.email || '').trim();
+    if (!recipient) {
+      setReminderStatusMessage({ type: 'error', text: 'לא נמצאה כתובת מייל למשתמש הנוכחי.' });
+      return;
+    }
+
+    setIsSendingReminder(true);
+    setReminderStatusMessage(null);
+
+    try {
+      const gaps = getObservationGaps(students || [], 45, new Date());
+      await sendPedagogicalReminderEmailInBackground({
+        toEmail: recipient,
+        teacherName: draftPrefs.fullName || currentUser?.name || 'צוות חינוכי',
+        gaps,
+        totalStudents: (students || []).length,
+        privacyMode: draftPrefs.defaultPrivacyMode || 'full_name'
+      });
+
+      setReminderStatusMessage({
+        type: 'success',
+        text: `תזכורת פדגוגית נשלחה בהצלחה למייל ${recipient} (${gaps.length} יעדים לתשומת לב).`
+      });
+    } catch (err) {
+      setReminderStatusMessage({
+        type: 'error',
+        text: err.message || 'שגיאה בשליחת התזכורת הפדגוגית למייל.'
+      });
+    } finally {
+      setIsSendingReminder(false);
+    }
+  };
 
   // New private goal draft
   const [newGoalText, setNewGoalText] = useState('');
@@ -1373,6 +1411,45 @@ export default function TeacherPreferencesModal({
                   )}
                 </div>
               )}
+            
+              {/* Send Now Button */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px', flexWrap: 'wrap', borderTop: '1px dashed #cbd5e1', paddingTop: '10px' }}>
+                <button
+                  type="button"
+                  data-testid="send-pedagogical-reminder-now-btn"
+                  disabled={isSendingReminder}
+                  onClick={handleSendPedagogicalReminderNow}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #0284c7',
+                    background: isSendingReminder ? '#f1f5f9' : '#f0f9ff',
+                    color: '#0369a1',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: isSendingReminder ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <Send size={14} />
+                  <span>{isSendingReminder ? 'שולח תזכורת כעת...' : 'שלח תזכורת כעת למייל'}</span>
+                </button>
+                {reminderStatusMessage && (
+                  <span
+                    data-testid="reminder-status-message"
+                    style={{
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      color: reminderStatusMessage.type === 'success' ? '#15803d' : '#b91c1c'
+                    }}
+                  >
+                    {reminderStatusMessage.text}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 

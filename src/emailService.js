@@ -1,3 +1,4 @@
+import { toHebrewAcronym } from './domain/privacyAndAcronyms';
 import { incrementDailyQuotaCount } from './allowedUsers';
 import { recordEmailAuditLogToCloud } from './services/telemetryService';
 
@@ -854,3 +855,174 @@ export async function sendUserSurveyEmailToAdmin({
 
 
 
+
+/**
+ * Build rich HTML email for Pedagogical Reminder (מעקב יעדים ורציפות פדגוגית)
+ */
+export function buildPedagogicalReminderEmailHtml({
+  teacherName = 'צוות חינוכי',
+  gaps = [],
+  totalStudents = 0,
+  privacyMode = 'full_name',
+  siteUrl = 'https://zivitreshef.github.io/TALA/'
+}) {
+  const appUrl = siteUrl || 'https://zivitreshef.github.io/TALA/';
+
+  const gapsRows = gaps.map((gap, idx) => {
+    const studentDisplayName = privacyMode === 'acronym'
+      ? toHebrewAcronym(gap.studentName || '')
+      : (gap.studentName || 'תלמיד/ה');
+
+    const daysText = gap.neverObserved ? 'טרם נרשמה תצפית' : `${gap.daysSinceObservation} ימים`;
+    const progressText = `${gap.currentProgress ?? 0}% מתוך ${gap.targetProgress ?? 80}%`;
+
+    return `
+      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'}; border-bottom:1px solid #e2e8f0;">
+        <td style="padding:10px 12px; font-weight:700; color:#1e3a5f;">${studentDisplayName}</td>
+        <td style="padding:10px 12px; color:#475569; font-size:12.5px;">${gap.framework || '—'}</td>
+        <td style="padding:10px 12px; color:#334155; font-size:13px;">${gap.goalTitle || 'יעד ללא כותרת'} <span style="font-size:11.5px; color:#64748b;">(${gap.environment || 'כללי'})</span></td>
+        <td style="padding:10px 12px; text-align:center; font-weight:700; color:#dc2626; font-size:12.5px;">${daysText}</td>
+        <td style="padding:10px 12px; text-align:center; color:#2563eb; font-weight:700; font-size:12.5px;">${progressText}</td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+    </head>
+    <body dir="rtl" style="margin:0; padding:24px 12px; background-color:#f0f4fa; font-family: Arial, Helvetica, sans-serif; color:#1e293b; text-align:right;">
+      <div dir="rtl" style="max-width:640px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 12px 32px rgba(30, 58, 95, 0.12);">
+        
+        <!-- Top Stained Glass Strip -->
+        <div style="height:6px; background:linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%);"></div>
+
+        <!-- Header Banner -->
+        <div style="background:linear-gradient(135deg, #1b365d 0%, #3b6ea5 55%, #6b46c1 100%); color:#ffffff; padding:26px 24px; text-align:right;">
+          <div style="display:inline-block; background:rgba(255,255,255,0.16); border:1px solid rgba(255,255,255,0.3); border-radius:999px; padding:3px 12px; font-size:12px; font-weight:bold; margin-bottom:10px;">
+            📌 תזכורת פדגוגית למעקב יעדים
+          </div>
+          <h1 style="margin:0 0 6px 0; font-size:22px; font-weight:800; color:#ffffff;">ריכוז רציפות פדגוגית ומעקב יעדים</h1>
+          <p style="margin:0; font-size:13.5px; color:#e2e8f0; line-height:1.5;">
+            מערכת TALA – תוכנית עבודה שנתית אקולוגית
+          </p>
+        </div>
+
+        <!-- Body Content -->
+        <div style="padding:24px; text-align:right;">
+          <p style="margin:0 0 12px 0; font-size:16px; font-weight:bold; color:#1e3a5f;">
+            שלום ${teacherName},
+          </p>
+          <p style="margin:0 0 18px 0; font-size:14px; line-height:1.65; color:#334155;">
+            זוהי תזכורת פדגוגית שנועדה לסייע לך לשמור על רציפות תיעוד, מעקב והערכה בעיצוב תוכניות הלימודים של תלמידייך.
+          </p>
+
+          <!-- KPI Summary Badges -->
+          <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:130px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px; text-align:center;">
+              <div style="font-size:11.5px; color:#1e40af; font-weight:700;">תלמידים במעקב</div>
+              <div style="font-size:20px; font-weight:800; color:#1d4ed8; margin-top:2px;">${totalStudents}</div>
+            </div>
+            <div style="flex:1; min-width:130px; background:${gaps.length > 0 ? '#fef2f2' : '#f0fdf4'}; border:1px solid ${gaps.length > 0 ? '#fecaca' : '#bbf7d0'}; border-radius:10px; padding:12px; text-align:center;">
+              <div style="font-size:11.5px; color:${gaps.length > 0 ? '#991b1b' : '#166534'}; font-weight:700;">יעדים ללא עדכון (45+ יום)</div>
+              <div style="font-size:20px; font-weight:800; color:${gaps.length > 0 ? '#dc2626' : '#15803d'}; margin-top:2px;">${gaps.length}</div>
+            </div>
+          </div>
+
+          ${
+            gaps.length > 0
+              ? `
+              <div style="margin-bottom:20px;">
+                <div style="font-size:14px; font-weight:bold; color:#1e3a5f; margin-bottom:10px;">
+                  📋 פירוט יעדים הדורשים עדכון מעקב ותצפית:
+                </div>
+                <div style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:10px;">
+                  <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                      <tr style="background:#f1f5f9; color:#475569; font-weight:700; border-bottom:1.5px solid #cbd5e1;">
+                        <th style="padding:10px 12px; text-align:right;">שם תלמיד/ה</th>
+                        <th style="padding:10px 12px; text-align:right;">מסגרת</th>
+                        <th style="padding:10px 12px; text-align:right;">יעד פדגוגי</th>
+                        <th style="padding:10px 12px; text-align:center;">זמן ללא עדכון</th>
+                        <th style="padding:10px 12px; text-align:center;">התקדמות</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${gapsRows}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              `
+              : `
+              <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:16px 20px; margin-bottom:20px; text-align:center;">
+                <div style="font-size:16px; font-weight:bold; color:#15803d; margin-bottom:4px;">
+                  🎉 כל הכבוד! כל היעדים מעודכנים
+                </div>
+                <div style="font-size:13.5px; color:#166534;">
+                  לא נמצאו יעדים ללא תצפית מעל 45 יום. הרציפות הפדגוגית נשמרת באופן מופתי.
+                </div>
+              </div>
+              `
+          }
+
+          <!-- 1-Click Action Button -->
+          <div style="text-align:center; margin:28px 0 16px 0;">
+            <a href="${appUrl}" style="display:inline-block; background:linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); color:#ffffff; font-weight:bold; font-size:14.5px; text-decoration:none; padding:12px 30px; border-radius:10px; box-shadow:0 4px 14px rgba(37, 99, 235, 0.35);">
+              🚀 כניסה למעקב יעדים באפליקציה
+            </a>
+          </div>
+
+          <div style="border-top:1px solid #e2e8f0; margin-top:24px; padding-top:14px; font-size:11.5px; color:#64748b; text-align:center; line-height:1.6;">
+            הודעה זו נשלחה אליך על פי העדפות התזכורת האישיות שהגדרת במערכת TALA.<br/>
+            ניתן לשנות את תדירות התזכורות או לבטלן בכל עת דרך תפריט "העדפות מורה".
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Send Pedagogical Reminder Email in background
+ */
+export async function sendPedagogicalReminderEmailInBackground({
+  config,
+  toEmail,
+  teacherName = 'צוות חינוכי',
+  gaps = [],
+  totalStudents = 0,
+  privacyMode = 'full_name',
+  siteUrl = 'https://zivitreshef.github.io/TALA/'
+}) {
+  const htmlBody = buildPedagogicalReminderEmailHtml({
+    teacherName,
+    gaps,
+    totalStudents,
+    privacyMode,
+    siteUrl
+  });
+
+  const textBody = [
+    `שלום ${teacherName},`,
+    '',
+    `זוהי תזכורת פדגוגית למעקב יעדים ממערכת TALA.`,
+    `סה"כ תלמידים במעקב: ${totalStudents}`,
+    `יעדים הדורשים עדכון מעקב (מעל 45 יום): ${gaps.length}`,
+    '',
+    `לכניסה למערכת: ${siteUrl || 'https://zivitreshef.github.io/TALA/'}`
+  ].join('\r\n');
+
+  return sendReportEmailInBackground({
+    config,
+    toEmail,
+    subject: `📌 תזכורת פדגוגית – ריכוז מעקב יעדים (${gaps.length} יעדים לתשומת לב)`,
+    htmlBody,
+    textBody,
+    filename: 'PedagogicalReminder.html',
+    mimeType: 'text/html'
+  });
+}

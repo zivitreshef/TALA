@@ -2577,6 +2577,7 @@ export default function App() {
                 externalRevision={externalGoalsRevision}
                 goalBank={goalBank}
                 userPreferences={userPreferences}
+        students={userStudents}
                 privateGoals={userPreferences?.privateGoals || []}
                 isAdmin={currentUser.role === 'admin'}
                 currentUser={effectiveCurrentUser}

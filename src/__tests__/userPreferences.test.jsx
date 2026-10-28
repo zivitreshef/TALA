@@ -1,3 +1,4 @@
+import { buildPedagogicalReminderEmailHtml } from '../emailService';
 import { describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
 import fs from 'fs';
@@ -303,6 +304,62 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
     expect(htmlMonthly).toContain('data-testid="reminder-time-09:00"');
     expect(htmlMonthly).toContain('data-testid="reminder-time-12:00"');
     expect(htmlMonthly).toContain('data-testid="reminder-time-17:00"');
+  });
+
+  
+  it('renders "Send Now" button for pedagogical reminder and generates rich reminder HTML', () => {
+    const html = renderToStaticMarkup(
+      <TeacherPreferencesModal
+        isOpen={true}
+        onClose={() => {}}
+        currentUser={dummyUser}
+        userPreferences={DEFAULT_USER_PREFERENCES}
+        onSavePreferences={() => {}}
+      />
+    );
+
+    expect(html).toContain('data-testid="send-pedagogical-reminder-now-btn"');
+    expect(html).toContain('שלח תזכורת כעת למייל');
+
+    // Test email template builder
+    const sampleGaps = [
+      {
+        studentId: 'st_1',
+        studentName: 'דניאל ישראלי',
+        framework: 'כיתת שילוב ב׳',
+        goalId: 'g_1',
+        goalTitle: 'קריאת טקסט שוטפת ברמת גיל',
+        environment: 'לימודי',
+        currentProgress: 40,
+        targetProgress: 80,
+        daysSinceObservation: 52,
+        neverObserved: false
+      }
+    ];
+
+    const emailHtmlFullName = buildPedagogicalReminderEmailHtml({
+      teacherName: 'מיכל כהן',
+      gaps: sampleGaps,
+      totalStudents: 1,
+      privacyMode: 'full_name'
+    });
+
+    expect(emailHtmlFullName).toContain('ריכוז רציפות פדגוגית ומעקב יעדים');
+    expect(emailHtmlFullName).toContain('שלום מיכל כהן');
+    expect(emailHtmlFullName).toContain('דניאל ישראלי');
+    expect(emailHtmlFullName).toContain('קריאת טקסט שוטפת ברמת גיל');
+    expect(emailHtmlFullName).toContain('52 ימים');
+    expect(emailHtmlFullName).toContain('40% מתוך 80%');
+
+    // Test acronym mode
+    const emailHtmlAcronym = buildPedagogicalReminderEmailHtml({
+      teacherName: 'מיכל כהן',
+      gaps: sampleGaps,
+      totalStudents: 1,
+      privacyMode: 'acronym'
+    });
+    expect(emailHtmlAcronym).toContain('ד.י.');
+    expect(emailHtmlAcronym).not.toContain('דניאל ישראלי');
   });
 
   it('has stable height and stained glass strip to prevent jumping (Bug 2 & 3)', () => {
