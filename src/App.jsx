@@ -1311,17 +1311,22 @@ export default function App() {
     setInsideLandingSearch('');
   };
 
-  const performLogout = () => {
-    if (currentUser?.email && currentUser?.sessionId) {
-      clearSession(currentUser.email, currentUser.sessionId);
-    }
+  const performLogout = async () => {
+    const userToClear = currentUser;
     setShowLogoutUnsavedModal(false);
     setShowFeedbackSurveyModal(false);
     setUnsavedDraftState({ isDirty: false, draftData: null });
     setCurrentUser(null);
     setSelectedStudentId(null);
     safeRemoveStorageItem(SESSION_USER_KEY);
-    signOutFirebaseAuthSession();
+    if (userToClear?.email) {
+      try {
+        await clearSession(userToClear.email, userToClear.sessionId);
+      } catch (err) {
+        console.warn('Failed to clear session on logout:', err);
+      }
+    }
+    await signOutFirebaseAuthSession();
   };
 
   const handleLogout = () => {

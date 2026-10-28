@@ -96,16 +96,27 @@ export async function checkActiveSession(email, currentSessionId, knownClientIp)
     const isStillActive = (now - lastActiveTime) < SESSION_INACTIVITY_LIMIT_MS;
 
     if (isStillActive && data.sessionId && data.sessionId !== currentSessionId) {
-      return {
-        takeoverRequired: true,
-        clientIp,
-        existingSession: {
-          sessionId: data.sessionId,
-          ipAddress: data.ipAddress || 'לא ידועה',
-          lastActiveIso: data.lastActiveIso || new Date(lastActiveTime).toISOString(),
-          userAgent: data.userAgent || ''
-        }
-      };
+      // If the active session is from the exact same client IP, allow seamless re-login
+      const isSameIp = Boolean(
+        clientIp &&
+        data.ipAddress &&
+        data.ipAddress !== 'IP לא זמין / רשת מקומית' &&
+        data.ipAddress !== 'לא ידועה' &&
+        data.ipAddress === clientIp
+      );
+
+      if (!isSameIp) {
+        return {
+          takeoverRequired: true,
+          clientIp,
+          existingSession: {
+            sessionId: data.sessionId,
+            ipAddress: data.ipAddress || 'לא ידועה',
+            lastActiveIso: data.lastActiveIso || new Date(lastActiveTime).toISOString(),
+            userAgent: data.userAgent || ''
+          }
+        };
+      }
     }
   }
 
@@ -289,12 +300,11 @@ export async function clearSession(email, sessionId) {
   if (!email) return;
   const key = sessionDocKey(email);
   try {
-    const local = localStorage.getItem(`tala_active_session_${key}`);
-    if (local) {
-      const data = JSON.parse(local);
-      if (data.sessionId === sessionId) {
-        localStorage.removeItem(`tala_active_session_${key}`);
-      }
+    localStorage.removeItem(`tala_active_session_${key}`);
+    if (typeof BroadcastChannel !== 'undefined') {
+      const ch = new BroadcastChannel(`tala_session_${key}`);
+      ch.postMessage({ type: 'SESSION_CLEARED', email, sessionId });
+      ch.close();
     }
   } catch (e) {}
 
@@ -302,10 +312,18 @@ export async function clearSession(email, sessionId) {
   if (db) {
     try {
       const sessionRef = doc(db, 'tala_sessions', key);
-      const snap = await getDoc(sessionRef);
-      if (snap.exists() && snap.data().sessionId === sessionId) {
-        await updateDoc(sessionRef, { sessionId: null, lastActiveMs: 0 });
-      }
-    } catch (e) {}
+      await setDoc(
+        sessionRef,
+        {
+          sessionId: null,
+          lastActiveMs: 0,
+          lastActiveIso: null,
+          ipAddress: null
+        },
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn('Failed to clear session in Firestore:', e);
+    }
   }
 }
