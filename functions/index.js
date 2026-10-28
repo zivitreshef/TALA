@@ -193,6 +193,7 @@ async function handleTalaLogin(req,res){
   if(req.method==="OPTIONS"){res.status(204).end();return;}
   if(req.method!=="POST"){res.status(405).json({error:"Method not allowed"});return;}
   let body=req.body;if(typeof body==="string"){try{body=JSON.parse(body);}catch(_){body={};}}
+  if(body&&body.ping){res.status(200).json({ok:true,pong:true});return;}
   const email=String(body&&body.email||"").trim().toLowerCase();const code=String(body&&body.accessCode||"");
   const deny=(extra)=>res.status(401).json(Object.assign({allowed:false,reason:"פרטי ההתחברות שגויים."},extra));
   if(!email||!code){deny();return;}
@@ -219,28 +220,44 @@ async function handleTalaLogin(req,res){
     if(outcome.justLocked){try{await publishUsers(outcome.all,outcome.all,true);await admin.auth().revokeRefreshTokens(uidFor(email));}catch(_){}}
     deny({reason:outcome.reason,isLockedOut:!!outcome.isLockedOut,isDisabled:!!outcome.isDisabled});return;
   }
+  const clientIp=String(req.headers["fastly-client-ip"]||(req.headers["x-forwarded-for"]&&req.headers["x-forwarded-for"].split(",")[0].trim())||(req.socket&&req.socket.remoteAddress)||req.ip||"").replace(/^::ffff:/,"");
   try{
     const hasDir=(await db.collection("tala_config").doc("directory").get()).exists;
-    if(outcome.user.role==="admin"||!hasDir)await publishUsers(outcome.all,outcome.all,true);
-    else await publishUsers([outcome.user],[],false);
-  }catch(e){console.error("publishUsers on login failed",e);}
+    if(!hasDir)await publishUsers(outcome.all,outcome.all,true);
+  }catch(e){console.warn("directory check on login failed",e.message);}
   const targetUid=uidFor(email);
+  const role=outcome.user.role||"teacher";
+  const displayName=outcome.user.name||undefined;
   try{
-    const existing=await admin.auth().getUserByEmail(email);
-    if(existing.uid!==targetUid)await admin.auth().deleteUser(existing.uid);
-  }catch(err){if(err.code!=="auth/user-not-found")console.warn("getUserByEmail check:",err.message);}
-  try{
-    await admin.auth().updateUser(targetUid,{email,displayName:outcome.user.name||undefined});
-  }catch(err){
-    if(err.code==="auth/user-not-found"){
-      try{await admin.auth().createUser({uid:targetUid,email,displayName:outcome.user.name||undefined});}catch(ce){console.warn("createUser failed:",ce.message);}
-    }else{console.warn("updateUser failed:",err.message);}
-  }
-  try{
-    await admin.auth().setCustomUserClaims(targetUid,{email,role:outcome.user.role||"teacher"});
-  }catch(ce){console.warn("setCustomUserClaims failed:",ce.message);}
-  const token=await admin.auth().createCustomToken(targetUid,{email,role:outcome.user.role||"teacher"});
-  res.status(200).json({allowed:true,token,user:outcome.user});
+    const existing=await admin.auth().getUser(targetUid).catch(()=>null);
+    if(!existing){
+      try{
+        await admin.auth().createUser({uid:targetUid,email,displayName});
+      }catch(ce){
+        if(ce.code==="auth/email-already-exists"){
+          try{
+            const old=await admin.auth().getUserByEmail(email);
+            if(old&&old.uid!==targetUid){
+              await admin.auth().deleteUser(old.uid);
+              await admin.auth().createUser({uid:targetUid,email,displayName});
+            }
+          }catch(_){}
+        }
+      }
+      await admin.auth().setCustomUserClaims(targetUid,{email,role});
+    }else{
+      const needsUpdate=existing.email!==email||(displayName&&existing.displayName!==displayName);
+      const needsClaims=!existing.customClaims||existing.customClaims.role!==role;
+      if(needsUpdate||needsClaims){
+        await Promise.all([
+          needsUpdate?admin.auth().updateUser(targetUid,{email,displayName}):Promise.resolve(),
+          needsClaims?admin.auth().setCustomUserClaims(targetUid,{email,role}):Promise.resolve()
+        ]);
+      }
+    }
+  }catch(err){console.warn("Auth user ensure warning:",err.message);}
+  const token=await admin.auth().createCustomToken(targetUid,{email,role});
+  res.status(200).json({allowed:true,token,user:outcome.user,clientIp});
 }
 exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaLogin);
 

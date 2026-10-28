@@ -40,7 +40,7 @@ import {
   verifyUserPassword
 } from './allowedUsers';
 import { sendUserInvitationEmailInBackground } from './emailService';
-import { loginWithTala, subscribeToUserPresence, signOutFirebaseAuthSession } from './firebaseBackend';
+import { loginWithTala, prewarmTalaLogin, subscribeToUserPresence, signOutFirebaseAuthSession } from './firebaseBackend';
 import TakeoverModal from './components/modals/TakeoverModal';
 import {
   checkActiveSession,
@@ -118,8 +118,9 @@ export function AllowlistAuthGate({
   const [takeoverLoading, setTakeoverLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Pre-fetch client IP in background while teacher views the login screen
+  // Pre-warm login backend container and resolve IP while teacher views the login screen
   useEffect(() => {
+    prewarmTalaLogin().catch(() => {});
     getClientIp().catch(() => {});
   }, []);
 
@@ -146,7 +147,7 @@ export function AllowlistAuthGate({
       // Single active session check (no multiple logins from different hosts/IPs)
       try {
         const sessionId = generateSessionId();
-        const sessionCheck = await checkActiveSession(result.user.email, sessionId);
+        const sessionCheck = await checkActiveSession(result.user.email, sessionId, result.clientIp);
 
         if (sessionCheck.takeoverRequired) {
           setPendingUser({ ...result.user, sessionId, clientIp: sessionCheck.clientIp });
@@ -381,6 +382,7 @@ export function AllowlistAuthGate({
                   spellCheck={false}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => prewarmTalaLogin().catch(() => {})}
                   disabled={isLoggingIn}
                   dir="ltr"
                   style={{ textAlign: 'right' }}
@@ -400,6 +402,7 @@ export function AllowlistAuthGate({
                   spellCheck={false}
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
+                  onFocus={() => prewarmTalaLogin().catch(() => {})}
                   disabled={isLoggingIn}
                   style={{ paddingLeft: '40px', paddingRight: '36px' }}
                 />
