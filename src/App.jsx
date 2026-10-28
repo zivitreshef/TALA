@@ -1291,15 +1291,39 @@ export default function App() {
 
   // Record active user presence in Firestore for deployment gate (15 min idle rule)
   useEffect(() => {
-    if (!currentUser) return;
-    recordUserPresence(currentUser);
+    if (!currentUser?.email) return;
+    let cancelled = false;
+
+    // Immediately record presence upon auth readiness (eliminates cold/reload latency)
+    ensureFirebaseAuthSession(currentUser.email)
+      .then(() => {
+        if (!cancelled) {
+          recordUserPresence(currentUser);
+        }
+      })
+      .catch(() => {});
+
+    // Periodic heartbeat every 60s while tab is open/active
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         recordUserPresence(currentUser);
       }
-    }, 2 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [currentUser]);
+    }, 60 * 1000);
+
+    // Immediate presence update when switching back to this tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        recordUserPresence(currentUser);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentUser?.email]);
 
   // Keep AI backend warm during active teacher session ($0 baseline, prevents cold-start drops)
   useEffect(() => {
@@ -3079,6 +3103,7 @@ export default function App() {
       {currentUser.role === 'admin' && (
         <AdminAllowlistModal
           isOpen={showAdminModal}
+          currentUser={currentUser}
           initialTab={adminModalInitialTab}
           initialActiveChatReqId={adminModalInitialActiveChatReqId}
           initialSupportThreads={adminSupportThreads}

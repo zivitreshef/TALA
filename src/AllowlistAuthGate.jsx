@@ -730,6 +730,35 @@ export function AdminAllowlistModal({
 
   const getUserPresenceBadge = (userEmail) => {
     if (!userEmail) return null;
+    const isSelf = Boolean(
+      currentUser?.email &&
+      userEmail.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+    );
+
+    // The user currently viewing this admin modal is by definition actively connected
+    if (isSelf) {
+      return (
+        <span
+          style={{
+            fontSize: '10.5px',
+            fontWeight: 700,
+            padding: '1px 6px',
+            borderRadius: '999px',
+            background: '#dcfce7',
+            color: '#15803d',
+            border: '1px solid #86efac',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}
+          title="פעיל/ה כעת בחלון זה (את/ה)"
+        >
+          <span>🟢</span>
+          <span>מחובר/ת (את/ה)</span>
+        </span>
+      );
+    }
+
     const userKey = userEmail.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
     const presenceData = userPresenceMap[userKey];
     const lastActiveIso = presenceData?.lastActiveIso;

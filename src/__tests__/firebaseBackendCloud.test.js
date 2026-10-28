@@ -376,6 +376,47 @@ describe('Firebase Backend Cloud Config & Serialization', () => {
       expect(getFirestore).toHaveBeenCalled();
       expect(db).toBeDefined();
     });
+
+    it('recordUserPresence awaits authStateReady before writing presence document', async () => {
+      const { recordUserPresence } = await import('../firebaseBackend');
+      mockAuth.authStateReady.mockClear();
+      mockSetDoc.mockClear();
+
+      const success = await recordUserPresence({ email: 'teacher@test.com', name: 'מורה' });
+
+      expect(mockAuth.authStateReady).toHaveBeenCalled();
+      expect(mockSetDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'tala_config/presence' }),
+        expect.objectContaining({
+          activeUsers: expect.objectContaining({
+            'teacher_test.com': expect.objectContaining({
+              email: 'teacher@test.com',
+              name: 'מורה'
+            })
+          })
+        }),
+        { merge: true }
+      );
+      expect(success).toBe(true);
+    });
+
+    it('subscribeToUserPresence awaits authStateReady before attaching onSnapshot', async () => {
+      const { subscribeToUserPresence } = await import('../firebaseBackend');
+      const { onSnapshot } = await import('firebase/firestore');
+      mockAuth.authStateReady.mockClear();
+
+      const unsub = subscribeToUserPresence(vi.fn());
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(mockAuth.authStateReady).toHaveBeenCalled();
+      expect(onSnapshot).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'tala_config/presence' }),
+        expect.any(Function),
+        expect.any(Function)
+      );
+
+      if (typeof unsub === 'function') unsub();
+    });
   });
 
 });

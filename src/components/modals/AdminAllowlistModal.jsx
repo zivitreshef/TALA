@@ -54,7 +54,7 @@ import {
   DAILY_EMAIL_QUOTA_LIMIT
 } from '../../allowedUsers';
 import { sendUserInvitationEmailInBackground } from '../../emailService';
-import { subscribeToUserPresence } from '../../firebaseBackend';
+import { subscribeToUserPresence, recordUserPresence } from '../../firebaseBackend';
 import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../UpgradeBanner';
 import SystemHealthPanel from './SystemHealthPanel';
 import AdminAlertsPanel from '../admin/AdminAlertsPanel';
@@ -121,6 +121,7 @@ const generateRandomTempPassword = () => {
 export default function AdminAllowlistModal({
   isOpen,
   onClose,
+  currentUser = null,
   initialTab = 'users',
   allowedUsers = [],
   onUpdateAllowedUsers,
@@ -453,11 +454,14 @@ export default function AdminAllowlistModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    if (currentUser?.email) {
+      recordUserPresence(currentUser).catch(() => {});
+    }
     const unsub = subscribeToUserPresence((presenceData) => {
       setUserPresenceMap(presenceData || {});
     });
     return () => unsub?.();
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   if (!isOpen) return null;
 
@@ -504,6 +508,35 @@ export default function AdminAllowlistModal({
 
   const getUserPresenceBadge = (userEmail) => {
     if (!userEmail) return null;
+    const isSelf = Boolean(
+      currentUser?.email &&
+      userEmail.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+    );
+
+    // The user currently viewing this admin modal is by definition actively connected
+    if (isSelf) {
+      return (
+        <span
+          style={{
+            fontSize: '10.5px',
+            fontWeight: 700,
+            padding: '1px 6px',
+            borderRadius: '999px',
+            background: '#dcfce7',
+            color: '#15803d',
+            border: '1px solid #86efac',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}
+          title="פעיל/ה כעת בחלון זה (את/ה)"
+        >
+          <span>🟢</span>
+          <span>מחובר/ת (את/ה)</span>
+        </span>
+      );
+    }
+
     const userKey = userEmail.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
     const presenceData = userPresenceMap[userKey];
     const lastActiveIso = presenceData?.lastActiveIso;

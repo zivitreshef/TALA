@@ -780,6 +780,12 @@ export async function deleteStudentFromCloud(studentId) {
 export async function recordUserPresence(currentUser) {
   const db = getFirestoreDb();
   if (!db || !currentUser || !currentUser.email) return false;
+  const auth = getFirebaseAuth();
+  if (auth?.authStateReady) {
+    try {
+      await auth.authStateReady();
+    } catch (_) {}
+  }
   const userKey = currentUser.email.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
   try {
     await setDoc(
@@ -804,27 +810,45 @@ export async function recordUserPresence(currentUser) {
 
 export function subscribeToUserPresence(onPresenceChange) {
   const db = getFirestoreDb();
+  const auth = getFirebaseAuth();
   if (!db) return () => {};
-  try {
-    const presenceRef = doc(db, 'tala_config', 'presence');
-    return onSnapshot(
-      presenceRef,
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          onPresenceChange?.(data.activeUsers || {});
-        } else {
-          onPresenceChange?.({});
+  let cancelled = false;
+  let unsub = null;
+
+  const start = async () => {
+    if (auth?.authStateReady) {
+      try {
+        await auth.authStateReady();
+      } catch (_) {}
+    }
+    if (cancelled) return;
+    try {
+      const presenceRef = doc(db, 'tala_config', 'presence');
+      unsub = onSnapshot(
+        presenceRef,
+        (docSnap) => {
+          if (cancelled) return;
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            onPresenceChange?.(data.activeUsers || {});
+          } else {
+            onPresenceChange?.({});
+          }
+        },
+        (err) => {
+          console.warn('Firestore presence listener warning:', err);
         }
-      },
-      (err) => {
-        console.warn('Firestore presence listener warning:', err);
-      }
-    );
-  } catch (err) {
-    console.warn('Failed to subscribe to user presence:', err);
-    return () => {};
-  }
+      );
+    } catch (err) {
+      console.warn('Failed to subscribe to user presence:', err);
+    }
+  };
+
+  start();
+  return () => {
+    cancelled = true;
+    if (typeof unsub === 'function') unsub();
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
