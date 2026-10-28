@@ -659,6 +659,64 @@ export async function saveSettingsToCloud(settingsObj) {
   }
 }
 
+export async function saveUserPreferencesToCloud(email, prefs) {
+  const db = getFirestoreDb();
+  if (!db || !email) return false;
+  const key = String(email).trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+  try {
+    const cleanPrefs = sanitizeForFirestore(prefs || {});
+    await setDoc(
+      doc(db, 'tala_user_preferences', key),
+      {
+        ...cleanPrefs,
+        userEmail: email.trim().toLowerCase(),
+        updatedAt: new Date().toISOString()
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    console.error('Failed to save user preferences to Firestore:', err);
+    return false;
+  }
+}
+
+export async function fetchUserPreferencesFromCloud(email) {
+  const db = getFirestoreDb();
+  if (!db || !email) return null;
+  const key = String(email).trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+  try {
+    const snap = await getDoc(doc(db, 'tala_user_preferences', key));
+    if (snap.exists()) {
+      return snap.data();
+    }
+    return null;
+  } catch (err) {
+    console.warn('Failed to fetch user preferences from Firestore:', err);
+    return null;
+  }
+}
+
+export function subscribeToUserPreferences(email, onUpdate) {
+  const db = getFirestoreDb();
+  if (!db || !email || typeof onUpdate !== 'function') return () => {};
+  const key = String(email).trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+  try {
+    return onSnapshot(
+      doc(db, 'tala_user_preferences', key),
+      (snap) => {
+        if (snap.exists()) {
+          onUpdate(snap.data());
+        }
+      },
+      (err) => console.warn('User preferences listener error:', err)
+    );
+  } catch (err) {
+    console.warn('Failed to attach user preferences listener:', err);
+    return () => {};
+  }
+}
+
 export async function saveStudentToCloud(studentObj) {
   const db = getFirestoreDb();
   if (!db || !studentObj || !studentObj.id) return false;

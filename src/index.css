@@ -1679,17 +1679,31 @@ input, textarea, select, button {
 }
 
 .doc-title-top-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(170px, auto) 1fr minmax(270px, auto);
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   gap: 16px;
 }
 
 .doc-banner-center-brand {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 14px;
+  text-align: center;
+  margin: 0 auto;
+}
+
+.banner-slot-date {
+  justify-self: start;
+}
+
+.banner-slot-controls {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .doc-banner-logo {

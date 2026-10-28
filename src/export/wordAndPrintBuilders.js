@@ -352,15 +352,31 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
   const signaturesPrintHtml = isTala
     ? `
       <div class="signatures-row" style="flex-wrap: wrap; gap: 16px;">
+        ${formData.signatureImage ? `
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <div>חתימת מחנכת/מורת שילוב:</div>
+            <img src="${formData.signatureImage}" alt="חתימה" style="max-height: 42px; max-width: 120px; object-fit: contain;" />
+            <div style="font-size: 10px; color: #64748b;">${formData.teacherName || ''}</div>
+          </div>
+        ` : `
+          <div>חתימת מחנכת הכיתה: __________________</div>
+        `}
         <div>חתימת מנהלת בית הספר: __________________</div>
-        <div>חתימת מחנכת הכיתה: __________________</div>
         <div>חתימת ההורים: __________________</div>
         <div>חתימת התלמיד/ה: __________________</div>
       </div>
     `
     : `
       <div class="signatures-row">
-        <div>חתימת צוות חינוכי: _________________________</div>
+        ${formData.signatureImage ? `
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+            <div>חתימת צוות חינוכי:</div>
+            <img src="${formData.signatureImage}" alt="חתימה" style="max-height: 42px; max-width: 120px; object-fit: contain;" />
+            <div style="font-size: 10px; color: #64748b;">${formData.teacherName || ''}</div>
+          </div>
+        ` : `
+          <div>חתימת צוות חינוכי: _________________________</div>
+        `}
         <div>חתימת הורים: _________________________</div>
       </div>
     `;
@@ -515,6 +531,11 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
         </style>
       </head>
       <body>
+        ${formData.showBesad ? `
+          <div class="print-besad-header" style="text-align: left; font-size: 11pt; font-weight: bold; color: #475569; padding-left: 6px; margin-bottom: 2px; font-family: 'Rubik', Arial, sans-serif;">
+            ${formData.besadText || 'בס"ד'}
+          </div>
+        ` : ''}
         <div class="stained-glass-strip"></div>
         <div class="print-banner">
           <div class="doc-meta-side"><strong>תאריך:</strong> ${formData.date || '__________'}</div>

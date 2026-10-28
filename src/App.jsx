@@ -51,6 +51,12 @@ import {
   AllowlistAuthGate,
   UserSelfPasswordModal
 } from './AllowlistAuthGate';
+import {
+  DEFAULT_USER_PREFERENCES,
+  loadLocalUserPreferences,
+  saveLocalUserPreferences,
+  normalizeUserPreferences
+} from './domain/userPreferences';
 import AdminAllowlistModal from './components/modals/AdminAllowlistModal';
 import UpgradeBanner from './components/UpgradeBanner';
 import SessionEvictedModal from './components/modals/SessionEvictedModal';
@@ -91,6 +97,8 @@ import {
   submitAdminRequestToCloud,
   saveGoalBankToCloud,
   saveSettingsToCloud,
+  saveUserPreferencesToCloud,
+  subscribeToUserPreferences,
   saveStudentToCloud,
   deleteStudentFromCloud,
   recordUserPresence,
@@ -340,6 +348,51 @@ export default function App() {
 
   // Eviction modal state when account is logged into from another host/IP
   const [evictionModalInfo, setEvictionModalInfo] = useState(null);
+
+  // Teacher Personal Preferences & Defaults (stored per user email)
+  const [userPreferences, setUserPreferences] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem(SESSION_USER_KEY);
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.email) {
+          return loadLocalUserPreferences(parsed.email);
+        }
+      }
+    } catch {}
+    return DEFAULT_USER_PREFERENCES;
+  });
+
+  useEffect(() => {
+    if (!currentUser?.email) {
+      setUserPreferences(DEFAULT_USER_PREFERENCES);
+      return;
+    }
+    const local = loadLocalUserPreferences(currentUser.email);
+    setUserPreferences(local);
+
+    const unsub = subscribeToUserPreferences(currentUser.email, (cloudPrefs) => {
+      if (cloudPrefs) {
+        const merged = normalizeUserPreferences({ ...local, ...cloudPrefs });
+        setUserPreferences(merged);
+        saveLocalUserPreferences(currentUser.email, merged);
+      }
+    });
+
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [currentUser?.email]);
+
+  const handleSaveUserPreferences = (updatedPrefs) => {
+    if (!currentUser?.email) return;
+    const normalized = normalizeUserPreferences(updatedPrefs);
+    setUserPreferences(normalized);
+    saveLocalUserPreferences(currentUser.email, normalized);
+    saveUserPreferencesToCloud(currentUser.email, normalized).catch((err) => {
+      console.warn('Could not save user preferences to cloud:', err);
+    });
+  };
 
   // All students across users (each student is strictly scoped by ownerEmail)
   const [students, setStudents] = useState(() => {
@@ -1401,17 +1454,22 @@ export default function App() {
     const newId = 'st_' + Date.now();
     const todayStr = new Date().toLocaleDateString('he-IL');
     const stageInfo = detectStudentStage({ educationalFramework: '', teacherFreeText: '', birthDate: '' }, todayStr);
+    const isTachiPref = userPreferences?.defaultReportType === 'tachi';
+    const chosenPlanType = isTachiPref
+      ? 'תח"י (תוכנית חינוכית יחידנית)'
+      : 'תל"א (תוכנית לימודים אישית)';
+    const defaultFramework = userPreferences?.defaultEducationalFramework || '';
     const newStudentPlan = {
       id: newId,
       ownerEmail: currentUser.email.trim().toLowerCase(),
       date: todayStr,
       schoolYear: 'תשפ"ו (2025-2026)',
-      planType: 'תל"א (תוכנית לימודים אישית)',
+      planType: chosenPlanType,
       name: '',
       gender: 'boy',
       idNumber: '',
       birthDate: '',
-      educationalFramework: '',
+      educationalFramework: defaultFramework,
       address: '',
       phone: '',
       teacherFreeText: '',
@@ -2506,6 +2564,8 @@ export default function App() {
                 allStudents={userStudents}
                 externalRevision={externalGoalsRevision}
                 goalBank={goalBank}
+                userPreferences={userPreferences}
+                privateGoals={userPreferences?.privateGoals || []}
                 isAdmin={currentUser.role === 'admin'}
                 currentUser={currentUser}
                 allowedUsers={allowedUsers}
@@ -2922,6 +2982,8 @@ export default function App() {
           }
         }}
         currentUser={currentUser}
+        userPreferences={userPreferences}
+        onSavePreferences={handleSaveUserPreferences}
         enforcePasswordPolicy={enforcePasswordPolicy}
         onChangeOwnPassword={handleChangeOwnPassword}
         isMandatoryFirstLogin={Boolean(currentUser?.mustChangePassword)}

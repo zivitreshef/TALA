@@ -206,7 +206,9 @@ export default function EcologicalWorkPlanForm({
   onUpdateEmailEngineConfig,
   onboardingTourStep = 0,
   setOnboardingTourStep,
-  onGoHome
+  onGoHome,
+  userPreferences = {},
+  privateGoals = []
 }) {
   const containerRef = useRef(null);
   const section1Ref = useRef(null);
@@ -235,7 +237,9 @@ export default function EcologicalWorkPlanForm({
 
   const [formData, setFormData] = useState(() => normalizeStudentForForm(student));
   const savedSnapshotRef = useRef(JSON.stringify(normalizeStudentForForm(student)));
-  const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(true); // Default: checked!
+  const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(
+    () => userPreferences?.defaultPrivacyMode === 'acronym'
+  );
   const [showMinistryCopyModal, setShowMinistryCopyModal] = useState(false);
   const [observationModalGoalId, setObservationModalGoalId] = useState(null);
   const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState(false);
@@ -498,7 +502,21 @@ export default function EcologicalWorkPlanForm({
   }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection, showStatusReportSection, isFreeTextCollapsed, isAdditionalInfoOpen]);
 
   // Sorted goal bank (most common first, lowest rated at the bottom)
-  const sortedGoals = getSortedGoalBank(goalBank);
+  const combinedGoalBank = React.useMemo(() => {
+    if (!Array.isArray(privateGoals) || privateGoals.length === 0) {
+      return goalBank;
+    }
+    const mappedPrivate = privateGoals.map((pg) => ({
+      ...pg,
+      isPrivate: true,
+      category: pg.domain || 'כללי',
+      environment: pg.environment || 'כללי',
+      title: pg.text,
+      goal: pg.text
+    }));
+    return [...mappedPrivate, ...(goalBank || [])];
+  }, [goalBank, privateGoals]);
+  const sortedGoals = getSortedGoalBank(combinedGoalBank);
   const currentGender = formData.gender || 'boy';
   const currentStage = formData.stage === 'kindergarten' ? 'kindergarten' : 'school';
   const isKindergarten = currentStage === 'kindergarten';
@@ -1964,7 +1982,14 @@ ${JSON.stringify(studentCardPayload, null, 2)}
   const handlePrintDocument = () => {
     handleSaveProgress();
     const logoUrl = new URL('./tala-logo.png', window.location.href).href;
-    openHtmlPrintWindow(buildWorkPlanPrintHtml(formData, hideStudentDetailsOnPrint, logoUrl));
+    const printPayload = {
+      ...formData,
+      showBesad: userPreferences?.showBesad,
+      besadText: userPreferences?.besadText,
+      signatureImage: userPreferences?.signatureImage,
+      teacherName: userPreferences?.fullName || currentUser?.name || formData.teacherName
+    };
+    openHtmlPrintWindow(buildWorkPlanPrintHtml(printPayload, hideStudentDetailsOnPrint, logoUrl));
   };
 
   const handlePrintEvalReport = () => {
@@ -2481,7 +2506,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       {/* Document Title Banner */}
       <div className="document-title-card">
         <div className="doc-title-top-row">
-          <div className="inline-meta-field">
+          <div className="inline-meta-field banner-slot-date">
             <label>תאריך:</label>
             <input
               type="text"
@@ -2497,8 +2522,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               {getFullDocTitle()}
             </h2>
           </div>
-          <div className="inline-meta-field" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <label>שנת לימודים:</label>
+          <div className="inline-meta-field banner-slot-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+            <label style={{ whiteSpace: 'nowrap' }}>שנת לימודים:</label>
             <select
               value={formData.schoolYear || 'תשפ"ו (2025-2026)'}
               onChange={(e) => handleSchoolYearChange(e.target.value)}
