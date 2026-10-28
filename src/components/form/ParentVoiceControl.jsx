@@ -10,13 +10,15 @@ import {
   ChevronUp,
   Plus,
   Trash2,
-  History
+  History,
+  RotateCcw
 } from 'lucide-react';
 import { getFirebaseAuth } from '../../firebaseBackend';
 import {
   buildInviteUrl,
   buildVoiceMergeText,
   buildWhatsAppShareUrl,
+  getDefaultQuestions,
   getInviteQuestions,
   sanitizeResponses,
   summarizeInvites,
@@ -57,7 +59,7 @@ export default function ParentVoiceControl({
   const [busyKey, setBusyKey] = useState('');
   const [error, setError] = useState('');
   const [copiedToken, setCopiedToken] = useState('');
-  const [customQuestions, setCustomQuestions] = useState([]);
+  const [questionsList, setQuestionsList] = useState(null);
   const [isCustomExpanded, setIsCustomExpanded] = useState(false);
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
@@ -84,6 +86,30 @@ export default function ParentVoiceControl({
   const pending = summary.pending;
   const url = pending ? buildInviteUrl(window.location.href, pending.token) : '';
 
+  const defaultQuestions = getDefaultQuestions({ childName: childFirstName, gender });
+  const activeQuestions = questionsList !== null ? questionsList : defaultQuestions;
+
+  const handleQuestionChange = (idx, val) => {
+    const next = [...activeQuestions];
+    next[idx] = val;
+    setQuestionsList(next);
+  };
+
+  const handleQuestionDelete = (idx) => {
+    const next = activeQuestions.filter((_, i) => i !== idx);
+    setQuestionsList(next);
+  };
+
+  const handleQuestionAdd = () => {
+    if (activeQuestions.length < 5) {
+      setQuestionsList([...activeQuestions, '']);
+    }
+  };
+
+  const handleResetQuestions = () => {
+    setQuestionsList(null);
+  };
+
   const run = async (key, action) => {
     setBusyKey(key);
     setError('');
@@ -102,18 +128,30 @@ export default function ParentVoiceControl({
     }
   };
 
-  const handleCreate = () =>
+  const handleCreate = () => {
+    const isCustomized = questionsList !== null;
+    const finalQuestions = (isCustomized ? questionsList : defaultQuestions)
+      .map((q) => q.trim())
+      .filter(Boolean);
+
+    if (finalQuestions.length === 0) {
+      setError('יש להגדיר לפחות שאלה אחת עבור ההורים.');
+      return;
+    }
+
     run('create', async () => {
       await createInvite({
         ownerEmail,
         studentId,
         childFirstName,
         gender,
-        customQuestions: customQuestions.filter((q) => q && q.trim())
+        customQuestions: isCustomized ? finalQuestions : [],
+        overrideDefaults: isCustomized
       });
-      setCustomQuestions([]);
+      setQuestionsList(null);
       setIsCustomExpanded(false);
     });
+  };
 
   const handleCopy = async (token, url) => {
     try {
@@ -191,7 +229,8 @@ export default function ParentVoiceControl({
                 const questions = getInviteQuestions({
                   childName: childFirstName,
                   gender,
-                  customQuestions: invite.customQuestions
+                  customQuestions: invite.customQuestions,
+                  overrideDefaults: !!invite.overrideDefaults
                 });
                 return (
                   <div
@@ -299,7 +338,13 @@ export default function ParentVoiceControl({
                     <div style={{ marginBottom: '10px' }}>
                       <button
                         type="button"
-                        onClick={() => setIsCustomExpanded((v) => !v)}
+                        onClick={() => {
+                          const nextState = !isCustomExpanded;
+                          setIsCustomExpanded(nextState);
+                          if (nextState && questionsList === null) {
+                            setQuestionsList([...defaultQuestions]);
+                          }
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -315,10 +360,10 @@ export default function ParentVoiceControl({
                       >
                         {isCustomExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         <span>
-                          התאמת שאלות אישיות לתלמיד{' '}
-                          {customQuestions.filter((q) => q && q.trim()).length > 0
-                            ? `(${customQuestions.filter((q) => q && q.trim()).length})`
-                            : '(אופציונלי)'}
+                          התאמת שאלות השאלון להורים{' '}
+                          {questionsList !== null
+                            ? `(${activeQuestions.filter((q) => q && q.trim()).length} שאלות)`
+                            : '(צפייה ועריכה)'}
                         </span>
                       </button>
 
@@ -326,36 +371,71 @@ export default function ParentVoiceControl({
                         <div
                           style={{
                             marginTop: '8px',
-                            padding: '10px 12px',
+                            padding: '12px',
                             background: '#f8fafc',
                             border: '1px solid #e2e8f0',
                             borderRadius: '8px'
                           }}
                         >
-                          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
-                            בנוסף ל-3 שאלות הבסיס, תוכלי להוסיף עד 3 שאלות מותאמות אישית:
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: '8px'
+                            }}
+                          >
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>
+                              שאלות השאלון (תוכלי לערוך ניסוח, למחוק או להוסיף עד 5 שאלות):
+                            </span>
+                            {questionsList !== null && (
+                              <button
+                                type="button"
+                                onClick={handleResetQuestions}
+                                title="שחזור 3 שאלות ברירת המחדל"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#4f46e5',
+                                  cursor: 'pointer',
+                                  fontSize: '11.5px',
+                                  textDecoration: 'underline',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                              >
+                                <RotateCcw size={12} />
+                                <span>שחזור ברירת מחדל</span>
+                              </button>
+                            )}
                           </div>
-                          {customQuestions.map((q, idx) => (
+
+                          {activeQuestions.map((q, idx) => (
                             <div
                               key={idx}
-                              style={{ display: 'flex', gap: '6px', marginBottom: '6px', alignItems: 'center' }}
+                              style={{ display: 'flex', gap: '6px', marginBottom: '8px', alignItems: 'center' }}
                             >
+                              <span
+                                style={{
+                                  width: '20px',
+                                  fontSize: '13px',
+                                  fontWeight: 700,
+                                  color: '#64748b',
+                                  textAlign: 'center'
+                                }}
+                              >
+                                {idx + 1}.
+                              </span>
                               <input
                                 type="text"
-                                placeholder={`שאלה אישית ${idx + 1}...`}
+                                placeholder={`שאלה ${idx + 1}...`}
                                 value={q}
                                 maxLength={150}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setCustomQuestions((prev) => {
-                                    const next = [...prev];
-                                    next[idx] = val;
-                                    return next;
-                                  });
-                                }}
+                                onChange={(e) => handleQuestionChange(idx, e.target.value)}
                                 style={{
                                   flex: 1,
-                                  padding: '6px 10px',
+                                  padding: '7px 10px',
                                   border: '1px solid #cbd5e1',
                                   borderRadius: '6px',
                                   fontSize: '13px'
@@ -364,7 +444,7 @@ export default function ParentVoiceControl({
                               <button
                                 type="button"
                                 title="מחיקת שאלה"
-                                onClick={() => setCustomQuestions((prev) => prev.filter((_, i) => i !== idx))}
+                                onClick={() => handleQuestionDelete(idx)}
                                 style={{
                                   width: '32px',
                                   height: '32px',
@@ -375,23 +455,25 @@ export default function ParentVoiceControl({
                                   border: '1px solid #e2e8f0',
                                   borderRadius: '6px',
                                   color: '#ef4444',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  flexShrink: 0
                                 }}
                               >
                                 <Trash2 size={14} />
                               </button>
                             </div>
                           ))}
-                          {customQuestions.length < 3 && (
+
+                          {activeQuestions.length < 5 && (
                             <button
                               type="button"
-                              onClick={() => setCustomQuestions((prev) => [...prev, ''])}
+                              onClick={handleQuestionAdd}
                               style={{
                                 background: '#fff',
                                 border: '1px dashed #a5b4fc',
                                 color: '#4f46e5',
                                 borderRadius: '6px',
-                                padding: '5px 10px',
+                                padding: '6px 12px',
                                 fontSize: '12.5px',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
@@ -401,7 +483,7 @@ export default function ParentVoiceControl({
                               }}
                             >
                               <Plus size={13} />
-                              <span>הוספת שאלה אישית</span>
+                              <span>הוספת שאלה</span>
                             </button>
                           )}
                         </div>
@@ -454,7 +536,8 @@ export default function ParentVoiceControl({
                         const questions = getInviteQuestions({
                           childName: childFirstName,
                           gender,
-                          customQuestions: inv.customQuestions
+                          customQuestions: inv.customQuestions,
+                          overrideDefaults: !!inv.overrideDefaults
                         });
                         const rawDate = inv.submittedAt || inv.createdAt;
                         const dateMs = toMillis(rawDate);

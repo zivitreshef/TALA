@@ -29,11 +29,11 @@ export async function ensureTeacherSession(email) {
 }
 
 /** Teacher side: creates a pending invite and returns its public URL. */
-export async function createInvite({ ownerEmail, studentId, childFirstName, gender, customQuestions = [] }) {
+export async function createInvite({ ownerEmail, studentId, childFirstName, gender, customQuestions = [], overrideDefaults = false }) {
   const db = getFirestoreDb();
   if (!db) throw new Error('Cloud backend is not configured');
   const token = generateInviteToken();
-  const inviteDoc = buildInviteDoc({ ownerEmail, studentId, childFirstName, gender, customQuestions });
+  const inviteDoc = buildInviteDoc({ ownerEmail, studentId, childFirstName, gender, customQuestions, overrideDefaults });
   await setDoc(doc(db, INVITE_COLLECTION, token), inviteDoc);
   return { token, url: buildInviteUrl(window.location.href, token) };
 }

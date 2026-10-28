@@ -6,10 +6,10 @@
 export const INVITE_COLLECTION = 'tala_invites';
 export const INVITE_TTL_DAYS = 7;
 export const MAX_ANSWER_LENGTH = 1500;
-export const MAX_CUSTOM_QUESTIONS = 3;
+export const MAX_CUSTOM_QUESTIONS = 5;
 export const MAX_QUESTION_LENGTH = 150;
 export const INVITE_ANSWER_KEYS = ['strengths', 'challenges', 'goal'];
-export const CUSTOM_ANSWER_KEYS = ['custom_0', 'custom_1', 'custom_2'];
+export const CUSTOM_ANSWER_KEYS = ['custom_0', 'custom_1', 'custom_2', 'custom_3', 'custom_4'];
 
 const TOKEN_REGEX = /^[A-Za-z0-9_-]{22}$/;
 const SHARE_ROUTE_PREFIX = '#/share-input/';
@@ -73,7 +73,35 @@ export function sanitizeCustomQuestions(questions = []) {
     .slice(0, MAX_CUSTOM_QUESTIONS);
 }
 
-export function getInviteQuestions({ childName = '', gender = 'boy', customQuestions = [] } = {}) {
+export function getDefaultQuestions({ childName = '', gender = 'boy' } = {}) {
+  const name = String(childName || '').trim() || pick(gender, 'הילד', 'הילדה');
+  return [
+    pick(
+      gender,
+      `מה ${name} אוהב לעשות ובמה הוא מצליח?`,
+      `מה ${name} אוהבת לעשות ובמה היא מצליחה?`
+    ),
+    `באילו מצבים קשה ל${name} כרגע?`,
+    `מה הכי חשוב לכם שנעבוד עליו עם ${name} השנה?`
+  ];
+}
+
+export function getInviteQuestions({
+  childName = '',
+  gender = 'boy',
+  customQuestions = [],
+  overrideDefaults = false
+} = {}) {
+  const cleanCustom = sanitizeCustomQuestions(customQuestions);
+
+  if (overrideDefaults && cleanCustom.length > 0) {
+    return cleanCustom.map((label, idx) => ({
+      key: `custom_${idx}`,
+      label,
+      isCustom: true
+    }));
+  }
+
   const name = String(childName || '').trim() || pick(gender, 'הילד', 'הילדה');
   const base = [
     {
@@ -88,7 +116,7 @@ export function getInviteQuestions({ childName = '', gender = 'boy', customQuest
     { key: 'goal', label: `מה הכי חשוב לכם שנעבוד עליו עם ${name} השנה?` }
   ];
 
-  const custom = sanitizeCustomQuestions(customQuestions).map((label, idx) => ({
+  const custom = cleanCustom.map((label, idx) => ({
     key: `custom_${idx}`,
     label,
     isCustom: true
@@ -103,6 +131,7 @@ export function buildInviteDoc({
   childFirstName = '',
   gender = 'boy',
   customQuestions = [],
+  overrideDefaults = false,
   now = new Date()
 }) {
   const owner = String(ownerEmail || '').trim().toLowerCase();
@@ -122,6 +151,9 @@ export function buildInviteDoc({
 
   if (cleanQuestions.length > 0) {
     docData.customQuestions = cleanQuestions;
+    if (overrideDefaults) {
+      docData.overrideDefaults = true;
+    }
   }
 
   return docData;
@@ -179,9 +211,15 @@ export function summarizeInvites(invites = [], now = Date.now()) {
 
 export function buildVoiceMergeText(invite) {
   const responses = sanitizeResponses(invite?.responses, invite?.customQuestions);
-  const lines = INVITE_ANSWER_KEYS.filter((key) => responses[key]).map(
-    (key) => `• ${MERGE_LABELS[key]}: ${responses[key].replace(/\s*\n\s*/g, ' ')}`
-  );
+  const lines = [];
+
+  if (!invite?.overrideDefaults) {
+    INVITE_ANSWER_KEYS.forEach((key) => {
+      if (responses[key]) {
+        lines.push(`• ${MERGE_LABELS[key]}: ${responses[key].replace(/\s*\n\s*/g, ' ')}`);
+      }
+    });
+  }
 
   const customQuestions = sanitizeCustomQuestions(invite?.customQuestions);
   CUSTOM_ANSWER_KEYS.forEach((key, idx) => {

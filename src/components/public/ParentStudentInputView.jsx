@@ -109,7 +109,8 @@ export default function ParentStudentInputView({ token }) {
   const questions = getInviteQuestions({
     childName: invite?.childFirstName,
     gender: invite?.gender,
-    customQuestions: invite?.customQuestions
+    customQuestions: invite?.customQuestions,
+    overrideDefaults: !!invite?.overrideDefaults
   });
   const sending = phase === 'sending';
 

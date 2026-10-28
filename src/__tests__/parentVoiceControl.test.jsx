@@ -94,7 +94,7 @@ describe('ParentVoiceControl Component', () => {
       })
     );
 
-    expect(html).toContain('התאמת שאלות אישיות לתלמיד');
+    expect(html).toContain('התאמת שאלות השאלון להורים');
     expect(html).toContain('יצירת קישור להורים');
   });
 

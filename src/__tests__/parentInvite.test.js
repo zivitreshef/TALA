@@ -8,6 +8,7 @@ import {
   buildInviteUrl,
   buildWhatsAppShareUrl,
   generateInviteToken,
+  getDefaultQuestions,
   getInviteQuestions,
   getInviteState,
   hasAnyAnswer,
@@ -70,7 +71,9 @@ describe('parentInvite - invite doc & custom questions', () => {
       '  איך הוא נרדם בלילה?  ',
       '<script>alert("xss")</script>מה המאכל האהוב עליו?',
       'שאלה שלישית תקינה',
-      'שאלה רביעית מיותרת'
+      'שאלה רביעית',
+      'שאלה חמישית',
+      'שאלה שישית מיותרת'
     ];
     const sanitized = sanitizeCustomQuestions(questions);
     expect(sanitized).toHaveLength(MAX_CUSTOM_QUESTIONS);
@@ -82,9 +85,11 @@ describe('parentInvite - invite doc & custom questions', () => {
       ownerEmail: 'teacher@example.com',
       studentId: 's1',
       customQuestions: questions,
+      overrideDefaults: true,
       now
     });
     expect(doc.customQuestions).toEqual(sanitized);
+    expect(doc.overrideDefaults).toBe(true);
   });
 
   it('rejects missing owner or student', () => {
@@ -106,15 +111,25 @@ describe('parentInvite - state', () => {
 });
 
 describe('parentInvite - responses & questions', () => {
+  it('getDefaultQuestions returns the 3 default questions', () => {
+    const defBoy = getDefaultQuestions({ childName: 'דניאל', gender: 'boy' });
+    expect(defBoy).toHaveLength(3);
+    expect(defBoy[0]).toContain('דניאל אוהב');
+
+    const defGirl = getDefaultQuestions({ childName: 'מיכל', gender: 'girl' });
+    expect(defGirl[0]).toContain('מיכל אוהבת');
+  });
+
   it('keeps only known keys, trims, clamps length', () => {
     const clean = sanitizeResponses({
       strengths: '  אוהב לצייר  ',
       challenges: '   ',
       goal: 'א'.repeat(MAX_ANSWER_LENGTH + 50),
       custom_0: '  תשובה מותאמת  ',
+      custom_4: 'תשובה חמישית',
       evil: 'x'
     });
-    expect(Object.keys(clean).sort()).toEqual(['custom_0', 'goal', 'strengths']);
+    expect(Object.keys(clean).sort()).toEqual(['custom_0', 'custom_4', 'goal', 'strengths']);
     expect(clean.strengths).toBe('אוהב לצייר');
     expect(clean.custom_0).toBe('תשובה מותאמת');
     expect(clean.goal.length).toBe(MAX_ANSWER_LENGTH);
@@ -127,20 +142,29 @@ describe('parentInvite - responses & questions', () => {
     expect(hasAnyAnswer({ custom_0: 'תשובה אישית' })).toBe(true);
   });
 
-  it('returns 3 gendered questions plus custom questions', () => {
+  it('returns 3 gendered questions plus custom questions when overrideDefaults is false', () => {
     const girl = getInviteQuestions({
       childName: 'נועה',
       gender: 'girl',
-      customQuestions: ['במה היא הכי מתגאה בבית?']
+      customQuestions: ['במה היא הכי מתגאה בבית?'],
+      overrideDefaults: false
     });
     expect(girl.map((q) => q.key)).toEqual(['strengths', 'challenges', 'goal', 'custom_0']);
     expect(girl[0].label).toContain('אוהבת');
     expect(girl[3].label).toBe('במה היא הכי מתגאה בבית?');
     expect(girl[3].isCustom).toBe(true);
+  });
 
-    const boy = getInviteQuestions({ childName: 'נועם', gender: 'boy' });
-    expect(boy[0].label).toContain('אוהב לעשות');
-    expect(boy[0].label).not.toContain('אוהבת');
+  it('returns ONLY the customized questions when overrideDefaults is true', () => {
+    const customOnly = getInviteQuestions({
+      childName: 'איתי',
+      gender: 'boy',
+      customQuestions: ['מה המאכל האהוב עליו?', 'איך הוא מסתדר עם האחים בבית?'],
+      overrideDefaults: true
+    });
+    expect(customOnly).toHaveLength(2);
+    expect(customOnly[0]).toEqual({ key: 'custom_0', label: 'מה המאכל האהוב עליו?', isCustom: true });
+    expect(customOnly[1]).toEqual({ key: 'custom_1', label: 'איך הוא מסתדר עם האחים בבית?', isCustom: true });
   });
 });
 
@@ -204,5 +228,18 @@ describe('parentInvite - teacher side & history archive', () => {
     expect(buildVoiceMergeText({ responses: {} })).toBe('');
     expect(appendToFreeText('  טקסט קיים ', block)).toBe(`טקסט קיים\n\n${block}`);
     expect(appendToFreeText('', block)).toBe(block);
+  });
+
+  it('builds a merge block with ONLY overridden questions when overrideDefaults is true', () => {
+    const block = buildVoiceMergeText({
+      overrideDefaults: true,
+      customQuestions: ['איך הוא נרדם?'],
+      responses: {
+        strengths: 'טקסט שלא אמור להופיע',
+        custom_0: 'עם מוזיקה שקטה'
+      }
+    });
+    expect(block).toContain('• איך הוא נרדם?: עם מוזיקה שקטה');
+    expect(block).not.toContain('חוזקות');
   });
 });
