@@ -7,7 +7,8 @@ const mockAuth = {
 };
 
 const mockSetDoc = vi.fn().mockResolvedValue(undefined);
-const mockGetDoc = vi.fn().mockResolvedValue({ exists: () => false, data: () => null });
+let mockDocSnap = { exists: () => false, data: () => null };
+const mockGetDoc = vi.fn().mockImplementation(() => Promise.resolve(mockDocSnap));
 const mockSignInWithCustomToken = vi.fn().mockResolvedValue({});
 
 vi.mock('firebase/app', () => ({
@@ -44,6 +45,7 @@ import {
 import {
   checkActiveSession,
   activateSession,
+  clearSession,
   setCachedClientIp,
   getClientIp
 } from '../services/sessionSecurity';
@@ -58,6 +60,7 @@ describe('Login Latency Optimization & Pre-warm Pipeline', () => {
     _resetFirestoreInstanceForTesting();
     _resetLoginPrewarmThrottleForTesting();
     memoryStorage = {};
+    mockDocSnap = { exists: () => false, data: () => null };
 
     vi.stubGlobal('localStorage', {
       getItem: (key) => memoryStorage[key] || null,
@@ -86,7 +89,7 @@ describe('Login Latency Optimization & Pre-warm Pipeline', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const call = mockFetch.mock.calls[0];
-      expect(call[0]).toContain('talaLogin');
+      expect(call[0]).toContain('talalogin');
       const body = JSON.parse(call[1].body);
       expect(body).toEqual({ ping: true });
     });
@@ -159,11 +162,10 @@ describe('Login Latency Optimization & Pre-warm Pipeline', () => {
     });
   });
 
-  describe('checkActiveSession with knownClientIp bypass', () => {
+  describe('checkActiveSession with same IP & knownClientIp bypass', () => {
     it('bypasses external api.ipify.org fetch when knownClientIp is provided', async () => {
       const knownIp = '84.110.45.67';
 
-      // Ensure mockFetch will throw if called
       mockFetch.mockImplementation(() => {
         throw new Error('fetch should not be called when knownClientIp is provided!');
       });
@@ -172,8 +174,44 @@ describe('Login Latency Optimization & Pre-warm Pipeline', () => {
 
       expect(check.takeoverRequired).toBe(false);
       expect(check.clientIp).toBe(knownIp);
-      // Fetch should never be called
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('does not require takeover if the active session is from the exact same client IP', async () => {
+      const myIp = '199.203.68.10';
+      // Simulate Firestore has an active session from the same IP (e.g. before relogin)
+      mockDocSnap = {
+        exists: () => true,
+        data: () => ({
+          sessionId: 'sess_prev_device',
+          ipAddress: myIp,
+          lastActiveIso: new Date().toISOString(),
+          lastActiveMs: Date.now()
+        })
+      };
+
+      const check = await checkActiveSession('teacher@school.edu', 'sess_new_login', myIp);
+
+      // Must NOT require takeover because it is from the exact same IP
+      expect(check.takeoverRequired).toBe(false);
+    });
+
+    it('requires takeover if the active session is from a DIFFERENT IP', async () => {
+      const currentIp = '199.203.68.10';
+      mockDocSnap = {
+        exists: () => true,
+        data: () => ({
+          sessionId: 'sess_remote_laptop',
+          ipAddress: '203.0.113.55', // Different IP!
+          lastActiveIso: new Date().toISOString(),
+          lastActiveMs: Date.now()
+        })
+      };
+
+      const check = await checkActiveSession('teacher@school.edu', 'sess_new_login', currentIp);
+
+      expect(check.takeoverRequired).toBe(true);
+      expect(check.existingSession.ipAddress).toBe('203.0.113.55');
     });
 
     it('sets and updates cachedClientIp properly', async () => {
@@ -181,6 +219,21 @@ describe('Login Latency Optimization & Pre-warm Pipeline', () => {
       const ip = await getClientIp();
       expect(ip).toBe('192.0.2.100');
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clearSession on logout', () => {
+    it('sets doc in Firestore with null session and clears localStorage', async () => {
+      memoryStorage['tala_active_session_teacher_school.edu'] = JSON.stringify({ sessionId: 'sess_old' });
+
+      await clearSession('teacher@school.edu', 'sess_old');
+
+      expect(memoryStorage['tala_active_session_teacher_school.edu']).toBeUndefined();
+      expect(mockSetDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'tala_sessions/teacher_school.edu' }),
+        expect.objectContaining({ sessionId: null, lastActiveMs: 0, ipAddress: null }),
+        { merge: true }
+      );
     });
   });
 

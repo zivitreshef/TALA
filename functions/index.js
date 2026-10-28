@@ -186,6 +186,8 @@ const MAX_FAILED=5;
 const sha256=(s)=>crypto.createHash("sha256").update(s,"utf8").digest("hex");
 function hashPw(pw,salt){const p=String(pw||"").trim(),s=String(salt||"").trim();let d=sha256(`TALA_PBKDF_V1:${s}:${p}`);for(let r=1;r<256;r++)d=sha256(`${d}:${s}:${p}:${r}`);return d;}
 function pwOk(u,code){const c=String(code||"").trim();if(u.passwordHash&&u.passwordSalt){const eq=(h)=>h.length===u.passwordHash.length&&crypto.timingSafeEqual(Buffer.from(h),Buffer.from(u.passwordHash));return eq(hashPw(c,u.passwordSalt))||(c.toUpperCase()==="TALA2026"&&eq(hashPw("TALA2026",u.passwordSalt)));}return false;}
+let isDirectoryBootstrapped=false;
+const verifiedAuthUsers=new Set();
 async function handleTalaLogin(req,res){
   const origin=req.headers.origin||"";
   const allowedOrigins=["https://zivitreshef.github.io","https://tala-d9aaa.web.app","https://tala-d9aaa.firebaseapp.com","http://localhost:5173","http://localhost:4173","http://localhost:3000","http://localhost:5000"];
@@ -221,45 +223,51 @@ async function handleTalaLogin(req,res){
     deny({reason:outcome.reason,isLockedOut:!!outcome.isLockedOut,isDisabled:!!outcome.isDisabled});return;
   }
   const clientIp=String(req.headers["fastly-client-ip"]||(req.headers["x-forwarded-for"]&&req.headers["x-forwarded-for"].split(",")[0].trim())||(req.socket&&req.socket.remoteAddress)||req.ip||"").replace(/^::ffff:/,"");
-  try{
-    const hasDir=(await db.collection("tala_config").doc("directory").get()).exists;
-    if(!hasDir)await publishUsers(outcome.all,outcome.all,true);
-  }catch(e){console.warn("directory check on login failed",e.message);}
+  if(!isDirectoryBootstrapped){
+    try{
+      const hasDir=(await db.collection("tala_config").doc("directory").get()).exists;
+      if(!hasDir)await publishUsers(outcome.all,outcome.all,true);
+      isDirectoryBootstrapped=true;
+    }catch(e){console.warn("directory check on login failed",e.message);}
+  }
   const targetUid=uidFor(email);
   const role=outcome.user.role||"teacher";
   const displayName=outcome.user.name||undefined;
-  try{
-    const existing=await admin.auth().getUser(targetUid).catch(()=>null);
-    if(!existing){
-      try{
-        await admin.auth().createUser({uid:targetUid,email,displayName});
-      }catch(ce){
-        if(ce.code==="auth/email-already-exists"){
-          try{
-            const old=await admin.auth().getUserByEmail(email);
-            if(old&&old.uid!==targetUid){
-              await admin.auth().deleteUser(old.uid);
-              await admin.auth().createUser({uid:targetUid,email,displayName});
-            }
-          }catch(_){}
+  if(!verifiedAuthUsers.has(targetUid)){
+    try{
+      const existing=await admin.auth().getUser(targetUid).catch(()=>null);
+      if(!existing){
+        try{
+          await admin.auth().createUser({uid:targetUid,email,displayName});
+        }catch(ce){
+          if(ce.code==="auth/email-already-exists"){
+            try{
+              const old=await admin.auth().getUserByEmail(email);
+              if(old&&old.uid!==targetUid){
+                await admin.auth().deleteUser(old.uid);
+                await admin.auth().createUser({uid:targetUid,email,displayName});
+              }
+            }catch(_){}
+          }
+        }
+        await admin.auth().setCustomUserClaims(targetUid,{email,role});
+      }else{
+        const needsUpdate=existing.email!==email||(displayName&&existing.displayName!==displayName);
+        const needsClaims=!existing.customClaims||existing.customClaims.role!==role;
+        if(needsUpdate||needsClaims){
+          await Promise.all([
+            needsUpdate?admin.auth().updateUser(targetUid,{email,displayName}):Promise.resolve(),
+            needsClaims?admin.auth().setCustomUserClaims(targetUid,{email,role}):Promise.resolve()
+          ]);
         }
       }
-      await admin.auth().setCustomUserClaims(targetUid,{email,role});
-    }else{
-      const needsUpdate=existing.email!==email||(displayName&&existing.displayName!==displayName);
-      const needsClaims=!existing.customClaims||existing.customClaims.role!==role;
-      if(needsUpdate||needsClaims){
-        await Promise.all([
-          needsUpdate?admin.auth().updateUser(targetUid,{email,displayName}):Promise.resolve(),
-          needsClaims?admin.auth().setCustomUserClaims(targetUid,{email,role}):Promise.resolve()
-        ]);
-      }
-    }
-  }catch(err){console.warn("Auth user ensure warning:",err.message);}
+      verifiedAuthUsers.add(targetUid);
+    }catch(err){console.warn("Auth user ensure warning:",err.message);}
+  }
   const token=await admin.auth().createCustomToken(targetUid,{email,role});
   res.status(200).json({allowed:true,token,user:outcome.user,clientIp});
 }
-exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaLogin);
+exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",memory:"256MiB",minInstances:1,cors:false},handleTalaLogin);
 
 // ---- onHealthEventCreated: Real-time Admin Alerts (Email, Telegram, WhatsApp) ----
 const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwp3HLCO9kErrN-vS2odXYcco1B5KMlbTw7qeJWrSSKg5nqZocfrsvyUOIO-LurJJtg/exec';

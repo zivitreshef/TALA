@@ -205,20 +205,35 @@ export async function loginWithTala(email, accessCode) {
   const auth = getFirebaseAuth();
   if (!auth) return { allowed: false, reason: 'שרת ההתחברות אינו זמין. נסו שוב מאוחר יותר.' };
   const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
-  const url =
+  const primaryUrl =
     import.meta.env?.VITE_TALA_LOGIN_URL ||
+    'https://talalogin-cwk53dsota-uc.a.run.app';
+  const fallbackUrl =
+    import.meta.env?.VITE_TALA_LOGIN_URL ? null :
     `https://us-central1-${projectId}.cloudfunctions.net/talaLogin`;
   let data;
   try {
-    const res = await fetch(url, {
+    const res = await fetch(primaryUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, accessCode })
     });
     data = await res.json();
   } catch (err) {
-    console.warn('[talaLogin] request failed:', err);
-    return { allowed: false, reason: 'שרת ההתחברות אינו זמין. נסו שוב מאוחר יותר.' };
+    if (fallbackUrl) {
+      try {
+        const fbRes = await fetch(fallbackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, accessCode })
+        });
+        data = await fbRes.json();
+      } catch (_) {}
+    }
+    if (!data) {
+      console.warn('[talaLogin] request failed:', err);
+      return { allowed: false, reason: 'שרת ההתחברות אינו זמין. נסו שוב מאוחר יותר.' };
+    }
   }
   if (!data?.allowed || !data.token) return { ...data, allowed: false };
   await signInWithCustomToken(auth, data.token);
@@ -244,7 +259,7 @@ export async function prewarmTalaLogin() {
   const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
   const url =
     import.meta.env?.VITE_TALA_LOGIN_URL ||
-    `https://us-central1-${projectId}.cloudfunctions.net/talaLogin`;
+    'https://talalogin-cwk53dsota-uc.a.run.app';
 
   try {
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
