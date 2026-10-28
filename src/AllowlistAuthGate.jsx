@@ -26,7 +26,8 @@ import {
   FileSignature,
   Edit2,
   Users,
-  Loader2
+  Loader2,
+  CheckCheck
 } from 'lucide-react';
 import {
   validatePasswordPolicy,
@@ -658,7 +659,9 @@ export function UserSelfPasswordModal({
   unreadSharedReports = [],
   allowedUsers = [],
   onOpenSharedReportNotification,
-  onToggleNotifySharedReport
+  onToggleNotifySharedReport,
+  onDismissSharedReportNotification,
+  onDismissAllSharedReports
 }) {
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -828,8 +831,42 @@ export function UserSelfPasswordModal({
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ fontSize: '12px', color: '#1e40af', fontWeight: 600 }}>
-                      לחץ/י על ההתראה כדי לפתוח מיד את הדו"ח המשותף (ההתראה תוסר אוטומטית לאחר הפתיחה):
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        flexWrap: 'wrap'
+                      }}
+                    >
+                      <div style={{ fontSize: '12px', color: '#1e40af', fontWeight: 600 }}>
+                        לחץ/י על ההתראה כדי לפתוח מיד את הדו"ח, או סמן/י כנקרא להסרת ההתראה:
+                      </div>
+                      {onDismissAllSharedReports && unreadSharedReports.length > 1 && (
+                        <button
+                          type="button"
+                          data-testid="dismiss-all-shared-reports-btn"
+                          onClick={onDismissAllSharedReports}
+                          style={{
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            padding: '3px 9px',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          title="סמן את כל ההתראות כנקראות וכבה את ההתראה"
+                        >
+                          <CheckCheck size={13} />
+                          <span>סמן הכל כנקרא</span>
+                        </button>
+                      )}
                     </div>
                     {unreadSharedReports.map((st) => {
                       const ownerName = resolveOwnerDisplayName(st);
@@ -845,14 +882,9 @@ export function UserSelfPasswordModal({
                             ) || st.teamMessages.filter((m) => !m.isDeleted).slice(-1)[0]
                         : null;
                       return (
-                        <button
+                        <div
                           key={st.id}
-                          type="button"
-                          onClick={() => {
-                            if (onOpenSharedReportNotification) {
-                              onOpenSharedReportNotification(st);
-                            }
-                          }}
+                          data-testid={`shared-report-notification-card-${st.id}`}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -861,15 +893,27 @@ export function UserSelfPasswordModal({
                             width: '100%',
                             textAlign: 'right',
                             background: '#ffffff',
-                            border: '1.5px solid #60a5fa',
+                            border: '1.5px solid #93c5fd',
                             borderRadius: '10px',
                             padding: '10px 12px',
-                            cursor: 'pointer',
                             boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)',
                             transition: 'all 0.15s ease'
                           }}
                         >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div
+                            onClick={() => {
+                              if (onOpenSharedReportNotification) {
+                                onOpenSharedReportNotification(st);
+                              }
+                            }}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '3px',
+                              flex: 1,
+                              cursor: 'pointer'
+                            }}
+                          >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                               <Users size={15} style={{ color: '#2563eb', flexShrink: 0 }} />
                               <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>
@@ -939,25 +983,70 @@ export function UserSelfPasswordModal({
                               </div>
                             )}
                           </div>
-                          <span
+                          <div
                             style={{
-                              display: 'inline-flex',
+                              display: 'flex',
                               alignItems: 'center',
-                              gap: '5px',
-                              background: '#2563eb',
-                              color: '#ffffff',
-                              fontSize: '12px',
-                              fontWeight: 700,
-                              padding: '6px 11px',
-                              borderRadius: '8px',
-                              whiteSpace: 'nowrap',
+                              gap: '6px',
                               flexShrink: 0
                             }}
                           >
-                            <BookOpen size={13} />
-                            <span>פתח דו"ח</span>
-                          </span>
-                        </button>
+                            {onDismissSharedReportNotification && (
+                              <button
+                                type="button"
+                                data-testid={`dismiss-shared-report-btn-${st.id}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDismissSharedReportNotification(st);
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#f8fafc',
+                                  color: '#475569',
+                                  border: '1px solid #cbd5e1',
+                                  fontSize: '11.5px',
+                                  fontWeight: 600,
+                                  padding: '6px 9px',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title="סמן כנקרא והסר התראה זו"
+                              >
+                                <Check size={13} />
+                                <span>סמן כנקרא</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              data-testid={`open-shared-report-btn-${st.id}`}
+                              onClick={() => {
+                                if (onOpenSharedReportNotification) {
+                                  onOpenSharedReportNotification(st);
+                                }
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: '#2563eb',
+                                color: '#ffffff',
+                                border: 'none',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                padding: '6px 11px',
+                                borderRadius: '8px',
+                                whiteSpace: 'nowrap',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <BookOpen size={13} />
+                              <span>פתח דו"ח</span>
+                            </button>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>

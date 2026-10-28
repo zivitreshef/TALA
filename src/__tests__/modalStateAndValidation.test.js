@@ -1071,6 +1071,40 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
         expect(html).toContain('קריאה בלבד');
         expect(html).toContain('לעיון בלבד (התוכנית נעולה)');
       });
+
+      it('renders "סמן כנקרא" button for each shared report and "סמן הכל כנקרא" when multiple unread exist', () => {
+        const multipleReports = [
+          {
+            id: 'st_1',
+            studentName: 'דניאל כהן',
+            ownerEmail: 'teacher1@school.org',
+            isLocked: true,
+            teamMessages: []
+          },
+          {
+            id: 'st_2',
+            studentName: 'מאיה שחר',
+            ownerEmail: 'teacher2@school.org',
+            isLocked: false,
+            teamMessages: []
+          }
+        ];
+
+        const html = renderToStaticMarkup(
+          React.createElement(UserSelfPasswordModal, {
+            isOpen: true,
+            onClose: () => {},
+            currentUser: { name: 'עמית', email: 'colleague@school.org' },
+            unreadSharedReports: multipleReports,
+            onDismissSharedReportNotification: () => {},
+            onDismissAllSharedReports: () => {}
+          })
+        );
+
+        expect(html).toContain('סמן כנקרא');
+        expect(html).toContain('סמן הכל כנקרא');
+        expect(html).toContain('פתח דו&quot;ח');
+      });
     });
 
   });

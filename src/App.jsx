@@ -904,6 +904,100 @@ export default function App() {
     setShowSelfPasswordModal(false);
   };
 
+  const handleDismissSharedReportNotification = (studentObj) => {
+    if (!studentObj?.id || !currentUser?.email) return;
+    const emailLower = currentUser.email.trim().toLowerCase();
+
+    // 1. Mark as read on the student object & persist to cloud
+    let updatedStudent = markSharedReportAsRead(studentObj, emailLower);
+    updatedStudent = markTeamMessagesAsRead(updatedStudent, emailLower);
+    setStudents((prev) =>
+      prev.map((st) => (st.id === studentObj.id ? updatedStudent : st))
+    );
+    saveStudentToCloud(updatedStudent);
+
+    // 2. Record in localStorage dismissed map for immediate disappearance
+    setDismissedSharedByEmail((prev) => {
+      const prevList = Array.isArray(prev[emailLower]) ? prev[emailLower] : [];
+      const nextList = prevList.includes(studentObj.id)
+        ? prevList
+        : [...prevList, studentObj.id];
+      const nextMap = { ...prev, [emailLower]: nextList };
+      safeSetStorageJson(DISMISSED_SHARED_REPORTS_KEY, nextMap);
+      return nextMap;
+    });
+
+    // 3. Also record on the user profile in allowedUsers if present
+    const userDismissed = Array.isArray(currentUser.dismissedSharedReportIds)
+      ? currentUser.dismissedSharedReportIds
+      : [];
+    if (!userDismissed.includes(studentObj.id)) {
+      const nextUserDismissed = [...userDismissed, studentObj.id];
+      const updatedCurrent = {
+        ...currentUser,
+        dismissedSharedReportIds: nextUserDismissed
+      };
+      setCurrentUser(updatedCurrent);
+      safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+
+      if (currentUser.role === 'admin') {
+        const updatedList = allowedUsers.map((u) =>
+          u.email.toLowerCase() === emailLower
+            ? { ...u, dismissedSharedReportIds: nextUserDismissed }
+            : u
+        );
+        handleUpdateAllowedUsers(updatedList);
+      }
+    }
+  };
+
+  const handleDismissAllSharedReports = () => {
+    if (!currentUser?.email || !Array.isArray(unreadSharedReports) || unreadSharedReports.length === 0) return;
+    const emailLower = currentUser.email.trim().toLowerCase();
+    const idsToDismiss = unreadSharedReports.map((st) => st.id).filter(Boolean);
+
+    // 1. Mark all unread reports & messages as read
+    setStudents((prev) =>
+      prev.map((st) => {
+        if (!idsToDismiss.includes(st.id)) return st;
+        let updated = markSharedReportAsRead(st, emailLower);
+        updated = markTeamMessagesAsRead(updated, emailLower);
+        saveStudentToCloud(updated);
+        return updated;
+      })
+    );
+
+    // 2. Add all to localStorage dismissed map
+    setDismissedSharedByEmail((prev) => {
+      const prevList = Array.isArray(prev[emailLower]) ? prev[emailLower] : [];
+      const nextList = Array.from(new Set([...prevList, ...idsToDismiss]));
+      const nextMap = { ...prev, [emailLower]: nextList };
+      safeSetStorageJson(DISMISSED_SHARED_REPORTS_KEY, nextMap);
+      return nextMap;
+    });
+
+    // 3. Add all to user profile
+    const userDismissed = Array.isArray(currentUser.dismissedSharedReportIds)
+      ? currentUser.dismissedSharedReportIds
+      : [];
+    const nextUserDismissed = Array.from(new Set([...userDismissed, ...idsToDismiss]));
+    const updatedCurrent = {
+      ...currentUser,
+      dismissedSharedReportIds: nextUserDismissed
+    };
+    setCurrentUser(updatedCurrent);
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+
+    if (currentUser.role === 'admin') {
+      const updatedList = allowedUsers.map((u) =>
+        u.email.toLowerCase() === emailLower
+          ? { ...u, dismissedSharedReportIds: nextUserDismissed }
+          : u
+      );
+      handleUpdateAllowedUsers(updatedList);
+    }
+  };
+
   const handleToggleNotifySharedReport = (enabled) => {
     if (!currentUser) return;
     const nextVal = Boolean(enabled);
@@ -2830,6 +2924,8 @@ export default function App() {
         allowedUsers={allowedUsers}
         onOpenSharedReportNotification={handleOpenSharedReportNotification}
         onToggleNotifySharedReport={handleToggleNotifySharedReport}
+        onDismissSharedReportNotification={handleDismissSharedReportNotification}
+        onDismissAllSharedReports={handleDismissAllSharedReports}
       />
 
       {/* Mandatory Hebrew NDA Modal for Trial Users (opens immediately after password change) */}

@@ -116,4 +116,63 @@ describe('studentSyncMerge (Multi-Disciplinary & Field-Level Saves)', () => {
     expect(reconciled.teamMessages).toHaveLength(3);
     expect(reconciled.teamMessages.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
   });
+
+  it('preserves readBy receipts as a set union in mergeTeamMessages so saving/locking never resets colleague unread status', () => {
+    // Owner (Teacher 1) local snapshot has not yet recorded Colleague (Teacher 2) as reader
+    const local = [
+      {
+        id: 'msg_handoff',
+        text: 'תוכנית עבודה שותפה עמך',
+        authorEmail: 'owner@tala.edu.il',
+        readBy: ['owner@tala.edu.il'],
+        createdAt: '2026-10-20T10:00:00Z'
+      }
+    ];
+
+    // Colleague (Teacher 2) read the message on the server
+    const server = [
+      {
+        id: 'msg_handoff',
+        text: 'תוכנית עבודה שותפה עמך',
+        authorEmail: 'owner@tala.edu.il',
+        readBy: ['owner@tala.edu.il', 'colleague@tala.edu.il'],
+        createdAt: '2026-10-20T10:00:00Z'
+      }
+    ];
+
+    const merged = mergeTeamMessages(local, server);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].readBy).toContain('owner@tala.edu.il');
+    expect(merged[0].readBy).toContain('colleague@tala.edu.il');
+  });
+
+  it('preserves sharedReadBy union in mergeStudentSnapshots when owner locks a shared student plan', () => {
+    // Owner locks the plan from an in-memory form that had empty sharedReadBy
+    const local = {
+      id: 'st_locked_1',
+      name: 'איתמר',
+      isLocked: true,
+      lockedBy: 'מחנכת הכיתה',
+      sharedWith: ['colleague@tala.edu.il'],
+      sharedReadBy: [] // Stale local state
+    };
+
+    // Server already recorded that colleague viewed/read the shared report
+    const server = {
+      id: 'st_locked_1',
+      name: 'איתמר',
+      isLocked: false,
+      sharedWith: ['colleague@tala.edu.il'],
+      sharedReadBy: ['colleague@tala.edu.il']
+    };
+
+    const reconciled = mergeStudentSnapshots({
+      localStudent: local,
+      serverStudent: server
+    });
+
+    expect(reconciled.isLocked).toBe(true);
+    expect(reconciled.sharedReadBy).toContain('colleague@tala.edu.il');
+    expect(reconciled.sharedWith).toContain('colleague@tala.edu.il');
+  });
 });

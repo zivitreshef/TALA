@@ -380,6 +380,42 @@ export default function EcologicalWorkPlanForm({
     setStatusReportBanner('');
   }, [student?.id, externalRevision]);
 
+  // Sync background collaboration metadata (teamMessages, sharedReadBy, sharedWith) when student prop updates in real-time
+  useEffect(() => {
+    if (!student || !student.id) return;
+    setFormData((prev) => {
+      if (!prev || prev.id !== student.id) return prev;
+      const prevMsgs = prev.teamMessages || [];
+      const newMsgs = student.teamMessages || [];
+      const prevReadBy = (prev.sharedReadBy || []).join(',');
+      const newReadBy = (student.sharedReadBy || []).join(',');
+      const prevSharedWith = (prev.sharedWith || []).join(',');
+      const newSharedWith = (student.sharedWith || []).join(',');
+      if (
+        prevMsgs.length !== newMsgs.length ||
+        prevReadBy !== newReadBy ||
+        prevSharedWith !== newSharedWith ||
+        JSON.stringify(prevMsgs) !== JSON.stringify(newMsgs)
+      ) {
+        const next = {
+          ...prev,
+          sharedWith: student.sharedWith || prev.sharedWith,
+          sharedReadBy: student.sharedReadBy || prev.sharedReadBy,
+          teamMessages: student.teamMessages || prev.teamMessages
+        };
+        try {
+          const parsed = JSON.parse(savedSnapshotRef.current || '{}');
+          parsed.sharedWith = next.sharedWith;
+          parsed.sharedReadBy = next.sharedReadBy;
+          parsed.teamMessages = next.teamMessages;
+          savedSnapshotRef.current = JSON.stringify(parsed);
+        } catch (_) {}
+        return next;
+      }
+      return prev;
+    });
+  }, [student?.teamMessages, student?.sharedReadBy, student?.sharedWith]);
+
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
   useEffect(() => {
     const syncedDraft = syncActiveReportSnapshot(formData);

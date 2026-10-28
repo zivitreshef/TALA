@@ -94,6 +94,13 @@ export function mergeStudentSnapshots({
   ]);
   merged.sharedWith = Array.from(sharedSet);
 
+  // 1b. SharedReadBy array union so colleague read receipts are never erased on plan save/lock
+  const sharedReadBySet = new Set([
+    ...(Array.isArray(serverStudent.sharedReadBy) ? serverStudent.sharedReadBy : []),
+    ...(Array.isArray(localStudent.sharedReadBy) ? localStudent.sharedReadBy : [])
+  ]);
+  merged.sharedReadBy = Array.from(sharedReadBySet);
+
   // 2. Goal-by-goal non-destructive reconciliation
   const localGoals = Array.isArray(localStudent.goals) ? localStudent.goals : [];
   const serverGoals = Array.isArray(serverStudent.goals) ? serverStudent.goals : [];
@@ -145,9 +152,14 @@ export function mergeTeamMessages(localMsgs = [], serverMsgs = []) {
       } else {
         const existing = map.get(msg.id);
         const isDeleted = existing.isDeleted || msg.isDeleted;
+        const existingReadBy = Array.isArray(existing.readBy) ? existing.readBy : [];
+        const msgReadBy = Array.isArray(msg.readBy) ? msg.readBy : [];
+        const mergedReadBy = Array.from(new Set([...existingReadBy, ...msgReadBy]));
+
         map.set(msg.id, {
           ...existing,
           ...msg,
+          readBy: mergedReadBy,
           ...(isDeleted ? { isDeleted: true, text: 'הודעה זו נמחקה על ידי המחבר/ת' } : {})
         });
       }
