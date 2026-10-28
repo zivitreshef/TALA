@@ -1340,48 +1340,76 @@ export default function TeacherPreferencesModal({
                 העלי סריקה או צילום של חתימתך (קובץ PNG שקוף מומלץ עד 2MB), והמערכת תטמיע אותה אוטומטית במלבן החתימות בכל הדוחות:
               </div>
 
-              <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <label
-                  style={{
-                    border: '2px dashed #93c5fd',
-                    background: '#eff6ff',
-                    borderRadius: '8px',
-                    padding: '12px 18px',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#1d4ed8'
-                  }}
-                >
-                  <PenTool size={16} />
-                  <span>העלאת תמונת חתימה</span>
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp"
-                    onChange={handleSignatureUpload}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-
-                {draftPrefs.signatureImage && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>תצוגה מקדימה:</span>
-                    <img
-                      src={draftPrefs.signatureImage}
-                      alt="חתימה אישית"
-                      style={{ maxHeight: '36px', maxWidth: '120px', objectFit: 'contain' }}
-                    />
+              <div>
+                {draftPrefs.signatureImage ? (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '14px',
+                      background: '#ffffff',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '10px',
+                      padding: '8px 14px'
+                    }}
+                  >
+                    <span style={{ fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>חתימה שמורה:</span>
+                    <div style={{ background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center' }}>
+                      <img
+                        src={draftPrefs.signatureImage}
+                        alt="חתימה אישית שמורה"
+                        style={{ maxHeight: '36px', maxWidth: '130px', objectFit: 'contain' }}
+                      />
+                    </div>
                     <button
                       type="button"
+                      data-testid="remove-signature-btn"
                       onClick={() => handleFieldChange('signatureImage', null)}
-                      style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}
+                      style={{
+                        background: '#fee2e2',
+                        border: '1px solid #fca5a5',
+                        color: '#dc2626',
+                        borderRadius: '6px',
+                        padding: '5px 10px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="הסר חתימה שמורה כדי להעלות חדשה"
                     >
-                      הסר
+                      <Trash2 size={13} />
+                      <span>הסר חתימה</span>
                     </button>
                   </div>
+                ) : (
+                  <label
+                    data-testid="upload-signature-label"
+                    style={{
+                      border: '2px dashed #93c5fd',
+                      background: '#eff6ff',
+                      borderRadius: '8px',
+                      padding: '12px 18px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#1d4ed8'
+                    }}
+                  >
+                    <PenTool size={16} />
+                    <span>העלאת תמונת חתימה</span>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      onChange={handleSignatureUpload}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
                 )}
               </div>
             </div>

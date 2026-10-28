@@ -238,4 +238,32 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
     expect(html).toContain('linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%)');
     expect(html).toContain('linear-gradient(135deg, #3b6ea5 0%, #5b9bd5 50%, #8e7cc3 100%)');
   });
+
+  it('shows upload button only when no signature exists; shows remove button when signature exists', () => {
+    // 1. Without signature: upload button is visible, remove button is not
+    const htmlNoSig = renderToStaticMarkup(
+      <TeacherPreferencesModal
+        isOpen={true}
+        onClose={() => {}}
+        currentUser={dummyUser}
+        userPreferences={{ ...DEFAULT_USER_PREFERENCES, signatureImage: null }}
+        onSavePreferences={() => {}}
+      />
+    );
+    expect(htmlNoSig).toContain('data-testid="upload-signature-label"');
+    expect(htmlNoSig).not.toContain('data-testid="remove-signature-btn"');
+
+    // 2. With signature: remove button is visible, upload button is not
+    const htmlWithSig = renderToStaticMarkup(
+      <TeacherPreferencesModal
+        isOpen={true}
+        onClose={() => {}}
+        currentUser={dummyUser}
+        userPreferences={{ ...DEFAULT_USER_PREFERENCES, signatureImage: 'data:image/png;base64,sample' }}
+        onSavePreferences={() => {}}
+      />
+    );
+    expect(htmlWithSig).toContain('data-testid="remove-signature-btn"');
+    expect(htmlWithSig).not.toContain('data-testid="upload-signature-label"');
+  });
 });
