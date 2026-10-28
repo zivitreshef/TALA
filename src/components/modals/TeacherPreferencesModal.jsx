@@ -1173,10 +1173,103 @@ export default function TeacherPreferencesModal({
                       <div style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
                         שעת קבלת הסיכום היומי למייל:
                       </div>
-                      <select
+                      <input
+                        type="time"
                         value={draftPrefs.dailyDigestTime || '14:00'}
                         onChange={(e) => handleFieldChange('dailyDigestTime', e.target.value)}
-                        data-testid="daily-digest-time-select"
+                        data-testid="daily-digest-time-input"
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          border: '1.5px solid #0284c7',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          color: '#0369a1',
+                          background: '#ffffff',
+                          cursor: 'pointer',
+                          outline: 'none',
+                          direction: 'ltr',
+                          textAlign: 'center'
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Pedagogical Reminder */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <strong style={{ fontSize: '14px', color: '#1e293b' }}>תזכורת פדגוגית</strong>
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  data-testid="pedagogical-reminder-toggle"
+                  checked={Boolean(draftPrefs.pedagogicalReminderEnabled || draftPrefs.monthlyPedagogicalReminder)}
+                  onChange={(e) => {
+                    handleFieldChange('pedagogicalReminderEnabled', e.target.checked);
+                    handleFieldChange('monthlyPedagogicalReminder', e.target.checked);
+                  }}
+                  style={{ width: '16px', height: '16px', accentColor: '#3b6ea5' }}
+                />
+                <span>הפעל תזכורת פדגוגית במייל (ריכוז תלמידים שלא עודכנו מעל 45 יום)</span>
+              </label>
+
+              {(draftPrefs.pedagogicalReminderEnabled || draftPrefs.monthlyPedagogicalReminder) && (
+                <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>תדירות תזכורת:</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        data-testid="reminder-freq-weekly"
+                        onClick={() => handleFieldChange('pedagogicalReminderFrequency', 'weekly')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          border: draftPrefs.pedagogicalReminderFrequency === 'weekly' ? '2px solid #3b6ea5' : '1px solid #cbd5e1',
+                          background: draftPrefs.pedagogicalReminderFrequency === 'weekly' ? '#eff6ff' : '#ffffff',
+                          color: draftPrefs.pedagogicalReminderFrequency === 'weekly' ? '#1e3a8a' : '#334155',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        כל שבוע
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="reminder-freq-monthly"
+                        onClick={() => handleFieldChange('pedagogicalReminderFrequency', 'monthly')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          border: (draftPrefs.pedagogicalReminderFrequency || 'monthly') === 'monthly' ? '2px solid #3b6ea5' : '1px solid #cbd5e1',
+                          background: (draftPrefs.pedagogicalReminderFrequency || 'monthly') === 'monthly' ? '#eff6ff' : '#ffffff',
+                          color: (draftPrefs.pedagogicalReminderFrequency || 'monthly') === 'monthly' ? '#1e3a8a' : '#334155',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        פעם בחודש
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* WEEKLY RECURRENCE: SELECT DAY (Sunday - Saturday) */}
+                  {draftPrefs.pedagogicalReminderFrequency === 'weekly' && (
+                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
+                        באיזה יום בשבוע לשלוח?
+                      </span>
+                      <select
+                        value={draftPrefs.pedagogicalReminderWeeklyDay || 'sunday'}
+                        onChange={(e) => handleFieldChange('pedagogicalReminderWeeklyDay', e.target.value)}
+                        data-testid="reminder-weekly-day-select"
                         style={{
                           padding: '5px 12px',
                           borderRadius: '6px',
@@ -1188,38 +1281,78 @@ export default function TeacherPreferencesModal({
                           cursor: 'pointer'
                         }}
                       >
-                        <option value="13:00">13:00 (סיום יום לימודים מוקדם)</option>
-                        <option value="14:00">14:00 (ברירת מחדל מומלצת)</option>
-                        <option value="15:00">15:00 (אחר הצהריים)</option>
-                        <option value="16:00">16:00 (סוף יום)</option>
-                        <option value="17:00">17:00 (שעות הערב)</option>
+                        <option value="sunday">יום ראשון</option>
+                        <option value="monday">יום שני</option>
+                        <option value="tuesday">יום שלישי</option>
+                        <option value="wednesday">יום רביעי</option>
+                        <option value="thursday">יום חמישי</option>
+                        <option value="friday">יום שישי</option>
+                        <option value="saturday">יום שבת</option>
                       </select>
+                    </div>
+                  )}
+
+                  {/* MONTHLY RECURRENCE: EXACT DATE (1-31) & TIME (09:00 / 12:00 / 17:00) */}
+                  {(draftPrefs.pedagogicalReminderFrequency || 'monthly') === 'monthly' && (
+                    <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
+                          יום בחודש (1–31):
+                        </span>
+                        <select
+                          value={draftPrefs.pedagogicalReminderMonthlyDay || 1}
+                          onChange={(e) => handleFieldChange('pedagogicalReminderMonthlyDay', Number(e.target.value))}
+                          data-testid="reminder-monthly-day-select"
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: '6px',
+                            border: '1.5px solid #0284c7',
+                            fontSize: '12.5px',
+                            fontWeight: 700,
+                            color: '#0369a1',
+                            background: '#ffffff',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                            <option key={day} value={day}>
+                              {day} לחודש
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', borderTop: '1px dashed #bae6fd', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '12.5px', color: '#0369a1', fontWeight: 600 }}>
+                          שעת שליחה:
+                        </span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {['09:00', '12:00', '17:00'].map((time) => (
+                            <button
+                              key={time}
+                              type="button"
+                              data-testid={`reminder-time-${time}`}
+                              onClick={() => handleFieldChange('pedagogicalReminderTime', time)}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                border: (draftPrefs.pedagogicalReminderTime || '09:00') === time ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                                background: (draftPrefs.pedagogicalReminderTime || '09:00') === time ? '#e0f2fe' : '#ffffff',
+                                color: (draftPrefs.pedagogicalReminderTime || '09:00') === time ? '#0369a1' : '#334155',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-
-            {/* 2. Monthly Pedagogical Reminder (Completely Separate Card) */}
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <strong style={{ fontSize: '14px', color: '#1e293b' }}>תזכורת פדגוגית חודשית למעקב יעדים:</strong>
-                <span style={{ fontSize: '11px', background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
-                  אחת לחודש
-                </span>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={draftPrefs.monthlyPedagogicalReminder}
-                  onChange={(e) => handleFieldChange('monthlyPedagogicalReminder', e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: '#3b6ea5' }}
-                />
-                <span>תזכורת חודשית במייל למעקב יעדים (ריכוז תלמידים שלא עודכנו מעל 45 יום)</span>
-              </label>
-              <div style={{ fontSize: '11.5px', color: '#64748b', paddingRight: '24px' }}>
-                התזכורת נשלחת ב-1 לכל חודש קלנדרי ומסייעת לשמור על רצף מעקב פדגוגי שוטף בהתאם לדרישות חוזר מנכ"ל.
-              </div>
             </div>
           </div>
 

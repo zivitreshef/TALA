@@ -49,6 +49,38 @@ describe('User Preferences Domain & Storage', () => {
     expect(prefs.besadText).toBe('בס"ד');
     expect(prefs.privateGoals).toEqual([]);
     expect(prefs.notifyOnTeamMessage).toBe(true);
+    expect(prefs.pedagogicalReminderEnabled).toBe(false);
+    expect(prefs.pedagogicalReminderFrequency).toBe('monthly');
+    expect(prefs.pedagogicalReminderWeeklyDay).toBe('sunday');
+    expect(prefs.pedagogicalReminderMonthlyDay).toBe(1);
+    expect(prefs.pedagogicalReminderTime).toBe('09:00');
+  });
+
+  it('normalizes pedagogical reminder fields and synchronizes legacy monthlyPedagogicalReminder', () => {
+    const rawWeekly = {
+      pedagogicalReminderEnabled: true,
+      pedagogicalReminderFrequency: 'weekly',
+      pedagogicalReminderWeeklyDay: 'wednesday',
+      dailyDigestTime: '08:45'
+    };
+    const normWeekly = normalizeUserPreferences(rawWeekly);
+    expect(normWeekly.pedagogicalReminderEnabled).toBe(true);
+    expect(normWeekly.monthlyPedagogicalReminder).toBe(true);
+    expect(normWeekly.pedagogicalReminderFrequency).toBe('weekly');
+    expect(normWeekly.pedagogicalReminderWeeklyDay).toBe('wednesday');
+    expect(normWeekly.dailyDigestTime).toBe('08:45');
+
+    const rawMonthly = {
+      monthlyPedagogicalReminder: true,
+      pedagogicalReminderFrequency: 'monthly',
+      pedagogicalReminderMonthlyDay: 25,
+      pedagogicalReminderTime: '17:00'
+    };
+    const normMonthly = normalizeUserPreferences(rawMonthly);
+    expect(normMonthly.pedagogicalReminderEnabled).toBe(true);
+    expect(normMonthly.pedagogicalReminderFrequency).toBe('monthly');
+    expect(normMonthly.pedagogicalReminderMonthlyDay).toBe(25);
+    expect(normMonthly.pedagogicalReminderTime).toBe('17:00');
   });
 
   it('sanitizes and preserves valid user settings', () => {
@@ -202,12 +234,12 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
     expect(html).not.toContain('פרופיל, בס&quot;ד וחתימה');
   });
 
-  it('renders daily digest hour select when daily_digest is active (Bug 4)', () => {
+  it('renders daily digest unconstrained time input when daily_digest is active', () => {
     const prefsWithDailyDigest = {
       ...DEFAULT_USER_PREFERENCES,
       notifyOnTeamMessage: true,
       notificationFrequency: 'daily_digest',
-      dailyDigestTime: '13:00'
+      dailyDigestTime: '13:30'
     };
 
     const html = renderToStaticMarkup(
@@ -220,10 +252,55 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
       />
     );
 
-    expect(html).toContain('data-testid="daily-digest-time-select"');
-    expect(html).toContain('13:00 (סיום יום לימודים מוקדם)');
-    expect(html).toContain('14:00 (ברירת מחדל מומלצת)');
-    expect(html).toContain('תזכורת פדגוגית חודשית למעקב יעדים:');
+    expect(html).toContain('data-testid="daily-digest-time-input"');
+    expect(html).toContain('value="13:30"');
+    expect(html).toContain('תזכורת פדגוגית');
+    expect(html).not.toContain('תזכורת פדגוגית חודשית למעקב יעדים:');
+  });
+
+  it('renders weekly and monthly recurrence controls for pedagogical reminder', () => {
+    // 1. Weekly recurrence
+    const weeklyPrefs = {
+      ...DEFAULT_USER_PREFERENCES,
+      pedagogicalReminderEnabled: true,
+      pedagogicalReminderFrequency: 'weekly',
+      pedagogicalReminderWeeklyDay: 'tuesday'
+    };
+    const htmlWeekly = renderToStaticMarkup(
+      <TeacherPreferencesModal
+        isOpen={true}
+        onClose={() => {}}
+        currentUser={dummyUser}
+        userPreferences={weeklyPrefs}
+        onSavePreferences={() => {}}
+      />
+    );
+    expect(htmlWeekly).toContain('data-testid="reminder-freq-weekly"');
+    expect(htmlWeekly).toContain('data-testid="reminder-weekly-day-select"');
+    expect(htmlWeekly).toContain('יום שלישי');
+
+    // 2. Monthly recurrence (exact day 1-31 and time 09:00 / 12:00 / 17:00)
+    const monthlyPrefs = {
+      ...DEFAULT_USER_PREFERENCES,
+      pedagogicalReminderEnabled: true,
+      pedagogicalReminderFrequency: 'monthly',
+      pedagogicalReminderMonthlyDay: 15,
+      pedagogicalReminderTime: '12:00'
+    };
+    const htmlMonthly = renderToStaticMarkup(
+      <TeacherPreferencesModal
+        isOpen={true}
+        onClose={() => {}}
+        currentUser={dummyUser}
+        userPreferences={monthlyPrefs}
+        onSavePreferences={() => {}}
+      />
+    );
+    expect(htmlMonthly).toContain('data-testid="reminder-monthly-day-select"');
+    expect(htmlMonthly).toContain('15 לחודש');
+    expect(htmlMonthly).toContain('data-testid="reminder-time-09:00"');
+    expect(htmlMonthly).toContain('data-testid="reminder-time-12:00"');
+    expect(htmlMonthly).toContain('data-testid="reminder-time-17:00"');
   });
 
   it('has stable height and stained glass strip to prevent jumping (Bug 2 & 3)', () => {

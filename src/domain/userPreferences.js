@@ -23,6 +23,11 @@ export const DEFAULT_USER_PREFERENCES = {
   notificationFrequency: 'instant', // 'instant' | 'daily_digest' | 'in_app_only'
   dailyDigestTime: '14:00', // Preferred daily digest hour (e.g. '13:00', '14:00')
   monthlyPedagogicalReminder: false,
+  pedagogicalReminderEnabled: false,
+  pedagogicalReminderFrequency: 'monthly', // 'weekly' | 'monthly'
+  pedagogicalReminderWeeklyDay: 'sunday', // 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
+  pedagogicalReminderMonthlyDay: 1, // 1-31
+  pedagogicalReminderTime: '09:00', // '09:00' | '12:00' | '17:00'
 
   // 4. פרופיל מקצועי, בס"ד וחתימה
   fullName: '',
@@ -88,7 +93,19 @@ export function normalizeUserPreferences(raw = {}) {
   result.dailyDigestTime = typeof raw.dailyDigestTime === 'string' && raw.dailyDigestTime.trim()
     ? raw.dailyDigestTime.trim()
     : '14:00';
-  result.monthlyPedagogicalReminder = Boolean(raw.monthlyPedagogicalReminder);
+  result.monthlyPedagogicalReminder = Boolean(raw.monthlyPedagogicalReminder || raw.pedagogicalReminderEnabled);
+  result.pedagogicalReminderEnabled = Boolean(raw.pedagogicalReminderEnabled || raw.monthlyPedagogicalReminder);
+  result.pedagogicalReminderFrequency = raw.pedagogicalReminderFrequency === 'weekly' ? 'weekly' : 'monthly';
+  const validWeeklyDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  result.pedagogicalReminderWeeklyDay = validWeeklyDays.includes(raw.pedagogicalReminderWeeklyDay)
+    ? raw.pedagogicalReminderWeeklyDay
+    : 'sunday';
+  const mDay = Number(raw.pedagogicalReminderMonthlyDay);
+  result.pedagogicalReminderMonthlyDay = Number.isInteger(mDay) && mDay >= 1 && mDay <= 31 ? mDay : 1;
+  const validReminderTimes = ['09:00', '12:00', '17:00'];
+  result.pedagogicalReminderTime = validReminderTimes.includes(raw.pedagogicalReminderTime)
+    ? raw.pedagogicalReminderTime
+    : '09:00';
 
   result.fullName = String(raw.fullName || '').trim();
   result.professionalTitle = String(raw.professionalTitle || '').trim();
