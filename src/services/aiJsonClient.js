@@ -20,7 +20,7 @@ export const parseAiJsonResult = (result) => {
 
 export const callAiJson = async (promptText, student = {}) => {
   try {
-    const maskedPromptClientSide = maskPromptForAi(promptText, student);
+    const maskedPromptClientSide = maskPromptForAi(promptText, student, student?.privacyMode || student?.defaultPrivacyMode);
     const hints = {
       gender: student?.gender || 'boy',
       name: student?.name,

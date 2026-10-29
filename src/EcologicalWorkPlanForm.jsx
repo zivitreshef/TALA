@@ -241,6 +241,11 @@ export default function EcologicalWorkPlanForm({
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(
     () => userPreferences?.defaultPrivacyMode === 'acronym'
   );
+
+  // Sync privacy mode immediately when preferences change or when selecting any student plan
+  useEffect(() => {
+    setHideStudentDetailsOnPrint(userPreferences?.defaultPrivacyMode === 'acronym');
+  }, [userPreferences?.defaultPrivacyMode, student?.id]);
   const [showMinistryCopyModal, setShowMinistryCopyModal] = useState(false);
   const [observationModalGoalId, setObservationModalGoalId] = useState(null);
   const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState(false);
@@ -1098,12 +1103,12 @@ export default function EcologicalWorkPlanForm({
             ? `${g.objectives ? g.objectives + '\n' : ''}• ${ans2}`
             : g.objectives || `• יתקדם בהדרגה לעבר המטרה: ${g.title}.`,
           opportunities: ans2
-            ? `${g.opportunities ? g.opportunities + '\n' : ''}• המחנכת תתווך ל${childLabel} באמצעות: ${ans2}.`
+            ? `${g.opportunities ? g.opportunities + '\n' : ''}• ${isKindergarten ? 'הגננת' : 'המחנכת'} תתווך ל${childLabel} באמצעות: ${ans2}.`
             : g.opportunities || `• המבוגר יזמין ויתווך ל${childLabel} באופן יומיומי ומדורג.`,
-          opportunitiesIntegration: g.opportunitiesIntegration || `• מורת השילוב תחזק מיומנויות תומכות בקבוצה קטנה.`,
+          opportunitiesIntegration: g.opportunitiesIntegration || (isKindergarten ? '• גננת השילוב תחזק מיומנויות תומכות בקבוצה קטנה.' : '• מורת השילוב תחזק מיומנויות תומכות בקבוצה קטנה.'),
           opportunitiesTherapist: g.opportunitiesTherapist || `• עיבוד חווית ההצלחה וחיזוק הוויסות בחדר הטיפולים.`,
           learningAccommodations: g.learningAccommodations || `• תיווך מילאי, חלוקת משימות לצעדים קטנים והארכת זמן.`,
-          partners: ans3 ? ans3 : g.partners || (isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : isKindergarten ? 'צוות הגן, סייעת אישית, הורים' : getDefaultPartnersForStage('school')),
+          partners: ans3 ? ans3 : g.partners || getDefaultPartnersForStage(currentStage, isTalaMode),
           duration: ans3 && /\d|חודש|שבוע|שנה/.test(ans3) ? ans3 : g.duration || '',
           evaluationCriteria:
             ans3 && ans3.length > 15
@@ -1145,7 +1150,11 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Helper to call Gemini API via secure backend proxy
-  const callGeminiJson = (promptText) => callAiJson(promptText, formData);
+  const callGeminiJson = (promptText) =>
+    callAiJson(promptText, {
+      ...formData,
+      privacyMode: userPreferences?.defaultPrivacyMode || formData.privacyMode || 'full_name'
+    });
 
   // === SUBMIT BUTTON: Generate Top Summary Table (and Goals if empty) from Teacher's Free Text + All Goals ===
   const handleSubmitGenerateSummaryTable = async () => {
@@ -1282,9 +1291,9 @@ ${buildStageRulesBlock(currentStage)}
 3. עבור תח"י: "strengthsExisting" (3-4 נקודות) ו-"strengthsToEmpower" (3-4 נקודות).
 4. מטרות ויעדים (T-Shirt Size: S / M / L ומשך יחסי מתאריך ${dateInfo.entryDateFormatted}):
    לכל מטרה כלול גם:
-   - "opportunities": אמצעי ביצוע של המחנכת
-   - "opportunitiesIntegration": אמצעי ביצוע של מורת שילוב
-   - "opportunitiesTherapist": אמצעי ביצוע של מטפלת באומנויות
+   - "opportunities": אמצעי ביצוע של ${isKindergarten ? 'הגננת' : 'המחנכת'}
+   - "opportunitiesIntegration": אמצעי ביצוע של ${isKindergarten ? 'גננת השילוב' : 'מורת שילוב'}
+   - "opportunitiesTherapist": אמצעי ביצוע של מטפלת באומנויות / פרא-רפואית
    - "learningAccommodations": התאמות ללמידה ובדרכי ההיבחנות
 ${protectedGoalsPromptBlock}${removedGoalsPromptBlock}${unprotectedGoalsPromptBlock}
 
@@ -1315,11 +1324,11 @@ ${rawText}
       "activityParticipation": "...",
       "title": "...",
       "objectives": "• ...",
-      "opportunities": "אמצעי מחנכת...",
-      "opportunitiesIntegration": "אמצעי מורת שילוב...",
+      "opportunities": "${isKindergarten ? 'אמצעי גננת...' : 'אמצעי מחנכת...'}",
+      "opportunitiesIntegration": "${isKindergarten ? 'אמצעי גננת שילוב...' : 'אמצעי מורת שילוב...'}",
       "opportunitiesTherapist": "אמצעי מטפלת באומנויות...",
       "learningAccommodations": "התאמות ללמידה...",
-      "partners": "מחנכת, מורת שילוב, מטפלת באומנויות",
+      "partners": "${getDefaultPartnersForStage(currentStage, isTalaMode)}",
       "tShirtSize": "S",
       "duration": "חודש (עד ${dateInfo.plus1Month})",
       "evaluationCriteria": "..."

@@ -1,4 +1,4 @@
-import { toHebrewAcronym } from './domain/privacyAndAcronyms';
+import { toHebrewAcronym, redactStudentNameInText } from './domain/privacyAndAcronyms';
 import { incrementDailyQuotaCount } from './allowedUsers';
 import { recordEmailAuditLogToCloud } from './services/telemetryService';
 
@@ -893,6 +893,13 @@ export function buildPedagogicalReminderEmailHtml({
 
     const dateStr = obs.timestamp ? new Date(obs.timestamp).toLocaleDateString('he-IL') : '';
 
+    const safeGoalTitle = privacyMode === 'acronym'
+      ? redactStudentNameInText(obs.goalTitle, obs.studentName, true)
+      : obs.goalTitle;
+    const safeNote = privacyMode === 'acronym'
+      ? redactStudentNameInText(obs.note, obs.studentName, true)
+      : obs.note;
+
     return `
       <div style="background:#f8fafc; border:1px solid #e2e8f0; border-right:4px solid #3b82f6; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
@@ -904,10 +911,10 @@ export function buildPedagogicalReminderEmailHtml({
           <div style="color:#94a3b8; font-size:11.5px;">${dateStr}</div>
         </div>
         <div style="font-size:12.5px; color:#334155; margin-bottom:4px;">
-          <strong>יעד:</strong> ${obs.goalTitle} <span style="color:#64748b; font-size:11.5px;">[${obs.environment || 'כללי'}]</span>
+          <strong>יעד:</strong> ${safeGoalTitle} <span style="color:#64748b; font-size:11.5px;">[${obs.environment || 'כללי'}]</span>
         </div>
-        ${obs.note ? `<div style="background:#ffffff; border:1px dashed #cbd5e1; border-radius:6px; padding:8px 10px; font-size:12.5px; color:#1e293b; line-height:1.5;">
-          💬 <em>"${obs.note}"</em>
+        ${safeNote ? `<div style="background:#ffffff; border:1px dashed #cbd5e1; border-radius:6px; padding:8px 10px; font-size:12.5px; color:#1e293b; line-height:1.5;">
+          💬 <em>"${safeNote}"</em>
         </div>` : ''}
       </div>
     `;
@@ -919,10 +926,14 @@ export function buildPedagogicalReminderEmailHtml({
       ? toHebrewAcronym(goal.studentName || '')
       : (goal.studentName || 'תלמיד/ה');
 
+    const safeGoalTitle = privacyMode === 'acronym'
+      ? redactStudentNameInText(goal.goalTitle, goal.studentName, true)
+      : goal.goalTitle;
+
     return `
       <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f0fdf4'}; border-bottom:1px solid #dcfce7;">
         <td style="padding:10px 12px; font-weight:700; color:#14532d;">${studentName}</td>
-        <td style="padding:10px 12px; color:#166534; font-size:13px;">${goal.goalTitle}</td>
+        <td style="padding:10px 12px; color:#166534; font-size:13px;">${safeGoalTitle}</td>
         <td style="padding:10px 12px; color:#475569; font-size:12px;">${goal.environment || 'כללי'}</td>
         <td style="padding:10px 12px; text-align:center;">
           <span style="display:inline-block; background:#dcfce7; color:#15803d; font-weight:800; font-size:12.5px; padding:3px 10px; border-radius:999px;">
@@ -941,12 +952,15 @@ export function buildPedagogicalReminderEmailHtml({
 
     const daysText = gap.neverObserved ? 'טרם נרשמה תצפית' : `${gap.daysSinceObservation} ימים`;
     const progressText = `${gap.currentProgress ?? 0}%`;
+    const safeGoalTitle = privacyMode === 'acronym'
+      ? redactStudentNameInText(gap.goalTitle || 'יעד ללא כותרת', gap.studentName, true)
+      : (gap.goalTitle || 'יעד ללא כותרת');
 
     return `
       <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#fffbeb'}; border-bottom:1px solid #fef3c7;">
         <td style="padding:9px 12px; font-weight:700; color:#1e3a5f;">${studentDisplayName}</td>
         <td style="padding:9px 12px; color:#475569; font-size:12.5px;">${gap.framework || '—'}</td>
-        <td style="padding:9px 12px; color:#334155; font-size:12.5px;">${gap.goalTitle || 'יעד ללא כותרת'} <span style="font-size:11px; color:#64748b;">(${gap.environment || 'כללי'})</span></td>
+        <td style="padding:9px 12px; color:#334155; font-size:12.5px;">${safeGoalTitle} <span style="font-size:11px; color:#64748b;">(${gap.environment || 'כללי'})</span></td>
         <td style="padding:9px 12px; text-align:center; font-weight:700; color:#d97706; font-size:12px;">${daysText}</td>
         <td style="padding:9px 12px; text-align:center; color:#2563eb; font-weight:700; font-size:12px;">${progressText}</td>
       </tr>

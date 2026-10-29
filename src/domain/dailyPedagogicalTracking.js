@@ -413,3 +413,62 @@ export function getEventBarThickness(startTime = '', endTime = '') {
   return 6;
 }
 
+
+/**
+ * Determines whether an automated pedagogical digest email is due based on teacher preferences.
+ * @param {object} userPreferences 
+ * @param {string|null} lastSentIso 
+ * @param {Date} now 
+ * @returns {boolean}
+ */
+export function shouldSendPedagogicalDigest(userPreferences, lastSentIso, now = new Date()) {
+  if (!userPreferences) return false;
+  const isEnabled = Boolean(
+    userPreferences.pedagogicalReminderEnabled || userPreferences.monthlyPedagogicalReminder
+  );
+  if (!isEnabled) return false;
+
+  const freq = userPreferences.pedagogicalReminderFrequency || 'monthly';
+  const time = userPreferences.pedagogicalReminderTime || '09:00';
+  const [targetH = 9, targetM = 0] = time.split(':').map((n) => parseInt(n, 10));
+
+  const currentH = now.getHours();
+  const currentM = now.getMinutes();
+
+  // Must be at or after the scheduled time
+  if (currentH * 60 + currentM < targetH * 60 + targetM) {
+    return false;
+  }
+
+  // Check if already sent in this cycle (today in local time)
+  if (lastSentIso) {
+    const lastDate = new Date(lastSentIso);
+    if (!Number.isNaN(lastDate.getTime())) {
+      const sameDay =
+        lastDate.getFullYear() === now.getFullYear() &&
+        lastDate.getMonth() === now.getMonth() &&
+        lastDate.getDate() === now.getDate();
+      if (sameDay) return false;
+    }
+  }
+
+  if (freq === 'weekly') {
+    const daysMap = {
+      sunday: 0,
+      monday: 1,
+      tuesday: 2,
+      wednesday: 3,
+      thursday: 4,
+      friday: 5,
+      saturday: 6
+    };
+    const targetDay = daysMap[userPreferences.pedagogicalReminderWeeklyDay] ?? 0;
+    if (now.getDay() !== targetDay) return false;
+  } else {
+    // monthly
+    const targetMonthDay = userPreferences.pedagogicalReminderMonthlyDay || 1;
+    if (now.getDate() !== targetMonthDay) return false;
+  }
+
+  return true;
+}

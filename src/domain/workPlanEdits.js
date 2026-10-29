@@ -136,11 +136,7 @@ export const buildNewGoalRow = ({ id, stage, isTalaMode, isKindergarten, plus3Mo
     opportunitiesIntegration: '',
     opportunitiesTherapist: '',
     learningAccommodations: '',
-    partners: isTalaMode
-      ? 'מחנכת, מורת שילוב, מטפלת באומנויות'
-      : isKindergarten
-      ? 'צוות הגן, סייעת אישית'
-      : getDefaultPartnersForStage('school'),
+    partners: getDefaultPartnersForStage(stage, isTalaMode),
     duration: `3 חודשים (עד ${plus3Months})`,
     evaluationCriteria: '',
     isTeacherAdded: true,

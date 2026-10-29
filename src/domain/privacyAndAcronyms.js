@@ -1,3 +1,4 @@
+import { detectStudentStage } from '../studentStage.js';
 // === פונקציות עזר להסתרת פרטים מזהים בהדפסה (ראשי תיבות והשחרה) ===
 
 /**
@@ -60,7 +61,7 @@ export function redactStudentNameInText(text, studentFullName, hideDetails = tru
 // === פונקציות עזר להסתרת פרטים מזהים לפני שליחה ל-AI ===
 
 // מחליף את כל המופעים של מילים רגישות בטקסט במחרוזות חלופיות
-export function maskKnownStudentDetails(text, formData) {
+export function maskKnownStudentDetails(text, formData, privacyMode) {
   if (!text || typeof text !== 'string') return '';
   if (!formData) return text;
 
@@ -69,14 +70,31 @@ export function maskKnownStudentDetails(text, formData) {
 
   const studentName = (formData.name || '').trim();
   const studentGender = formData.gender || 'boy';
-  const genderedName = studentGender === 'girl' ? 'הילדה' : 'הילד';
+  const resolvedStage =
+    formData.stage === 'kindergarten' || formData.stage === 'school'
+      ? formData.stage
+      : (typeof detectStudentStage === 'function' ? detectStudentStage(formData)?.stage : 'kindergarten');
+  const isKindergarten = resolvedStage === 'kindergarten';
+
+  const mode = privacyMode || formData.privacyMode || formData.defaultPrivacyMode || 'full_name';
+
+  let studentReplacement;
+  if (mode === 'acronym') {
+    studentReplacement = toHebrewAcronym(studentName);
+  } else {
+    if (isKindergarten) {
+      studentReplacement = studentGender === 'girl' ? 'הילדה' : 'הילד';
+    } else {
+      studentReplacement = studentGender === 'girl' ? 'התלמידה' : 'התלמיד';
+    }
+  }
 
   // 1. Student Name (full name first, then individual parts of length >= 2)
   if (studentName && studentName !== 'תלמיד/ה חדש/ה' && studentName.length >= 2) {
-    replacements.push({ original: studentName, replacement: genderedName });
+    replacements.push({ original: studentName, replacement: studentReplacement });
     const nameParts = studentName.split(/\s+/).filter((p) => p.length >= 2);
     nameParts.forEach((part) => {
-      replacements.push({ original: part, replacement: genderedName });
+      replacements.push({ original: part, replacement: studentReplacement });
     });
   }
 
@@ -132,8 +150,8 @@ export function maskKnownStudentDetails(text, formData) {
 }
 
 // Function to mask the prompt before sending to AI
-export function maskPromptForAi(promptText, formData) {
-  let masked = maskKnownStudentDetails(promptText, formData);
+export function maskPromptForAi(promptText, formData, privacyMode) {
+  let masked = maskKnownStudentDetails(promptText, formData, privacyMode);
 
   // Strip (ת.ל: DD/MM/YYYY) from ageDescription if present
   masked = masked.replace(/\(ת\.ל:[^)]*\)/g, '').trim();

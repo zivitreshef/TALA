@@ -123,6 +123,57 @@ export function adaptTextToSchoolStage(text, { includeBarePlaceWords = true } = 
   return out;
 }
 
+// Unambiguous school staff / setting phrases mapped to kindergarten equivalents
+const SCHOOL_TO_KDG_PHRASES = [
+  ['בין בית הספר לבית', 'בין הגן לבית'],
+  ['צוות בית הספר', 'צוות הגן'],
+  ['פעילות במרחב הכיתה', 'משחק במרחב הגן'],
+  ['מרחב הכיתה', 'מרחב הגן'],
+  ['מפגש כיתתי', 'מפגש בגן'],
+  ['שגרת הכיתה', 'שגרת הגן'],
+  ['תלמידי הכיתה', 'ילדי הגן'],
+  ['ילדי הכיתה', 'ילדי הגן'],
+  ['מורת השילוב', 'גננת השילוב'],
+  ['מורת שילוב', 'גננת שילוב'],
+  ['מורה לשילוב', 'גננת שילוב'],
+  ['מחנכת הכיתה', 'הגננת'],
+  ['מחנכת', 'גננת']
+];
+
+export function adaptTextToKindergartenStage(text) {
+  if (typeof text !== 'string' || !text) return text;
+  const swap = (to) => (_m, pre, prefix) => `${pre}${prefix}${to}`;
+  let out = text;
+  SCHOOL_TO_KDG_PHRASES.forEach(([from, to]) => {
+    out = out.replace(wordRx(from, { flags: 'g', allowPrefix: true }), swap(to));
+  });
+  return out;
+}
+
+export function adaptPartnersToStage(partnersText, stage, isTalaMode = false) {
+  const s = normalizeStage(stage);
+  if (!s) return partnersText;
+  const current = String(partnersText || '').trim();
+  if (!current) {
+    return getDefaultPartnersForStage(s, isTalaMode);
+  }
+  if (s === 'kindergarten') {
+    let out = current;
+    out = out.replace(/מורת\s+ה?שילוב/g, 'גננת שילוב');
+    out = out.replace(/מורה\s+לשילוב/g, 'גננת שילוב');
+    out = out.replace(/מחנכת(?:\s+הכיתה)?/g, 'גננת');
+    return out;
+  }
+  if (s === 'school') {
+    let out = current;
+    out = out.replace(/גננת\s+ה?שילוב/g, 'מורת שילוב');
+    out = out.replace(/גננת(?:\s+מובילה)?/g, 'מחנכת');
+    out = out.replace(/צוות\s+הגן/g, 'צוות בית הספר');
+    return out;
+  }
+  return current;
+}
+
 // ---------------------------------------------------------------------------
 // 3. Environment validation & remapping
 // ---------------------------------------------------------------------------
@@ -209,8 +260,10 @@ export function remapEnvironmentForStage(environment, stage, goal = {}) {
 // ---------------------------------------------------------------------------
 
 export function getDefaultPartnersForStage(stage, isTalaMode = false) {
-  if (isTalaMode) return 'מחנכת, מורת שילוב, מטפלת באומנויות';
-  return normalizeStage(stage) === 'school' ? 'מחנכת, מורת שילוב, הורים' : 'צוות הגן, הורים';
+  if (normalizeStage(stage) === 'kindergarten') {
+    return isTalaMode ? 'גננת, גננת שילוב, מטפלת באומנויות' : 'גננת, גננת שילוב, הורים';
+  }
+  return isTalaMode ? 'מחנכת, מורת שילוב, מטפלת באומנויות' : 'מחנכת, מורת שילוב, הורים';
 }
 
 // ---------------------------------------------------------------------------
@@ -291,18 +344,33 @@ export function enforceGoalStage(goal, stage, options = {}) {
     return { goal: next, dropped: false, corrected, reason: corrected ? 'adapted_to_school' : '' };
   }
 
-  // Kindergarten: only the environment is corrected (kindergarten goals may legitimately mention
-  // school, e.g. preparation for first grade).
-  const nextEnv = remapEnvironmentForStage(goal.environment, 'kindergarten', goal);
-  if (nextEnv !== goal.environment) {
-    return {
-      goal: { ...goal, environment: nextEnv },
-      dropped: false,
-      corrected: true,
-      reason: 'adapted_to_kindergarten'
-    };
+  // Kindergarten: adapt school staff/setting terminology in text fields and partners, and remap environment
+  const next = { ...goal };
+  let corrected = false;
+  GOAL_TEXT_FIELDS.forEach((f) => {
+    if (typeof next[f] !== 'string') return;
+    const adapted = adaptTextToKindergartenStage(next[f]);
+    if (adapted !== next[f]) {
+      next[f] = adapted;
+      corrected = true;
+    }
+  });
+  const adaptedPartners = adaptPartnersToStage(next.partners, 'kindergarten', isTalaMode);
+  if (adaptedPartners !== next.partners) {
+    next.partners = adaptedPartners;
+    corrected = true;
   }
-  return { goal, dropped: false, corrected: false, reason: '' };
+  const nextEnv = remapEnvironmentForStage(next.environment, 'kindergarten', next);
+  if (nextEnv !== next.environment) {
+    next.environment = nextEnv;
+    corrected = true;
+  }
+  return {
+    goal: next,
+    dropped: false,
+    corrected,
+    reason: corrected ? 'adapted_to_kindergarten' : ''
+  };
 }
 
 /**
@@ -401,7 +469,9 @@ MANDATORY EDUCATIONAL STAGE: SCHOOL student (teacher-selected). Never output kin
     return `הנחיה מחייבת – שלב חינוכי (נבחר במפורש על ידי המורה): ילד/ה בגן ילדים.
 - שדה "environment" בכל מטרה חייב להיות אחד מסביבות הגן הבאות: ${allowed}.
 - אין להשתמש בתחומי בית-ספר (כתיבה, קריאה והפקת משמעות, כשירות לשונית, האזנה ודיבור – כשירות תקשורתית, מתמטיקה) כסביבה.
-MANDATORY EDUCATIONAL STAGE: KINDERGARTEN child (teacher-selected). Every goal "environment" MUST be one of the kindergarten environments listed above; never use school subject areas as the environment.`;
+- השותפים בכל יעד/מטרה ("partners") הם אך ורק צוות הגן: גננת (או גננת מובילה), גננת שילוב, הורים / מטפלת באומנויות / סייעת.
+- אסור בהחלט לכלול מונחים של בית ספר כגון "מחנכת", "מורת שילוב", "שיעור", "צלצול", "כיתה"! בגן אין מחנכת ואין מורת שילוב – יש אך ורק גננת וגננת שילוב.
+MANDATORY EDUCATIONAL STAGE: KINDERGARTEN child (teacher-selected). Every goal "environment" MUST be one of the kindergarten environments listed above; never use school subject areas as the environment. Never output school staff like "מחנכת" or "מורת שילוב" — kindergarten staff is "גננת", "גננת שילוב", "הורים".`;
   }
   return '';
 }

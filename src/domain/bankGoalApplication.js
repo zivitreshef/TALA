@@ -1,3 +1,4 @@
+import { getDefaultPartnersForStage, adaptPartnersToStage } from './stageGuard.js';
 import {
   ENVIRONMENTS_LIST,
   adaptTextToGender,
@@ -67,11 +68,11 @@ export const fillGoalRowFromBank = (
     opportunitiesTherapist: goal?.opportunitiesTherapist || '',
     learningAccommodations: goal?.learningAccommodations || '',
     partners:
-      goal?.partners ||
-      bankItem?.defaultPartners ||
-      (isTalaMode
-        ? 'מחנכת, מורת שילוב, מטפלת באומנויות'
-        : 'צוות חינוכי, הורים'),
+      goal?.partners
+        ? adaptPartnersToStage(goal.partners, student?.stage || (String(student?.educationalFramework || '').includes('גן') ? 'kindergarten' : 'school'), isTalaMode)
+        : bankItem?.defaultPartners
+        ? adaptPartnersToStage(bankItem.defaultPartners, student?.stage || (String(student?.educationalFramework || '').includes('גן') ? 'kindergarten' : 'school'), isTalaMode)
+        : getDefaultPartnersForStage(student?.stage || (String(student?.educationalFramework || '').includes('גן') ? 'kindergarten' : 'school'), isTalaMode),
     duration: goal?.duration || '',
     evaluationCriteria: goal?.evaluationCriteria || p.evaluation || '',
     isTeacherModified: true

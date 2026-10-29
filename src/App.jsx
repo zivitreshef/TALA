@@ -109,10 +109,17 @@ import {
 } from './firebaseBackend';
 import { countUnreviewedHealthEvents } from './domain/healthEvents.js';
 import {
+  shouldSendPedagogicalDigest,
+  getObservationGaps,
+  getPedagogicalAccomplishmentsSummary
+} from './domain/dailyPedagogicalTracking.js';
+import { toHebrewAcronym } from './domain/privacyAndAcronyms.js';
+import {
   loadEmailEngineConfig,
   saveEmailEngineConfig,
   sendSignedNdaEmailToAdmin,
-  sendUserSurveyEmailToAdmin
+  sendUserSurveyEmailToAdmin,
+  sendPedagogicalReminderEmailInBackground
 } from './emailService';
 import {
   detectStudentStage,
@@ -1331,6 +1338,42 @@ export default function App() {
     const cleanup = startAiProxyKeepAlive();
     return cleanup;
   }, [currentUser?.email]);
+
+  // Automated Pedagogical Digest Scheduler based on Teacher Preferences
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    const isReminderEnabled = Boolean(
+      userPreferences?.pedagogicalReminderEnabled || userPreferences?.monthlyPedagogicalReminder
+    );
+    if (!isReminderEnabled) return;
+
+    const checkAndDispatchDigest = async () => {
+      try {
+        const storageKey = `tala_pedagogical_digest_last_sent_${currentUser.email.toLowerCase()}`;
+        const lastSent = localStorage.getItem(storageKey);
+        const now = new Date();
+        if (shouldSendPedagogicalDigest(userPreferences, lastSent, now)) {
+          const gaps = getObservationGaps(userStudents || [], 45, now);
+          const accomplishments = getPedagogicalAccomplishmentsSummary(userStudents || [], 30, now);
+          await sendPedagogicalReminderEmailInBackground({
+            toEmail: currentUser.email,
+            teacherName: userPreferences?.fullName || currentUser.name || 'צוות חינוכי',
+            gaps,
+            accomplishments,
+            totalStudents: (userStudents || []).length,
+            privacyMode: userPreferences?.defaultPrivacyMode || 'full_name'
+          });
+          localStorage.setItem(storageKey, now.toISOString());
+        }
+      } catch (err) {
+        console.warn('Background pedagogical digest dispatch error:', err);
+      }
+    };
+
+    checkAndDispatchDigest();
+    const timer = setInterval(checkAndDispatchDigest, 5 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [currentUser?.email, userPreferences, userStudents]);
 
   // Proactive Trial Expiration Alert Modal (pops up once per browser session when remaining trial days <= 2)
   useEffect(() => {
@@ -2589,7 +2632,11 @@ export default function App() {
                   <span>רשימת תלמידים</span>
                 </button>
                 <div className="mobile-student-nav-title">
-                  <strong className="mobile-student-name">{selectedStudent.name || 'ללא שם'}</strong>
+                  <strong className="mobile-student-name">
+                    {userPreferences?.defaultPrivacyMode === 'acronym'
+                      ? toHebrewAcronym(selectedStudent.name)
+                      : (selectedStudent.name || 'ללא שם')}
+                  </strong>
                   <span className="mobile-student-nav-badge">
                     {selectedStudent.planType?.includes('תח"י') ? 'תח"י' : 'תל"א'}
                   </span>
