@@ -164,7 +164,11 @@ export function buildDefaultTalaProfileRows(existingList = []) {
 }
 
 export function isTalaPlanType(planType = '') {
-  return !String(planType || '').includes('תח"י');
+  const norm = String(planType || '').trim();
+  if (norm.includes('תח"י') || norm.includes('גן')) {
+    return false;
+  }
+  return true;
 }
 
 import {
@@ -2219,7 +2223,7 @@ export const INITIAL_STUDENTS_DATA = [
     id: 'st_demo_1',
     date: new Date().toLocaleDateString('he-IL'),
     schoolYear: 'תשפ"ו (2025-2026)',
-    planType: 'תח"י (תוכנית חינוכית יחידנית)',
+    planType: 'תוכנית אקולוגית לילדי הגן',
     name: 'נועם ישראלי',
     gender: 'boy',
     idNumber: '345678912',

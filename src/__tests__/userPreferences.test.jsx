@@ -152,7 +152,7 @@ describe('User Preferences Domain & Storage', () => {
       defaultEducationalFramework: 'גן אלון'
     };
     const student = applyPreferencesToNewStudent({ name: 'דניאל' }, prefs);
-    expect(student.planType).toBe('תח"י');
+    expect(student.planType).toBe('תוכנית אקולוגית לילדי הגן');
     expect(student.educationalFramework).toBe('גן אלון');
   });
 

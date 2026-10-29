@@ -52,6 +52,10 @@ import {
   UserSelfPasswordModal
 } from './AllowlistAuthGate';
 import {
+  DEFAULT_PLAN_TYPE,
+  TACHI_PLAN_TYPE
+} from './domain/yearReport';
+import {
   DEFAULT_USER_PREFERENCES,
   loadLocalUserPreferences,
   saveLocalUserPreferences,
@@ -1497,8 +1501,8 @@ export default function App() {
     const stageInfo = detectStudentStage({ educationalFramework: '', teacherFreeText: '', birthDate: '' }, todayStr);
     const isTachiPref = userPreferences?.defaultReportType === 'tachi';
     const chosenPlanType = isTachiPref
-      ? 'תח"י (תוכנית חינוכית יחידנית)'
-      : 'תל"א (תוכנית לימודים אישית)';
+      ? TACHI_PLAN_TYPE
+      : DEFAULT_PLAN_TYPE;
     const defaultFramework = userPreferences?.defaultEducationalFramework || '';
     const newStudentPlan = {
       id: newId,
@@ -1547,7 +1551,7 @@ export default function App() {
       ownerEmail: currentUser.email.trim().toLowerCase(),
       date: todayStr,
       schoolYear: 'תשפ"ו (2025-2026)',
-      planType: 'תל"א (תוכנית לימודים אישית)',
+      planType: DEFAULT_PLAN_TYPE,
       name: 'יונתן כהן (תוכנית לדוגמה)',
       gender: 'boy',
       idNumber: '012345678',
@@ -2638,7 +2642,7 @@ export default function App() {
                       : (selectedStudent.name || 'ללא שם')}
                   </strong>
                   <span className="mobile-student-nav-badge">
-                    {selectedStudent.planType?.includes('תח"י') ? 'תח"י' : 'תל"א'}
+                    {selectedStudent.planType?.includes('גן') || selectedStudent.planType?.includes('תח"י') ? 'תוכנית אקולוגית לילדי הגן' : 'תוכנית לתלמיד ביה"ס'}
                   </span>
                 </div>
               </div>

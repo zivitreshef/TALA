@@ -12,8 +12,8 @@ import {
 } from './stageGuard.js';
 
 export const DEFAULT_SCHOOL_YEAR = 'תשפ"ו (2025-2026)';
-export const DEFAULT_PLAN_TYPE = 'תל"א (תוכנית לימודים אישית)';
-export const TACHI_PLAN_TYPE = 'תח"י (תוכנית חינוכית יחידנית)';
+export const DEFAULT_PLAN_TYPE = 'תוכנית לתלמיד ביה"ס';
+export const TACHI_PLAN_TYPE = 'תוכנית אקולוגית לילדי הגן';
 
 export const getPlanTypeStorageKey = (schoolYear, planType) => {
   const yr = schoolYear || DEFAULT_SCHOOL_YEAR;

@@ -3617,47 +3617,47 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           {onboardingTourStep === 4.5 && (
             <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
               <span className="tour-arrow-anim">👇</span>
-              <span>צעד 5: בחרי סוג תוכנית (תל"א / תח"י)</span>
+              <span>צעד 5: בחרי סוג תוכנית (תוכנית לתלמיד ביה"ס / תוכנית אקולוגית לילדי הגן)</span>
             </div>
           )}
           <span className="plan-type-label">סוג התוכנית:</span>
           <div className="plan-type-options">
             <label
               className={`plan-type-radio-card ${
-                formData.planType === 'תל"א (תוכנית לימודים אישית)' ? 'selected' : ''
+                isTalaMode ? 'selected' : ''
               } ${onboardingTourStep === 4.5 ? 'tour-highlight-input' : ''}`}
             >
               <input
                 type="radio"
                 name="planType"
-                value='תל"א (תוכנית לימודים אישית)'
+                value={DEFAULT_PLAN_TYPE}
                 disabled={isReportLocked}
-                checked={formData.planType === 'תל"א (תוכנית לימודים אישית)'}
+                checked={isTalaMode}
                 onChange={(e) => {
                   handlePlanTypeChange(e.target.value);
                   if (onboardingTourStep === 4.5) setOnboardingTourStep?.(5);
                 }}
               />
-              <span>תל"א – תוכנית לימודים אישית</span>
+              <span>{DEFAULT_PLAN_TYPE}</span>
             </label>
 
             <label
               className={`plan-type-radio-card ${
-                formData.planType === 'תח"י (תוכנית חינוכית יחידנית)' ? 'selected' : ''
+                !isTalaMode ? 'selected' : ''
               } ${onboardingTourStep === 4.5 ? 'tour-highlight-input' : ''}`}
             >
               <input
                 type="radio"
                 name="planType"
-                value='תח"י (תוכנית חינוכית יחידנית)'
+                value={TACHI_PLAN_TYPE}
                 disabled={isReportLocked}
-                checked={formData.planType === 'תח"י (תוכנית חינוכית יחידנית)'}
+                checked={!isTalaMode}
                 onChange={(e) => {
                   handlePlanTypeChange(e.target.value);
                   if (onboardingTourStep === 4.5) setOnboardingTourStep?.(5);
                 }}
               />
-              <span>תח"י – תוכנית חינוכית יחידנית</span>
+              <span>{TACHI_PLAN_TYPE}</span>
             </label>
           </div>
         </div>

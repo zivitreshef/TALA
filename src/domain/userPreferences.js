@@ -5,6 +5,7 @@
  */
 
 import { safeGetStorageItem, safeSetStorageItem } from '../services/storage.js';
+import { DEFAULT_PLAN_TYPE, TACHI_PLAN_TYPE } from './yearReport.js';
 
 export const DEFAULT_USER_PREFERENCES = {
   // 1. ברירות מחדל לדוחות
@@ -196,7 +197,7 @@ export function applyPreferencesToNewStudent(studentData = {}, prefs = {}) {
 
   // Set default report type if not already explicitly chosen
   if (!result.planType) {
-    result.planType = normalizedPrefs.defaultReportType === 'tachi' ? 'תח"י' : 'תל"א';
+    result.planType = normalizedPrefs.defaultReportType === 'tachi' ? TACHI_PLAN_TYPE : DEFAULT_PLAN_TYPE;
   }
 
   // Set default educational framework if student has none

@@ -616,7 +616,7 @@ export default function TeacherPreferencesModal({
                     textAlign: 'center'
                   }}
                 >
-                  תל"א (כיתה/בי"ס לחינוך מיוחד)
+                  תוכנית לתלמיד ביה"ס
                 </button>
                 <button
                   type="button"
@@ -633,7 +633,7 @@ export default function TeacherPreferencesModal({
                     textAlign: 'center'
                   }}
                 >
-                  תח"י (שילוב בגן / כיתה רגילה)
+                  תוכנית אקולוגית לילדי הגן
                 </button>
               </div>
             </div>
