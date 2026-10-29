@@ -741,6 +741,82 @@ export function recordAiTelemetryForUser(userEmail, usersList) {
   });
 }
 
+/**
+ * Classifies a user into one of four administrative groups:
+ * - 'admins': system administrators
+ * - 'paying': active annual/paid subscribers
+ * - 'trials': active trial users
+ * - 'expired_disabled': expired trials, expired subscriptions, disabled, or locked out users
+ */
+export function classifyUserGroup(user, now = new Date()) {
+  const status = getUserSubscriptionStatus(user, now);
+  if (status === 'admin') return 'admins';
+  if (status === 'paid_active') return 'paying';
+  if (status === 'trial_active') return 'trials';
+  return 'expired_disabled';
+}
 
+/**
+ * Helper to compute an epoch / priority weight for subscription status sorting.
+ */
+function getSubscriptionSortWeight(user, now = new Date()) {
+  const status = getUserSubscriptionStatus(user, now);
+  if (status === 'admin') return 9999999999999;
+  if (status === 'paid_active') {
+    return user?.paidExpiresAt ? new Date(user.paidExpiresAt).getTime() : 8888888888888;
+  }
+  if (status === 'trial_active') {
+    return user?.trialExpiresAt ? new Date(user.trialExpiresAt).getTime() : 7777777777777;
+  }
+  if (status === 'trial_expired' || status === 'paid_expired') return 1000;
+  if (status === 'locked_out') return 500;
+  if (status === 'disabled') return 100;
+  return 0;
+}
 
+/**
+ * Sorts a list of users by specified column and direction.
+ * Supports Hebrew locale sorting for text, and numeric sorting for capacity and subscription expiration.
+ */
+export function sortUsersList(users = [], sortField = null, sortDirection = 'asc', studentCountByEmail = new Map(), now = new Date()) {
+  if (!Array.isArray(users)) return [];
+  if (!sortField || !sortDirection || (sortDirection !== 'asc' && sortDirection !== 'desc')) {
+    return [...users];
+  }
 
+  const factor = sortDirection === 'asc' ? 1 : -1;
+
+  return [...users].sort((a, b) => {
+    if (sortField === 'name') {
+      const nameA = String(a?.name || '').trim();
+      const nameB = String(b?.name || '').trim();
+      return factor * nameA.localeCompare(nameB, 'he', { sensitivity: 'base' });
+    }
+
+    if (sortField === 'email') {
+      const emailA = String(a?.email || '').trim().toLowerCase();
+      const emailB = String(b?.email || '').trim().toLowerCase();
+      return factor * emailA.localeCompare(emailB, 'en', { sensitivity: 'base' });
+    }
+
+    if (sortField === 'group') {
+      const grpA = String(a?.group || '').trim();
+      const grpB = String(b?.group || '').trim();
+      return factor * grpA.localeCompare(grpB, 'he', { sensitivity: 'base' });
+    }
+
+    if (sortField === 'capacity') {
+      const countA = studentCountByEmail.get((a?.email || '').trim().toLowerCase()) || 0;
+      const countB = studentCountByEmail.get((b?.email || '').trim().toLowerCase()) || 0;
+      return factor * (countA - countB);
+    }
+
+    if (sortField === 'status') {
+      const weightA = getSubscriptionSortWeight(a, now);
+      const weightB = getSubscriptionSortWeight(b, now);
+      return factor * (weightA - weightB);
+    }
+
+    return 0;
+  });
+}

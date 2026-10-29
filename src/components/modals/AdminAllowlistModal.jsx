@@ -35,7 +35,10 @@ import {
   Award,
   Activity,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import {
   createPasswordCredentials,
@@ -51,7 +54,9 @@ import {
   computeGroupStats,
   getDailyQuotaCount,
   DAILY_AI_QUOTA_LIMIT,
-  DAILY_EMAIL_QUOTA_LIMIT
+  DAILY_EMAIL_QUOTA_LIMIT,
+  classifyUserGroup,
+  sortUsersList
 } from '../../allowedUsers';
 import { sendUserInvitationEmailInBackground } from '../../emailService';
 import { subscribeToUserPresence, recordUserPresence } from '../../firebaseBackend';
@@ -381,7 +386,10 @@ export default function AdminAllowlistModal({
       setActiveTab(initialTab);
     }
   }, [isOpen, initialTab]);
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'paid' | 'trial_active' | 'trial_expired' | 'disabled'
+  const [userGroupTab, setUserGroupTab] = useState('all'); // 'all' | 'admins' | 'paying' | 'trials' | 'expired_disabled'
+    const [sortField, setSortField] = useState('name'); // 'name' | 'email' | 'group' | 'status' | 'capacity'
+    const [sortDirection, setSortDirection] = useState('asc');
+    const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'paid' | 'trial_active' | 'trial_expired' | 'disabled'
   const [groupFilter, setGroupFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddUserForm, setShowAddUserForm] = useState(false);
@@ -484,27 +492,80 @@ export default function AdminAllowlistModal({
   // Group stats calculation
   const groupStats = computeGroupStats(allowedUsers, students);
 
-  // Filtered users list
-  const filteredUsers = (allowedUsers || []).filter((u) => {
-    const status = getUserSubscriptionStatus(u);
-    if (statusFilter === 'paid' && status !== 'paid_active') return false;
-    if (statusFilter === 'trial_active' && status !== 'trial_active') return false;
-    if (statusFilter === 'trial_expired' && status !== 'trial_expired') return false;
-    if (statusFilter === 'disabled' && status !== 'disabled' && status !== 'locked_out') return false;
+  // Group counts for sub-tabs
+  const userGroupCounts = useMemo(() => {
+    let admins = 0;
+    let paying = 0;
+    let trials = 0;
+    let expiredDisabled = 0;
+    const now = new Date();
 
-    if (groupFilter !== 'all' && (u.group || '').trim() !== groupFilter) return false;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      const matchName = (u.name || '').toLowerCase().includes(q);
-      const matchEmail = (u.email || '').toLowerCase().includes(q);
-      const matchGroup = (u.group || '').toLowerCase().includes(q);
-      const matchTitle = (u.title || '').toLowerCase().includes(q);
-      if (!matchName && !matchEmail && !matchGroup && !matchTitle) return false;
+    for (const u of (allowedUsers || [])) {
+      const g = classifyUserGroup(u, now);
+      if (g === 'admins') admins++;
+      else if (g === 'paying') paying++;
+      else if (g === 'trials') trials++;
+      else if (g === 'expired_disabled') expiredDisabled++;
     }
 
-    return true;
-  });
+    return {
+      all: (allowedUsers || []).length,
+      admins,
+      paying,
+      trials,
+      expired_disabled: expiredDisabled
+    };
+  }, [allowedUsers]);
+
+  // Filtered and sorted users list
+  const filteredUsers = useMemo(() => {
+    const now = new Date();
+    const list = (allowedUsers || []).filter((u) => {
+      if (userGroupTab !== 'all') {
+        const g = classifyUserGroup(u, now);
+        if (g !== userGroupTab) return false;
+      }
+
+      if (groupFilter !== 'all' && (u.group || '').trim() !== groupFilter) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const matchName = (u.name || '').toLowerCase().includes(q);
+        const matchEmail = (u.email || '').toLowerCase().includes(q);
+        const matchGroup = (u.group || '').toLowerCase().includes(q);
+        const matchTitle = (u.title || '').toLowerCase().includes(q);
+        if (!matchName && !matchEmail && !matchGroup && !matchTitle) return false;
+      }
+
+      return true;
+    });
+
+    return sortUsersList(list, sortField, sortDirection, studentCountByEmail, now);
+  }, [allowedUsers, userGroupTab, groupFilter, searchQuery, sortField, sortDirection, studentCountByEmail]);
+
+  const handleSortToggle = (field) => {
+    if (sortField === field) {
+      if (sortDirection === 'asc') setSortDirection('desc');
+      else if (sortDirection === 'desc') {
+        setSortField(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIndicator = (field) => {
+    if (sortField !== field || !sortDirection) {
+      return <ArrowUpDown size={12} style={{ color: '#94a3b8', opacity: 0.5, marginRight: '4px' }} />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp size={13} style={{ color: '#2563eb', fontWeight: 800, marginRight: '4px' }} />
+    ) : (
+      <ArrowDown size={13} style={{ color: '#2563eb', fontWeight: 800, marginRight: '4px' }} />
+    );
+  };
 
   const getUserPresenceBadge = (userEmail) => {
     if (!userEmail) return null;
@@ -937,8 +998,10 @@ export default function AdminAllowlistModal({
         className="modal-container"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '1080px',
-          width: '100%',
+          maxWidth: '1100px',
+          width: '95vw',
+          height: '86vh',
+          minHeight: '640px',
           maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
@@ -1239,6 +1302,66 @@ export default function AdminAllowlistModal({
           {/* TAB 1: USERS & LICENSES */}
           {activeTab === 'users' && (
             <>
+              {/* User Group Segmented Navigation */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  flexWrap: 'wrap',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '8px 12px'
+                }}
+              >
+                {[
+                  { id: 'all', label: 'כל המשתמשים', count: userGroupCounts.all, color: '#2563eb' },
+                  { id: 'admins', label: 'מנהלי מערכת', count: userGroupCounts.admins, color: '#1e3a8a' },
+                  { id: 'paying', label: 'מנויים משלמים', count: userGroupCounts.paying, color: '#166534' },
+                  { id: 'trials', label: 'משתמשי ניסיון', count: userGroupCounts.trials, color: '#6d28d9' },
+                  { id: 'expired_disabled', label: 'פגי תוקף ומושבתים', count: userGroupCounts.expired_disabled, color: '#dc2626' }
+                ].map((tab) => {
+                  const isActive = userGroupTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setUserGroupTab(tab.id)}
+                      data-testid={`user-group-tab-${tab.id}`}
+                      style={{
+                        padding: '7px 14px',
+                        borderRadius: '9px',
+                        border: isActive ? `1.5px solid ${tab.color}` : '1px solid #e2e8f0',
+                        background: isActive ? '#ffffff' : '#ffffff',
+                        boxShadow: isActive ? '0 2px 4px rgba(0, 0, 0, 0.06)' : 'none',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <span style={{ fontSize: '13px', fontWeight: isActive ? 800 : 600, color: isActive ? tab.color : '#475569' }}>
+                        {tab.label}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '1px 7px',
+                          borderRadius: '999px',
+                          background: isActive ? tab.color : '#f1f5f9',
+                          color: isActive ? '#ffffff' : '#64748b'
+                        }}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Filter and Search Bar */}
               <div
                 style={{
@@ -1291,34 +1414,7 @@ export default function AdminAllowlistModal({
                     ))}
                   </select>
 
-                  {/* Status Chips */}
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {[
-                      { id: 'all', label: 'הכל' },
-                      { id: 'paid', label: 'מנוי משלם' },
-                      { id: 'trial_active', label: 'ניסיון פעיל' },
-                      { id: 'trial_expired', label: 'ניסיון שפג' },
-                      { id: 'disabled', label: 'מושבת/חסום' }
-                    ].map((chip) => (
-                      <button
-                        key={chip.id}
-                        type="button"
-                        onClick={() => setStatusFilter(chip.id)}
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: '999px',
-                          fontSize: '11.5px',
-                          fontWeight: statusFilter === chip.id ? 700 : 500,
-                          border: statusFilter === chip.id ? '1px solid #2563eb' : '1px solid #e2e8f0',
-                          background: statusFilter === chip.id ? '#eff6ff' : '#ffffff',
-                          color: statusFilter === chip.id ? '#1d4ed8' : '#64748b',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {chip.label}
-                      </button>
-                    ))}
-                  </div>
+
                 </div>
 
                 <button
@@ -1454,16 +1550,72 @@ export default function AdminAllowlistModal({
                 <table className="allowed-users-table">
                   <thead>
                     <tr>
-                      <th>שם ומזהה</th>
-                      <th>אימייל</th>
-                      <th>צוות / מתי"א</th>
-                      <th>סטטוס ומנוי</th>
-                      <th>פעילות (Capacity)</th>
+                      <th
+                        onClick={() => handleSortToggle('name')}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                        title="לחץ למיון לפי שם"
+                      >
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span>שם ומזהה</span>
+                          {renderSortIndicator('name')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSortToggle('email')}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                        title="לחץ למיון לפי אימייל"
+                      >
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span>אימייל</span>
+                          {renderSortIndicator('email')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSortToggle('group')}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                        title="לחץ למיון לפי צוות או מתי&quot;א"
+                      >
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span>צוות / מתי"א</span>
+                          {renderSortIndicator('group')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSortToggle('status')}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                        title="לחץ למיון לפי סטטוס ותוקף מנוי"
+                      >
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span>סטטוס ומנוי</span>
+                          {renderSortIndicator('status')}
+                        </div>
+                      </th>
+                      <th
+                        onClick={() => handleSortToggle('capacity')}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                        title="לחץ למיון לפי מספר תלמידים"
+                      >
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span>תלמידים (Capacity)</span>
+                          {renderSortIndicator('capacity')}
+                        </div>
+                      </th>
                       <th>סיסמה</th>
                       <th>פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
+                    {filteredUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={7} style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
+                          <Users size={32} style={{ margin: '0 auto 8px', color: '#cbd5e1' }} />
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#334155' }}>לא נמצאו משתמשים בקבוצה זו</div>
+                          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
+                            {searchQuery ? 'נסה לשנות את מונח החיפוש או לבחור קבוצה אחרת' : 'ניתן להוסיף משתמשים חדשים באמצעות כפתור ההוספה'}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     {filteredUsers.map((u) => {
                       const isMainAdmin = u.email?.toLowerCase() === 'zivit.reshef@gmail.com';
                       const userStatus = getUserSubscriptionStatus(u);
@@ -1651,14 +1803,18 @@ export default function AdminAllowlistModal({
 
                           {/* Capacity Metrics */}
                           <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11.5px' }}>
-                              <span style={{ fontWeight: 700, color: '#1e293b' }}>
-                                🎒 {studentCount} תלמידים
-                              </span>
-                              <span style={{ color: '#6d28d9', fontWeight: 600 }}>
-                                🤖 {aiCalls} פניות AI
-                              </span>
-                            </div>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                color: studentCount > 0 ? '#1e293b' : '#94a3b8',
+                                fontSize: '12px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              🎒 {studentCount} {studentCount === 1 ? 'תלמיד/ה' : 'תלמידים'}
+                            </span>
                           </td>
 
                           {/* Password Management */}

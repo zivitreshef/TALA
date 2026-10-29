@@ -11,7 +11,9 @@ import {
   incrementDailyQuotaCount,
   recordAiTelemetryForUser,
   DAILY_AI_QUOTA_LIMIT,
-  DAILY_EMAIL_QUOTA_LIMIT
+  DAILY_EMAIL_QUOTA_LIMIT,
+  classifyUserGroup,
+  sortUsersList
 } from '../allowedUsers.js';
 
 const store = new Map();
@@ -341,6 +343,118 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         expect(modalContent).toContain('Safari');
         expect(modalContent).toContain('שיתוף');
         expect(modalContent).toContain('הוספה למסך הבית');
+      });
+    });
+
+    describe('User Group Classification (classifyUserGroup)', () => {
+      const now = new Date('2026-10-15T12:00:00.000Z');
+
+      it('classifies admin accounts as admins', () => {
+        expect(classifyUserGroup({ email: 'zivit.reshef@gmail.com', role: 'teacher' }, now)).toBe('admins');
+        expect(classifyUserGroup({ email: 'admin@tala.org', role: 'admin' }, now)).toBe('admins');
+      });
+
+      it('classifies active paid subscribers as paying', () => {
+        const paidUser = { email: 'paid@test.com', active: true, subscriptionType: 'annual_paid', paidExpiresAt: '2027-01-01T00:00:00.000Z' };
+        expect(classifyUserGroup(paidUser, now)).toBe('paying');
+      });
+
+      it('classifies active trial accounts as trials', () => {
+        const trialUser = { email: 'trial@test.com', active: true, isTrialUser: true, trialExpiresAt: '2026-10-25T00:00:00.000Z' };
+        expect(classifyUserGroup(trialUser, now)).toBe('trials');
+      });
+
+      it('classifies expired trial, expired paid, disabled, and locked_out as expired_disabled', () => {
+        const expiredTrial = { email: 'et@test.com', active: true, isTrialUser: true, trialExpiresAt: '2026-10-01T00:00:00.000Z' };
+        const expiredPaid = { email: 'ep@test.com', active: true, subscriptionType: 'annual_paid', paidExpiresAt: '2026-10-01T00:00:00.000Z' };
+        const disabled = { email: 'dis@test.com', active: false };
+        const locked = { email: 'lock@test.com', active: true, lockedOut: true };
+
+        expect(classifyUserGroup(expiredTrial, now)).toBe('expired_disabled');
+        expect(classifyUserGroup(expiredPaid, now)).toBe('expired_disabled');
+        expect(classifyUserGroup(disabled, now)).toBe('expired_disabled');
+        expect(classifyUserGroup(locked, now)).toBe('expired_disabled');
+      });
+    });
+
+    describe('User Directory Sorting (sortUsersList)', () => {
+      const now = new Date('2026-10-15T12:00:00.000Z');
+      const testUsers = [
+        { id: '1', name: 'רונית כהן', email: 'ronit@test.com', group: 'מתי״א דרום', isTrialUser: true, trialExpiresAt: '2026-10-20T00:00:00.000Z', active: true },
+        { id: '2', name: 'אבי לוי', email: 'avi@test.com', group: 'מתי״א מרכז', isTrialUser: false, active: true },
+        { id: '3', name: 'דנה ישראלי', email: 'dana@test.com', group: 'מתי״א צפון', isTrialUser: true, trialExpiresAt: '2026-10-10T00:00:00.000Z', active: true }
+      ];
+      const studentMap = new Map([
+        ['ronit@test.com', 10],
+        ['avi@test.com', 25],
+        ['dana@test.com', 2]
+      ]);
+
+      it('sorts by name with Hebrew alphabetical order', () => {
+        const asc = sortUsersList(testUsers, 'name', 'asc');
+        expect(asc.map(u => u.name)).toEqual(['אבי לוי', 'דנה ישראלי', 'רונית כהן']);
+
+        const desc = sortUsersList(testUsers, 'name', 'desc');
+        expect(desc.map(u => u.name)).toEqual(['רונית כהן', 'דנה ישראלי', 'אבי לוי']);
+      });
+
+      it('sorts by email ascending and descending', () => {
+        const asc = sortUsersList(testUsers, 'email', 'asc');
+        expect(asc.map(u => u.email)).toEqual(['avi@test.com', 'dana@test.com', 'ronit@test.com']);
+      });
+
+      it('sorts by capacity (student count)', () => {
+        const asc = sortUsersList(testUsers, 'capacity', 'asc', studentMap);
+        expect(asc.map(u => u.email)).toEqual(['dana@test.com', 'ronit@test.com', 'avi@test.com']);
+
+        const desc = sortUsersList(testUsers, 'capacity', 'desc', studentMap);
+        expect(desc.map(u => u.email)).toEqual(['avi@test.com', 'ronit@test.com', 'dana@test.com']);
+      });
+
+      it('sorts by status weight', () => {
+        const desc = sortUsersList(testUsers, 'status', 'desc', studentMap, now);
+        // Active paid (avi) > active trial (ronit) > expired trial (dana)
+        expect(desc[0].email).toBe('avi@test.com');
+        expect(desc[1].email).toBe('ronit@test.com');
+        expect(desc[2].email).toBe('dana@test.com');
+      });
+
+      it('returns unchanged copy if sortField or sortDirection is invalid', () => {
+        const unsorted = sortUsersList(testUsers, null, null);
+        expect(unsorted).toEqual(testUsers);
+      });
+    });
+
+    describe('Admin Control Center Layout & Modal Resizing Guard', () => {
+      it('verifies AdminAllowlistModal has fixed height preventing layout shifts across tabs', async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const modalContent = fs.readFileSync(
+          path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx'),
+          'utf-8'
+        );
+
+        expect(modalContent).toContain('height: \'86vh\'');
+        expect(modalContent).toContain('minHeight: \'640px\'');
+      });
+
+      it('verifies AdminAllowlistModal includes user group sub-tabs and sortable headers', async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const modalContent = fs.readFileSync(
+          path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx'),
+          'utf-8'
+        );
+
+        expect(modalContent).toContain('כל המשתמשים');
+        expect(modalContent).toContain('מנהלי מערכת');
+        expect(modalContent).toContain('מנויים משלמים');
+        expect(modalContent).toContain('משתמשי ניסיון');
+        expect(modalContent).toContain('פגי תוקף ומושבתים');
+        expect(modalContent).toContain('תלמידים (Capacity)');
+        expect(modalContent).toContain('handleSortToggle');
+        expect(modalContent).toContain('renderSortIndicator');
+        expect(modalContent).not.toContain('🤖 {aiCalls} פניות AI');
       });
     });
   });
