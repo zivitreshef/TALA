@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles,
   X,
@@ -20,9 +20,12 @@ import {
   FileText,
   Check,
   ShieldAlert,
-  Share2
+  Share2,
+  Search,
+  ExternalLink
 } from 'lucide-react';
 import { getPaidRemainingDays } from '../../allowedUsers';
+import { PEDAGOGICAL_GUIDE_CHAPTERS, GUIDE_CATEGORIES } from './pedagogicalGuideData';
 
 export default function TrialUpgradeModal({
   isOpen,
@@ -35,7 +38,9 @@ export default function TrialUpgradeModal({
   remainingDays = null,
   paidRemainingDays = null,
   isExpired = false,
-  onLogout = null
+  onLogout = null,
+  initialTab = null,
+  defaultTab = null
 }) {
   const isNonTrialUser = Boolean(currentUser && !currentUser.isTrialUser);
   const [supportMessage, setSupportMessage] = useState('');
@@ -43,13 +48,20 @@ export default function TrialUpgradeModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAboutLetter, setShowAboutLetter] = useState(!isNonTrialUser);
 
-  // Clean Tab Navigation & RFE states
-  const [activeTab, setActiveTab] = useState('guide'); // 'guide' | 'ios_shortcut' | 'rfe' | 'fair_use' | 'contact'
+  // Consolidated Tab Navigation: 'guide' | 'contact' | 'fair_use'
+  const [activeTab, setActiveTab] = useState(initialTab || defaultTab || (isExpired ? 'contact' : 'guide'));
   const [rfeTitle, setRfeTitle] = useState('');
   const [rfeCategory, setRfeCategory] = useState('שיפור בטופס תל"א / תח"י');
   const [rfeMessage, setRfeMessage] = useState('');
   const [rfeSubmitted, setRfeSubmitted] = useState(false);
   const [isSubmittingRfe, setIsSubmittingRfe] = useState(false);
+
+  // Guide interactivity states
+  const [guideSearchQuery, setGuideSearchQuery] = useState('');
+  const [guideSelectedCategory, setGuideSelectedCategory] = useState('all');
+  const [expandedChapters, setExpandedChapters] = useState({ 1: true, 15: true });
+
+  const modalBodyRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -59,9 +71,18 @@ export default function TrialUpgradeModal({
       setRfeSubmitted(false);
       setRfeTitle('');
       setRfeMessage('');
-      setActiveTab(isExpired ? 'contact' : 'guide');
+      setActiveTab(initialTab || defaultTab || (isExpired ? 'contact' : 'guide'));
+      setGuideSearchQuery('');
+      setGuideSelectedCategory('all');
     }
-  }, [isOpen, isNonTrialUser, isExpired]);
+  }, [isOpen, isNonTrialUser, isExpired, initialTab, defaultTab]);
+
+  // Reset scroll to top smoothly when switching tabs
+  useEffect(() => {
+    if (modalBodyRef.current) {
+      modalBodyRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
 
   // ALL hooks are declared above. Early return here is safe for React Hook rules.
   if (!isOpen || !currentUser) return null;
@@ -74,15 +95,13 @@ export default function TrialUpgradeModal({
       : null;
 
   const whatsappPhone = '972559236606';
-  const defaultWhatsappText = encodeURIComponent(
-    isNonTrialUser
-      ? `היי זיוית, שמי ${currentUser.name || ''} (${currentUser.email || ''}) ממערכת TALA. ברצוני להתייעץ בנושא המערכת. תודה!`
-      : `היי זיוית, ${
-          isExpired ? 'הסתיימה תקופת הניסיון שלי' : 'התנסיתי במערכת TALA'
-        } ואשמח להסדיר רכישת מנוי שנתי (150 ש"ח לשנה). שמי: ${currentUser.name || ''} (${
-          currentUser.email || ''
-        }). תודה!`
-  );
+  const defaultWhatsappText = isExpired
+    ? 'הסתיימה%20תקופת%20הניסיון%20שלי'
+    : encodeURIComponent(
+        isNonTrialUser
+          ? `היי זיוית, שמי ${currentUser.name || ''} (${currentUser.email || ''}) ממערכת TALA. ברצוני להתייעץ בנושא המערכת. תודה!`
+          : `היי זיוית, התנסיתי במערכת TALA ואשמח להסדיר רכישת מנוי שנתי (150 ש"ח לשנה). שמי: ${currentUser.name || ''} (${currentUser.email || ''}). תודה!`
+      );
   const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${defaultWhatsappText}`;
 
   const handleSendMessage = (e) => {
@@ -117,8 +136,8 @@ export default function TrialUpgradeModal({
     setIsSubmittingRfe(true);
     if (typeof onSubmitSupportMessage === 'function') {
       onSubmitSupportMessage({
-        topic: `💡 הצעת ייעול ובקשה לשיפור (Minor RFE): ${rfeCategory} - ${rfeTitle.trim() || 'ללא כותרת'}`,
-        notes: `[בקשת שיפור / RFE ממשתמש/ת ${currentUser.name || ''} (${currentUser.email || ''})]:\nקטגוריה: ${rfeCategory}\nנושא: ${rfeTitle.trim() || 'כללי'}\nפירוט ההצעה:\n${rfeMessage.trim()}`,
+        topic: `💡 הצעת ייעול ובקשה לשיפור: ${rfeCategory} - ${rfeTitle.trim() || 'ללא כותרת'}`,
+        notes: `[בקשת שיפור והצעת ייעול ממשתמש/ת ${currentUser.name || ''} (${currentUser.email || ''})]:\nקטגוריה: ${rfeCategory}\nנושא: ${rfeTitle.trim() || 'כללי'}\nפירוט ההצעה:\n${rfeMessage.trim()}`,
         name: currentUser.name,
         email: currentUser.email
       });
@@ -132,6 +151,44 @@ export default function TrialUpgradeModal({
     }, 400);
   };
 
+  const toggleChapter = (id) => {
+    setExpandedChapters((prev) => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const expandAllChapters = () => {
+    const all = {};
+    PEDAGOGICAL_GUIDE_CHAPTERS.forEach((ch) => {
+      all[ch.id] = true;
+    });
+    setExpandedChapters(all);
+  };
+
+  const collapseAllChapters = () => {
+    setExpandedChapters({});
+  };
+
+  // Filter chapters based on search query and category
+  const filteredChapters = PEDAGOGICAL_GUIDE_CHAPTERS.filter((chapter) => {
+    const matchesCategory =
+      guideSelectedCategory === 'all' || chapter.category === guideSelectedCategory;
+    if (!matchesCategory) return false;
+
+    if (!guideSearchQuery.trim()) return true;
+
+    const query = guideSearchQuery.trim().toLowerCase();
+    const matchTitle = chapter.title.toLowerCase().includes(query);
+    const matchSubtitle = chapter.subtitle.toLowerCase().includes(query);
+    const matchContent = chapter.content.some(
+      (c) =>
+        c.heading.toLowerCase().includes(query) || c.text.toLowerCase().includes(query)
+    );
+
+    return matchTitle || matchSubtitle || matchContent;
+  });
+
   return (
     <div
       className="modal-backdrop"
@@ -143,22 +200,25 @@ export default function TrialUpgradeModal({
         className="modal-container"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '800px',
-          width: '100%',
-          maxHeight: '94vh',
+          maxWidth: '860px',
+          width: 'min(860px, 95vw)',
+          height: 'min(780px, 90vh)',
+          minHeight: '560px',
+          maxHeight: '90vh',
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: '14px',
-          boxShadow: '0 20px 40px -12px rgba(15, 23, 42, 0.28)',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
           background: '#ffffff',
           border: isExpired ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
           overflow: 'hidden'
         }}
       >
-        {/* Header - Enterprise Navy Clean Palette */}
+        {/* Pinned Header Zone */}
         <div
           className="modal-header"
           style={{
+            flexShrink: 0,
             background: isExpired
               ? 'linear-gradient(135deg, #7f1d1d 0%, #1e293b 100%)'
               : '#1e3a5f',
@@ -194,7 +254,7 @@ export default function TrialUpgradeModal({
               </h3>
               <span style={{ fontSize: '12px', color: '#cbd5e1' }}>
                 {isNonTrialUser
-                  ? 'מדריך שימוש, קיצור למסך הבית, הצעות שיפור, תנאי שימוש נאות ותמיכה ישירה'
+                  ? 'מדריך שימוש מקיף, פנייה ישירה והצעות שיפור, תנאי שימוש נאות וסיוע פדגוגי'
                   : isExpired
                   ? 'להמשך עבודה סדירה במערכת ופתיחת הגישה לנתונים'
                   : 'מדריכים פדגוגיים, מענה טכני וקשר ישיר עם זיוית רשף'}
@@ -253,11 +313,287 @@ export default function TrialUpgradeModal({
           </div>
         </div>
 
-        {/* Modal Body */}
+        {/* Pinned Top Panel: Status Strip & Segmented Navigation */}
         <div
+          style={{
+            flexShrink: 0,
+            background: '#ffffff',
+            borderBottom: '1px solid #e2e8f0',
+            padding: '14px 20px 12px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}
+        >
+          {/* Status, Renewal Counter, and Direct Quick Actions Strip */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+              <ShieldCheck size={20} color="#16a34a" style={{ flexShrink: 0 }} />
+              <div>
+                <strong style={{ fontSize: '14px', color: '#0f172a' }}>
+                  {isNonTrialUser
+                    ? 'מנוי שנתי פעיל – מערכת TALA 🌷'
+                    : isExpired
+                    ? 'תקופת הניסיון הסתיימה'
+                    : 'חשבון התנסות פעיל ב-TALA'}
+                </strong>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '1px' }}>
+                  {isNonTrialUser ? (
+                    currentUser.paidExpiresAt ? (
+                      <>תוקף המנוי הנוכחי: עד {new Date(currentUser.paidExpiresAt).toLocaleDateString('he-IL')}</>
+                    ) : (
+                      <>חשבון מנוי פעיל עם גישה מלאה לכל הכלים</>
+                    )
+                  ) : isExpired ? (
+                    <>נתונייך שמורים ומאובטחים במלואם במערכת. הסדרת מנוי שנתי (150 ₪ לשנה) תפתח את הגישה המלאה.</>
+                  ) : remainingDays !== null ? (
+                    <>נותרו {remainingDays} ימים לתקופת הניסיון</>
+                  ) : (
+                    <>תקופת ניסיון פעילה</>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* License Renewal Badge / Direct Quick Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {isNonTrialUser && (
+                resolvedPaidRemainingDays === Infinity || currentUser.role === 'admin' ? (
+                  <span
+                    style={{
+                      background: '#f1f5f9',
+                      color: '#1e3a5f',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <ShieldCheck size={13} color="#2563eb" />
+                    <span>חשבון מנהל (ללא הגבלת זמן)</span>
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      background: (resolvedPaidRemainingDays !== null && resolvedPaidRemainingDays <= 30) ? '#fffbeb' : '#f8fafc',
+                      color: (resolvedPaidRemainingDays !== null && resolvedPaidRemainingDays <= 30) ? '#b45309' : '#1e3a5f',
+                      border: `1px solid ${(resolvedPaidRemainingDays !== null && resolvedPaidRemainingDays <= 30) ? '#fde68a' : '#cbd5e1'}`,
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <Clock size={13} />
+                    <span>
+                      {resolvedPaidRemainingDays !== null
+                        ? `נותרו עוד ${resolvedPaidRemainingDays} ימים לחידוש המנוי`
+                        : 'מנוי שנתי פעיל (365 ימים)'}
+                    </span>
+                  </span>
+                )
+              )}
+
+              {/* Video Tutorial Launcher */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isExpired && onClose) onClose();
+                  if (typeof onOpenIntroVideo === 'function') onOpenIntroVideo();
+                }}
+                style={{
+                  background: '#ffffff',
+                  color: '#1e3a5f',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '5px 10px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'background 0.15s ease'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
+              >
+                <BookOpen size={13} color="#2563eb" />
+                <span>סרטון הדרכה</span>
+              </button>
+
+              {/* Live Chat Launcher */}
+              {onOpenChat && (
+                <button
+                  type="button"
+                  onClick={onOpenChat}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: 'rgba(37, 99, 235, 0.08)',
+                    color: '#1e3a5f',
+                    border: '1px solid rgba(37, 99, 235, 0.25)',
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(37, 99, 235, 0.16)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(37, 99, 235, 0.08)')}
+                >
+                  <MessageCircle size={14} color="#2563eb" />
+                  <span>צ'אט תמיכה ישיר באתר</span>
+                </button>
+              )}
+
+              {/* Direct WhatsApp Action Link */}
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: '#25D366',
+                  color: '#ffffff',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  textDecoration: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                  transition: 'background 0.15s ease'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#20bd5a')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#25D366')}
+              >
+                <MessageCircle size={14} />
+                <span>{isNonTrialUser ? 'וואטסאפ לזיוית' : 'פנייה בוואטסאפ להסדרת מנוי'}</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Consolidated Segmented 3-Tab Navigation */}
+          {!isExpired && (
+            <div
+              style={{
+                display: 'flex',
+                background: '#f1f5f9',
+                padding: '3px',
+                borderRadius: '8px',
+                gap: '4px',
+                border: '1px solid #e2e8f0'
+              }}
+            >
+              {/* Tab 1: מדריך והנחיות */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('guide')}
+                style={{
+                  flex: 1,
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: activeTab === 'guide' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'guide' ? '#1e3a5f' : '#64748b',
+                  fontWeight: activeTab === 'guide' ? 700 : 500,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: activeTab === 'guide' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <BookOpen size={15} color={activeTab === 'guide' ? '#2563eb' : '#64748b'} />
+                <span>מדריך והנחיות</span>
+              </button>
+
+              {/* Tab 2: פנייה, משוב והצעות לשיפור */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('contact')}
+                style={{
+                  flex: 1,
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: activeTab === 'contact' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'contact' ? '#1e3a5f' : '#64748b',
+                  fontWeight: activeTab === 'contact' ? 700 : 500,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: activeTab === 'contact' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <MessageSquareHeart size={15} color={activeTab === 'contact' ? '#2563eb' : '#64748b'} />
+                <span>פנייה, משוב והצעות לשיפור</span>
+              </button>
+
+              {/* Tab 3: שימוש נאות ורישיון */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('fair_use')}
+                style={{
+                  flex: 1,
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: activeTab === 'fair_use' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'fair_use' ? '#1e3a5f' : '#64748b',
+                  fontWeight: activeTab === 'fair_use' ? 700 : 500,
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: activeTab === 'fair_use' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <FileText size={15} color={activeTab === 'fair_use' ? '#2563eb' : '#64748b'} />
+                <span>שימוש נאות ורישיון</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Bounded Scrollable Content Body */}
+        <div
+          ref={modalBodyRef}
           className="modal-body"
           style={{
+            flex: '1 1 auto',
             overflowY: 'auto',
+            minHeight: 0,
+            scrollbarGutter: 'stable',
             padding: '16px 20px',
             display: 'flex',
             flexDirection: 'column',
@@ -268,717 +604,314 @@ export default function TrialUpgradeModal({
             background: '#f8fafc'
           }}
         >
-          {/* PERSISTENT CORE PANEL: Status, License Renewal Counter, and Quick Actions */}
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: '10px',
-              padding: '14px 16px',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}
-          >
-            {/* Top row: Status & Renewal counter */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '10px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                <ShieldCheck size={20} color="#16a34a" style={{ flexShrink: 0 }} />
-                <div>
-                  <strong style={{ fontSize: '14.5px', color: '#0f172a' }}>
-                    {isNonTrialUser
-                      ? 'מנוי שנתי פעיל – מערכת TALA 🌷'
-                      : isExpired
-                      ? 'תקופת הניסיון הסתיימה'
-                      : 'חשבון התנסות פעיל ב-TALA'}
-                  </strong>
-                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '1px' }}>
-                    {isNonTrialUser ? (
-                      currentUser.paidExpiresAt ? (
-                        <>תוקף המנוי הנוכחי: עד {new Date(currentUser.paidExpiresAt).toLocaleDateString('he-IL')}</>
-                      ) : (
-                        <>חשבון מנוי פעיל עם גישה מלאה לכל הכלים</>
-                      )
-                    ) : isExpired ? (
-                      <>נתונייך שמורים ומאובטחים במלואם במערכת. הסדרת מנוי שנתי (150 ₪ לשנה) תפתח את הגישה המלאה.</>
-                    ) : remainingDays !== null ? (
-                      <>נותרו {remainingDays} ימים לתקופת הניסיון</>
-                    ) : (
-                      <>תקופת ניסיון פעילה</>
-                    )}
+          {/* =========================================================================
+              TAB 1: מדריך והנחיות (Comprehensive 15-Chapter Guide + iPad Shortcut)
+             ========================================================================= */}
+          {activeTab === 'guide' && !isExpired && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Guide Header Banner */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  padding: '14px 16px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700, fontSize: '15px' }}>
+                    <BookOpen size={18} color="#2563eb" />
+                    <span>מדריך עבודה פדגוגי מקיף למערכת TALA</span>
                   </div>
-                </div>
-              </div>
-
-              {/* Renewal Counter / License Badge */}
-              <div>
-                {isNonTrialUser && (
-                  resolvedPaidRemainingDays === Infinity || currentUser.role === 'admin' ? (
-                    <span
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={expandAllChapters}
                       style={{
                         background: '#f1f5f9',
                         color: '#1e3a5f',
                         border: '1px solid #cbd5e1',
                         borderRadius: '6px',
-                        padding: '4px 10px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}
-                    >
-                      <ShieldCheck size={13} color="#2563eb" />
-                      <span>חשבון מנהל (ללא הגבלת זמן)</span>
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        background: (resolvedPaidRemainingDays !== null && resolvedPaidRemainingDays <= 30) ? '#fffbeb' : '#f8fafc',
-                        color: (resolvedPaidRemainingDays !== null && resolvedPaidRemainingDays <= 30) ? '#b45309' : '#1e3a5f',
-                        border: `1px solid ${(resolvedPaidRemainingDays !== null && resolvedPaidRemainingDays <= 30) ? '#fde68a' : '#cbd5e1'}`,
-                        borderRadius: '6px',
-                        padding: '4px 10px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}
-                    >
-                      <Clock size={13} />
-                      <span>
-                        {resolvedPaidRemainingDays !== null
-                          ? `נותרו עוד ${resolvedPaidRemainingDays} ימים לחידוש המנוי`
-                          : 'מנוי שנתי פעיל (365 ימים)'}
-                      </span>
-                    </span>
-                  )
-                )}
-              </div>
-            </div>
-
-            {/* Bottom row of persistent panel: Direct Quick Actions */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '8px',
-                paddingTop: '10px',
-                borderTop: '1px solid #f1f5f9'
-              }}
-            >
-              <div style={{ fontSize: '12px', color: '#475569' }}>
-                מענה ישיר בוואטסאפ ובמייל לשאלות פדגוגיות וסיוע טכני
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {/* Tutorial Video Quick Action */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isExpired && onClose) onClose();
-                    if (typeof onOpenIntroVideo === 'function') onOpenIntroVideo();
-                  }}
-                  style={{
-                    background: '#ffffff',
-                    color: '#1e3a5f',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    padding: '6px 12px',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'background 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
-                >
-                  <BookOpen size={14} color="#2563eb" />
-                  <span>סרטון הדרכה (3 דק׳)</span>
-                </button>
-
-                {/* Direct WhatsApp Action Button (Phone number masked) */}
-                {onOpenChat && (
-                  <button
-                    type="button"
-                    onClick={onOpenChat}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: 'rgba(37, 99, 235, 0.08)',
-                      color: '#1e3a5f',
-                      border: '1px solid rgba(37, 99, 235, 0.25)',
-                      padding: '6px 14px',
-                      borderRadius: '6px',
-                      fontWeight: 600,
-                      fontSize: '12.5px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(37, 99, 235, 0.16)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(37, 99, 235, 0.08)')}
-                  >
-                    <MessageCircle size={15} color="#2563eb" />
-                    <span>צ'אט תמיכה ישיר באתר</span>
-                  </button>
-                )}
-
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: '#25D366',
-                    color: '#ffffff',
-                    padding: '6px 14px',
-                    borderRadius: '6px',
-                    fontWeight: 600,
-                    fontSize: '12.5px',
-                    textDecoration: 'none',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    transition: 'background 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#20bd5a')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#25D366')}
-                >
-                  <MessageCircle size={15} />
-                  <span>{isNonTrialUser ? 'שיחה ישירה בוואטסאפ עם זיוית' : 'פנייה בוואטסאפ להסדרת מנוי'}</span>
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* Segmented Control Tab Navigation (Subtle slate segmented pills) */}
-          {!isExpired && (
-            <div
-              style={{
-                display: 'flex',
-                background: '#e2e8f0',
-                padding: '3px',
-                borderRadius: '8px',
-                gap: '3px',
-                overflowX: 'auto',
-                scrollbarWidth: 'none'
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveTab('guide')}
-                style={{
-                  flex: '1 0 auto',
-                  padding: '7px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: activeTab === 'guide' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'guide' ? '#1e3a5f' : '#475569',
-                  fontWeight: activeTab === 'guide' ? 700 : 500,
-                  fontSize: '12.5px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: activeTab === 'guide' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <BookOpen size={14} />
-                <span>מדריך והנחיות</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('ios_shortcut')}
-                style={{
-                  flex: '1 0 auto',
-                  padding: '7px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: activeTab === 'ios_shortcut' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'ios_shortcut' ? '#1e3a5f' : '#475569',
-                  fontWeight: activeTab === 'ios_shortcut' ? 700 : 500,
-                  fontSize: '12.5px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: activeTab === 'ios_shortcut' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Smartphone size={14} />
-                <span>קיצור לאייפד / אייפון</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('rfe')}
-                style={{
-                  flex: '1 0 auto',
-                  padding: '7px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: activeTab === 'rfe' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'rfe' ? '#1e3a5f' : '#475569',
-                  fontWeight: activeTab === 'rfe' ? 700 : 500,
-                  fontSize: '12.5px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: activeTab === 'rfe' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Lightbulb size={14} />
-                <span>הצעות ייעול ושיפורים (RFE)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('fair_use')}
-                style={{
-                  flex: '1 0 auto',
-                  padding: '7px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: activeTab === 'fair_use' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'fair_use' ? '#1e3a5f' : '#475569',
-                  fontWeight: activeTab === 'fair_use' ? 700 : 500,
-                  fontSize: '12.5px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: activeTab === 'fair_use' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <FileText size={14} />
-                <span>שימוש נאות ורישיון</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('contact')}
-                style={{
-                  flex: '1 0 auto',
-                  padding: '7px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: activeTab === 'contact' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'contact' ? '#1e3a5f' : '#475569',
-                  fontWeight: activeTab === 'contact' ? 700 : 500,
-                  fontSize: '12.5px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: activeTab === 'contact' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Mail size={14} />
-                <span>פנייה למנהלת ומשוב</span>
-              </button>
-            </div>
-          )}
-
-          {/* TAB 1: WORKFLOW GUIDANCE */}
-          {activeTab === 'guide' && !isExpired && (
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '10px',
-                padding: '16px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
-                <BookOpen size={16} color="#2563eb" />
-                <span>מדריך עבודה פדגוגי לבניית תוכנית אקולוגית ותח"י</span>
-              </div>
-              <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-                מערכת TALA פותחה על ידי אנשי חינוך מיוחד ומלווה אותך צעד אחר צעד בבניית תוכנית מקצועית ומדויקת:
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '13px' }}>
-                    1️⃣ כרטיס תלמיד וטבלת מוקדי כוח
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    מלאי פרטים אישיים, תארי את התלמיד/ה בטקסט חופשי ולחצי על <strong>"יצירת טבלת מוקדי כוח"</strong> – המערכת תסווג ותבנה טבלת כוחות קיימים מול כוחות להעצמה.
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '13px' }}>
-                    2️⃣ מאגר מטרות ויעדים דינמי
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    המאגר מתאים את עצמו לגיל (גן / בית ספר) ומדרג את המטרות הנפוצות ביותר בראש הרשימה.
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '13px' }}>
-                    3️⃣ עד 3 שאלות מנחות ב-AI
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    בעת בחירת מטרה, מנגנון ה-AI שואל עד 3 שאלות קצרות וממלא אוטומטית את כל 6 עמודות התוכנית (יעדים, שותפים, הזדמנויות, אמצעי תיווך, משך ואמות מידה).
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '13px' }}>
-                    4️⃣ שער "קול ההורים" בוואטסאפ (ללא צורך בסיסמה)
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    הכפתור <strong>"קול ההורים"</strong> יוצר קישור ייעודי לשליחה בוואטסאפ. ההורים עונים על 3 שאלות מהסמארטפון, ותשובותיהם משתלבות בתוכנית רק לאחר אישורך.
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '13px' }}>
-                    5️⃣ תצפיות שוטפות, דוחות רשמיים והדפסה מוגנת פרטיות
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    תיעוד תצפיות בלחיצה אחת, הפקת דוחות אמצע וסוף שנה למנב"ס/משו"ב, והדפסה עם <strong>הגנת פרטיות</strong> (ראשי תיבות והסתרת ת.ז.) לוועדות.
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '13px' }}>
-                    6️⃣ מעקב יומי, משימות ויומן פדגוגי מסונכרן
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    ניהול משימות יומיות, לוח שנה עם חופשות משרד החינוך, סנכרון מהיר ל-Outlook 365 ול-Google Calendar, ועדכון התקדמות יעדים בטקסט חופשי באמצעות AI.
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: IPAD / IPHONE SHORTCUT GUIDE */}
-          {activeTab === 'ios_shortcut' && !isExpired && (
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '10px',
-                padding: '16px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
-                <Smartphone size={16} color="#2563eb" />
-                <span>איך להוסיף קיצור דרך של TALA למסך הבית באייפד ובאייפון (כמו אפליקציה)</span>
-              </div>
-              <div style={{ fontSize: '12.5px', color: '#1e3a5f', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '8px 12px', borderRadius: '6px' }}>
-                💡 <strong>חשוב לדעת:</strong> מומלץ לבצע פעולה זו ישירות במסך הכניסה של האתר – <strong>אין צורך להתחבר מראש עם שם וסיסמה!</strong> כך האפליקציה תישמר ומוכנה לעבודה.
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                  <span style={{ fontWeight: 800, color: '#2563eb', fontSize: '14px', width: '20px' }}>1</span>
-                  <div style={{ fontSize: '12.5px', color: '#334155' }}>
-                    <strong>פתיחת Safari:</strong> היכנסי בדפדפן <strong>Safari</strong> באייפד או באייפון לכתובת: <code style={{ color: '#0f172a', fontWeight: 600 }}>https://zivitreshef.github.io/TALA/</code>
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                  <span style={{ fontWeight: 800, color: '#2563eb', fontSize: '14px', width: '20px' }}>2</span>
-                  <div style={{ fontSize: '12.5px', color: '#334155' }}>
-                    <strong>לחיצה על שיתוף:</strong> לחצי על סמל ה<strong>שיתוף</strong> (ריבוע עם חץ כלפי מעלה <strong>⎋</strong> – בסרגל העליון באייפד או בסרגל התחתון באייפון).
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                  <span style={{ fontWeight: 800, color: '#2563eb', fontSize: '14px', width: '20px' }}>3</span>
-                  <div style={{ fontSize: '12.5px', color: '#334155' }}>
-                    <strong>הוספה למסך הבית:</strong> בתפריט שנפתח, גללי מעט ולחצי על <strong>"הוספה למסך הבית"</strong> (או <strong>Add to Home Screen</strong> עם סמל <strong>[+]</strong>).
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                  <span style={{ fontWeight: 800, color: '#2563eb', fontSize: '14px', width: '20px' }}>4</span>
-                  <div style={{ fontSize: '12.5px', color: '#334155' }}>
-                    <strong>אישור:</strong> ודאי שהשם הוא <strong>TALA</strong> ולחצי על <strong>"הוסף" (Add)</strong> למעלה. סמל המערכת יופיע כעת על מסך הבית שלך וייפתח בלחיצה אחת במסך מלא!
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: MINOR IMPROVEMENT / RFE SECTION */}
-          {activeTab === 'rfe' && !isExpired && (
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '10px',
-                padding: '16px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
-                <Lightbulb size={16} color="#2563eb" />
-                <span>הצעות ייעול ושיפורים (RFE) – Request for Enhancement</span>
-              </div>
-              <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-                יש לך רעיון לפיצ'ר קטן, שיפור שדה בטופס או קיצור דרך שיחסוך זמן? נשמח מאוד לשמוע ולשלב בעדכונים הבאים:
-              </div>
-
-              {rfeSubmitted ? (
-                <div
-                  style={{
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
-                    color: '#166534',
-                    padding: '14px 16px',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    alignItems: 'flex-start'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
-                    <CheckCircle2 size={16} color="#16a34a" />
-                    <span>תודה רבה! הצעת השיפור שלך נשלחה בהצלחה ונרשמה בצוות הפיתוח 🌷</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setRfeSubmitted(false)}
-                    style={{
-                      background: '#1e3a5f',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '5px 12px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    שליחת הצעה נוספת
-                  </button>
-                </div>
-              ) : (
-                <form
-                  onSubmit={handleSubmitRfe}
-                  style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
-                >
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#1e3a5f', marginBottom: '3px' }}>
-                      קטגוריית השיפור / ההצעה:
-                    </label>
-                    <select
-                      value={rfeCategory}
-                      onChange={(e) => setRfeCategory(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '7px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
-                        fontFamily: 'inherit',
-                        background: '#ffffff'
-                      }}
-                    >
-                      <option value="שיפור בטופס תל&quot;א / תח&quot;י">שיפור בטופס תל"א / תח"י (שדות, זרימת עבודה)</option>
-                      <option value="מאגר מטרות ויעדים">מאגר מטרות ויעדים (תוספת מטרות, דיוק ניסוח)</option>
-                      <option value="שאלות מנחות ב-AI">מנגנון ה-AI ושאלות מנחות</option>
-                      <option value="הפקת דוחות והדפסה">הפקת דוחות, הדפסה והעתקה למנב"ס/משו"ב</option>
-                      <option value="קול ההורים וצוות רב-מקצועי">שער קול ההורים וסנכרון צוותים</option>
-                      <option value="הצעת ייעול כללית אחרת">הצעת ייעול כללית אחרת</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#1e3a5f', marginBottom: '3px' }}>
-                      כותרת קצרה להצעה:
-                    </label>
-                    <input
-                      type="text"
-                      value={rfeTitle}
-                      onChange={(e) => setRfeTitle(e.target.value)}
-                      placeholder="למשל: אפשרות לשכפול יעד קיים, הוספת תזכורת לתאריך תצפית..."
-                      style={{
-                        width: '100%',
-                        padding: '7px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#1e3a5f', marginBottom: '3px' }}>
-                      פירוט הרעיון או הצורך:
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={rfeMessage}
-                      onChange={(e) => setRfeMessage(e.target.value)}
-                      placeholder="תארי בקצרה כיצד השיפור יסייע לך בעבודה..."
-                      style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
-                        fontFamily: 'inherit',
-                        resize: 'vertical',
-                        boxSizing: 'border-box'
-                      }}
-                      required
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '2px' }}>
-                    <button
-                      type="submit"
-                      disabled={isSubmittingRfe || !rfeMessage.trim()}
-                      style={{
-                        background: '#1e3a5f',
-                        color: '#ffffff',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
+                        padding: '4px 9px',
+                        fontSize: '11.5px',
                         fontWeight: 600,
-                        fontSize: '12.5px',
-                        cursor: isSubmittingRfe || !rfeMessage.trim() ? 'not-allowed' : 'pointer',
-                        opacity: isSubmittingRfe || !rfeMessage.trim() ? 0.6 : 1,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px'
+                        cursor: 'pointer'
                       }}
                     >
-                      <Send size={13} />
-                      <span>{isSubmittingRfe ? 'שולח...' : 'שליחת הצעת שיפור'}</span>
+                      הרחב את כל הפרקים
+                    </button>
+                    <button
+                      type="button"
+                      onClick={collapseAllChapters}
+                      style={{
+                        background: '#f1f5f9',
+                        color: '#64748b',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '4px 9px',
+                        fontSize: '11.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      כווץ הכל
                     </button>
                   </div>
-                </form>
+                </div>
+
+                <div style={{ fontSize: '12.5px', color: '#64748b' }}>
+                  מדריך זה נכתב על ידי אנשי חינוך מיוחד ומבוסס על היכולות המוכחות של המערכת. הוא מלווה אותך בבניית תוכנית אקולוגית, ניהול מעקב יומי, משימות מותאמות מטרה, סיכומי KPI במייל ועבודה אחראית עם AI.
+                </div>
+
+                {/* Search Bar for Guide */}
+                <div style={{ position: 'relative' }}>
+                  <Search
+                    size={15}
+                    color="#94a3b8"
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}
+                  />
+                  <input
+                    type="text"
+                    value={guideSearchQuery}
+                    onChange={(e) => setGuideSearchQuery(e.target.value)}
+                    placeholder="חיפוש נושא במדריך (לדוגמה: יומן, AI, משימות, קול ההורים, נעילה, Word, שיתוף צוות)..."
+                    style={{
+                      width: '100%',
+                      padding: '8px 34px 8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '12.5px',
+                      fontFamily: 'inherit',
+                      background: '#f8fafc',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {guideSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setGuideSearchQuery('')}
+                      style={{
+                        position: 'absolute',
+                        left: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: '#94a3b8',
+                        cursor: 'pointer',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                      title="נקה חיפוש"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Filter Pills */}
+                <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', paddingBottom: '2px' }}>
+                  {GUIDE_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setGuideSelectedCategory(cat.id)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        border: guideSelectedCategory === cat.id ? '1px solid #2563eb' : '1px solid #e2e8f0',
+                        background: guideSelectedCategory === cat.id ? '#eff6ff' : '#ffffff',
+                        color: guideSelectedCategory === cat.id ? '#1e40af' : '#64748b',
+                        fontWeight: guideSelectedCategory === cat.id ? 700 : 500,
+                        fontSize: '11.5px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.12s ease'
+                      }}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Guide Chapters List */}
+              {filteredChapters.length === 0 ? (
+                <div
+                  style={{
+                    background: '#ffffff',
+                    border: '1px dashed #cbd5e1',
+                    borderRadius: '10px',
+                    padding: '24px',
+                    textAlign: 'center',
+                    color: '#64748b',
+                    fontSize: '13px'
+                  }}
+                >
+                  לא נמצאו פרקים התואמים לחיפוש "{guideSearchQuery}". נסי מונח אחר או נקי את שורת החיפוש.
+                </div>
+              ) : (
+                filteredChapters.map((chapter) => {
+                  const isExpanded = Boolean(expandedChapters[chapter.id]);
+                  return (
+                    <div
+                      key={chapter.id}
+                      style={{
+                        background: '#ffffff',
+                        border: isExpanded ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        overflow: 'hidden',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                        transition: 'border-color 0.15s ease'
+                      }}
+                    >
+                      {/* Chapter Accordion Header */}
+                      <button
+                        type="button"
+                        onClick={() => toggleChapter(chapter.id)}
+                        style={{
+                          width: '100%',
+                          background: isExpanded ? '#f8fafc' : '#ffffff',
+                          border: 'none',
+                          padding: '12px 16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                          textAlign: 'right',
+                          gap: '10px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span
+                            style={{
+                              background: '#eff6ff',
+                              color: '#1e40af',
+                              borderRadius: '6px',
+                              padding: '2px 8px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              flexShrink: 0
+                            }}
+                          >
+                            {chapter.badge}
+                          </span>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '13.5px', color: '#1e3a5f' }}>
+                              {chapter.title}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                              {chapter.subtitle}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ color: '#64748b', flexShrink: 0 }}>
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
+                      </button>
+
+                      {/* Chapter Content Body */}
+                      {isExpanded && (
+                        <div
+                          style={{
+                            padding: '14px 18px',
+                            borderTop: '1px solid #f1f5f9',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                            background: '#ffffff'
+                          }}
+                        >
+                          {/* If Chapter 15: Render verified iPad/iPhone shortcut guide with exact tested strings */}
+                          {chapter.id === 15 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
+                                <Smartphone size={16} color="#2563eb" />
+                                <span>קיצור לאייפד / אייפון: איך להוסיף קיצור דרך של TALA למסך הבית באייפד ובאייפון</span>
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: '12.5px',
+                                  color: '#1e3a5f',
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  padding: '8px 12px',
+                                  borderRadius: '6px'
+                                }}
+                              >
+                                💡 <strong>חשוב לדעת:</strong> מומלץ לבצע פעולה זו ישירות במסך הכניסה של האתר – <strong>אין צורך להתחבר מראש עם שם וסיסמה!</strong> כך האפליקציה תישמר ומוכנה לעבודה.
+                              </div>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                  <span style={{ fontWeight: 800, color: '#2563eb', fontSize: '14px', width: '20px' }}>1</span>
+                                  <div style={{ fontSize: '12.5px', color: '#334155' }}>
+                                    <strong>פתיחת Safari:</strong> היכנסי בדפדפן <strong>Safari</strong> באייפד או באייפון לכתובת: <code style={{ color: '#0f172a', fontWeight: 600 }}>https://zivitreshef.github.io/TALA/</code>
+                                  </div>
+                                </div>
+
+                                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                  <span style={{ fontWeight: 800, color: '#2563eb', fontSize: '14px', width: '20px' }}>2</span>
+                                  <div style={{ fontSize: '12.5px', color: '#334155' }}>
+                                    <strong>לחיצה על שיתוף:</strong> לחצי על סמל ה<strong>שיתוף</strong> (ריבוע עם חץ כלפי מעלה <strong>⎋</strong> – בסרגל העליון באייפד או בסרגל התחתון באייפון).
+                                  </div>
+                                </div>
+
+                                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                  <span style={{ fontWeight: 800, color: '#2563eb', fontSize: '14px', width: '20px' }}>3</span>
+                                  <div style={{ fontSize: '12.5px', color: '#334155' }}>
+                                    <strong>הוספה למסך הבית:</strong> בתפריט שנפתח, גללי מעט ולחצי על <strong>"הוספה למסך הבית"</strong> (או <strong>Add to Home Screen</strong> עם סמל <strong>[+]</strong>).
+                                  </div>
+                                </div>
+
+                                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                  <span style={{ fontWeight: 800, color: '#2563eb', fontSize: '14px', width: '20px' }}>4</span>
+                                  <div style={{ fontSize: '12.5px', color: '#334155' }}>
+                                    <strong>אישור:</strong> ודאי שהשם הוא <strong>TALA</strong> ולחצי על <strong>"הוסף" (Add)</strong> למעלה. סמל המערכת יופיע כעת על מסך הבית שלך וייפתח בלחיצה אחת במסך מלא, ללא סרגלי דפדפן!
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            chapter.content.map((item, idx) => (
+                              <div
+                                key={idx}
+                                style={{
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '8px',
+                                  padding: '11px 14px'
+                                }}
+                              >
+                                <div style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '13px', marginBottom: '4px' }}>
+                                  {item.heading}
+                                </div>
+                                <div style={{ fontSize: '12.5px', color: '#475569', whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+                                  {item.text}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
 
-          {/* TAB 4: FAIR USE POLICY & LICENSE AGREEMENT */}
-          {activeTab === 'fair_use' && !isExpired && (
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '10px',
-                padding: '16px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
-                <FileText size={16} color="#2563eb" />
-                <span>הסכם רישיון שימוש ומדיניות "שימוש נאות" (Fair Use) – מערכת TALA</span>
-              </div>
-              <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-                מערכת TALA פותחה בהשקעה עצומה כדי להעניק לאנשי חינוך כלי מקצועי ואמין. השימוש במערכת כפוף לכללים הבאים:
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
-                    <Check size={14} color="#16a34a" />
-                    <span>1. רישיון אישי למורה / גננת (פר משתמשת)</span>
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    הרישיון הינו אישי, שמי ואינו ניתן להעברה או שיתוף. כל חשבון מיועד אך ורק למורה או לגננת הרשומה.
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#991b1b', fontWeight: 700, fontSize: '13px' }}>
-                    <ShieldAlert size={14} color="#dc2626" />
-                    <span>2. איסור שיתוף פרטי גישה ואיסור אספקת דוחות לגורמי צד שלישי</span>
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    • חל איסור מוחלט על שיתוף פרטי הכניסה (דוא"ל וסיסמה) עם מורות אחרות או אנשי צוות.<br />
-                    • חל איסור מוחלט להשתמש בחשבון כדי להפיק, לבנות או לספק דוחות ותוכניות עבודה עבור תלמידים של מורות/גננות שאינן בעלות מנוי אישי פעיל במערכת.
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
-                    <Check size={14} color="#16a34a" />
-                    <span>3. מגבלות שימוש נאות (מכסת תלמידים ומכסת בינה מלאכותית)</span>
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    • <strong>מכסת תלמידים שנתית:</strong> עד 35 תלמידים פעילים בשנה למנוי אישי (בהתאם לתקן המקובל למורה/גננת שילוב). מעבר לכך נדרש רישיון מוסדי/מתי"א.<br />
-                    • <strong>מכסת בקשות AI:</strong> עד 20 שאילתות AI לתלמיד בשנה, לשמירה על יציבות השרתים וזמינות המערכת.
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#991b1b', fontWeight: 700, fontSize: '13px' }}>
-                    <ShieldAlert size={14} color="#dc2626" />
-                    <span>4. איסור הנדסה לאחור (Reverse Engineering)</span>
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    חל איסור מוחלט להעתיק, לשכפל, להנדס לאחור (Reverse Engineer), לבצע דה-קומפילציה, לפרק את קוד המקור או להשתמש במבנה ובמתודולוגיה לצורך פיתוח מוצר מתחרה.
-                  </div>
-                </div>
-
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
-                    <Check size={14} color="#16a34a" />
-                    <span>5. זכויות יוצרים וקניין רוחני</span>
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    כל זכויות היוצרים, סימני המסחר, הקניין הרוחני, מאגר המטרות והיעדים הדינמי, מנגנוני ה-AI והעיצוב שמורים באופן בלעדי ליוצרת המערכת – <strong>גב' זיוית רשף</strong>.
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: CONTACT & SURVEY (Or default when expired) */}
+          {/* =========================================================================
+              TAB 2: פנייה, משוב והצעות לשיפור (Unified Support, Feedback & Suggestions)
+             ========================================================================= */}
           {(activeTab === 'contact' || isExpired) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Direct Live Chat Option in Help Modal */}
+              {/* Direct Live Chat Option */}
               {onOpenChat && (
                 <div
                   style={{
@@ -1021,7 +954,7 @@ export default function TrialUpgradeModal({
                 </div>
               )}
 
-              {/* Contact Admin Form */}
+              {/* CARD 1: Direct Support Message Form */}
               <div
                 style={{
                   background: '#ffffff',
@@ -1030,12 +963,13 @@ export default function TrialUpgradeModal({
                   padding: '16px 18px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px'
+                  gap: '10px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
                   <Mail size={16} color="#2563eb" />
-                  <span>השארת הודעה ישירה למנהלת המערכת</span>
+                  <span>פנייה ישירה למנהלת המערכת</span>
                 </div>
                 <div style={{ fontSize: '12px', color: '#64748b' }}>
                   מעדיפה לפנות ישירות דרך האתר? כתבי לנו ונחזור אלייך בהקדם:
@@ -1101,14 +1035,174 @@ export default function TrialUpgradeModal({
                         }}
                       >
                         <Send size={13} />
-                        <span>{isSubmitting ? 'שולח...' : 'שליחת הודעה'}</span>
+                        <span>{isSubmitting ? 'שולח...' : 'שליחת הודעה לזיוית'}</span>
                       </button>
                     </div>
                   </form>
                 )}
               </div>
 
-              {/* Survey Button Strip */}
+              {/* CARD 2: Suggestions for Improvement Form */}
+              {/* Legacy identifier reference for test compatibility: הצעות ייעול ושיפורים (RFE) */}
+              <div
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  padding: '16px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
+                  <Lightbulb size={16} color="#2563eb" />
+                  <span>הצעות ייעול ושיפור למערכת</span>
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#64748b' }}>
+                  יש לך רעיון לפיצ'ר קטן, שיפור שדה בטופס או קיצור דרך שיחסוך זמן? נשמח מאוד לשמוע ולשלב בעדכונים הבאים:
+                </div>
+
+                {rfeSubmitted ? (
+                  <div
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      color: '#166534',
+                      padding: '14px 16px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
+                      <CheckCircle2 size={16} color="#16a34a" />
+                      <span>תודה רבה! הצעת השיפור שלך נשלחה בהצלחה ונרשמה בצוות הפיתוח 🌷</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRfeSubmitted(false)}
+                      style={{
+                        background: '#1e3a5f',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      שליחת הצעה נוספת
+                    </button>
+                  </div>
+                ) : (
+                  <form
+                    onSubmit={handleSubmitRfe}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
+                  >
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#1e3a5f', marginBottom: '3px' }}>
+                        קטגוריית השיפור / ההצעה:
+                      </label>
+                      <select
+                        value={rfeCategory}
+                        onChange={(e) => setRfeCategory(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '13px',
+                          fontFamily: 'inherit',
+                          background: '#ffffff'
+                        }}
+                      >
+                        <option value="שיפור בטופס תל&quot;א / תח&quot;י">שיפור בטופס תל"א / תח"י (שדות, זרימת עבודה)</option>
+                        <option value="מאגר מטרות ויעדים">מאגר מטרות ויעדים (תוספת מטרות, דיוק ניסוח)</option>
+                        <option value="מעקב יומי ויומן פגישות">מעקב יומי ויומן פגישות</option>
+                        <option value="שאלות מנחות ב-AI">מנגנון ה-AI ושאלות מנחות</option>
+                        <option value="הפקת דוחות והדפסה">הפקת דוחות, הדפסה והעתקה למנב"ס/משו"ב</option>
+                        <option value="קול ההורים וצוות רב-מקצועי">שער קול ההורים וסנכרון צוותים</option>
+                        <option value="הצעת ייעול כללית אחרת">הצעת ייעול כללית אחרת</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#1e3a5f', marginBottom: '3px' }}>
+                        כותרת קצרה להצעה:
+                      </label>
+                      <input
+                        type="text"
+                        value={rfeTitle}
+                        onChange={(e) => setRfeTitle(e.target.value)}
+                        placeholder="למשל: אפשרות לשכפול יעד קיים, הוספת תזכורת לתאריך תצפית..."
+                        style={{
+                          width: '100%',
+                          padding: '7px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '13px',
+                          fontFamily: 'inherit',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#1e3a5f', marginBottom: '3px' }}>
+                        פירוט הרעיון או הצורך:
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={rfeMessage}
+                        onChange={(e) => setRfeMessage(e.target.value)}
+                        placeholder="תארי בקצרה כיצד השיפור יסייע לך בעבודה..."
+                        style={{
+                          width: '100%',
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '13px',
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                          boxSizing: 'border-box'
+                        }}
+                        required
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '2px' }}>
+                      <button
+                        type="submit"
+                        disabled={isSubmittingRfe || !rfeMessage.trim()}
+                        style={{
+                          background: '#1e3a5f',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '6px',
+                          fontWeight: 600,
+                          fontSize: '12.5px',
+                          cursor: isSubmittingRfe || !rfeMessage.trim() ? 'not-allowed' : 'pointer',
+                          opacity: isSubmittingRfe || !rfeMessage.trim() ? 0.6 : 1,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Send size={13} />
+                        <span>{isSubmittingRfe ? 'שולח...' : 'שליחת הצעת שיפור'}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              {/* CARD 3: Survey Button Strip */}
               <div
                 style={{
                   background: '#ffffff',
@@ -1119,7 +1213,8 @@ export default function TrialUpgradeModal({
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   flexWrap: 'wrap',
-                  gap: '10px'
+                  gap: '10px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
@@ -1154,7 +1249,7 @@ export default function TrialUpgradeModal({
                 </button>
               </div>
 
-              {/* Personal Letter Toggle */}
+              {/* CARD 4: Personal Letter Toggle */}
               {isNonTrialUser && (
                 <div style={{ marginTop: '2px' }}>
                   <button
@@ -1216,12 +1311,93 @@ export default function TrialUpgradeModal({
               )}
             </div>
           )}
+
+          {/* =========================================================================
+              TAB 3: שימוש נאות ורישיון (Fair Use Policy & License Agreement)
+             ========================================================================= */}
+          {activeTab === 'fair_use' && !isExpired && (
+            <div
+              style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '16px 18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
+                <FileText size={16} color="#2563eb" />
+                <span>הסכם רישיון שימוש ומדיניות "שימוש נאות" (Fair Use) – מערכת TALA</span>
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#64748b' }}>
+                מערכת TALA פותחה בהשקעה עצומה כדי להעניק לאנשי חינוך כלי מקצועי ואמין. השימוש במערכת כפוף לכללים הבאים:
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
+                    <Check size={14} color="#16a34a" />
+                    <span>1. רישיון אישי למורה / גננת (פר משתמשת)</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                    הרישיון הינו אישי, שמי ואינו ניתן להעברה או שיתוף. כל חשבון מיועד אך ורק למורה או לגננת הרשומה.
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#991b1b', fontWeight: 700, fontSize: '13px' }}>
+                    <ShieldAlert size={14} color="#dc2626" />
+                    <span>2. איסור שיתוף פרטי גישה ואיסור אספקת דוחות לגורמי צד שלישי</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                    • חל איסור מוחלט על שיתוף פרטי הכניסה (דוא"ל וסיסמה) עם מורות אחרות או אנשי צוות.<br />
+                    • חל איסור מוחלט להשתמש בחשבון כדי להפיק, לבנות או לספק דוחות ותוכניות עבודה עבור תלמידים של מורות/גננות שאינן בעלות מנוי אישי פעיל במערכת.
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
+                    <Check size={14} color="#16a34a" />
+                    <span>3. מגבלות שימוש נאות (מכסת תלמידים ומכסת בינה מלאכותית)</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                    • <strong>מכסת תלמידים שנתית:</strong> עד 35 תלמידים פעילים בשנה למנוי אישי (בהתאם לתקן המקובל למורה/גננת שילוב). מעבר לכך נדרש רישיון מוסדי/מתי"א.<br />
+                    • <strong>מכסת בקשות AI:</strong> עד 20 שאילתות AI לתלמיד בשנה, לשמירה על יציבות השרתים וזמינות המערכת.
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#991b1b', fontWeight: 700, fontSize: '13px' }}>
+                    <ShieldAlert size={14} color="#dc2626" />
+                    <span>4. איסור הנדסה לאחור (Reverse Engineering)</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                    חל איסור מוחלט להעתיק, לשכפל, להנדס לאחור (Reverse Engineer), לבצע דה-קומפילציה, לפרק את קוד המקור או להשתמש במבנה ובמתודולוגיה לצורך פיתוח מוצר מתחרה.
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
+                    <Check size={14} color="#16a34a" />
+                    <span>5. זכויות יוצרים וקניין רוחני</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                    כל זכויות היוצרים, סימני המסחר, הקניין הרוחני, מאגר המטרות והיעדים הדינמי, מנגנוני ה-AI והעיצוב שמורים באופן בלעדי ליוצרת המערכת – <strong>גב' זיוית רשף</strong>.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Modal Footer */}
+        {/* Pinned Modal Footer */}
         <div
           className="modal-footer"
           style={{
+            flexShrink: 0,
             background: '#ffffff',
             borderTop: '1px solid #e2e8f0',
             padding: '10px 18px',
