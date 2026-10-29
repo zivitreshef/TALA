@@ -492,56 +492,51 @@ export default function AdminAllowlistModal({
   // Group stats calculation
   const groupStats = computeGroupStats(allowedUsers, students);
 
-  // Group counts for sub-tabs
-  const userGroupCounts = useMemo(() => {
-    let admins = 0;
-    let paying = 0;
-    let trials = 0;
-    let expiredDisabled = 0;
-    const now = new Date();
+  // Group counts for sub-tabs (pure computation - no hook after early return)
+  let adminCount = 0;
+  let payingCount = 0;
+  let trialCount = 0;
+  let expiredDisabledCount = 0;
+  const now = new Date();
 
-    for (const u of (allowedUsers || [])) {
+  for (const u of (allowedUsers || [])) {
+    const g = classifyUserGroup(u, now);
+    if (g === 'admins') adminCount++;
+    else if (g === 'paying') payingCount++;
+    else if (g === 'trials') trialCount++;
+    else if (g === 'expired_disabled') expiredDisabledCount++;
+  }
+
+  const userGroupCounts = {
+    all: (allowedUsers || []).length,
+    admins: adminCount,
+    paying: payingCount,
+    trials: trialCount,
+    expired_disabled: expiredDisabledCount
+  };
+
+  // Filtered and sorted users list (pure computation - no hook after early return)
+  const filteredUsersList = (allowedUsers || []).filter((u) => {
+    if (userGroupTab !== 'all') {
       const g = classifyUserGroup(u, now);
-      if (g === 'admins') admins++;
-      else if (g === 'paying') paying++;
-      else if (g === 'trials') trials++;
-      else if (g === 'expired_disabled') expiredDisabled++;
+      if (g !== userGroupTab) return false;
     }
 
-    return {
-      all: (allowedUsers || []).length,
-      admins,
-      paying,
-      trials,
-      expired_disabled: expiredDisabled
-    };
-  }, [allowedUsers]);
+    if (groupFilter !== 'all' && (u.group || '').trim() !== groupFilter) return false;
 
-  // Filtered and sorted users list
-  const filteredUsers = useMemo(() => {
-    const now = new Date();
-    const list = (allowedUsers || []).filter((u) => {
-      if (userGroupTab !== 'all') {
-        const g = classifyUserGroup(u, now);
-        if (g !== userGroupTab) return false;
-      }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const matchName = (u.name || '').toLowerCase().includes(q);
+      const matchEmail = (u.email || '').toLowerCase().includes(q);
+      const matchGroup = (u.group || '').toLowerCase().includes(q);
+      const matchTitle = (u.title || '').toLowerCase().includes(q);
+      if (!matchName && !matchEmail && !matchGroup && !matchTitle) return false;
+    }
 
-      if (groupFilter !== 'all' && (u.group || '').trim() !== groupFilter) return false;
+    return true;
+  });
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.trim().toLowerCase();
-        const matchName = (u.name || '').toLowerCase().includes(q);
-        const matchEmail = (u.email || '').toLowerCase().includes(q);
-        const matchGroup = (u.group || '').toLowerCase().includes(q);
-        const matchTitle = (u.title || '').toLowerCase().includes(q);
-        if (!matchName && !matchEmail && !matchGroup && !matchTitle) return false;
-      }
-
-      return true;
-    });
-
-    return sortUsersList(list, sortField, sortDirection, studentCountByEmail, now);
-  }, [allowedUsers, userGroupTab, groupFilter, searchQuery, sortField, sortDirection, studentCountByEmail]);
+  const filteredUsers = sortUsersList(filteredUsersList, sortField, sortDirection, studentCountByEmail, now);
 
   const handleSortToggle = (field) => {
     if (sortField === field) {

@@ -456,6 +456,27 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         expect(modalContent).toContain('renderSortIndicator');
         expect(modalContent).not.toContain('🤖 {aiCalls} פניות AI');
       });
+
+      it('verifies no React hooks are called after early return (rules of hooks guard against #310)', async () => {
+        const fs = await import('fs');
+        const path = await import('path');
+        const modalContent = fs.readFileSync(
+          path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx'),
+          'utf-8'
+        );
+
+        const lines = modalContent.split(/\r?\n/);
+        let afterReturn = false;
+        const invalidHooks = [];
+        lines.forEach((l, idx) => {
+          if (l.includes('if (!isOpen) return null;')) afterReturn = true;
+          if (afterReturn && /\buse[A-Z]\w*\s*\(/.test(l)) {
+            invalidHooks.push({ line: idx + 1, code: l.trim() });
+          }
+        });
+
+        expect(invalidHooks).toEqual([]);
+      });
     });
   });
 });
