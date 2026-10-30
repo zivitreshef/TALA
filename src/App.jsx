@@ -206,6 +206,7 @@ const ADMIN_REQUESTS_STORAGE_KEY = 'tala_admin_requests_v1';
 const USER_USAGE_TRACKER_KEY = 'tala_user_usage_tracker_v1';
 const DISMISSED_SHARED_REPORTS_KEY = 'tala_dismissed_shared_reports_v1';
 const UPGRADE_BANNER_STORAGE_KEY = 'tala_upgrade_banner_v1';
+export const SHOW_NEW_USER_JOURNEY = false;
 
 export default function App() {
   // Allowed users list
@@ -2270,12 +2271,14 @@ export default function App() {
   const paidRemainingDays = (!currentUser?.isTrialUser && currentUser) ? getPaidRemainingDays(currentUser) : null;
 
   const baseStudentsForView =
-    onboardingState?.mode === 'demo' && demoStudent
+    SHOW_NEW_USER_JOURNEY && onboardingState?.mode === 'demo' && demoStudent
       ? [demoStudent, ...userStudents.filter((s) => s.id !== demoStudent.id)]
       : userStudents;
 
   const selectedStudent =
-    demoStudent && (selectedStudentId === demoStudent.id || selectedStudentId === 'demo_yonatan_levi')
+    SHOW_NEW_USER_JOURNEY &&
+    demoStudent &&
+    (selectedStudentId === demoStudent.id || selectedStudentId === 'demo_yonatan_levi')
       ? demoStudent
       : userStudents.find((s) => s.id === selectedStudentId);
 
@@ -2323,6 +2326,7 @@ export default function App() {
     typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.3';
 
   const activeOnboardingStep =
+    SHOW_NEW_USER_JOURNEY &&
     effectiveOnboardingState &&
     !effectiveOnboardingState.isPaused &&
     !effectiveOnboardingState.isCompleted &&
@@ -2332,7 +2336,7 @@ export default function App() {
       : 0;
 
   const onboardingDockMode =
-    !effectiveOnboardingState || effectiveOnboardingState.isDismissed
+    !SHOW_NEW_USER_JOURNEY || !effectiveOnboardingState || effectiveOnboardingState.isDismissed
       ? 'hidden'
       : effectiveOnboardingState.isPaused || effectiveOnboardingState.isDockCollapsed
       ? 'collapsed'
@@ -2586,7 +2590,7 @@ export default function App() {
       </header>
 
       {/* New Feature Announcement Banner for All Users: Help Center & 10-Step Interactive User Journey */}
-      {!whatsNewDismissed && (
+      {SHOW_NEW_USER_JOURNEY && !whatsNewDismissed && (
         <div
           data-testid="whats-new-help-journey-banner"
           style={{
@@ -3183,7 +3187,7 @@ export default function App() {
 
               <div className="inside-landing-cards-grid">
                 {/* Onboarding Quickstart Banner for New Users */}
-                {userStudents.length === 0 && (
+                {SHOW_NEW_USER_JOURNEY && userStudents.length === 0 && (
                   <div
                     style={{
                       gridColumn: '1 / -1',
@@ -3556,6 +3560,7 @@ export default function App() {
           setShowTrialUpgradeModal(false);
           setIsSupportChatOpen(true);
         }}
+        showOnboardingControls={SHOW_NEW_USER_JOURNEY}
         onStartOnboarding={({ restart }) => {
           setShowTrialUpgradeModal(false);
           handleStartOnboarding({ restart });
@@ -4187,7 +4192,7 @@ export default function App() {
         onSaveAndLogout={handleSaveAndLogout}
       />
       {/* Complete Guided Onboarding Workspace & Navigator */}
-      {currentUser && (
+      {SHOW_NEW_USER_JOURNEY && currentUser && (
         <>
           <OnboardingGuidedWorkspace
             onboardingState={effectiveOnboardingState}

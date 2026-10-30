@@ -42,7 +42,8 @@ export default function TrialUpgradeModal({
   initialTab = null,
   defaultTab = null,
   onStartOnboarding = null,
-  onRestartOnboarding = null
+  onRestartOnboarding = null,
+  showOnboardingControls = true
 }) {
   const isNonTrialUser = Boolean(currentUser && !currentUser.isTrialUser);
   const [supportMessage, setSupportMessage] = useState('');
@@ -412,7 +413,7 @@ export default function TrialUpgradeModal({
               )}
 
               {/* Guided Onboarding Journey Quick Launcher */}
-              {(onStartOnboarding || onRestartOnboarding) && (
+              {showOnboardingControls && (onStartOnboarding || onRestartOnboarding) && (
                 <button
                   type="button"
                   data-testid="btn-relaunch-onboarding"
@@ -645,9 +646,10 @@ export default function TrialUpgradeModal({
           {activeTab === 'guide' && !isExpired && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Onboarding Interactive Tour Action Card */}
-              <div
-                style={{
-                  background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)',
+              {showOnboardingControls && (
+                <div
+                  style={{
+                    background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)',
                   border: '1.5px solid #86efac',
                   borderRadius: '10px',
                   padding: '14px 16px',
@@ -732,7 +734,8 @@ export default function TrialUpgradeModal({
                     המשך בסיור המודרך 👈
                   </button>
                 </div>
-              </div>
+                </div>
+              )}
 
               {/* Guide Header Banner */}
               <div
