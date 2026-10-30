@@ -712,5 +712,35 @@ describe('Onboarding Journey Engine & Help Modal Re-launch Suite', () => {
       const resolvedAfterToggle = resolveOnboardingDockStateForUser(expandedByTeacher, 3);
       expect(resolvedAfterToggle.isDockCollapsed).toBe(false);
     });
+
+    it('Scenario 10: Pressing "הראה לי במסך 🎯" invokes onExecuteAction with { fromSpotlightBtn: true }', () => {
+      const state = getOnboardingState(TEST_EMAIL);
+      const onExecuteAction = vi.fn();
+      const vnode = OnboardingGuidedWorkspace({
+        onboardingState: state,
+        onExecuteAction
+      });
+
+      // Locate the btn-onboarding-show-on-screen button in the virtual DOM tree
+      let showBtn = null;
+      const walk = (node) => {
+        if (!node || typeof node !== 'object') return;
+        if (node.props && node.props['data-testid'] === 'btn-onboarding-show-on-screen') {
+          showBtn = node;
+        }
+        const children = node.props?.children;
+        if (Array.isArray(children)) children.forEach(walk);
+        else if (children) walk(children);
+      };
+      walk(vnode);
+
+      expect(showBtn).not.toBeNull();
+      showBtn.props.onClick();
+      expect(onExecuteAction).toHaveBeenCalledTimes(1);
+      expect(onExecuteAction).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1 }),
+        { fromSpotlightBtn: true }
+      );
+    });
   });
 });

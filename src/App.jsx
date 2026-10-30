@@ -581,6 +581,7 @@ export default function App() {
     () => resolveOnboardingDockStateForUser(onboardingState, userStudents.length),
     [onboardingState, userStudents.length]
   );
+  const [onboardingSpotlightTick, setOnboardingSpotlightTick] = useState(0);
 
   const toggleFrameworkCluster = (frameworkKey) => {
     setExpandedFrameworks((prev) => ({
@@ -1868,18 +1869,58 @@ export default function App() {
     }
   };
 
-  const handleExecuteOnboardingAction = (step) => {
+  const triggerOnboardingDomSpotlight = () => {
+    setOnboardingSpotlightTick((t) => t + 1);
+    setTimeout(() => {
+      if (typeof document === 'undefined') return;
+      const targets = Array.from(
+        document.querySelectorAll(
+          '.onboarding-tour-arrow-box, .tour-highlight-btn, .tour-highlight-input'
+        )
+      );
+      if (targets.length === 0) return;
+
+      const primaryScrollTarget =
+        document.querySelector('.onboarding-tour-arrow-box') || targets[0];
+      if (primaryScrollTarget?.scrollIntoView) {
+        primaryScrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+
+      targets.forEach((el) => {
+        el.classList.remove('tour-spotlight-burst');
+        void el.offsetWidth;
+        el.classList.add('tour-spotlight-burst');
+      });
+
+      const firstInteractive = document.querySelector(
+        '.tour-highlight-input, .tour-highlight-btn'
+      );
+      if (firstInteractive && typeof firstInteractive.focus === 'function') {
+        try {
+          firstInteractive.focus({ preventScroll: true });
+        } catch (_) {}
+      }
+
+      setTimeout(() => {
+        targets.forEach((el) => el.classList.remove('tour-spotlight-burst'));
+      }, 2200);
+    }, 140);
+  };
+
+  const handleExecuteOnboardingAction = (step, options = {}) => {
     if (!step) return;
+    const fromSpotlightBtn = Boolean(options?.fromSpotlightBtn);
+
     switch (step.id) {
       case 1:
-        if (!onboardingState?.mode) {
+        if (fromSpotlightBtn) {
+          if (typeof window !== 'undefined' && window.scrollTo) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } else if (!onboardingState?.mode) {
           setShowOnboardingNavigator(true);
-        } else if (onboardingState.mode === 'demo') {
-          const demo = getDemoStudent(currentUser?.email);
-          setDemoStudent(demo);
-          setSelectedStudentId(demo.id);
-          setShowDailyTracker(false);
-          setShowGoalBankOverview(false);
+        } else {
+          setShowOnboardingNavigator(true);
         }
         break;
       case 2:
@@ -1887,16 +1928,18 @@ export default function App() {
       case 4:
       case 6:
       case 7:
-        if (onboardingState?.mode === 'demo') {
+      case 8:
+      case 9:
+        if (onboardingState?.mode === 'demo' || (!selectedStudentId && userStudents.length === 0)) {
           const demo = getDemoStudent(currentUser?.email);
           setDemoStudent(demo);
           setSelectedStudentId(demo.id);
-        } else if (!selectedStudentId) {
-          if (userStudents.length > 0) {
-            setSelectedStudentId(userStudents[0].id);
-          } else {
-            handleAddNewStudent();
+          if (!onboardingState?.mode && currentUser?.email) {
+            const nextSt = saveOnboardingState(currentUser.email, { mode: 'demo' });
+            setOnboardingState(nextSt);
           }
+        } else if (!selectedStudentId && userStudents.length > 0) {
+          setSelectedStudentId(userStudents[0].id);
         }
         setShowDailyTracker(false);
         setShowGoalBankOverview(false);
@@ -1906,24 +1949,20 @@ export default function App() {
         setSelectedStudentId(null);
         setShowGoalBankOverview(false);
         break;
-      case 8:
-      case 9:
-        if (onboardingState?.mode === 'demo') {
-          const demo = getDemoStudent(currentUser?.email);
-          setDemoStudent(demo);
-          setSelectedStudentId(demo.id);
-        } else if (!selectedStudentId && userStudents.length > 0) {
-          setSelectedStudentId(userStudents[0].id);
-        }
-        setShowDailyTracker(false);
-        setShowGoalBankOverview(false);
-        break;
       case 10:
-        setShowSelfPasswordModal(true);
+        if (fromSpotlightBtn) {
+          if (typeof window !== 'undefined' && window.scrollTo) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        } else {
+          setShowSelfPasswordModal(true);
+        }
         break;
       default:
         break;
     }
+
+    triggerOnboardingDomSpotlight();
   };
 
   const handleNextOnboardingStep = () => {
@@ -2341,7 +2380,17 @@ export default function App() {
 
         <div className="tala-header-controls">
           {/* Zone 1: Main Workspaces Segmented Nav Bar */}
-          <nav className="header-nav-segment" aria-label="ניווט ראשי">
+          <nav
+            className={`header-nav-segment ${activeOnboardingStep === 1 ? 'tour-highlight-btn' : ''}`}
+            aria-label="ניווט ראשי"
+            style={{ position: 'relative' }}
+          >
+            {activeOnboardingStep === 1 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '44px', right: '0', zIndex: 55 }}>
+                <span className="tour-arrow-anim">☝️</span>
+                <span>שלב 1: סרגל הניווט בין ניהול תלמידים, מעקב יומי ומאגר מטרות!</span>
+              </div>
+            )}
             <button
               type="button"
               className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker && !showGoalBankOverview ? 'active' : ''}`}
@@ -2571,7 +2620,7 @@ export default function App() {
             </span>
             <span style={{ lineHeight: 1.45 }}>
               <strong>מרכז עזרה משודרג וסיור מודרך אינטראקטיבי (10 שלבים):</strong> בסרגל העליון מחכה לכן כפתור{' '}
-              <strong>"עזרה"</strong> עם מדריך ושאלות נפוצות, ובחלק התחתון סרגל הדרכה אינטראקטיבי עם חיצי הכוונה מונפשים ותלמיד דמו (פתוח אוטומטית למורות חדשות, וממוזער כברירת מחדל למורות עם תלמידים קיימים).
+              <strong>"עזרה"</strong> עם מדריך ושאלות נפוצות, ובחלק התחתון סרגל הדרכה אינטראקטיבי עם חיצי הכוונה מונפשים ותלמיד דמו.
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -2690,14 +2739,22 @@ export default function App() {
               <Users size={19} />
               <h3>רשימת תלמידים</h3>
             </div>
-            <button
-              type="button"
-              className="btn-new-student"
-              onClick={handleAddNewStudent}
-            >
-              <Plus size={16} />
-              <span>תלמיד/ה חדש/ה</span>
-            </button>
+            <div style={{ position: 'relative' }}>
+              {activeOnboardingStep === 1 && (
+                <div className="onboarding-tour-arrow-box" style={{ top: '-42px', left: '0', zIndex: 55 }}>
+                  <span className="tour-arrow-anim">👇</span>
+                  <span>שלב 1: מכאן מוסיפים תלמיד/ה או בוחרים מרשימת התלמידים!</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className={`btn-new-student ${activeOnboardingStep === 1 ? 'tour-highlight-btn' : ''}`}
+                onClick={handleAddNewStudent}
+              >
+                <Plus size={16} />
+                <span>תלמיד/ה חדש/ה</span>
+              </button>
+            </div>
           </div>
 
           <div className="sidebar-search-box">
@@ -3036,6 +3093,7 @@ export default function App() {
                 onboardingTourStep={onboardingTourStep}
                 setOnboardingTourStep={setOnboardingTourStep}
                 activeOnboardingStep={activeOnboardingStep}
+                onboardingSpotlightTick={onboardingSpotlightTick}
                 onGoHome={() => setSelectedStudentId(null)}
               />
             </ErrorBoundary>

@@ -561,7 +561,8 @@ export default function OnboardingGuidedWorkspace({
             {currentStep.actionLabel && (
               <button
                 type="button"
-                onClick={() => onExecuteAction && onExecuteAction(currentStep)}
+                data-testid="btn-onboarding-show-on-screen"
+                onClick={() => onExecuteAction && onExecuteAction(currentStep, { fromSpotlightBtn: true })}
                 style={{
                   background: '#16a34a',
                   color: '#ffffff',

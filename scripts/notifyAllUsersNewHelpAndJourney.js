@@ -1,9 +1,10 @@
 /**
- * CLI Helper: Send Notification to All Active TALA Users about the New Help Center
- * and Interactive 10-Step User-Journey Lower Panel (via Email + In-App Support Thread Notification).
+ * CLI Helper: Send Email Notification to All Active TALA Users about the New Help Center
+ * and Interactive 10-Step User-Journey Lower Panel, or clean up support chat threads.
  *
  * Usage:
  *   node scripts/notifyAllUsersNewHelpAndJourney.js [--dry-run]
+ *   node scripts/notifyAllUsersNewHelpAndJourney.js --cleanup-threads
  */
 
 import fs from 'fs';
@@ -128,7 +129,7 @@ function buildAnnouncementEmailHtml(userName) {
             <ul style="margin:0; padding-right:20px; font-size:13.5px; color:#166534; line-height:1.65;">
               <li><strong>חיצי הכוונה מונפשים על המסך:</strong> בכל שלב מופיע הסבר פדגוגי קצר עם כפתור <em>"הראה לי במסך 🎯"</em> וחיצים ירוקים המצביעים בדיוק היכן ללחוץ.</li>
               <li><strong>תלמיד לדוגמה ("יונתן לוי") או תלמיד אמיתי:</strong> ניתן להתנסות בחופשיות בסביבת דמו מבודדת (ללא שמירה לענן) או לעבוד על תלמיד אמיתי מהשטח.</li>
-              <li><strong>התאמה חכמה ונוחה:</strong> הסרגל פתוח אוטומטית למורות חדשות (ללא תלמידים), ו<strong>ממוזער כברירת מחדל</strong> למורות שכבר יש להן תלמידים במערכת. ניתן למזער או לסגור אותו בכל עת בלחיצה על <em>"מזעור"</em> או <em>"סגירת הדרכה ✕"</em>.</li>
+              <li><strong>שליטה מלאה ונוחה:</strong> ניתן למזער או לסגור את הסרגל בכל עת בלחיצה על <em>"מזעור"</em> או <em>"סגירת הדרכה ✕"</em>.</li>
             </ul>
           </div>
 
@@ -158,15 +159,77 @@ function buildAnnouncementEmailHtml(userName) {
   `;
 }
 
+async function cleanupAnnouncementTickets(token, activeUsers) {
+  console.log('🧹 Cleaning up announcement tickets from tala_support_threads...');
+  let deletedCount = 0;
+  let cleanedCount = 0;
+
+  for (const user of activeUsers) {
+    const cleanEmail = user.email.trim().toLowerCase();
+    const threadKey = sanitizeThreadKey(cleanEmail);
+    const threadUrl = `${BASE_FIRESTORE_URL}/tala_support_threads/${threadKey}`;
+
+    const existingRes = await fetch(threadUrl, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!existingRes.ok) continue;
+
+    const docJson = await existingRes.json();
+    const existingData = parseFirestoreValue({ mapValue: { fields: docJson.fields || {} } });
+    const existingMessages = Array.isArray(existingData?.messages) ? existingData.messages : [];
+
+    const hasAnnouncement = existingMessages.some(
+      (m) => m.id === 'msg_onboarding_help_announcement_v1'
+    );
+    if (!hasAnnouncement) continue;
+
+    const remainingMessages = existingMessages.filter(
+      (m) => m.id !== 'msg_onboarding_help_announcement_v1'
+    );
+
+    if (remainingMessages.length === 0) {
+      const delRes = await fetch(threadUrl, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (delRes.ok) {
+        deletedCount++;
+        console.log(`   🗑️ Deleted announcement-only thread for ${cleanEmail}`);
+      }
+    } else {
+      const updatedThread = {
+        ...existingData,
+        unreadByUser: false,
+        messages: remainingMessages
+      };
+      const firestoreFields = toFirestoreValue(updatedThread).mapValue.fields;
+      const saveRes = await fetch(threadUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fields: firestoreFields })
+      });
+      if (saveRes.ok) {
+        cleanedCount++;
+        console.log(`   ✨ Removed announcement message from existing thread for ${cleanEmail}`);
+      }
+    }
+  }
+
+  console.log(`✅ Cleanup finished: ${deletedCount} threads deleted, ${cleanedCount} threads cleaned.`);
+}
+
 async function run() {
   const isDryRun = process.argv.includes('--dry-run');
+  const isCleanup = process.argv.includes('--cleanup-threads');
   const token = getAccessToken();
   if (!token) {
     console.error('❌ Error: Could not locate Firebase OAuth access token.');
     process.exit(1);
   }
 
-  console.log('📡 Fetching active users and email configuration from Firestore...');
   const [usersRes, settingsRes] = await Promise.all([
     fetch(ALLOWED_USERS_DOC_URL, { headers: { Authorization: `Bearer ${token}` } }),
     fetch(SETTINGS_DOC_URL, { headers: { Authorization: `Bearer ${token}` } })
@@ -180,6 +243,11 @@ async function run() {
   const rawUsers = parseFirestoreValue(usersDoc.fields?.users) || [];
   const activeUsers = rawUsers.filter((u) => u && u.email && u.active !== false);
 
+  if (isCleanup) {
+    await cleanupAnnouncementTickets(token, rawUsers);
+    return;
+  }
+
   let appsScriptUrl = DEFAULT_APPS_SCRIPT_URL;
   if (settingsRes.ok) {
     const settingsDoc = await settingsRes.json();
@@ -189,91 +257,27 @@ async function run() {
     }
   }
 
-  console.log(`👥 Found ${activeUsers.length} active users.`);
-
-  const nowIso = new Date().toISOString();
-  const chatAnnouncementText =
-    '✨ עדכון חדש במערכת TALA: שדרגנו את כפתור ה"עזרה" בסרגל העליון (מדריך עבודה ושאלות נפוצות עם חיפוש מהיר) והוספנו סרגל הדרכה אינטראקטיבי בתחתית המסך המלווה אתכן ב-10 שלבים עם חיצי הכוונה מונפשים ותלמיד לדוגמה ("יונתן לוי"). למורות חדשות הסרגל פתוח אוטומטית, ולמורות עם תלמידים קיימים הוא ממוזער כברירת מחדל לנוחותכן!';
+  const plainTextSummary =
+    '✨ עדכון חדש במערכת TALA: שדרגנו את כפתור ה"עזרה" בסרגל העליון (מדריך עבודה ושאלות נפוצות עם חיפוש מהיר) והוספנו סרגל הדרכה אינטראקטיבי בתחתית המסך המלווה אתכן ב-10 שלבים עם חיצי הכוונה מונפשים ותלמיד לדוגמה ("יונתן לוי").';
 
   let emailsSent = 0;
-  let inAppNotified = 0;
 
   for (const user of activeUsers) {
     const cleanEmail = user.email.trim().toLowerCase();
     const userName = user.name || cleanEmail;
-    const threadKey = sanitizeThreadKey(cleanEmail);
 
     if (isDryRun) {
-      console.log(`   [DRY-RUN] Would notify: ${userName} <${cleanEmail}>`);
+      console.log(`   [DRY-RUN] Would email: ${userName} <${cleanEmail}>`);
       continue;
     }
 
-    // 1. Update / Create In-App Support Thread Notification so user gets an unread badge in-app
-    try {
-      const threadUrl = `${BASE_FIRESTORE_URL}/tala_support_threads/${threadKey}`;
-      const existingRes = await fetch(threadUrl, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      let existingData = null;
-      if (existingRes.ok) {
-        const docJson = await existingRes.json();
-        existingData = parseFirestoreValue({ mapValue: { fields: docJson.fields || {} } });
-      }
-
-      const existingMessages = Array.isArray(existingData?.messages) ? existingData.messages : [];
-      const alreadyNotified = existingMessages.some(
-        (m) => m.id === 'msg_onboarding_help_announcement_v1'
-      );
-
-      if (!alreadyNotified) {
-        const announcementMsg = {
-          id: 'msg_onboarding_help_announcement_v1',
-          senderRole: 'admin',
-          senderEmail: 'zivit.reshef@gmail.com',
-          senderName: 'צוות TALA – עדכון מערכת ✨',
-          text: chatAnnouncementText,
-          createdAt: nowIso
-        };
-
-        const updatedThread = {
-          id: threadKey,
-          userEmail: cleanEmail,
-          userName,
-          topic: existingData?.topic || 'עדכוני מערכת ותמיכה',
-          status: existingData?.status || 'resolved',
-          unreadByAdmin: Boolean(existingData?.unreadByAdmin),
-          unreadByUser: true,
-          createdAt: existingData?.createdAt || nowIso,
-          updatedAt: nowIso,
-          messages: [...existingMessages, announcementMsg]
-        };
-
-        const firestoreFields = toFirestoreValue(updatedThread).mapValue.fields;
-        const saveRes = await fetch(threadUrl, {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ fields: firestoreFields })
-        });
-        if (saveRes.ok) {
-          inAppNotified++;
-        }
-      }
-    } catch (err) {
-      console.warn(`   ⚠️ In-app thread update warning for ${cleanEmail}:`, err.message);
-    }
-
-    // 2. Send Email Notification via Google Apps Script Relay
     try {
       const htmlBody = buildAnnouncementEmailHtml(userName);
       const payload = {
         to: cleanEmail,
         subject: '✨ חדש ב-TALA: מרכז עזרה משודרג וסיור מודרך אינטראקטיבי (10 שלבים)',
         htmlBody,
-        textBody: chatAnnouncementText,
+        textBody: plainTextSummary,
         senderName: 'מערכת TALA – תוכנית עבודה אקולוגית'
       };
 
@@ -285,16 +289,14 @@ async function run() {
 
       if (emailRes.ok) {
         emailsSent++;
-        console.log(`   ✅ Notified ${userName} <${cleanEmail}> (In-App + Email)`);
-      } else {
-        console.log(`   ℹ️ Notified ${userName} <${cleanEmail}> (In-App; Email status ${emailRes.status})`);
+        console.log(`   ✅ Emailed ${userName} <${cleanEmail}>`);
       }
     } catch (err) {
       console.warn(`   ⚠️ Email dispatch warning for ${cleanEmail}:`, err.message);
     }
   }
 
-  console.log(`\n🎉 Broadcast Complete! In-App Threads Updated: ${inAppNotified}/${activeUsers.length}, Emails Dispatched: ${emailsSent}/${activeUsers.length}.`);
+  console.log(`\n🎉 Email Broadcast Complete! Emails Dispatched: ${emailsSent}/${activeUsers.length}.`);
 }
 
 run().catch((err) => {

@@ -208,6 +208,7 @@ export default function EcologicalWorkPlanForm({
   onboardingTourStep = 0,
   setOnboardingTourStep,
   activeOnboardingStep = 0,
+  onboardingSpotlightTick = 0,
   onGoHome,
   userPreferences = {},
   privateGoals = []
@@ -223,24 +224,31 @@ export default function EcologicalWorkPlanForm({
 
   const [showTourCompletionModal, setShowTourCompletionModal] = useState(false);
 
-  // Auto-scroll smooth effect when onboarding tour step advances
+  // Auto-scroll smooth effect when onboarding tour step advances or "הראה לי במסך" is pressed
   useEffect(() => {
     if (activeOnboardingStep) {
-      if (activeOnboardingStep === 2 || activeOnboardingStep === 7 || activeOnboardingStep === 10) {
-        section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      if (activeOnboardingStep === 2) {
+        section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       } else if (activeOnboardingStep === 3) {
         setIsFreeTextCollapsed(false);
-        section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 80);
       } else if (activeOnboardingStep === 4) {
-        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-      } else if (activeOnboardingStep === 6) {
+        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      } else if (activeOnboardingStep === 6 || activeOnboardingStep === 10) {
         window.scrollTo?.({ top: 0, behavior: 'smooth' });
+      } else if (activeOnboardingStep === 7) {
+        const pvEl = document.querySelector('[data-testid="onboarding-step7-parent-voice"]');
+        if (pvEl?.scrollIntoView) {
+          pvEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+        }
       } else if (activeOnboardingStep === 8) {
         setShowEvalReportSection(true);
-        setTimeout(() => evalReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
+        setTimeout(() => evalReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 90);
       } else if (activeOnboardingStep === 9) {
         setShowStatusReportSection(true);
-        setTimeout(() => statusReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
+        setTimeout(() => statusReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 90);
       }
       return;
     }
@@ -254,7 +262,7 @@ export default function EcologicalWorkPlanForm({
     } else if (onboardingTourStep === 7) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [onboardingTourStep, activeOnboardingStep]);
+  }, [onboardingTourStep, activeOnboardingStep, onboardingSpotlightTick]);
 
   const [formData, setFormData] = useState(() => normalizeStudentForForm(student));
   const savedSnapshotRef = useRef(JSON.stringify(normalizeStudentForForm(student)));
