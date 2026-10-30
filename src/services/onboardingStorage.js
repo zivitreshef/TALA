@@ -5,7 +5,7 @@
  * - Scoped LocalStorage storage per teacher email
  * - In-memory fallback for private mode / quota restrictions
  * - Zero-trust isolation for demo student data (never written to cloud)
- * - Complete pause / resume / step advance / restart state transitions
+ * - Complete pause / resume / dismiss / step advance / restart state transitions
  */
 
 import { safeGetStorageJson, safeSetStorageJson, safeRemoveStorageItem } from './storage';
@@ -52,6 +52,7 @@ export function createDefaultOnboardingState(email = '') {
     completedSteps: [],
     isPaused: false,
     isCompleted: false,
+    isDismissed: false,
     startedAt: now,
     lastUpdatedAt: now,
     completedAt: null,
@@ -114,10 +115,17 @@ export function pauseOnboarding(email) {
 }
 
 /**
- * Resumes the onboarding journey from the paused state.
+ * Resumes the onboarding journey from the paused or dismissed state.
  */
 export function resumeOnboarding(email) {
-  return saveOnboardingState(email, { isPaused: false });
+  return saveOnboardingState(email, { isPaused: false, isDismissed: false });
+}
+
+/**
+ * Closes/dismisses the onboarding dock completely until re-launched.
+ */
+export function dismissOnboarding(email) {
+  return saveOnboardingState(email, { isDismissed: true });
 }
 
 /**
@@ -147,14 +155,16 @@ export function advanceOnboardingStep(email) {
       completedSteps: nextCompleted,
       isCompleted: true,
       completedAt: new Date().toISOString(),
-      isPaused: false
+      isPaused: false,
+      isDismissed: false
     });
   }
 
   return saveOnboardingState(email, {
     currentStep: stepToComplete + 1,
     completedSteps: nextCompleted,
-    isPaused: false
+    isPaused: false,
+    isDismissed: false
   });
 }
 
@@ -165,7 +175,8 @@ export function goToOnboardingStep(email, stepNumber) {
   const validStep = Math.max(1, Math.min(ONBOARDING_TOTAL_STEPS, Number(stepNumber) || 1));
   return saveOnboardingState(email, {
     currentStep: validStep,
-    isPaused: false
+    isPaused: false,
+    isDismissed: false
   });
 }
 

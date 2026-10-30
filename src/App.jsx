@@ -186,6 +186,7 @@ import {
   saveOnboardingState,
   pauseOnboarding,
   resumeOnboarding,
+  dismissOnboarding,
   resetOnboardingState,
   advanceOnboardingStep,
   goToOnboardingStep,
@@ -1809,7 +1810,8 @@ export default function App() {
     if (!currentUser?.email) return;
     const nextState = saveOnboardingState(currentUser.email, {
       mode: chosenMode,
-      isPaused: false
+      isPaused: false,
+      isDismissed: false
     });
     setOnboardingState(nextState);
 
@@ -1937,6 +1939,15 @@ export default function App() {
     const nextCollapsed = !onboardingState?.isDockCollapsed;
     const nextState = setOnboardingDockCollapsed(currentUser.email, nextCollapsed);
     setOnboardingState(nextState);
+  };
+
+  const handleCloseOnboarding = () => {
+    if (!currentUser?.email) return;
+    setOnboardingState((prev) => (prev ? { ...prev, isClosing: true } : prev));
+    setTimeout(() => {
+      const nextState = dismissOnboarding(currentUser.email);
+      setOnboardingState(nextState);
+    }, 200);
   };
 
   const handleNavigateBackToStudents = () => {
@@ -2235,6 +2246,21 @@ export default function App() {
   const siteVersion =
     typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.3';
 
+  const activeOnboardingStep =
+    onboardingState &&
+    !onboardingState.isPaused &&
+    !onboardingState.isCompleted &&
+    !onboardingState.isDismissed
+      ? onboardingState.currentStep
+      : 0;
+
+  const onboardingDockMode =
+    !onboardingState || onboardingState.isDismissed
+      ? 'hidden'
+      : onboardingState.isPaused || onboardingState.isDockCollapsed
+      ? 'collapsed'
+      : 'expanded';
+
   return (
     <div className="tala-app-root" dir="rtl">
       {/* Real-Time Deployment & Upgrade Warning Banner */}
@@ -2292,14 +2318,21 @@ export default function App() {
 
             <button
               type="button"
-              className={`header-nav-btn ${showDailyTracker && selectedStudentId === null && !showGoalBankOverview ? 'active' : ''}`}
+              className={`header-nav-btn ${showDailyTracker && selectedStudentId === null && !showGoalBankOverview ? 'active' : ''} ${activeOnboardingStep === 5 && !showDailyTracker ? 'tour-highlight-btn' : ''}`}
               onClick={() => {
                 setSelectedStudentId(null);
                 setShowDailyTracker(true);
                 setShowGoalBankOverview(false);
               }}
+              style={{ position: 'relative' }}
               title="מעקב יומי פדגוגי ולוח שנה"
             >
+              {activeOnboardingStep === 5 && !showDailyTracker && (
+                <div className="onboarding-tour-arrow-box" style={{ top: '42px', right: '0' }}>
+                  <span className="tour-arrow-anim">☝️</span>
+                  <span>שלב 5: לחצי כאן לפתיחת מסך המעקב היומי!</span>
+                </div>
+              )}
               <ClipboardList size={15} />
               <span>מעקב יומי</span>
             </button>
@@ -2419,8 +2452,9 @@ export default function App() {
             )}
 
             <div
-              className="header-user-chip"
+              className={`header-user-chip ${activeOnboardingStep === 10 && !showSelfPasswordModal ? 'tour-highlight-btn' : ''}`}
               onClick={() => setShowSelfPasswordModal(true)}
+              style={{ position: 'relative' }}
               title={
                 unreadSharedReports.length > 0
                   ? `יש לך ${unreadSharedReports.length} דו"חות משותפים חדשים – לחץ לצפייה ופתיחה`
@@ -2429,6 +2463,12 @@ export default function App() {
               role="button"
               tabIndex={0}
             >
+              {activeOnboardingStep === 10 && !showSelfPasswordModal && (
+                <div className="onboarding-tour-arrow-box" style={{ top: '46px', left: '0' }}>
+                  <span className="tour-arrow-anim">☝️</span>
+                  <span>שלב 10: לחצי כאן להגדרות פרופיל, חתימה ופרטיות!</span>
+                </div>
+              )}
               <div className="header-user-avatar">
                 {effectiveCurrentUser.name ? effectiveCurrentUser.name.trim().charAt(0) : <UserCheck size={13} />}
               </div>
@@ -2859,7 +2899,7 @@ export default function App() {
                 onNotifySharedColleague={handleNotifySharedColleague}
                 onboardingTourStep={onboardingTourStep}
                 setOnboardingTourStep={setOnboardingTourStep}
-                activeOnboardingStep={onboardingState && !onboardingState.isPaused && !onboardingState.isCompleted ? onboardingState.currentStep : 0}
+                activeOnboardingStep={activeOnboardingStep}
                 onGoHome={() => setSelectedStudentId(null)}
               />
             </ErrorBoundary>
@@ -2868,6 +2908,7 @@ export default function App() {
               <DailyPedagogicalTracker
                 students={baseStudentsForView}
                 currentUser={effectiveCurrentUser}
+                activeOnboardingStep={activeOnboardingStep}
                 onUpdateStudent={(updatedStudent) => {
                   handleSaveStudentPlan(updatedStudent);
                 }}
@@ -3963,6 +4004,7 @@ export default function App() {
             onGoToStep={handleGoToOnboardingStep}
             onPauseJourney={handlePauseOnboarding}
             onResumeJourney={handleResumeOnboarding}
+            onCloseJourney={handleCloseOnboarding}
             onOpenNavigator={() => setShowOnboardingNavigator(true)}
             onExecuteAction={handleExecuteOnboardingAction}
             onToggleCollapse={handleToggleOnboardingCollapse}
@@ -3996,6 +4038,7 @@ export default function App() {
           emailEngineConfig={emailEngineConfig}
           isOpenControlled={isSupportChatOpen}
           onToggleOpen={setIsSupportChatOpen}
+          onboardingDockMode={onboardingDockMode}
         />
       )}
     </div>

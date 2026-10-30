@@ -226,15 +226,15 @@ export default function EcologicalWorkPlanForm({
   // Auto-scroll smooth effect when onboarding tour step advances
   useEffect(() => {
     if (activeOnboardingStep) {
-      if (activeOnboardingStep === 2) {
+      if (activeOnboardingStep === 2 || activeOnboardingStep === 7 || activeOnboardingStep === 10) {
         section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-      } else if (activeOnboardingStep === 3 || activeOnboardingStep === 7) {
+      } else if (activeOnboardingStep === 3) {
         setIsFreeTextCollapsed(false);
         section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       } else if (activeOnboardingStep === 4) {
         section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       } else if (activeOnboardingStep === 6) {
-        (saveProgressRef.current || section4Ref.current)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+        window.scrollTo?.({ top: 0, behavior: 'smooth' });
       } else if (activeOnboardingStep === 8) {
         setShowEvalReportSection(true);
         setTimeout(() => evalReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
@@ -2292,7 +2292,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="button"
               className={`btn-report-lock-icon ${isReportLocked ? 'locked' : 'unlocked'} ${
                 !userCanLockReport ? 'readonly-lock' : ''
-              }`}
+              } ${activeOnboardingStep === 6 ? 'tour-highlight-btn' : ''}`}
               onClick={handleToggleReportLock}
               disabled={!userCanLockReport}
               aria-label={isReportLocked ? 'הדו"ח נעול לעריכה' : 'הדו"ח פתוח לעריכה'}
@@ -2340,15 +2340,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            {onboardingTourStep === 7 && (
+            {(onboardingTourStep === 7 || activeOnboardingStep === 6) && (
               <div className="onboarding-tour-arrow-box" style={{ top: '44px', right: '0' }}>
                 <span className="tour-arrow-anim">☝️</span>
-                <span>צעד 8: לחצי כאן לשמירת התקדמות וסיום התוכנית!</span>
+                <span>
+                  {activeOnboardingStep === 6
+                    ? 'שלב 6: לחצי כאן לשמירת ההתקדמות בענן או על המנעול לנעילת הדו"ח!'
+                    : 'צעד 8: לחצי כאן לשמירת התקדמות וסיום התוכנית!'}
+                </span>
               </div>
             )}
             <button
               type="button"
-              className={`btn-save-progress ${onboardingTourStep === 7 ? 'tour-highlight-btn' : ''}`}
+              className={`btn-save-progress ${onboardingTourStep === 7 || activeOnboardingStep === 6 ? 'tour-highlight-btn' : ''}`}
               onClick={() => {
                 handleSaveProgress();
                 if (onboardingTourStep === 7) {
@@ -3571,39 +3575,56 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <ParentVoiceControl
-            student={formData}
-            currentUser={currentUser}
-            disabled={isReportLocked}
-            onMerge={handleMergeParentVoice}
-          />
-          <button
-            type="button"
-            disabled={isReportLocked && !userCanLockReport}
-            onClick={() => setShowShareModal(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#ede9fe' : '#f1f5f9',
-              color: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#5b21b6' : '#334155',
-              border: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: isReportLocked && !userCanLockReport ? 'not-allowed' : 'pointer',
-              opacity: isReportLocked && !userCanLockReport ? 0.5 : 1
-            }}
-          >
-            <Users size={15} />
-            <span>
-              שיתוף צוות
-              {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
-                ? ` • ${formData.sharedWith.length}`
-                : ''}
-            </span>
-          </button>
+          <div style={{ position: 'relative', display: 'inline-block', borderRadius: '8px' }} className={activeOnboardingStep === 7 ? 'tour-highlight-btn' : ''}>
+            {activeOnboardingStep === 7 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '-44px', right: '0' }}>
+                <span className="tour-arrow-anim">👇</span>
+                <span>שלב 7: לחצי כאן לשליחת שאלון "קול ההורה" המאובטח בוואטסאפ!</span>
+              </div>
+            )}
+            <ParentVoiceControl
+              student={formData}
+              currentUser={currentUser}
+              disabled={isReportLocked}
+              onMerge={handleMergeParentVoice}
+            />
+          </div>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            {activeOnboardingStep === 10 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '-44px', right: '0' }}>
+                <span className="tour-arrow-anim">👇</span>
+                <span>שלב 10: לחצי כאן לשיתוף התוכנית עם עמיתות במתי״א וצוות רב-מקצועי!</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className={activeOnboardingStep === 10 ? 'tour-highlight-btn' : ''}
+              disabled={isReportLocked && !userCanLockReport}
+              onClick={() => setShowShareModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#ede9fe' : '#f1f5f9',
+                color: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#5b21b6' : '#334155',
+                border: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: isReportLocked && !userCanLockReport ? 'not-allowed' : 'pointer',
+                opacity: isReportLocked && !userCanLockReport ? 0.5 : 1
+              }}
+            >
+              <Users size={15} />
+              <span>
+                שיתוף צוות
+                {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
+                  ? ` • ${formData.sharedWith.length}`
+                  : ''}
+              </span>
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -3634,10 +3655,14 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
         {/* Radio Buttons for תל"א OR תח"י */}
         <div className="plan-type-radio-bar" style={{ position: 'relative' }}>
-          {onboardingTourStep === 4.5 && (
+          {(onboardingTourStep === 4.5 || activeOnboardingStep === 2) && (
             <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
               <span className="tour-arrow-anim">👇</span>
-              <span>צעד 5: בחרי סוג תוכנית (תוכנית לתלמיד ביה"ס / תוכנית אקולוגית לילדי הגן)</span>
+              <span>
+                {activeOnboardingStep === 2
+                  ? 'שלב 2: כאן בוחרים סוג תוכנית ומזינים את פרטי הילד/ה, השלב והמסגרת החינוכית!'
+                  : 'צעד 5: בחרי סוג תוכנית (תוכנית לתלמיד ביה"ס / תוכנית אקולוגית לילדי הגן)'}
+              </span>
             </div>
           )}
           <span className="plan-type-label">סוג התוכנית:</span>
@@ -3645,7 +3670,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label
               className={`plan-type-radio-card ${
                 isTalaMode ? 'selected' : ''
-              } ${onboardingTourStep === 4.5 ? 'tour-highlight-input' : ''}`}
+              } ${onboardingTourStep === 4.5 || activeOnboardingStep === 2 ? 'tour-highlight-input' : ''}`}
             >
               <input
                 type="radio"
@@ -3694,7 +3719,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <input
               type="text"
               disabled={isReportLocked}
-              className={onboardingTourStep === 2 ? 'tour-highlight-input' : ''}
+              className={onboardingTourStep === 2 || activeOnboardingStep === 2 ? 'tour-highlight-input' : ''}
               value={formData.name === 'תלמיד/ה חדש/ה' ? '' : (formData.name || '')}
               onChange={(e) => {
                 handleFieldChange('name', e.target.value);
@@ -4546,16 +4571,16 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 🔒 <strong>לתשומת לבך (שמירה על פרטיות):</strong> נא להימנע מהקלדת פרטים מזהים או מידע אישי רגיש בטקסט החופשי (כגון שמות מלאים של הילד/ה או בני משפחה, מספרי תעודת זהות, טלפונים או כתובות). מומלץ להשתמש בתיאור כללי כגון "הילד/ה" או בראשי תיבות בלבד.
               </div>
               <div style={{ position: 'relative' }}>
-                {onboardingTourStep === 6 && (
+                {(onboardingTourStep === 6 || activeOnboardingStep === 3) && (
                   <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
                     <span className="tour-arrow-anim">👇</span>
-                    <span>צעד 5: הזיני תיאור חופשי של התלמיד/ה</span>
+                    <span>{activeOnboardingStep === 3 ? 'שלב 3: הזיני כאן רקע תפקודי וחופשי של התלמיד/ה' : 'צעד 5: הזיני תיאור חופשי של התלמיד/ה'}</span>
                   </div>
                 )}
                 <textarea
                   rows={4}
                   disabled={isReportLocked}
-                  className={onboardingTourStep === 6 ? 'tour-highlight-input' : ''}
+                  className={onboardingTourStep === 6 || activeOnboardingStep === 3 ? 'tour-highlight-input' : ''}
                   value={formData.teacherFreeText || ''}
                   onInput={handleTextareaAutoResize}
                   onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
@@ -4564,10 +4589,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               </div>
 
               <div className="submit-summary-action-row" style={{ position: 'relative' }}>
-                {onboardingTourStep === 6 && (
+                {(onboardingTourStep === 6 || activeOnboardingStep === 3) && (
                   <div className="onboarding-tour-arrow-box" style={{ top: '-46px', left: '0' }}>
                     <span className="tour-arrow-anim">👈</span>
-                    <span>צעד 7: לחצי כאן לניתוח וגזירת מטרות אוטומטית ב-AI</span>
+                    <span>{activeOnboardingStep === 3 ? 'שלב 3: לחצי כאן לניתוח AI וגזירת מטרות אוטומטית מהרקע!' : 'צעד 7: לחצי כאן לניתוח וגזירת מטרות אוטומטית ב-AI'}</span>
                   </div>
                 )}
                 <span className="submit-helper-text">
@@ -4577,7 +4602,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 </span>
                 <button
                   type="button"
-                  className={`btn-submit-generate-summary ${onboardingTourStep === 6 ? 'tour-highlight-btn' : ''}`}
+                  className={`btn-submit-generate-summary ${onboardingTourStep === 6 || activeOnboardingStep === 3 ? 'tour-highlight-btn' : ''}`}
                   onClick={() => {
                     handleReverseEngineerFullReport();
                     if (onboardingTourStep === 6) {
@@ -4900,15 +4925,23 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </p>
           </div>
           {Array.isArray(formData.goals) && formData.goals.length > 0 && (
-            <button
-              type="button"
-              className="btn-add-goal-block"
-              onClick={handleAddGoalRow}
-              disabled={isReportLocked}
-            >
-              <Plus size={18} />
-              <span>הוסף מטרה / סביבה חדשה</span>
-            </button>
+            <div style={{ position: 'relative' }}>
+              {activeOnboardingStep === 4 && (
+                <div className="onboarding-tour-arrow-box" style={{ top: '-44px', left: '0' }}>
+                  <span className="tour-arrow-anim">👇</span>
+                  <span>שלב 4: מכאן מוסיפים מטרות ויעדים מתוך המאגר האקולוגי!</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className={`btn-add-goal-block ${activeOnboardingStep === 4 ? 'tour-highlight-btn' : ''}`}
+                onClick={handleAddGoalRow}
+                disabled={isReportLocked}
+              >
+                <Plus size={18} />
+                <span>הוסף מטרה / סביבה חדשה</span>
+              </button>
+            </div>
           )}
         </div>
 
@@ -4988,15 +5021,15 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               תוכל לבחור מטרה מתוך מאגר המטרות הדינמי לפי סביבה ותחום לימודי או להגדיר מטרה חדשה.
             </p>
             <div style={{ position: 'relative', display: 'inline-block' }}>
-              {onboardingTourStep === 5 && (
+              {(onboardingTourStep === 5 || activeOnboardingStep === 4) && (
                 <div className="onboarding-tour-arrow-box" style={{ top: '-48px', left: '50%', transform: 'translateX(-50%)' }}>
                   <span className="tour-arrow-anim">👇</span>
-                  <span>צעד 6: לחצי כאן להוספת מטרות מהמאגר האקולוגי</span>
+                  <span>{activeOnboardingStep === 4 ? 'שלב 4: לחצי כאן להוספת מטרות מהמאגר האקולוגי!' : 'צעד 6: לחצי כאן להוספת מטרות מהמאגר האקולוגי'}</span>
                 </div>
               )}
               <button
                 type="button"
-                className={`btn-add-goal-block-large ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
+                className={`btn-add-goal-block-large ${onboardingTourStep === 5 || activeOnboardingStep === 4 ? 'tour-highlight-btn' : ''}`}
                 onClick={() => {
                   handleAddGoalRow();
                   if (onboardingTourStep === 5) setOnboardingTourStep?.(6);
@@ -6337,7 +6370,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           {/* Free-text input for Evaluation Report + AI Processing Button */}
-          <div className="free-text-area-box" style={{ marginBottom: '16px' }}>
+          <div className="free-text-area-box" style={{ marginBottom: '16px', position: 'relative' }}>
+            {activeOnboardingStep === 8 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '-44px', right: '0' }}>
+                <span className="tour-arrow-anim">👇</span>
+                <span>שלב 8: כאן מפיקים הערכת מחצית וסוף שנה ומעבדים ב-AI!</span>
+              </div>
+            )}
             <label className="bold-label">
               ✍️ תיאור חופשי להערכת מחצית / סוף שנה:
             </label>
@@ -6346,6 +6385,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </div>
             <textarea
               rows={3}
+              className={activeOnboardingStep === 8 ? 'tour-highlight-input' : ''}
               value={formData.evalReportFreeText || ''}
               onInput={handleTextareaAutoResize}
               onChange={(e) => handleFieldChange('evalReportFreeText', e.target.value)}
@@ -6359,7 +6399,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 </span>
                 <button
                   type="button"
-                  className="btn-submit-generate-summary"
+                  className={`btn-submit-generate-summary ${activeOnboardingStep === 8 ? 'tour-highlight-btn' : ''}`}
                   onClick={handleProcessFullEvalReportAi}
                   disabled={isProcessingFullEvalAi}
                 >
@@ -6588,24 +6628,32 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
       {/* Separate Report Section: דו"ח מצב חינוכי-תפקודי עדכני */}
       {showStatusReportSection && (
-        <StatusReportPanel
-          statusReportSectionRef={statusReportSectionRef}
-          formData={formData}
-          isGeneratingStatusReport={isGeneratingStatusReport}
-          statusReportBanner={statusReportBanner}
-          onGenerateStatusReport={handleGenerateStatusReport}
-          onClose={() => setShowStatusReportSection(false)}
-          onRemoveStatusSection={handleRemoveStatusSection}
-          onUpdateStatusSectionContent={handleUpdateStatusSectionContent}
-          onAddManualStatusSection={handleAddManualStatusSection}
-          onTextareaAutoResize={handleTextareaAutoResize}
-          onPrintStatusReport={handlePrintStatusReport}
-          onDownloadWordStatusReport={() => {
-            handleSaveProgress();
-            downloadWordFile('status');
-          }}
-          onOpenEmailStatusReport={() => handleOpenEmailModal('status')}
-        />
+        <div style={{ position: 'relative' }}>
+          {activeOnboardingStep === 9 && (
+            <div className="onboarding-tour-arrow-box" style={{ top: '-44px', right: '20px', zIndex: 10 }}>
+              <span className="tour-arrow-anim">👇</span>
+              <span>שלב 9: כאן ה-AI מצליב את כל התצפיות והיעדים לדו"ח מצב בן 15 סעיפים!</span>
+            </div>
+          )}
+          <StatusReportPanel
+            statusReportSectionRef={statusReportSectionRef}
+            formData={formData}
+            isGeneratingStatusReport={isGeneratingStatusReport}
+            statusReportBanner={statusReportBanner}
+            onGenerateStatusReport={handleGenerateStatusReport}
+            onClose={() => setShowStatusReportSection(false)}
+            onRemoveStatusSection={handleRemoveStatusSection}
+            onUpdateStatusSectionContent={handleUpdateStatusSectionContent}
+            onAddManualStatusSection={handleAddManualStatusSection}
+            onTextareaAutoResize={handleTextareaAutoResize}
+            onPrintStatusReport={handlePrintStatusReport}
+            onDownloadWordStatusReport={() => {
+              handleSaveProgress();
+              downloadWordFile('status');
+            }}
+            onOpenEmailStatusReport={() => handleOpenEmailModal('status')}
+          />
+        </div>
       )}
 
       {/* Team Sharing Modal ("שיתוף צוות") */}

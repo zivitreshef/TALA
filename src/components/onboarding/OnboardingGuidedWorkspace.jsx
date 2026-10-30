@@ -4,16 +4,13 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Compass,
   Pause,
   Play,
   CheckCircle2,
   ExternalLink,
   Lightbulb,
-  Info,
-  Layers,
-  ArrowLeft
+  X
 } from 'lucide-react';
 import {
   getStepById,
@@ -28,21 +25,22 @@ export default function OnboardingGuidedWorkspace({
   onGoToStep,
   onPauseJourney,
   onResumeJourney,
+  onCloseJourney,
   onOpenNavigator,
   onExecuteAction,
   onToggleCollapse
 }) {
-  if (!onboardingState) return null;
+  if (!onboardingState || onboardingState.isDismissed) return null;
 
   const currentStepId = onboardingState.currentStep || 1;
   const currentStep = getStepById(currentStepId) || ONBOARDING_STEPS[0];
   const completedSteps = onboardingState.completedSteps || [];
   const isPaused = Boolean(onboardingState.isPaused);
   const isCollapsed = Boolean(onboardingState.isDockCollapsed);
-  const isCompleted = Boolean(onboardingState.isCompleted);
+  const isClosing = Boolean(onboardingState.isClosing);
   const isDemo = onboardingState.mode === 'demo';
 
-  // If paused, render non-intrusive top/bottom resume pill
+  // If paused, render non-intrusive bottom-right resume pill with fade effect and close button
   if (isPaused) {
     return (
       <aside
@@ -54,17 +52,22 @@ export default function OnboardingGuidedWorkspace({
           bottom: '16px',
           right: '20px',
           zIndex: 1300,
-          background: 'linear-gradient(135deg, #1e3a5f 0%, #2b4c73 100%)',
+          background: 'linear-gradient(135deg, rgba(30, 58, 95, 0.94) 0%, rgba(43, 76, 115, 0.94) 100%)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           color: '#ffffff',
           borderRadius: '999px',
           padding: '8px 16px',
           boxShadow: '0 8px 24px rgba(15, 23, 42, 0.3)',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          gap: '10px',
           fontSize: '13px',
           fontWeight: 600,
-          border: '1.5px solid rgba(255, 255, 255, 0.2)'
+          border: '1.5px solid rgba(255, 255, 255, 0.22)',
+          opacity: isClosing ? 0 : 0.92,
+          transform: isClosing ? 'translateY(16px)' : 'translateY(0)',
+          transition: 'opacity 0.28s ease, transform 0.28s ease'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -110,11 +113,36 @@ export default function OnboardingGuidedWorkspace({
         >
           מפת המסע 🗺️
         </button>
+
+        {onCloseJourney && (
+          <button
+            type="button"
+            onClick={onCloseJourney}
+            data-testid="btn-close-onboarding-paused"
+            title="סגירת סרגל ההדרכה (ניתן להפעיל מחדש מתפריט עזרה)"
+            style={{
+              background: 'rgba(239, 68, 68, 0.25)',
+              color: '#fecaca',
+              border: '1px solid rgba(252, 165, 165, 0.4)',
+              borderRadius: '999px',
+              padding: '4px 10px',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <X size={12} />
+            <span>סגירה</span>
+          </button>
+        )}
       </aside>
     );
   }
 
-  // Collapsed Minimal Strip
+  // Collapsed Minimal Strip (Translucent Faded Effect)
   if (isCollapsed) {
     return (
       <aside
@@ -127,22 +155,27 @@ export default function OnboardingGuidedWorkspace({
           left: 0,
           right: 0,
           zIndex: 1300,
-          background: 'rgba(255, 255, 255, 0.98)',
-          backdropFilter: 'blur(10px)',
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
           borderTop: '1.5px solid #d3dff0',
           boxShadow: '0 -4px 16px rgba(43, 76, 115, 0.08)',
-          padding: '8px 16px',
+          padding: '8px 18px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '12px'
+          gap: '12px',
+          opacity: isClosing ? 0 : 0.92,
+          transform: isClosing ? 'translateY(16px)' : 'translateY(0)',
+          transition: 'opacity 0.28s ease, transform 0.28s ease, background-color 0.28s ease'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={onToggleCollapse}
             aria-label="הרחבת סרגל ההדרכה"
+            title="הרחבת פאנל ההדרכה"
             style={{
               width: '32px',
               height: '32px',
@@ -160,7 +193,19 @@ export default function OnboardingGuidedWorkspace({
             <ChevronUp size={18} />
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
             <span
               style={{
                 background: '#eff6ff',
@@ -191,10 +236,30 @@ export default function OnboardingGuidedWorkspace({
                 תלמיד דמו
               </span>
             )}
-          </div>
+          </button>
+
+          {currentStep.whereToLookHint && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: '#f0fdf4',
+                color: '#166534',
+                border: '1px solid #86efac',
+                borderRadius: '999px',
+                padding: '2px 10px',
+                fontSize: '11.5px',
+                fontWeight: 600
+              }}
+            >
+              <span className="tour-arrow-anim">{currentStep.arrowIcon || '☝️'}</span>
+              <span>{currentStep.whereToLookHint}</span>
+            </span>
+          )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           {currentStep.actionLabel && (
             <button
               type="button"
@@ -230,6 +295,31 @@ export default function OnboardingGuidedWorkspace({
           >
             {currentStepId >= ONBOARDING_TOTAL_STEPS ? 'סיום המסע 🎉' : 'הבא 👈'}
           </button>
+
+          {onCloseJourney && (
+            <button
+              type="button"
+              onClick={onCloseJourney}
+              data-testid="btn-close-onboarding-collapsed"
+              title="סגירת ההדרכה (ניתן לפתוח מחדש בכל עת מתפריט עזרה)"
+              style={{
+                background: '#fef2f2',
+                color: '#dc2626',
+                border: '1px solid #fecaca',
+                borderRadius: '6px',
+                padding: '5px 10px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <X size={13} />
+              <span>סגירה</span>
+            </button>
+          )}
         </div>
       </aside>
     );
@@ -247,17 +337,21 @@ export default function OnboardingGuidedWorkspace({
         left: 0,
         right: 0,
         zIndex: 1300,
-        background: 'rgba(255, 255, 255, 0.98)',
-        backdropFilter: 'blur(12px)',
+        background: 'rgba(255, 255, 255, 0.96)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         borderTop: '1.5px solid #d3dff0',
-        boxShadow: '0 -6px 24px rgba(43, 76, 115, 0.12)',
+        boxShadow: '0 -6px 24px rgba(43, 76, 115, 0.14)',
         padding: '12px 20px',
         maxHeight: '45vh',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        opacity: isClosing ? 0 : 1,
+        transform: isClosing ? 'translateY(16px)' : 'translateY(0)',
+        transition: 'opacity 0.28s ease, transform 0.28s ease, background-color 0.28s ease'
       }}
     >
-      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {/* Top Control Bar: 10-Step Stepper & Quick Utility Controls */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Top Control Bar: 10-Step Stepper & Clear Minimize / Close Controls */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
           {/* 10-Step Compact Horizontal Pills */}
           <div
@@ -319,8 +413,8 @@ export default function OnboardingGuidedWorkspace({
             })}
           </div>
 
-          {/* Right Utility Buttons (32x32px standards) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Right/Left Utility Buttons (32x32px standards + explicit labels for Minimize & Close) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={onOpenNavigator}
@@ -386,8 +480,108 @@ export default function OnboardingGuidedWorkspace({
             >
               <ChevronDown size={16} />
             </button>
+
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              title="מזעור פאנל ההדרכה לרצועה דקה ושקופה"
+              style={{
+                background: '#f8fafc',
+                color: '#334155',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <span>מזעור</span>
+            </button>
+
+            {onCloseJourney && (
+              <button
+                type="button"
+                onClick={onCloseJourney}
+                data-testid="btn-close-onboarding-dock"
+                title="סגירת פאנל ההדרכה (ניתן להפעיל שוב בכל עת מתפריט 'עזרה' למעלה)"
+                aria-label="סגירת הדרכה"
+                style={{
+                  background: '#fef2f2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  padding: '4px 10px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <X size={14} />
+                <span>סגירת הדרכה</span>
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Animated "Where to Look" Callout Banner (Matches the classic animated green tour indicator) */}
+        {currentStep.whereToLookHint && (
+          <div
+            className="onboarding-where-to-look-banner"
+            data-testid="onboarding-where-to-look-banner"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              flexWrap: 'wrap',
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+              border: '1.5px solid #4ade80',
+              borderRadius: '10px',
+              padding: '7px 14px',
+              boxShadow: '0 2px 10px rgba(22, 163, 74, 0.12)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#14532d', fontWeight: 700 }}>
+              <span className="tour-arrow-anim" style={{ fontSize: '18px' }}>
+                {currentStep.arrowIcon || '☝️'}
+              </span>
+              <span>איפה להסתכל עכשיו במסך:</span>
+              <span style={{ fontWeight: 600, color: '#166534' }}>
+                {currentStep.whereToLookHint}
+              </span>
+            </div>
+
+            {currentStep.actionLabel && (
+              <button
+                type="button"
+                onClick={() => onExecuteAction && onExecuteAction(currentStep)}
+                style={{
+                  background: '#16a34a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '999px',
+                  padding: '4px 12px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)'
+                }}
+              >
+                <span>הראה לי במסך 🎯</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Middle Content Panel: Rationale + Guidance + Examples */}
         <div
@@ -445,7 +639,7 @@ export default function OnboardingGuidedWorkspace({
         </div>
 
         {/* Bottom Actions Row: Previous, Direct Action, Next */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={onPreviousStep}

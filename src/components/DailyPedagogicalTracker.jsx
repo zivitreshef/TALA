@@ -92,7 +92,8 @@ export default function DailyPedagogicalTracker({
   currentUser = {},
   onUpdateStudent,
   onSelectStudent,
-  onClose
+  onClose,
+  activeOnboardingStep = 0
 }) {
   const teacherEmail = (currentUser?.email || 'teacher').toLowerCase();
   const STORAGE_TODOS_KEY = `tala_daily_todos_${teacherEmail}`;
@@ -1180,7 +1181,13 @@ export default function DailyPedagogicalTracker({
           </div>
 
           {/* Dual-Mode Goal Updating & AI Free Text Note */}
-          <div className="tracker-card">
+          <div className="tracker-card" style={{ position: 'relative' }}>
+            {activeOnboardingStep === 5 && (
+              <div className="onboarding-tour-arrow-box" style={{ top: '-18px', right: '16px' }}>
+                <span className="tour-arrow-anim">👇</span>
+                <span>שלב 5: כאן מתעדים תצפית שטח יומית ב-10 שניות או מעדכנים רמת תיווך ביעד!</span>
+              </div>
+            )}
             <div className="tracker-card-header">
               <div>
                 <h3 className="tracker-card-header-title">
@@ -1243,7 +1250,7 @@ export default function DailyPedagogicalTracker({
                     value={aiNoteText}
                     onChange={(e) => setAiNoteText(e.target.value)}
                     placeholder="למשל: היום בחצר איתי ניגש מיוזמתו לשחק בכדור עם שני חברים, והמתין לתורו ללא התפרצות..."
-                    className="ai-note-textarea"
+                    className={`ai-note-textarea ${activeOnboardingStep === 5 ? 'tour-highlight-input' : ''}`}
                   />
 
                   {aiAnalysisError && (
@@ -1258,7 +1265,7 @@ export default function DailyPedagogicalTracker({
                       type="button"
                       disabled={isAnalyzingAi}
                       onClick={handleRunAiAnalysis}
-                      className="btn-ai-analyze"
+                      className={`btn-ai-analyze ${activeOnboardingStep === 5 ? 'tour-highlight-btn' : ''}`}
                     >
                       <Sparkles size={14} />
                       <span>{isAnalyzingAi ? 'מנתח ב-AI...' : 'נתח ושייך ליעד ב-AI'}</span>

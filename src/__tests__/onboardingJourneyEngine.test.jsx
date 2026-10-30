@@ -23,6 +23,7 @@ import {
   saveOnboardingState,
   pauseOnboarding,
   resumeOnboarding,
+  dismissOnboarding,
   resetOnboardingState,
   advanceOnboardingStep,
   goToOnboardingStep,
@@ -655,6 +656,41 @@ describe('Onboarding Journey Engine & Help Modal Re-launch Suite', () => {
       expect(normalized.goals[0].midYearEvaluation).toContain('75%');
       expect(normalized.evalReportSummary).toContain('יונתן');
       expect(normalized.statusReportSections.length).toBeGreaterThanOrEqual(6);
+    });
+
+    it('Scenario 7: Dismissing (closing) the lower panel hides it completely and re-opening from Help restores it', () => {
+      const dismissed = dismissOnboarding(TEST_EMAIL);
+      expect(dismissed.isDismissed).toBe(true);
+
+      const htmlWhenDismissed = renderToStaticMarkup(
+        React.createElement(OnboardingGuidedWorkspace, {
+          onboardingState: dismissed,
+          onCloseJourney: vi.fn()
+        })
+      );
+      expect(htmlWhenDismissed).toBe('');
+
+      // Re-launching or resuming clears isDismissed
+      const resumed = resumeOnboarding(TEST_EMAIL);
+      expect(resumed.isDismissed).toBe(false);
+
+      const htmlWhenResumed = renderToStaticMarkup(
+        React.createElement(OnboardingGuidedWorkspace, {
+          onboardingState: resumed,
+          onCloseJourney: vi.fn()
+        })
+      );
+      expect(htmlWhenResumed).toContain('data-testid="onboarding-where-to-look-banner"');
+      expect(htmlWhenResumed).toContain('data-testid="btn-close-onboarding-dock"');
+      expect(htmlWhenResumed).toContain('סגירת הדרכה');
+    });
+
+    it('Scenario 8: Every step defines whereToLookHint and arrowIcon for animated visual guidance', () => {
+      ONBOARDING_STEPS.forEach((step) => {
+        expect(typeof step.whereToLookHint).toBe('string');
+        expect(step.whereToLookHint.length).toBeGreaterThan(10);
+        expect(typeof step.arrowIcon).toBe('string');
+      });
     });
   });
 });

@@ -42,7 +42,8 @@ export default function TeacherChatWidget({
   defaultOpen = false,
   isOpenControlled = null,
   onToggleOpen = null,
-  onCloseCustom = null
+  onCloseCustom = null,
+  onboardingDockMode = 'hidden'
 }) {
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const isOpen = typeof isOpenControlled === 'boolean' ? isOpenControlled : internalOpen;
@@ -261,6 +262,12 @@ export default function TeacherChatWidget({
   }
 
   const canSend = (inputMessage.trim() || attachment) && !isSending && !isProcessingImg;
+  const resolvedBottomOffset =
+    onboardingDockMode === 'expanded'
+      ? '235px'
+      : onboardingDockMode === 'collapsed'
+      ? '68px'
+      : '22px';
 
   return (
     <div
@@ -269,9 +276,10 @@ export default function TeacherChatWidget({
       data-testid="teacher-support-chat-root"
       style={{
         position: 'fixed',
-        bottom: '22px',
+        bottom: resolvedBottomOffset,
         left: '22px',
         zIndex: 2100,
+        transition: 'bottom 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
         fontFamily: "'Rubik', 'Segoe UI', Tahoma, Arial, sans-serif"
       }}
     >

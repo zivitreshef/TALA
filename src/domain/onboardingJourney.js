@@ -20,6 +20,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'landing',
     targetSection: null,
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי למעלה במרכז המסך: לחצי על הכפתור הירוק המודגש לבחירת מסלול (תלמיד לדוגמה "יונתן לוי" או תלמיד אמיתי מהשטח).',
     pedagogicalRationale:
       'הכרת התפיסה האקולוגית: התלמיד אינו לקות מבודדת, אלא שלם המתפקד בסביבות שונות (כיתת אם, חצר, חדר שילוב ובית). המערכת מרכזת את כל המעטפת במקום אחד.',
     contextualGuidance:
@@ -38,6 +41,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'student_form',
     targetSection: 'section_1_identity',
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי למעלה בסעיף "1. פרטים אישיים של הילד/ה ומסגרת חינוכית" (מסומן בחץ ירוק מהבהב): שם, מין, שלב חינוכי וסוג תוכנית.',
     pedagogicalRationale:
       'הבחנה מדויקת בין שלב חינוכי (גן/בי"ס) וסוג תוכנית (תל״א לחנ״מ לעומת תח״י/תח״א לשילוב), והגנה מחמירה על פרטיות (Zero PII). הגדרות אלו מעצבות את מבנה הדוחות.',
     contextualGuidance:
@@ -56,6 +62,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'student_form',
     targetSection: 'section_2_profile',
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי בסעיף "2. תיאור חופשי של התלמיד/ה, רקע ומוקדי כוח" (מסומן בחץ ירוק): תיבת הטקסט החופשי, כפתור "עיבוד המידע" ב-AI וטבלת הפרופיל התפקודי.',
     pedagogicalRationale:
       'בחינוך מיוחד אפקטיבי, תוכנית עבודה נבנית תמיד על בסיס מוקדי הכוח ותחומי העניין של התלמיד, ולא רק על קשייו. כוחות אלו מהווים את המנוף המרכזי להתקדמות.',
     contextualGuidance:
@@ -74,6 +83,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'student_form',
     targetSection: 'section_3_goals',
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי בסעיף "3. תכנית עבודה / הגדרת מטרות ויעדים" (מסומן בחץ ירוק): כאן מוסיפים מטרות ממאגר המטרות הדינמי או מנסחים יעדים, שותפים ואמצעים.',
     pedagogicalRationale:
       'יעד פדגוגי איכותי חייב להיות אופרטיבי, מדיד, מעוגן בסביבת תפקוד אמיתית ומוגדר בזמן (ששת עמודי התווך של TALA: יעד, קריטריון, זמן, סביבה, שותפים וכלים).',
     contextualGuidance:
@@ -92,6 +104,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'daily_tracker',
     targetSection: null,
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי בכרטיס "עדכון יעדים ומעקב תצפיות יומי" משמאל (או בלשונית "מעקב יומי" בסרגל העליון): כאן מתעדים תצפית שטח ב-10 שניות ומשייכים ליעד ב-AI.',
     pedagogicalRationale:
       'תיעוד שוטף וממוקד בזמן אמת מונע שכחה ופערי תצפית, ומספק ראיות אותנטיות להתקדמות לאורך חודשי השנה. רמת התיווך שנצפתה מעידה על מידת העצמאות האמיתית.',
     contextualGuidance:
@@ -110,6 +125,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'student_form',
     targetSection: 'section_4_ongoing',
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי בסרגל הפעולות העליון של הטופס (מסומן בחץ ירוק): כפתור "שמור התקדמות", סמל המנעול (🔓 נעילת דו"ח) וכפתור "תצוגת מסמך מלאה".',
     pedagogicalRationale:
       'תוכנית לימודים אישית אינה מסמך בירוקרטי שננעל במגירה בספטמבר. היא כלי עבודה חי שמתעדכן ברציפות, ננעל לעריכה לקראת ועדות, ומלווה בהיסטוריית גרסאות בענן.',
     contextualGuidance:
@@ -128,6 +146,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'parent_voice',
     targetSection: 'parent_voice_control',
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי בראש סעיף 1 על כפתור "קול ההורה" (מסומן בחץ ירוק מהבהב): לחיצה עליו יוצרת קישור וואטסאפ מאובטח להורים ומשלבת את תשובותיהם בתוכנית.',
     pedagogicalRationale:
       'שותפות עם ההורים היא עקרון חוקי (תיקון 136 לחוק חינוך מיוחד) ופדגוגי ראשון במעלה. שיתוף ההורים בשאלון דיגיטלי ידידותי בנייד מעשיר את התוכנית וחוסך שעות פגישות.',
     contextualGuidance:
@@ -146,6 +167,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'status_report',
     targetSection: 'section_5_eval',
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי בחלק התחתון של הטופס בסעיף "דוח הערכת מחצית / סוף שנה" (מסומן בחץ ירוק): כאן מזינים סיכום או לוחצים "עיבוד מידע ב-AI" להפקת דוח הערכה מלא.',
     pedagogicalRationale:
       'סיכום תקופתי (מחצית, סוף שנה וועדות) דורש שזירה מדויקת של כל התצפיות שנאספו לאורך השנה לתוך הערכה מילולית רשמית, מבלי להשקיע שעות בכתיבה ידנית מאפס.',
     contextualGuidance:
@@ -164,6 +188,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'status_report',
     targetSection: 'section_ai_insights',
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי בפאנל "דו״ח מצב חינוכי-תפקודי עדכני" (מסומן בחץ ירוק): כאן ה-AI מצליב את כל התצפיות והיעדים של השנה ל-15 סעיפים רשמיים לוועדות.',
     pedagogicalRationale:
       'בינה מלאכותית כמסייעת פדגוגית אמינה (AI Assistant) תחת סמכות המורה: ה-AI מנתח תצפיות מצטברות ומציע ניסוחים מקצועיים, אך אינו ממציא נתונים (Zero Hallucination).',
     contextualGuidance:
@@ -182,6 +209,9 @@ export const ONBOARDING_STEPS = [
     targetView: 'settings',
     targetSection: null,
     isImplemented: true,
+    arrowIcon: '☝️',
+    whereToLookHint:
+      'הביטי למעלה בכפתור "שיתוף צוות" בסעיף 1 ובכרטיס המורה בפינה השמאלית העליונה (מסומנים בחץ ירוק): שיתוף עמיתות מהמתי״א והגדרות אזור אישי.',
     pedagogicalRationale:
       'עבודה בחינוך מיוחד היא עבודת צוות רב-מקצועית. שיתוף מסמכים בטוח בתוך גבולות המתי״א (Zero-Trust Tenant Isolation) מאפשר שיתוף פעולה הדוק בין מורות שילוב למטפלות פרא-רפואיות.',
     contextualGuidance:

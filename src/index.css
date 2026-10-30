@@ -4881,3 +4881,58 @@ body:has([data-testid="team-chat-drawer-panel"]) .teacher-chat-widget-root,
 body:has([data-testid="team-chat-drawer-panel"]) [data-testid="teacher-support-chat-root"] {
   display: none !important;
 }
+
+
+/* === ONBOARDING GUIDED WORKSPACE DOCK FADE & CHAT OVERLAP PREVENTION === */
+@keyframes onboardingDockFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes onboardingMinimizedFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 0.92;
+    transform: translateY(0);
+  }
+}
+
+.onboarding-guided-dock {
+  animation: onboardingDockFadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.28s ease, transform 0.28s ease, background-color 0.28s ease;
+}
+
+.onboarding-collapsed-dock,
+.onboarding-paused-dock {
+  animation: onboardingMinimizedFadeIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.28s ease, transform 0.28s ease, background-color 0.28s ease;
+}
+
+.onboarding-collapsed-dock:hover,
+.onboarding-collapsed-dock:focus-within,
+.onboarding-paused-dock:hover,
+.onboarding-paused-dock:focus-within {
+  opacity: 1 !important;
+}
+
+/* Automatically lift floating support chat widget above the onboarding bottom dock so it never covers buttons */
+body:has(.onboarding-guided-dock) .teacher-chat-widget-root,
+body:has(.onboarding-guided-dock) [data-testid="teacher-support-chat-root"] {
+  bottom: 235px !important;
+  transition: bottom 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body:has(.onboarding-collapsed-dock) .teacher-chat-widget-root,
+body:has(.onboarding-collapsed-dock) [data-testid="teacher-support-chat-root"] {
+  bottom: 68px !important;
+  transition: bottom 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
