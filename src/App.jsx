@@ -112,6 +112,7 @@ import {
   clearHealthEventsInCloud
 } from './firebaseBackend';
 import { countUnreviewedHealthEvents } from './domain/healthEvents.js';
+import { dispatchServerInquiryAlerts } from './services/alertDispatcher.js';
 import {
   shouldSendPedagogicalDigest,
   getObservationGaps,
@@ -333,7 +334,16 @@ export default function App() {
       safeSetStorageJson(ADMIN_REQUESTS_STORAGE_KEY, next);
       return next;
     });
-    submitAdminRequestToCloud(newReq);
+    submitAdminRequestToCloud(newReq).then((ok) => {
+      if (!ok) {
+        const admins = (allowedUsers || []).filter((u) => u.role === 'admin' && u.active !== false);
+        dispatchServerInquiryAlerts({
+          request: newReq,
+          admins,
+          emailConfig: emailEngineConfig
+        }).catch(() => {});
+      }
+    });
   };
 
   const handleDismissAdminRequest = (reqId) => {

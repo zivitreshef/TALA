@@ -365,6 +365,83 @@ describe('Admin Real-Time Alerts Domain & Dispatcher', () => {
       expect(results).toEqual([]);
     });
 
+    it('dispatchTelegramAlert falls back to plain text if Telegram rejects Markdown formatting', async () => {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: async () => ({ ok: false, description: "Bad Request: can't parse entities: Can't find end of the entity" })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true })
+        });
+      global.fetch = mockFetch;
+
+      const res = await dispatchTelegramAlert({
+        botToken: 'TEST_TOKEN',
+        chatId: '123456',
+        text: 'Hello *unclosed_markdown with_underscore@gmail.com'
+      });
+
+      expect(res.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const secondCallBody = JSON.parse(mockFetch.mock.calls[1][1].body);
+      expect(secondCallBody.parse_mode).toBeUndefined();
+    });
+
+    it('dispatchChatAlertToAdmins dispatches alerts to all active admins when an unauthenticated login inquiry arrives via server', async () => {
+      const { dispatchServerInquiryAlerts } = await import('../services/alertDispatcher.js');
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true }),
+        text: async () => 'success'
+      });
+      vi.spyOn(emailService, 'sendReportEmailInBackground').mockResolvedValue({ ok: true });
+
+      const mockAdmins = [
+        {
+          id: 'admin1',
+          email: 'zivit.reshef@gmail.com',
+          role: 'admin',
+          active: true,
+          adminAlerts: {
+            notifyOnChat: true,
+            email: { enabled: true, address: 'zivit.reshef@gmail.com' },
+            telegram: { enabled: true, chatId: '111222' }
+          }
+        },
+        {
+          id: 'admin2',
+          email: 'moti.reshef@gmail.com',
+          role: 'admin',
+          active: true,
+          adminAlerts: {
+            notifyOnChat: true,
+            email: { enabled: true, address: 'moti.reshef@gmail.com' },
+            telegram: { enabled: true, chatId: '333444' }
+          }
+        }
+      ];
+
+      const results = await dispatchServerInquiryAlerts({
+        request: {
+          id: 'req_123',
+          name: 'שרה אסרף',
+          email: 'saribiton98@gmail.com',
+          topic: 'שחרור חסימה / איפוס סיסמה',
+          notes: 'אני מנסה להיכנס פעם ראשונה אך לא מצליחה'
+        },
+        admins: mockAdmins
+      });
+
+      expect(results.length).toBe(4); // 2 admins * (email + telegram)
+      expect(results.every((r) => r.ok)).toBe(true);
+    });
+
   });
 
   describe('AdminAlertsPanel Component Rendering', () => {

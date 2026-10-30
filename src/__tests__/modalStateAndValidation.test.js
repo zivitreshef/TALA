@@ -950,7 +950,7 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
             email: 'admin@tala.com',
             active: true,
             adminAlerts: {
-              telegram: { enabled: true, botToken: 'tok123' },
+              telegram: { enabled: true, chatId: '123456789' }, // Using default system botToken (empty botToken)
               whatsapp: { enabled: false },
               email: { enabled: true }
             }
@@ -983,8 +983,8 @@ describe('Modal State Validation & Interaction Logic Suite', () => {
 
         // Alert channels status badge
         expect(html).toContain('ערוצי התראה:');
-        expect(html).toContain('טלגרם');
-        expect(html).toContain('דוא&quot;ל');
+        expect(html).toContain('✓ טלגרם');
+        expect(html).toContain('✓ דוא&quot;ל');
 
         // Teacher context chip
         expect(html).toContain('🏫 מתי&quot;א מרכז');

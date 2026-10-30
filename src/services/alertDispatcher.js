@@ -30,7 +30,7 @@ export async function dispatchTelegramAlert({ botToken, chatId, text }) {
   }
 
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -40,7 +40,19 @@ export async function dispatchTelegramAlert({ botToken, chatId, text }) {
     })
   });
 
-  const data = await response.json().catch(() => null);
+  let data = await response.json().catch(() => null);
+  if ((!response.ok || !data?.ok) && data?.description && /can't parse entities/i.test(data.description)) {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: targetChatId,
+        text: text
+      })
+    });
+    data = await response.json().catch(() => null);
+  }
+
   if (!response.ok || !data?.ok) {
     const desc = data?.description || `HTTP ${response.status}`;
     throw new Error(`Telegram error: ${desc}`);
@@ -209,7 +221,6 @@ export async function dispatchAlertsToAdmins({ event, admins = [], emailConfig =
   return results.map((r) => (r.status === 'fulfilled' ? r.value : { ok: false, error: r.reason }));
 }
 
-
 /**
  * Dispatches real-time chat notifications to all configured admins across WhatsApp, Telegram, and Email.
  * Never throws (fire-and-forget).
@@ -292,4 +303,21 @@ export async function dispatchChatAlertToAdmins({
 
   const results = await Promise.allSettled(promises);
   return results.map((r) => (r.status === 'fulfilled' ? r.value : { ok: false, error: r.reason }));
+}
+
+/**
+ * Dispatches real-time inquiry alerts for standalone contact/support requests (e.g. from the login page).
+ */
+export async function dispatchServerInquiryAlerts({ request = {}, admins = [], emailConfig = null, siteUrl = '' }) {
+  if (!request || (!request.email && !request.name)) return [];
+  return dispatchChatAlertToAdmins({
+    teacherName: request.name || 'משתמש/ת',
+    teacherEmail: request.email || '',
+    topic: request.topic || 'פנייה מדף הכניסה',
+    messageText: request.notes || request.topic || 'פנייה חדשה למנהלת המערכת',
+    hasAttachment: false,
+    admins,
+    emailConfig,
+    siteUrl
+  });
 }

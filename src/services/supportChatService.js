@@ -125,10 +125,12 @@ export async function sendChatMessageToCloud({
   const updatedThread = appendMessageToThread(baseThread, newMessage);
 
   const db = getFirestoreDb();
+  let savedToCloud = false;
   if (db) {
     try {
       const docRef = doc(db, SUPPORT_THREADS_COLLECTION, threadKey);
       await setDoc(docRef, sanitizeForFirestore(updatedThread), { merge: true });
+      savedToCloud = true;
     } catch (err) {
       console.warn('[supportChat] Failed to persist thread to Firestore:', err);
     }
@@ -146,8 +148,10 @@ export async function sendChatMessageToCloud({
     }).catch(() => {});
   }
 
-  // If message is from teacher, alert admins across WhatsApp, Telegram & Email in background
-  if (senderRole === SENDER_ROLES.USER && Array.isArray(admins) && admins.length > 0) {
+  // If message is from teacher and cloud trigger was not reached (local/offline fallback), alert admins in background
+  const hasConfiguredClientAdmins =
+    Array.isArray(admins) && admins.some((a) => a && a.adminAlerts && typeof a.adminAlerts === 'object');
+  if (senderRole === SENDER_ROLES.USER && hasConfiguredClientAdmins && !savedToCloud) {
     dispatchChatAlertToAdmins({
       teacherName: cleanName,
       teacherEmail: cleanEmail,

@@ -128,7 +128,25 @@ async function handleTalaConfigWrite(req,res){
     if(body.kind==="submitRequest"){
       const r=body.request||{};const s=(v,n)=>String(v==null?"":v).slice(0,n);
       const item={id:s(r.id,64)||"req_"+Date.now(),name:s(r.name,120),email:s(r.email,200),topic:s(r.topic,200),notes:s(r.notes,4000),createdAt:s(r.createdAt,64)};
-      await db.runTransaction(async(tx)=>{const snap=await tx.get(reqsRef);const cur=(snap.exists&&snap.data().requests)||[];tx.set(reqsRef,{requests:[item,...cur].slice(0,300),updatedAt:new Date().toISOString()});});
+      let adminsForAlert=[];
+      await db.runTransaction(async(tx)=>{
+        const [reqsSnap,usersSnap]=await Promise.all([tx.get(reqsRef),tx.get(usersRef)]);
+        const cur=(reqsSnap.exists&&reqsSnap.data().requests)||[];
+        tx.set(reqsRef,{requests:[item,...cur].slice(0,300),updatedAt:new Date().toISOString()});
+        const users=(usersSnap.exists&&usersSnap.data().users)||[];
+        adminsForAlert=users.filter((u)=>u&&u.role==="admin"&&u.active!==false);
+      });
+      // Dispatch real-time alerts to admins for standalone inquiries (not already dispatched by support chat trigger)
+      if(!String(item.id||"").startsWith("req_chat_")&&adminsForAlert.length){
+        await dispatchInquiryAlertsFromServer({
+          teacherName:item.name||"משתמש/ת",
+          teacherEmail:item.email||"",
+          topic:item.topic||"פנייה מדף הכניסה",
+          messageText:item.notes||item.topic||"פנייה חדשה למנהלת המערכת",
+          hasAttachment:false,
+          admins:adminsForAlert
+        });
+      }
       res.status(200).json({ok:true});return;
     }
     if(!email){res.status(401).json({error:"Unauthorized"});return;}
@@ -361,6 +379,7 @@ async function handleHealthEventCreated(snap, context) {
 
   for (const adminUser of admins) {
     const alerts = adminUser.adminAlerts || {};
+    if (alerts.notifyOnHealth === false) continue;
 
     // 1. Email Alert
     if (alerts.email && alerts.email.enabled) {
@@ -387,19 +406,7 @@ async function handleHealthEventCreated(snap, context) {
     // 2. Telegram Alert
     if (alerts.telegram && alerts.telegram.enabled && alerts.telegram.chatId) {
       const botToken = alerts.telegram.botToken || DEFAULT_TELEGRAM_BOT_TOKEN;
-      try {
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: alerts.telegram.chatId,
-            text: textAlert,
-            parse_mode: "Markdown"
-          })
-        });
-      } catch (e) {
-        console.error("Telegram alert dispatch failed for chatId", alerts.telegram.chatId, e.message);
-      }
+      await sendTelegramServerAlert(botToken, alerts.telegram.chatId, textAlert);
     }
 
     // 3. WhatsApp Alert (CallMeBot)
@@ -418,3 +425,197 @@ async function handleHealthEventCreated(snap, context) {
 exports.onHealthEventCreated = functions.firestore
   .document("tala_health_events/{eventId}")
   .onCreate(handleHealthEventCreated);
+
+// ---- Real-time Admin Inquiry & Support Chat Alerts (Email, Telegram, WhatsApp) ----
+const DEFAULT_TALA_SITE_URL = "https://zivitreshef.github.io/TALA/";
+
+function escapeHtmlServer(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function sendTelegramServerAlert(botToken, chatId, text) {
+  const token = String(botToken || "").trim() || DEFAULT_TELEGRAM_BOT_TOKEN;
+  const targetChatId = String(chatId || "").trim();
+  if (!targetChatId) return;
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+  try {
+    let res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: targetChatId, text, parse_mode: "Markdown" })
+    });
+    let data = await res.json().catch(() => null);
+    if ((!res.ok || !data?.ok) && data?.description && /can't parse entities/i.test(data.description)) {
+      await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: targetChatId, text })
+      });
+    }
+  } catch (e) {
+    console.error("Telegram alert dispatch failed for chatId", targetChatId, e.message);
+  }
+}
+
+async function dispatchInquiryAlertsFromServer({
+  teacherName = "מורה",
+  teacherEmail = "",
+  topic = "פנייה לתמיכה",
+  messageText = "",
+  hasAttachment = false,
+  admins = []
+}) {
+  if (!Array.isArray(admins) || !admins.length) return;
+
+  const timeStr = new Date().toLocaleString("he-IL", { timeZone: "Asia/Jerusalem", dateStyle: "short", timeStyle: "short" });
+  const emailParam = encodeURIComponent(String(teacherEmail || "").trim().toLowerCase());
+  const chatUrl = `${DEFAULT_TALA_SITE_URL}?openAdminChat=${emailParam}`;
+
+  const lines = [
+    `💬 *פנייה חדשה במערכת TALA*`,
+    `━━━━━━━━━━━━━━━━━━━`,
+    `👤 *מאת:* ${teacherName} (${teacherEmail || "ללא מייל"})`,
+    `📌 *נושא:* ${topic}`,
+    `⏰ *מועד:* ${timeStr}`
+  ];
+  if (hasAttachment) {
+    lines.push(`📎 *צילום מסך:* מצורף צילום מסך בצ'אט המערכת`);
+  }
+  lines.push(
+    `💬 *הודעה:*`,
+    `"${messageText}"`,
+    `━━━━━━━━━━━━━━━━━━━`,
+    `👉 *מענה ישיר למורה:*`,
+    `${chatUrl}`
+  );
+  const textAlert = lines.join("\n");
+
+  const safeName = escapeHtmlServer(teacherName || "מורה");
+  const safeEmail = escapeHtmlServer(teacherEmail || "");
+  const safeTopic = escapeHtmlServer(topic || "פנייה לתמיכה");
+  const safeMessage = escapeHtmlServer(messageText || "");
+
+  const htmlEmail = `
+    <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+      <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%); color: #ffffff; padding: 16px 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+        <h2 style="margin: 0; font-size: 20px;">💬 פנייה חדשה – TALA Support</h2>
+      </div>
+      <p style="font-size: 15px; color: #1e293b; margin-bottom: 16px;">
+        התקבלה פנייה חדשה במערכת TALA הדורשת מענה של מנהל/ת המערכת:
+      </p>
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;">
+        <p style="margin: 6px 0; font-size: 14px;"><strong>מאת:</strong> ${safeName} (${safeEmail})</p>
+        <p style="margin: 6px 0; font-size: 14px;"><strong>נושא:</strong> ${safeTopic}</p>
+        <p style="margin: 6px 0; font-size: 14px;"><strong>זמן:</strong> ${timeStr}</p>
+      </div>
+      <div style="background: #f0fdf4; border-right: 4px solid #16a34a; padding: 14px 18px; border-radius: 6px; margin-bottom: 24px;">
+        <strong style="color: #166534; font-size: 14px;">תוכן הפנייה:</strong>
+        <p style="margin: 8px 0 0 0; color: #1e293b; font-size: 14.5px; white-space: pre-wrap;">${safeMessage}</p>
+        ${hasAttachment ? `<div style="margin-top: 10px; padding: 6px 10px; background: #ede9fe; color: #5b21b6; border-radius: 6px; font-size: 13px; font-weight: bold;">📎 צורף צילום מסך בצ'אט המערכת.</div>` : ""}
+      </div>
+      <div style="text-align: center; margin: 25px 0;">
+        <a href="${chatUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 12px 26px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14.5px;">
+          💬 מענה ישיר ב-TALA
+        </a>
+      </div>
+    </div>`;
+
+  for (const adminUser of admins) {
+    if (!adminUser || adminUser.active === false || adminUser.role !== "admin") continue;
+    const alerts = adminUser.adminAlerts || {};
+    if (alerts.notifyOnChat === false) continue;
+
+    // 1. Email Alert
+    if (alerts.email && alerts.email.enabled) {
+      const toEmail = String(alerts.email.address || adminUser.email || "").trim().toLowerCase();
+      if (toEmail) {
+        try {
+          await fetch(DEFAULT_APPS_SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({
+              to: toEmail,
+              subject: `💬 פנייה חדשה ב-TALA: ${teacherName} (${topic})`,
+              htmlBody: htmlEmail,
+              textBody: textAlert,
+              senderName: "מערכת TALA – תמיכה ובקרה"
+            })
+          });
+        } catch (e) {
+          console.error("Inquiry email alert failed for admin", toEmail, e.message);
+        }
+      }
+    }
+
+    // 2. Telegram Alert
+    if (alerts.telegram && alerts.telegram.enabled && alerts.telegram.chatId) {
+      const botToken = alerts.telegram.botToken || DEFAULT_TELEGRAM_BOT_TOKEN;
+      await sendTelegramServerAlert(botToken, alerts.telegram.chatId, textAlert);
+    }
+
+    // 3. WhatsApp Alert (CallMeBot)
+    if (alerts.whatsapp && alerts.whatsapp.enabled && alerts.whatsapp.phone && alerts.whatsapp.apiKey) {
+      const phone = String(alerts.whatsapp.phone).replace(/[^\d]/g, "");
+      const key = String(alerts.whatsapp.apiKey).trim();
+      try {
+        await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encodeURIComponent(textAlert)}&apikey=${key}`);
+      } catch (e) {
+        console.error("Inquiry WhatsApp alert failed for phone", phone, e.message);
+      }
+    }
+  }
+}
+
+async function handleSupportThreadWritten(change, context) {
+  const afterSnap = change && change.after;
+  if (!afterSnap || !afterSnap.exists) return;
+  const after = typeof afterSnap.data === "function" ? afterSnap.data() : afterSnap.data;
+  if (!after) return;
+
+  const beforeSnap = change && change.before;
+  const before = beforeSnap && beforeSnap.exists ? (typeof beforeSnap.data === "function" ? beforeSnap.data() : beforeSnap.data) : null;
+
+  const afterMsgs = Array.isArray(after.messages) ? after.messages : [];
+  const beforeMsgs = before && Array.isArray(before.messages) ? before.messages : [];
+
+  const isNewTeacherMsg = afterMsgs.length > beforeMsgs.length && after.lastMessageSender === "user";
+  const isNewlyEscalated = after.status === "needs_attention" && (!before || before.status !== "needs_attention");
+
+  if (!isNewTeacherMsg && !isNewlyEscalated) return;
+
+  const db = admin.firestore();
+  let users = [];
+  try {
+    const snap = await db.collection("tala_config").doc("allowed_users").get();
+    users = (snap.exists && snap.data().users) || [];
+  } catch (err) {
+    console.error("Failed to read allowed_users for support thread alert:", err);
+    return;
+  }
+
+  const admins = users.filter((u) => u && u.role === "admin" && u.active !== false);
+  if (!admins.length) return;
+
+  const lastMsg = afterMsgs.length ? afterMsgs[afterMsgs.length - 1] : null;
+  const messageText = isNewlyEscalated && !isNewTeacherMsg
+    ? (after.feedbackNote || "המורה סימנה כי הפנייה דורשת המשך מענה")
+    : ((lastMsg && lastMsg.text) || after.lastMessageText || "📷 [צילום מסך מצורף]");
+
+  await dispatchInquiryAlertsFromServer({
+    teacherName: after.userName || (lastMsg && lastMsg.senderName) || "מורה",
+    teacherEmail: after.userEmail || (lastMsg && lastMsg.senderEmail) || "",
+    topic: after.topic || "פנייה מתוך צ'אט התמיכה",
+    messageText,
+    hasAttachment: Boolean(lastMsg && lastMsg.attachment),
+    admins
+  });
+}
+
+exports.onSupportThreadWritten = functions.firestore
+  .document("tala_support_threads/{threadId}")
+  .onWrite(handleSupportThreadWritten);

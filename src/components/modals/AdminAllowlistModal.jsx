@@ -318,7 +318,7 @@ export default function AdminAllowlistModal({
 
   const alertChannelsSummary = useMemo(() => {
     const admins = (allowedUsers || []).filter((u) => u.role === 'admin' && u.active !== false);
-    const hasTelegram = admins.some((a) => a.adminAlerts?.telegram?.enabled && a.adminAlerts?.telegram?.botToken);
+    const hasTelegram = admins.some((a) => a.adminAlerts?.telegram?.enabled && a.adminAlerts?.telegram?.chatId);
     const hasWhatsapp = admins.some((a) => a.adminAlerts?.whatsapp?.enabled && a.adminAlerts?.whatsapp?.apiKey);
     const hasEmail = admins.some((a) => a.adminAlerts?.email?.enabled);
     return { hasTelegram, hasWhatsapp, hasEmail };
