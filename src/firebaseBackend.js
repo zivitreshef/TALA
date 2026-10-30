@@ -718,6 +718,10 @@ export function subscribeToUserPreferences(email, onUpdate) {
 }
 
 export async function saveStudentToCloud(studentObj) {
+  // Zero-Trust Demo Sandbox Isolation: Demo students must NEVER be written to Firestore
+  if (!studentObj || studentObj.isDemo === true || studentObj.id === 'demo_yonatan_levi') {
+    return false;
+  }
   const db = getFirestoreDb();
   if (!db || !studentObj || !studentObj.id) return false;
   const docRef = doc(db, 'tala_students', studentObj.id);
@@ -766,6 +770,8 @@ export async function saveStudentToCloud(studentObj) {
 }
 
 export async function deleteStudentFromCloud(studentId) {
+  // Demo students only exist in local sandbox
+  if (!studentId || studentId === 'demo_yonatan_levi') return false;
   const db = getFirestoreDb();
   if (!db || !studentId) return false;
   try {

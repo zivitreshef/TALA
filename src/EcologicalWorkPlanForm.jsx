@@ -207,6 +207,7 @@ export default function EcologicalWorkPlanForm({
   onUpdateEmailEngineConfig,
   onboardingTourStep = 0,
   setOnboardingTourStep,
+  activeOnboardingStep = 0,
   onGoHome,
   userPreferences = {},
   privateGoals = []
@@ -224,6 +225,25 @@ export default function EcologicalWorkPlanForm({
 
   // Auto-scroll smooth effect when onboarding tour step advances
   useEffect(() => {
+    if (activeOnboardingStep) {
+      if (activeOnboardingStep === 2) {
+        section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      } else if (activeOnboardingStep === 3 || activeOnboardingStep === 7) {
+        setIsFreeTextCollapsed(false);
+        section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      } else if (activeOnboardingStep === 4) {
+        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      } else if (activeOnboardingStep === 6) {
+        (saveProgressRef.current || section4Ref.current)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      } else if (activeOnboardingStep === 8) {
+        setShowEvalReportSection(true);
+        setTimeout(() => evalReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
+      } else if (activeOnboardingStep === 9) {
+        setShowStatusReportSection(true);
+        setTimeout(() => statusReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
+      }
+      return;
+    }
     if (!onboardingTourStep) return;
     if (onboardingTourStep === 2 || onboardingTourStep === 3 || onboardingTourStep === 3.5 || onboardingTourStep === 4) {
       section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -234,7 +254,7 @@ export default function EcologicalWorkPlanForm({
     } else if (onboardingTourStep === 7) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [onboardingTourStep]);
+  }, [onboardingTourStep, activeOnboardingStep]);
 
   const [formData, setFormData] = useState(() => normalizeStudentForForm(student));
   const savedSnapshotRef = useRef(JSON.stringify(normalizeStudentForForm(student)));

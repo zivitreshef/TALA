@@ -179,6 +179,22 @@ import {
 import { buildAdminBankGoalPayload } from './domain/goalBankAdmin';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
 import GoalBankPage from './components/GoalBankPage';
+import OnboardingNavigatorModal from './components/onboarding/OnboardingNavigatorModal';
+import OnboardingGuidedWorkspace from './components/onboarding/OnboardingGuidedWorkspace';
+import {
+  getOnboardingState,
+  saveOnboardingState,
+  pauseOnboarding,
+  resumeOnboarding,
+  resetOnboardingState,
+  advanceOnboardingStep,
+  goToOnboardingStep,
+  setOnboardingDockCollapsed,
+  getDemoStudent,
+  saveDemoStudent,
+  clearDemoStudent
+} from './services/onboardingStorage';
+import { isDemoStudent, getStepById } from './domain/onboardingJourney';
 import './index.css';
 
 const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
@@ -488,8 +504,45 @@ export default function App() {
   });
   const [showLogoutUnsavedModal, setShowLogoutUnsavedModal] = useState(false);
   const [showIntroVideoModal, setShowIntroVideoModal] = useState(false);
-  // Guided Onboarding Interactive Tour Step (0 = inactive, 1 = point to create card button, 2 = point to name field, 3 = point to gender, 4 = point to framework, 5 = point to first goal button, 6 = point to free text & analyze button)
+  // Guided Onboarding Interactive Tour Step (legacy fallback)
   const [onboardingTourStep, setOnboardingTourStep] = useState(0);
+
+  // Guided Onboarding Journey State (Milestone 1)
+  const [onboardingState, setOnboardingState] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem(SESSION_USER_KEY);
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.email) {
+          return getOnboardingState(parsed.email);
+        }
+      }
+    } catch (_) {}
+    return getOnboardingState('');
+  });
+  const [showOnboardingNavigator, setShowOnboardingNavigator] = useState(false);
+  const [demoStudent, setDemoStudent] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem(SESSION_USER_KEY);
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.email) {
+          return getDemoStudent(parsed.email);
+        }
+      }
+    } catch (_) {}
+    return getDemoStudent('');
+  });
+
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    const st = getOnboardingState(currentUser.email);
+    setOnboardingState(st);
+    if (st.mode === 'demo') {
+      const demo = getDemoStudent(currentUser.email);
+      setDemoStudent(demo);
+    }
+  }, [currentUser?.email]);
 
   const toggleFrameworkCluster = (frameworkKey) => {
     setExpandedFrameworks((prev) => ({
@@ -874,6 +927,9 @@ export default function App() {
       return;
     }
     if (!selectedStudentId) return;
+    if (selectedStudentId === 'demo_yonatan_levi' || (demoStudent && selectedStudentId === demoStudent.id)) {
+      return;
+    }
     const myStudents = getStudentsForUser(students, currentUser);
     if (!myStudents.some((s) => s.id === selectedStudentId)) {
       setSelectedStudentId(null);
@@ -1587,69 +1643,10 @@ export default function App() {
     }));
   };
 
-  // Load a rich sample student plan for quick onboarding exploration
+  // Load a rich sample student plan for quick onboarding exploration (isolated in sandbox)
   const handleLoadSampleStudent = () => {
     if (!currentUser) return;
-    const newId = 'st_sample_' + Date.now();
-    const todayStr = new Date().toLocaleDateString('he-IL');
-    const sampleStudentPlan = {
-      id: newId,
-      ownerEmail: currentUser.email.trim().toLowerCase(),
-      date: todayStr,
-      schoolYear: 'תשפ"ו (2025-2026)',
-      planType: DEFAULT_PLAN_TYPE,
-      name: 'יונתן כהן (תוכנית לדוגמה)',
-      gender: 'boy',
-      idNumber: '012345678',
-      birthDate: '15/04/2018',
-      educationalFramework: 'בית ספר ארזים',
-      gradeClass: 'כיתה ב׳2',
-      address: 'הדרור 14, תל אביב',
-      phone: '050-1234567',
-      stage: 'school',
-      stageSource: 'user_explicit',
-      stageReason: 'תוכנית לדוגמה להתרשמות',
-      stageUpdatedAt: new Date().toISOString(),
-      teacherFreeText: 'יונתן ילד מקסים וסקרן, אוהב מאוד לצייר ולבנות בלגו. מפגין קושי מסוים בשמירה על קשב בריכוז ממושך ומעברים בין פעילויות. משתתף בהתלהבות בשיעורי ספורט ומוזיקה ויוצר קשרים חברתיים בקלות.',
-      strengthsExisting: 'יכולת ביטוי מילולית עשירה, אמפתיה לחברים, מוטיבציה גבוהה להצלחה.',
-      strengthsToEmpower: 'התמדה במשימות כתובות, ויסות תנועתי בכיתה, שימוש בכרטיסיות ניווט עצמי.',
-      recommendations: 'מומלץ לשלב הפוגות תנועתיות קצרות, חיזוקים חיוביים תכופים, ותיווך מותאם במעברים.',
-      status: 'בטיוטה',
-      lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
-      goals: [
-        {
-          id: 'g_sample_1',
-          domain: 'תפקוד התנהגותי ורגשי',
-          subDomain: 'ויסות והתארגנות',
-          mainGoal: 'יונתן ישב במקומו וישתתף במליאת הבוקר במשך 15 דקות רצופות תוך שימוש באביזר תחושתי.',
-          performanceStandard: '4 מתוך 5 ימים בשבוע',
-          timeline: 'אמצע שנה (פברואר)',
-          environment: 'כיתת אם / מליאה',
-          partners: 'מחנכת, מורת שילוב, סייעת',
-          toolsAndMethods: 'לוח זמנים חזותי, כרית ישיבה תחושתית, חיזוק מותאם בתום המליאה'
-        },
-        {
-          id: 'g_sample_2',
-          domain: 'תפקוד שפתי ואורייני',
-          subDomain: 'קריאה וכתיבה',
-          mainGoal: 'יונתן יקרא פסקה קצרה (3-4 שורות) ויענה על 2 שאלות איתור מידע ברמת דיוק של 80%.',
-          performanceStandard: 'ב-3 מפגשים פרטניים עוקבים',
-          timeline: 'סוף שנה (יוני)',
-          environment: 'חדר שילוב / למידה פרטנית',
-          partners: 'מורת שילוב, הורים',
-          toolsAndMethods: 'דפי עבודה מוגדלים, סימון מרקר להדגשת מילות מפתח'
-        }
-      ]
-    };
-
-    setStudents((prev) => [sampleStudentPlan, ...prev]);
-    saveStudentToCloud(sampleStudentPlan);
-    setSelectedStudentId(newId);
-    setExpandedFrameworks((prev) => ({
-      ...prev,
-      'בית ספר ארזים': true
-    }));
-    setOnboardingTourStep(0);
+    handleStartOnboarding({ mode: 'demo', restart: false });
   };
 
   const handleDeleteStudent = (studentObj, e) => {
@@ -1768,10 +1765,178 @@ export default function App() {
   };
 
   const handleSaveStudentPlan = (updatedStudent) => {
+    if (!updatedStudent) return;
+    if (isDemoStudent(updatedStudent) || updatedStudent.id === 'demo_yonatan_levi') {
+      const saved = saveDemoStudent(currentUser?.email, updatedStudent);
+      setDemoStudent(saved);
+      return;
+    }
     setStudents((prev) =>
       prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
     );
     saveStudentToCloud(updatedStudent);
+  };
+
+  /* =========================================================================
+     Guided Onboarding Journey Handlers (Milestone 1)
+     ========================================================================= */
+
+  const handleStartOnboarding = ({ mode = null, restart = false } = {}) => {
+    if (!currentUser?.email) return;
+    let nextState;
+    if (restart) {
+      nextState = resetOnboardingState(currentUser.email, mode);
+    } else {
+      nextState = resumeOnboarding(currentUser.email);
+      if (mode && !nextState.mode) {
+        nextState = saveOnboardingState(currentUser.email, { mode });
+      }
+    }
+    setOnboardingState(nextState);
+
+    if (nextState.mode === 'demo') {
+      const demo = getDemoStudent(currentUser.email);
+      setDemoStudent(demo);
+      setSelectedStudentId(demo.id);
+      setShowDailyTracker(false);
+      setShowGoalBankOverview(false);
+    } else if (!nextState.mode) {
+      setShowOnboardingNavigator(true);
+    }
+  };
+
+  const handleSelectOnboardingMode = (chosenMode) => {
+    if (!currentUser?.email) return;
+    const nextState = saveOnboardingState(currentUser.email, {
+      mode: chosenMode,
+      isPaused: false
+    });
+    setOnboardingState(nextState);
+
+    if (chosenMode === 'demo') {
+      const demo = getDemoStudent(currentUser.email);
+      setDemoStudent(demo);
+      setSelectedStudentId(demo.id);
+      setShowDailyTracker(false);
+      setShowGoalBankOverview(false);
+      setShowOnboardingNavigator(false);
+    } else {
+      // Real student mode
+      setShowOnboardingNavigator(false);
+      handleAddNewStudent();
+    }
+  };
+
+  const handleExecuteOnboardingAction = (step) => {
+    if (!step) return;
+    switch (step.id) {
+      case 1:
+        if (!onboardingState?.mode) {
+          setShowOnboardingNavigator(true);
+        } else if (onboardingState.mode === 'demo') {
+          const demo = getDemoStudent(currentUser?.email);
+          setDemoStudent(demo);
+          setSelectedStudentId(demo.id);
+          setShowDailyTracker(false);
+          setShowGoalBankOverview(false);
+        }
+        break;
+      case 2:
+      case 3:
+      case 4:
+      case 6:
+      case 7:
+        if (onboardingState?.mode === 'demo') {
+          const demo = getDemoStudent(currentUser?.email);
+          setDemoStudent(demo);
+          setSelectedStudentId(demo.id);
+        } else if (!selectedStudentId) {
+          if (userStudents.length > 0) {
+            setSelectedStudentId(userStudents[0].id);
+          } else {
+            handleAddNewStudent();
+          }
+        }
+        setShowDailyTracker(false);
+        setShowGoalBankOverview(false);
+        break;
+      case 5:
+        setShowDailyTracker(true);
+        setSelectedStudentId(null);
+        setShowGoalBankOverview(false);
+        break;
+      case 8:
+      case 9:
+        if (onboardingState?.mode === 'demo') {
+          const demo = getDemoStudent(currentUser?.email);
+          setDemoStudent(demo);
+          setSelectedStudentId(demo.id);
+        } else if (!selectedStudentId && userStudents.length > 0) {
+          setSelectedStudentId(userStudents[0].id);
+        }
+        setShowDailyTracker(false);
+        setShowGoalBankOverview(false);
+        break;
+      case 10:
+        setShowSelfPasswordModal(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleNextOnboardingStep = () => {
+    if (!currentUser?.email) return;
+    const nextState = advanceOnboardingStep(currentUser.email);
+    setOnboardingState(nextState);
+    const stepDef = getStepById(nextState.currentStep);
+    if (stepDef) {
+      handleExecuteOnboardingAction(stepDef);
+    }
+  };
+
+  const handlePreviousOnboardingStep = () => {
+    if (!currentUser?.email) return;
+    const prevStepId = Math.max(1, (onboardingState?.currentStep || 1) - 1);
+    const nextState = goToOnboardingStep(currentUser.email, prevStepId);
+    setOnboardingState(nextState);
+    const stepDef = getStepById(prevStepId);
+    if (stepDef) {
+      handleExecuteOnboardingAction(stepDef);
+    }
+  };
+
+  const handleGoToOnboardingStep = (stepNumber) => {
+    if (!currentUser?.email) return;
+    const nextState = goToOnboardingStep(currentUser.email, stepNumber);
+    setOnboardingState(nextState);
+    const stepDef = getStepById(stepNumber);
+    if (stepDef) {
+      handleExecuteOnboardingAction(stepDef);
+    }
+  };
+
+  const handlePauseOnboarding = () => {
+    if (!currentUser?.email) return;
+    const nextState = pauseOnboarding(currentUser.email);
+    setOnboardingState(nextState);
+  };
+
+  const handleResumeOnboarding = () => {
+    if (!currentUser?.email) return;
+    const nextState = resumeOnboarding(currentUser.email);
+    setOnboardingState(nextState);
+    const stepDef = getStepById(nextState.currentStep);
+    if (stepDef) {
+      handleExecuteOnboardingAction(stepDef);
+    }
+  };
+
+  const handleToggleOnboardingCollapse = () => {
+    if (!currentUser?.email) return;
+    const nextCollapsed = !onboardingState?.isDockCollapsed;
+    const nextState = setOnboardingDockCollapsed(currentUser.email, nextCollapsed);
+    setOnboardingState(nextState);
   };
 
   const handleNavigateBackToStudents = () => {
@@ -1807,10 +1972,15 @@ export default function App() {
 
     const updatedStudent = res.student;
 
-    setStudents((prev) =>
-      prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
-    );
-    saveStudentToCloud(updatedStudent);
+    if (isDemoStudent(updatedStudent) || updatedStudent.id === 'demo_yonatan_levi') {
+      const saved = saveDemoStudent(currentUser?.email, updatedStudent);
+      setDemoStudent(saved);
+    } else {
+      setStudents((prev) =>
+        prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
+      );
+      saveStudentToCloud(updatedStudent);
+    }
     handleUseOrAddGoalToBank({
       title: bankItem.title,
       environment: bankItem.environment
@@ -2012,14 +2182,23 @@ export default function App() {
   const trialRemainingDays = currentUser?.isTrialUser ? getTrialRemainingDays(currentUser) : null;
   const paidRemainingDays = (!currentUser?.isTrialUser && currentUser) ? getPaidRemainingDays(currentUser) : null;
 
-  const selectedStudent = userStudents.find((s) => s.id === selectedStudentId);
-  const filteredStudents = filterStudentsBySearch(userStudents, studentSearch);
+  const baseStudentsForView =
+    onboardingState?.mode === 'demo' && demoStudent
+      ? [demoStudent, ...userStudents.filter((s) => s.id !== demoStudent.id)]
+      : userStudents;
+
+  const selectedStudent =
+    demoStudent && (selectedStudentId === demoStudent.id || selectedStudentId === 'demo_yonatan_levi')
+      ? demoStudent
+      : userStudents.find((s) => s.id === selectedStudentId);
+
+  const filteredStudents = filterStudentsBySearch(baseStudentsForView, studentSearch);
   const sortedStudentsByName = sortStudentsByName(filteredStudents);
   const sortedStudentsByFramework = sortStudentsByFramework(filteredStudents);
   const frameworkClusters = groupStudentsByFramework(filteredStudents);
   const sortedBank = getSortedGoalBank(goalBank);
   const activeBankTargetStudent = resolveBankTargetStudent(
-    userStudents,
+    baseStudentsForView,
     targetBankStudentId,
     selectedStudentId
   );
@@ -2657,11 +2836,11 @@ export default function App() {
               </div>
               <EcologicalWorkPlanForm
                 student={selectedStudent}
-                allStudents={userStudents}
+                allStudents={baseStudentsForView}
                 externalRevision={externalGoalsRevision}
                 goalBank={goalBank}
                 userPreferences={userPreferences}
-        students={userStudents}
+                students={baseStudentsForView}
                 privateGoals={userPreferences?.privateGoals || []}
                 isAdmin={currentUser.role === 'admin'}
                 currentUser={effectiveCurrentUser}
@@ -2680,13 +2859,14 @@ export default function App() {
                 onNotifySharedColleague={handleNotifySharedColleague}
                 onboardingTourStep={onboardingTourStep}
                 setOnboardingTourStep={setOnboardingTourStep}
+                activeOnboardingStep={onboardingState && !onboardingState.isPaused && !onboardingState.isCompleted ? onboardingState.currentStep : 0}
                 onGoHome={() => setSelectedStudentId(null)}
               />
             </ErrorBoundary>
           ) : showDailyTracker ? (
             <ErrorBoundary componentName="DailyPedagogicalTracker">
               <DailyPedagogicalTracker
-                students={userStudents}
+                students={baseStudentsForView}
                 currentUser={effectiveCurrentUser}
                 onUpdateStudent={(updatedStudent) => {
                   handleSaveStudentPlan(updatedStudent);
@@ -2704,7 +2884,7 @@ export default function App() {
               <GoalBankPage
                 goalBank={goalBank}
                 currentUser={effectiveCurrentUser}
-                userStudents={userStudents}
+                userStudents={baseStudentsForView}
                 targetBankStudentId={targetBankStudentId}
                 setTargetBankStudentId={setTargetBankStudentId}
                 unsavedDraftState={unsavedDraftState}
@@ -2840,8 +3020,7 @@ export default function App() {
                         type="button"
                         className="btn-inside-landing-primary tour-highlight-btn"
                         onClick={() => {
-                          handleAddNewStudent();
-                          setOnboardingTourStep(2);
+                          setShowOnboardingNavigator(true);
                         }}
                         style={{
                           background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
@@ -2859,8 +3038,8 @@ export default function App() {
                         }}
                       >
                         <span className="tour-arrow-anim-horizontal" style={{ fontSize: '16px' }}>👈</span>
-                        <UserPlus size={18} />
-                        <span>לחצי כאן להתחלה: יצירת תוכנית עבודה ראשונה</span>
+                        <Sparkles size={18} />
+                        <span>לחצי כאן להתחלה: סיור מודרך ובחירת מסלול</span>
                       </button>
 
                       {/* Secondary Options Group */}
@@ -2868,29 +3047,7 @@ export default function App() {
                         <button
                           type="button"
                           className="btn-inside-landing-primary"
-                          onClick={() => setShowDailyTracker(true)}
-                          style={{
-                            background: '#ffffff',
-                            color: '#2b4c73',
-                            border: '1.5px solid #cbd5e1',
-                            borderRadius: '10px',
-                            padding: '8px 14px',
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                          title="פתיחת מעקב יומי, משימות ולוח שנה פדגוגי"
-                        >
-                          <Calendar size={15} style={{ color: '#4a88c7' }} />
-                          <span>מעקב יומי ויומן</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-inside-landing-primary"
-                          onClick={handleLoadSampleStudent}
+                          onClick={() => handleSelectOnboardingMode('demo')}
                           style={{
                             background: '#ffffff',
                             color: '#0369a1',
@@ -2904,10 +3061,32 @@ export default function App() {
                             alignItems: 'center',
                             gap: '6px'
                           }}
-                          title="טעינת תלמיד לדוגמה עם יעדים ומטרות מלאים להתרשמות נוחה"
+                          title="התנסות מעשית עם תלמיד לדוגמה (יונתן לוי) ללא צורך בהזנת פרטים"
                         >
                           <Sparkles size={15} style={{ color: '#0284c7' }} />
-                          <span>צפייה בתוכנית לדוגמה</span>
+                          <span>התנסות עם תלמיד לדוגמה</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-inside-landing-primary"
+                          onClick={() => handleSelectOnboardingMode('real')}
+                          style={{
+                            background: '#ffffff',
+                            color: '#15803d',
+                            border: '1.5px solid #86efac',
+                            borderRadius: '10px',
+                            padding: '8px 14px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                          title="יצירת תלמיד/ה ראשונ/ה מהשטח בליווי מקצועי"
+                        >
+                          <UserPlus size={15} style={{ color: '#16a34a' }} />
+                          <span>יצירת תלמיד/ה מהשטח</span>
                         </button>
 
                         <button
@@ -3143,6 +3322,14 @@ export default function App() {
         onOpenChat={() => {
           setShowTrialUpgradeModal(false);
           setIsSupportChatOpen(true);
+        }}
+        onStartOnboarding={({ restart }) => {
+          setShowTrialUpgradeModal(false);
+          handleStartOnboarding({ restart });
+        }}
+        onRestartOnboarding={() => {
+          setShowTrialUpgradeModal(false);
+          handleStartOnboarding({ restart: true });
         }}
         onSubmitSupportMessage={(payload) => {
           handleSubmitAdminRequest({
@@ -3766,6 +3953,41 @@ export default function App() {
         onDiscardAndLogout={performLogout}
         onSaveAndLogout={handleSaveAndLogout}
       />
+      {/* Complete Guided Onboarding Workspace & Navigator */}
+      {currentUser && (
+        <>
+          <OnboardingGuidedWorkspace
+            onboardingState={onboardingState}
+            onNextStep={handleNextOnboardingStep}
+            onPreviousStep={handlePreviousOnboardingStep}
+            onGoToStep={handleGoToOnboardingStep}
+            onPauseJourney={handlePauseOnboarding}
+            onResumeJourney={handleResumeOnboarding}
+            onOpenNavigator={() => setShowOnboardingNavigator(true)}
+            onExecuteAction={handleExecuteOnboardingAction}
+            onToggleCollapse={handleToggleOnboardingCollapse}
+          />
+          <OnboardingNavigatorModal
+            isOpen={showOnboardingNavigator}
+            onClose={() => setShowOnboardingNavigator(false)}
+            onboardingState={onboardingState}
+            onSelectMode={handleSelectOnboardingMode}
+            onSelectStep={(stepId) => {
+              handleGoToOnboardingStep(stepId);
+              setShowOnboardingNavigator(false);
+            }}
+            onRestartJourney={() => {
+              handleStartOnboarding({ restart: true });
+              setShowOnboardingNavigator(false);
+            }}
+            onResumeJourney={() => {
+              handleResumeOnboarding();
+              setShowOnboardingNavigator(false);
+            }}
+          />
+        </>
+      )}
+
       {/* Live Bi-directional Support Chat Widget for Teachers (Non-intrusive floating launcher) */}
       {currentUser && (
         <TeacherChatWidget

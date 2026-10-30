@@ -40,7 +40,9 @@ export default function TrialUpgradeModal({
   isExpired = false,
   onLogout = null,
   initialTab = null,
-  defaultTab = null
+  defaultTab = null,
+  onStartOnboarding = null,
+  onRestartOnboarding = null
 }) {
   const isNonTrialUser = Boolean(currentUser && !currentUser.isTrialUser);
   const [supportMessage, setSupportMessage] = useState('');
@@ -409,6 +411,39 @@ export default function TrialUpgradeModal({
                 )
               )}
 
+              {/* Guided Onboarding Journey Quick Launcher */}
+              {(onStartOnboarding || onRestartOnboarding) && (
+                <button
+                  type="button"
+                  data-testid="btn-relaunch-onboarding"
+                  onClick={() => {
+                    if (!isExpired && onClose) onClose();
+                    const triggerFn = onStartOnboarding || onRestartOnboarding;
+                    if (typeof triggerFn === 'function') triggerFn({ mode: 'guided', restart: false });
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    boxShadow: '0 1px 3px rgba(22, 163, 74, 0.25)',
+                    transition: 'opacity 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.92')}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                >
+                  <Sparkles size={13} color="#ffffff" />
+                  <span>סיור מודרך במערכת (Onboarding)</span>
+                </button>
+              )}
+
               {/* Video Tutorial Launcher */}
               <button
                 type="button"
@@ -609,6 +644,96 @@ export default function TrialUpgradeModal({
              ========================================================================= */}
           {activeTab === 'guide' && !isExpired && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Onboarding Interactive Tour Action Card */}
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%)',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '10px',
+                  padding: '14px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  boxShadow: '0 2px 8px rgba(22, 101, 52, 0.05)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)'
+                    }}
+                  >
+                    <Sparkles size={20} />
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: '14px', color: '#14532d', display: 'block' }}>
+                      רוצה ליווי מעשי צעד אחר צעד בכל 10 שלבי המערכת?
+                    </strong>
+                    <span style={{ fontSize: '12.5px', color: '#166534' }}>
+                      מסע מודרך הכולל: הקמת תלמיד, יעדים אקולוגיים, מעקב יומי, קול ההורים, הפקת דוחות ושיתוף מתי״א.
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    data-testid="btn-guide-tab-restart-onboarding"
+                    onClick={() => {
+                      if (!isExpired && onClose) onClose();
+                      const triggerFn = onRestartOnboarding || onStartOnboarding;
+                      if (typeof triggerFn === 'function') triggerFn({ mode: 'guided', restart: true });
+                    }}
+                    style={{
+                      background: '#ffffff',
+                      color: '#15803d',
+                      border: '1.5px solid #86efac',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    הפעלת הסיור מחדש
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="btn-guide-tab-resume-onboarding"
+                    onClick={() => {
+                      if (!isExpired && onClose) onClose();
+                      const triggerFn = onStartOnboarding || onRestartOnboarding;
+                      if (typeof triggerFn === 'function') triggerFn({ mode: 'guided', restart: false });
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '6px 14px',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)'
+                    }}
+                  >
+                    המשך בסיור המודרך 👈
+                  </button>
+                </div>
+              </div>
+
               {/* Guide Header Banner */}
               <div
                 style={{
