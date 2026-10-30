@@ -191,6 +191,7 @@ import {
   advanceOnboardingStep,
   goToOnboardingStep,
   setOnboardingDockCollapsed,
+  resolveOnboardingDockStateForUser,
   getDemoStudent,
   saveDemoStudent,
   clearDemoStudent
@@ -543,7 +544,43 @@ export default function App() {
       const demo = getDemoStudent(currentUser.email);
       setDemoStudent(demo);
     }
+    try {
+      const dismissedKey = `tala_whats_new_help_journey_v1_${currentUser.email.trim().toLowerCase()}`;
+      setWhatsNewDismissed(localStorage.getItem(dismissedKey) === 'true');
+    } catch (_) {
+      setWhatsNewDismissed(false);
+    }
   }, [currentUser?.email]);
+
+  const [whatsNewDismissed, setWhatsNewDismissed] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem(SESSION_USER_KEY);
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.email) {
+          return localStorage.getItem(`tala_whats_new_help_journey_v1_${parsed.email.trim().toLowerCase()}`) === 'true';
+        }
+      }
+    } catch (_) {}
+    return false;
+  });
+
+  const handleDismissWhatsNewBanner = () => {
+    setWhatsNewDismissed(true);
+    if (currentUser?.email) {
+      try {
+        localStorage.setItem(
+          `tala_whats_new_help_journey_v1_${currentUser.email.trim().toLowerCase()}`,
+          'true'
+        );
+      } catch (_) {}
+    }
+  };
+
+  const effectiveOnboardingState = useMemo(
+    () => resolveOnboardingDockStateForUser(onboardingState, userStudents.length),
+    [onboardingState, userStudents.length]
+  );
 
   const toggleFrameworkCluster = (frameworkKey) => {
     setExpandedFrameworks((prev) => ({
@@ -1811,7 +1848,9 @@ export default function App() {
     const nextState = saveOnboardingState(currentUser.email, {
       mode: chosenMode,
       isPaused: false,
-      isDismissed: false
+      isDismissed: false,
+      isDockCollapsed: false,
+      userToggledDock: true
     });
     setOnboardingState(nextState);
 
@@ -1936,7 +1975,7 @@ export default function App() {
 
   const handleToggleOnboardingCollapse = () => {
     if (!currentUser?.email) return;
-    const nextCollapsed = !onboardingState?.isDockCollapsed;
+    const nextCollapsed = !effectiveOnboardingState?.isDockCollapsed;
     const nextState = setOnboardingDockCollapsed(currentUser.email, nextCollapsed);
     setOnboardingState(nextState);
   };
@@ -2247,17 +2286,18 @@ export default function App() {
     typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.3';
 
   const activeOnboardingStep =
-    onboardingState &&
-    !onboardingState.isPaused &&
-    !onboardingState.isCompleted &&
-    !onboardingState.isDismissed
-      ? onboardingState.currentStep
+    effectiveOnboardingState &&
+    !effectiveOnboardingState.isPaused &&
+    !effectiveOnboardingState.isCompleted &&
+    !effectiveOnboardingState.isDismissed &&
+    !effectiveOnboardingState.isDockCollapsed
+      ? effectiveOnboardingState.currentStep
       : 0;
 
   const onboardingDockMode =
-    !onboardingState || onboardingState.isDismissed
+    !effectiveOnboardingState || effectiveOnboardingState.isDismissed
       ? 'hidden'
-      : onboardingState.isPaused || onboardingState.isDockCollapsed
+      : effectiveOnboardingState.isPaused || effectiveOnboardingState.isDockCollapsed
       ? 'collapsed'
       : 'expanded';
 
@@ -2497,6 +2537,102 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* New Feature Announcement Banner for All Users: Help Center & 10-Step Interactive User Journey */}
+      {!whatsNewDismissed && (
+        <div
+          data-testid="whats-new-help-journey-banner"
+          style={{
+            background: 'linear-gradient(90deg, #eff6ff 0%, #f0fdf4 50%, #faf5ff 100%)',
+            borderBottom: '1.5px solid #93c5fd',
+            padding: '10px 22px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            fontSize: '13px',
+            color: '#1e3a5f'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 320px' }}>
+            <span
+              style={{
+                background: 'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
+                color: '#ffffff',
+                fontSize: '11px',
+                fontWeight: 800,
+                padding: '3px 9px',
+                borderRadius: '999px',
+                flexShrink: 0
+              }}
+            >
+              חדש ב-TALA ✨
+            </span>
+            <span style={{ lineHeight: 1.45 }}>
+              <strong>מרכז עזרה משודרג וסיור מודרך אינטראקטיבי (10 שלבים):</strong> בסרגל העליון מחכה לכן כפתור{' '}
+              <strong>"עזרה"</strong> עם מדריך ושאלות נפוצות, ובחלק התחתון סרגל הדרכה אינטראקטיבי עם חיצי הכוונה מונפשים ותלמיד דמו (פתוח אוטומטית למורות חדשות, וממוזער כברירת מחדל למורות עם תלמידים קיימים).
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                handleResumeOnboarding();
+                handleDismissWhatsNewBanner();
+              }}
+              style={{
+                background: '#16a34a',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '5px 12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              פתיחת סיור מודרך 🧭
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowTrialUpgradeModal(true);
+                handleDismissWhatsNewBanner();
+              }}
+              style={{
+                background: '#ffffff',
+                color: '#1d4ed8',
+                border: '1px solid #93c5fd',
+                borderRadius: '8px',
+                padding: '5px 12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              למרכז העזרה ❓
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissWhatsNewBanner}
+              style={{
+                background: 'transparent',
+                color: '#64748b',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                padding: '5px 10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              title="סגירת הודעה זו"
+            >
+              הבנתי, תודה ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Admin Security Lockout Notification Banner Under Site Header */}
       {currentUser.role === 'admin' && lockedOutUsers.length > 0 && (
@@ -3998,7 +4134,7 @@ export default function App() {
       {currentUser && (
         <>
           <OnboardingGuidedWorkspace
-            onboardingState={onboardingState}
+            onboardingState={effectiveOnboardingState}
             onNextStep={handleNextOnboardingStep}
             onPreviousStep={handlePreviousOnboardingStep}
             onGoToStep={handleGoToOnboardingStep}
@@ -4012,7 +4148,7 @@ export default function App() {
           <OnboardingNavigatorModal
             isOpen={showOnboardingNavigator}
             onClose={() => setShowOnboardingNavigator(false)}
-            onboardingState={onboardingState}
+            onboardingState={effectiveOnboardingState}
             onSelectMode={handleSelectOnboardingMode}
             onSelectStep={(stepId) => {
               handleGoToOnboardingStep(stepId);

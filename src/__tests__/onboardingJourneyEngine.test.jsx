@@ -28,6 +28,7 @@ import {
   advanceOnboardingStep,
   goToOnboardingStep,
   setOnboardingDockCollapsed,
+  resolveOnboardingDockStateForUser,
   getDemoStudent,
   saveDemoStudent,
   clearDemoStudent,
@@ -691,6 +692,25 @@ describe('Onboarding Journey Engine & Help Modal Re-launch Suite', () => {
         expect(step.whereToLookHint.length).toBeGreaterThan(10);
         expect(typeof step.arrowIcon).toBe('string');
       });
+    });
+
+    it('Scenario 9: Lower panel is expanded by default for new teachers (0 students) and collapsed by default for teachers with existing students (>0 students)', () => {
+      const initial = getOnboardingState(TEST_EMAIL);
+      expect(initial.userToggledDock).toBe(false);
+
+      // New teacher with 0 students -> expanded (isDockCollapsed = false)
+      const stateForNewTeacher = resolveOnboardingDockStateForUser(initial, 0);
+      expect(stateForNewTeacher.isDockCollapsed).toBe(false);
+
+      // Existing teacher with 3 students -> collapsed by default (isDockCollapsed = true)
+      const stateForExistingTeacher = resolveOnboardingDockStateForUser(initial, 3);
+      expect(stateForExistingTeacher.isDockCollapsed).toBe(true);
+
+      // If existing teacher explicitly expands the dock or clicks Resume, userToggledDock becomes true and is respected
+      const expandedByTeacher = setOnboardingDockCollapsed(TEST_EMAIL, false);
+      expect(expandedByTeacher.userToggledDock).toBe(true);
+      const resolvedAfterToggle = resolveOnboardingDockStateForUser(expandedByTeacher, 3);
+      expect(resolvedAfterToggle.isDockCollapsed).toBe(false);
     });
   });
 });

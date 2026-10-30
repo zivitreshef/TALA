@@ -6,6 +6,7 @@
  * - In-memory fallback for private mode / quota restrictions
  * - Zero-trust isolation for demo student data (never written to cloud)
  * - Complete pause / resume / dismiss / step advance / restart state transitions
+ * - Automatic default visibility: expanded for new teachers (0 students), collapsed for teachers with existing students
  */
 
 import { safeGetStorageJson, safeSetStorageJson, safeRemoveStorageItem } from './storage';
@@ -58,7 +59,30 @@ export function createDefaultOnboardingState(email = '') {
     completedAt: null,
     demoStudentId: 'demo_yonatan_levi',
     activeStudentId: null,
-    isDockCollapsed: false
+    isDockCollapsed: false,
+    userToggledDock: false
+  };
+}
+
+/**
+ * Resolves the effective onboarding state based on whether the teacher is new (0 students)
+ * or already has existing students (>0 students), unless the user has explicitly toggled
+ * or interacted with the dock.
+ *
+ * - New teacher (0 students): visible / expanded by default (isDockCollapsed = false)
+ * - Existing teacher (>0 students): collapsed by default (isDockCollapsed = true)
+ */
+export function resolveOnboardingDockStateForUser(onboardingState, userStudentsCount = 0) {
+  if (!onboardingState || typeof onboardingState !== 'object') return null;
+
+  if (onboardingState.userToggledDock === true) {
+    return onboardingState;
+  }
+
+  const shouldCollapseByDefault = Number(userStudentsCount) > 0;
+  return {
+    ...onboardingState,
+    isDockCollapsed: shouldCollapseByDefault
   };
 }
 
@@ -118,7 +142,12 @@ export function pauseOnboarding(email) {
  * Resumes the onboarding journey from the paused or dismissed state.
  */
 export function resumeOnboarding(email) {
-  return saveOnboardingState(email, { isPaused: false, isDismissed: false });
+  return saveOnboardingState(email, {
+    isPaused: false,
+    isDismissed: false,
+    isDockCollapsed: false,
+    userToggledDock: true
+  });
 }
 
 /**
@@ -135,6 +164,7 @@ export function resetOnboardingState(email, mode = null) {
   const fresh = createDefaultOnboardingState(email);
   if (mode === 'demo' || mode === 'real') {
     fresh.mode = mode;
+    fresh.userToggledDock = true;
   }
   return saveOnboardingState(email, fresh);
 }
@@ -156,7 +186,9 @@ export function advanceOnboardingStep(email) {
       isCompleted: true,
       completedAt: new Date().toISOString(),
       isPaused: false,
-      isDismissed: false
+      isDismissed: false,
+      isDockCollapsed: false,
+      userToggledDock: true
     });
   }
 
@@ -164,7 +196,9 @@ export function advanceOnboardingStep(email) {
     currentStep: stepToComplete + 1,
     completedSteps: nextCompleted,
     isPaused: false,
-    isDismissed: false
+    isDismissed: false,
+    isDockCollapsed: false,
+    userToggledDock: true
   });
 }
 
@@ -176,7 +210,9 @@ export function goToOnboardingStep(email, stepNumber) {
   return saveOnboardingState(email, {
     currentStep: validStep,
     isPaused: false,
-    isDismissed: false
+    isDismissed: false,
+    isDockCollapsed: false,
+    userToggledDock: true
   });
 }
 
@@ -184,7 +220,10 @@ export function goToOnboardingStep(email, stepNumber) {
  * Sets the collapse/expand state of the guided workspace dock.
  */
 export function setOnboardingDockCollapsed(email, isCollapsed) {
-  return saveOnboardingState(email, { isDockCollapsed: Boolean(isCollapsed) });
+  return saveOnboardingState(email, {
+    isDockCollapsed: Boolean(isCollapsed),
+    userToggledDock: true
+  });
 }
 
 /* =========================================================================
