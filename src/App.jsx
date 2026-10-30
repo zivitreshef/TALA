@@ -266,19 +266,17 @@ export default function App() {
   // Direct Background Email Engine configuration (synced across cloud for all users)
   const [emailEngineConfig, setEmailEngineConfig] = useState(() => loadEmailEngineConfig());
 
-  // Real-time upgrade & deployment warning banner (PR + merge + deploy)
+  // Real-time upgrade & deployment warning banner (live from Firestore only; clear any stale local cache on reload)
   const [upgradeBanner, setUpgradeBanner] = useState(() => {
     try {
-      const saved = localStorage.getItem(UPGRADE_BANNER_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch (_) {
-      return null;
-    }
+      localStorage.removeItem(UPGRADE_BANNER_STORAGE_KEY);
+    } catch (_) {}
+    return null;
   });
 
   const handleUpdateUpgradeBanner = (nextBanner) => {
     setUpgradeBanner(nextBanner);
-    if (nextBanner) {
+    if (nextBanner?.active) {
       safeSetStorageJson(UPGRADE_BANNER_STORAGE_KEY, nextBanner);
     } else {
       safeRemoveStorageItem(UPGRADE_BANNER_STORAGE_KEY);
@@ -738,7 +736,7 @@ export default function App() {
         }
         if (settings && 'upgradeBanner' in settings) {
           setUpgradeBanner(settings.upgradeBanner);
-          if (settings.upgradeBanner) {
+          if (settings.upgradeBanner?.active) {
             safeSetStorageJson(UPGRADE_BANNER_STORAGE_KEY, settings.upgradeBanner);
           } else {
             safeRemoveStorageItem(UPGRADE_BANNER_STORAGE_KEY);

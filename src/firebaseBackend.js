@@ -353,6 +353,12 @@ export function subscribeToTalaBackend({
   const start = async () => {
     await auth.authStateReady?.();
     if (cancelled) return;
+    if (!auth.currentUser && me) {
+      try {
+        await ensureFirebaseAuthSession(me);
+      } catch (_) {}
+    }
+    if (cancelled) return;
     if (!auth.currentUser) {
       onSyncStatusChange?.({ connected: false, status: 'local_only' });
       return;

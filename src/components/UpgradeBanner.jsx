@@ -4,6 +4,17 @@ import { AlertTriangle, Save, RefreshCw, X, CheckCircle2 } from 'lucide-react';
 export const DEFAULT_UPGRADE_BANNER_MESSAGE =
   'המערכת עוברת כעת שדרוג ועדכון גרסה! אנא שמרו את עבודתכם באופן מיידי כדי למנוע אובדן נתונים ושמירה על תקינות המידע. בסיום העדכון, יש לרענן את האתר כדי ליהנות מהתכונות והשיפורים החדשים.';
 
+export const MAX_UPGRADE_BANNER_TTL_MS = 15 * 60 * 1000; // 15 minutes max safety TTL
+
+export function isUpgradeBannerExpired(bannerData, nowMs = Date.now()) {
+  if (!bannerData?.active) return true;
+  const tsStr = bannerData.startedAt || bannerData.updatedAt;
+  if (!tsStr) return false;
+  const parsedMs = Date.parse(tsStr);
+  if (!Number.isFinite(parsedMs)) return false;
+  return nowMs - parsedMs > MAX_UPGRADE_BANNER_TTL_MS;
+}
+
 export default function UpgradeBanner({
   bannerData,
   onSaveCurrentWork,
@@ -12,8 +23,8 @@ export default function UpgradeBanner({
   const [dismissed, setDismissed] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
 
-  // If not active or explicitly dismissed by user in this session, don't show
-  if (!bannerData?.active || dismissed) {
+  // If not active, expired (>15m), or explicitly dismissed by user in this session, don't show
+  if (!bannerData?.active || dismissed || isUpgradeBannerExpired(bannerData)) {
     return null;
   }
 
@@ -30,6 +41,9 @@ export default function UpgradeBanner({
   };
 
   const handleRefresh = () => {
+    try {
+      localStorage.removeItem('tala_upgrade_banner_v1');
+    } catch (_) {}
     window.location.reload();
   };
 

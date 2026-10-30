@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../components/UpgradeBanner';
+import {
+  DEFAULT_UPGRADE_BANNER_MESSAGE,
+  isUpgradeBannerExpired,
+  MAX_UPGRADE_BANNER_TTL_MS
+} from '../components/UpgradeBanner';
 
 describe('UpgradeBanner Component & Real-Time Sync Logic', () => {
   it('default upgrade banner message contains critical preservation and refresh instructions', () => {
@@ -82,5 +86,15 @@ describe('UpgradeBanner Component & Real-Time Sync Logic', () => {
 
     onSettingsChange({ upgradeBanner: { active: false } });
     expect(currentBanner).toEqual({ active: false });
+  });
+
+  it('auto-expires stale upgrade banners older than MAX_UPGRADE_BANNER_TTL_MS (15 minutes)', () => {
+    const now = Date.now();
+    const twoMinAgo = new Date(now - 2 * 60 * 1000).toISOString();
+    const twentyMinAgo = new Date(now - (MAX_UPGRADE_BANNER_TTL_MS + 5 * 60 * 1000)).toISOString();
+
+    expect(isUpgradeBannerExpired({ active: true, startedAt: twoMinAgo }, now)).toBe(false);
+    expect(isUpgradeBannerExpired({ active: true, startedAt: twentyMinAgo }, now)).toBe(true);
+    expect(isUpgradeBannerExpired({ active: false, startedAt: twoMinAgo }, now)).toBe(true);
   });
 });
