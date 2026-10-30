@@ -439,6 +439,16 @@ export default function App() {
     }));
   });
 
+  // Scoped student rosters for current user (declared at root level to prevent TDZ and satisfy Rules of Hooks)
+  const userStudents = useMemo(
+    () => getStudentsForUser(students, currentUser),
+    [students, currentUser]
+  );
+  const archivedUserStudents = useMemo(
+    () => getArchivedStudentsForUser(students, currentUser),
+    [students, currentUser]
+  );
+
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [showDailyTracker, setShowDailyTracker] = useState(false);
@@ -1343,6 +1353,42 @@ export default function App() {
     return cleanup;
   }, [currentUser?.email]);
 
+  // Automated Pedagogical Digest Scheduler based on Teacher Preferences
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    const isReminderEnabled = Boolean(
+      userPreferences?.pedagogicalReminderEnabled || userPreferences?.monthlyPedagogicalReminder
+    );
+    if (!isReminderEnabled) return;
+
+    const checkAndDispatchDigest = async () => {
+      try {
+        const storageKey = `tala_pedagogical_digest_last_sent_${currentUser.email.toLowerCase()}`;
+        const lastSent = localStorage.getItem(storageKey);
+        const now = new Date();
+        if (shouldSendPedagogicalDigest(userPreferences, lastSent, now)) {
+          const gaps = getObservationGaps(userStudents || [], 45, now);
+          const accomplishments = getPedagogicalAccomplishmentsSummary(userStudents || [], 30, now);
+          await sendPedagogicalReminderEmailInBackground({
+            toEmail: currentUser.email,
+            teacherName: userPreferences?.fullName || currentUser.name || 'צוות חינוכי',
+            gaps,
+            accomplishments,
+            totalStudents: (userStudents || []).length,
+            privacyMode: userPreferences?.defaultPrivacyMode || 'full_name'
+          });
+          localStorage.setItem(storageKey, now.toISOString());
+        }
+      } catch (err) {
+        console.warn('Background pedagogical digest dispatch error:', err);
+      }
+    };
+
+    checkAndDispatchDigest();
+    const timer = setInterval(checkAndDispatchDigest, 5 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [currentUser?.email, userPreferences, userStudents]);
+
   // Proactive Trial Expiration Alert Modal (pops up once per browser session when remaining trial days <= 2)
   useEffect(() => {
     if (!currentUser || !currentUser.isTrialUser) return;
@@ -1966,8 +2012,6 @@ export default function App() {
   const trialRemainingDays = currentUser?.isTrialUser ? getTrialRemainingDays(currentUser) : null;
   const paidRemainingDays = (!currentUser?.isTrialUser && currentUser) ? getPaidRemainingDays(currentUser) : null;
 
-  const userStudents = getStudentsForUser(students, currentUser);
-  const archivedUserStudents = getArchivedStudentsForUser(students, currentUser);
   const selectedStudent = userStudents.find((s) => s.id === selectedStudentId);
   const filteredStudents = filterStudentsBySearch(userStudents, studentSearch);
   const sortedStudentsByName = sortStudentsByName(filteredStudents);
@@ -2008,41 +2052,6 @@ export default function App() {
     activeArchivedStudent ||
     {};
 
-  // Automated Pedagogical Digest Scheduler based on Teacher Preferences
-  useEffect(() => {
-    if (!currentUser?.email) return;
-    const isReminderEnabled = Boolean(
-      userPreferences?.pedagogicalReminderEnabled || userPreferences?.monthlyPedagogicalReminder
-    );
-    if (!isReminderEnabled) return;
-
-    const checkAndDispatchDigest = async () => {
-      try {
-        const storageKey = `tala_pedagogical_digest_last_sent_${currentUser.email.toLowerCase()}`;
-        const lastSent = localStorage.getItem(storageKey);
-        const now = new Date();
-        if (shouldSendPedagogicalDigest(userPreferences, lastSent, now)) {
-          const gaps = getObservationGaps(userStudents || [], 45, now);
-          const accomplishments = getPedagogicalAccomplishmentsSummary(userStudents || [], 30, now);
-          await sendPedagogicalReminderEmailInBackground({
-            toEmail: currentUser.email,
-            teacherName: userPreferences?.fullName || currentUser.name || 'צוות חינוכי',
-            gaps,
-            accomplishments,
-            totalStudents: (userStudents || []).length,
-            privacyMode: userPreferences?.defaultPrivacyMode || 'full_name'
-          });
-          localStorage.setItem(storageKey, now.toISOString());
-        }
-      } catch (err) {
-        console.warn('Background pedagogical digest dispatch error:', err);
-      }
-    };
-
-    checkAndDispatchDigest();
-    const timer = setInterval(checkAndDispatchDigest, 5 * 60 * 1000);
-    return () => clearInterval(timer);
-  }, [currentUser?.email, userPreferences, userStudents]);
 
   const siteVersion =
     typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.3';
