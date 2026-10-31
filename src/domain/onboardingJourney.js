@@ -106,7 +106,7 @@ export const ONBOARDING_STEPS = [
     isImplemented: true,
     arrowIcon: '☝️',
     whereToLookHint:
-      'הביטי בכרטיס "עדכון יעדים ומעקב תצפיות יומי" משמאל (או בלשונית "מעקב יומי" בסרגל העליון): כאן מתעדים תצפית שטח ב-10 שניות ומשייכים ליעד ב-AI.',
+      'עברנו ללשונית "מעקב יומי" בסרגל העליון: כל היעדים שמוגדרים בתוכנית מופיעים כאן! כאן מתעדים תצפית שטח ב-10 שניות ומשייכים לרמת תיווך (עצמאי, מילולי, חלקי, מלא).',
     pedagogicalRationale:
       'תיעוד שוטף וממוקד בזמן אמת מונע שכחה ופערי תצפית, ומספק ראיות אותנטיות להתקדמות לאורך חודשי השנה. רמת התיווך שנצפתה מעידה על מידת העצמאות האמיתית.',
     contextualGuidance:
@@ -127,7 +127,7 @@ export const ONBOARDING_STEPS = [
     isImplemented: true,
     arrowIcon: '☝️',
     whereToLookHint:
-      'הביטי בסרגל הפעולות העליון של הטופס (מסומן בחץ ירוק): כפתור "שמור התקדמות", סמל המנעול (🔓 נעילת דו"ח) וכפתור "תצוגת מסמך מלאה".',
+      'הביטי בסרגל הפעולות העליון של הטופס (מסומן בחץ ירוק): כפתור "שמור התקדמות", סמל המנעול (🔓 נעילת דו"ח לקראת ועדות) וכפתור "תצוגת מסמך מלאה".',
     pedagogicalRationale:
       'תוכנית לימודים אישית אינה מסמך בירוקרטי שננעל במגירה בספטמבר. היא כלי עבודה חי שמתעדכן ברציפות, ננעל לעריכה לקראת ועדות, ומלווה בהיסטוריית גרסאות בענן.',
     contextualGuidance:
@@ -169,7 +169,7 @@ export const ONBOARDING_STEPS = [
     isImplemented: true,
     arrowIcon: '☝️',
     whereToLookHint:
-      'הביטי בחלק התחתון של הטופס בסעיף "דוח הערכת מחצית / סוף שנה" (מסומן בחץ ירוק): כאן מזינים סיכום או לוחצים "עיבוד מידע ב-AI" להפקת דוח הערכה מלא.',
+      'הביטי בסעיף "דוח הערכת מחצית / סוף שנה": בסוף מחצית לוחצים "עיבוד מידע ב-AI", והמערכת מסכמת אוטומטית את כל התצפיות שנרשמו לסיכום מילולי מנומק (בדמו מוצג דוח לדוגמה).',
     pedagogicalRationale:
       'סיכום תקופתי (מחצית, סוף שנה וועדות) דורש שזירה מדויקת של כל התצפיות שנאספו לאורך השנה לתוך הערכה מילולית רשמית, מבלי להשקיע שעות בכתיבה ידנית מאפס.',
     contextualGuidance:
@@ -182,15 +182,15 @@ export const ONBOARDING_STEPS = [
   {
     id: 9,
     key: 'ai_insights',
-    title: 'הבנת תובנות ודוחות AI',
-    shortTitle: 'תובנות AI',
+    title: 'דוח מצב חינוכי-תפקודי (לפי דרישה / לוועדות)',
+    shortTitle: 'דוח לפי דרישה',
     stepNumberLabel: 'צעד 9 מתוך 10',
     targetView: 'status_report',
     targetSection: 'section_ai_insights',
     isImplemented: true,
     arrowIcon: '☝️',
     whereToLookHint:
-      'הביטי בפאנל "דו״ח מצב חינוכי-תפקודי עדכני" (מסומן בחץ ירוק): כאן ה-AI מצליב את כל התצפיות והיעדים של השנה ל-15 סעיפים רשמיים לוועדות.',
+      'סעיף רשות לפי דרישה: הפקת דוח מצב רשמי ב-15 סעיפים לוועדות זכאות ואפיון, מעברים או פגישות מפקחת — המערכת מרכזת את כל הנתונים בלחיצה אחת.',
     pedagogicalRationale:
       'בינה מלאכותית כמסייעת פדגוגית אמינה (AI Assistant) תחת סמכות המורה: ה-AI מנתח תצפיות מצטברות ומציע ניסוחים מקצועיים, אך אינו ממציא נתונים (Zero Hallucination).',
     contextualGuidance:
@@ -204,14 +204,14 @@ export const ONBOARDING_STEPS = [
     id: 10,
     key: 'matya_settings',
     title: 'אזור אישי ושיתוף מסמכים במתי״א',
-    shortTitle: 'אזור אישי ומתי״א',
+    shortTitle: 'אזור אישי',
     stepNumberLabel: 'צעד 10 מתוך 10',
     targetView: 'settings',
     targetSection: null,
     isImplemented: true,
     arrowIcon: '☝️',
     whereToLookHint:
-      'הביטי למעלה בכפתור "שיתוף צוות" בסעיף 1 ובכרטיס המורה בפינה השמאלית העליונה (מסומנים בחץ ירוק): שיתוף עמיתות מהמתי״א והגדרות אזור אישי.',
+      'הביטי למעלה בכרטיס המורה בפינה בסרגל העליון (מסומן בחץ ירוק): כאן מגדירים את פרטייך, חתימה דיגיטלית שקופה והגדרות פרטיות.',
     pedagogicalRationale:
       'עבודה בחינוך מיוחד היא עבודת צוות רב-מקצועית. שיתוף מסמכים בטוח בתוך גבולות המתי״א (Zero-Trust Tenant Isolation) מאפשר שיתוף פעולה הדוק בין מורות שילוב למטפלות פרא-רפואיות.',
     contextualGuidance:
@@ -662,8 +662,33 @@ export function isDemoStudent(student) {
 /**
  * Creates a fresh clone of the demo student plan with current timestamps.
  */
-export function createFreshDemoStudent() {
+export function createFreshDemoStudent(options = {}) {
+  const isKindergarten = options?.stage === 'kindergarten';
   const cloned = JSON.parse(JSON.stringify(DEMO_STUDENT_DATA));
+
+  if (isKindergarten) {
+    cloned.name = 'נועם כהן (ילד גן לדוגמה)';
+    cloned.stage = 'kindergarten';
+    cloned.stageReason = 'ילד גן חובה במסגרת גן ילדים';
+    cloned.gradeClass = 'גן חובה';
+    cloned.educationalFramework = 'גן אלון';
+    cloned.planType = 'תוכנית חינוכית יחידנית (תח"י) - גן ילדים';
+    cloned.teacherFreeText =
+      'נועם ילד מתוק, סקרן וחברותי בן 5.5 בגן חובה. מתקשה במעברים בין חצר למפגש, זקוק לתיווך בפתרון קונפליקטים ובמשחק משותף במוקדי הגן, ומתקשה באחיזת מספריים ועפרון. מגלה חוזקות רבות במוזיקה, יצירתיות בקוביות ואמפתיה רבה לחבריו לגן.';
+  } else {
+    cloned.teacherFreeText =
+      'יונתן לומד בכיתה רגילה ומקבל תמיכה שבועית מסל שילוב. מאובחן עם הפרעת קשב ופעלתנות יתר (ADHD) וקשיי ויסות חושי. מפגין סקרנות יוצאת דופן ואינטליגנציה תקינה, אך מתקשה להתמיד במשימות כתיבה ממושכות, מגלה מוסחות גבוהה ברעש כיתתי, ונזקק לתיווך במעברים בין שיעור להפסקה. בתחום האורייני קיים פער ברכישת שטף ודיוק בקריאה. אוהב מאוד לבנות בלגו וסקרן לגבי בעלי חיים ודינוזאורים.';
+  }
+
+  // Interactive walkthrough starts with blank goals & profile so the teacher experiences the live AI generation
+  cloned.goals = [];
+  cloned.talaProfileRows = [];
+  cloned.observations = [];
+  cloned.studentGeneralBackground = '';
+  cloned.studentSupportReceived = '';
+  cloned.studentMainGoal = '';
+  cloned.evalReportFreeText = '';
+
   cloned.lastSavedAt = new Date().toLocaleTimeString('he-IL', {
     hour: '2-digit',
     minute: '2-digit'

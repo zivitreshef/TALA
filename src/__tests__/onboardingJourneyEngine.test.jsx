@@ -742,5 +742,25 @@ describe('Onboarding Journey Engine & Help Modal Re-launch Suite', () => {
         { fromSpotlightBtn: true }
       );
     });
+
+    it('Scenario 11: createFreshDemoStudent starts with blank goals & observations for live AI walkthrough, supporting School and Kindergarten', () => {
+      // 1. School (Default)
+      const schoolStudent = createFreshDemoStudent();
+      expect(schoolStudent.name).toContain('יונתן לוי');
+      expect(schoolStudent.goals).toEqual([]);
+      expect(schoolStudent.talaProfileRows).toEqual([]);
+      expect(schoolStudent.observations).toEqual([]);
+      expect(schoolStudent.teacherFreeText).toContain('יונתן לומד בכיתה רגילה');
+
+      // 2. Kindergarten
+      const kindergartenStudent = createFreshDemoStudent({ stage: 'kindergarten' });
+      expect(kindergartenStudent.name).toContain('נועם כהן');
+      expect(kindergartenStudent.stage).toBe('kindergarten');
+      expect(kindergartenStudent.gradeClass).toContain('גן');
+      expect(kindergartenStudent.goals).toEqual([]);
+      expect(kindergartenStudent.talaProfileRows).toEqual([]);
+      expect(kindergartenStudent.observations).toEqual([]);
+      expect(kindergartenStudent.teacherFreeText).toContain('נועם ילד מתוק');
+    });
   });
 });

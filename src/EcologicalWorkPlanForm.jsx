@@ -231,7 +231,7 @@ export default function EcologicalWorkPlanForm({
         section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       } else if (activeOnboardingStep === 3) {
         setIsFreeTextCollapsed(false);
-        setTimeout(() => section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 80);
+        setTimeout(() => section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
       } else if (activeOnboardingStep === 4) {
         section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       } else if (activeOnboardingStep === 6 || activeOnboardingStep === 10) {
@@ -500,9 +500,26 @@ export default function EcologicalWorkPlanForm({
         lastSavedAt: nowTime
       };
       const updated = syncActiveReportSnapshot(updatedWithTime);
+      if (isDemoStudent(updated)) {
+        if (updated.goals && updated.goals.length > 0) {
+          updated.goals[0].observations = [
+            {
+              id: 'obs_demo_auto_1',
+              date: new Date().toLocaleDateString('he-IL'),
+              timestamp: new Date().toISOString(),
+              authorName: 'שרה כהן (מורת שילוב)',
+              supportLevel: 'עצמאי לחלוטין',
+              note: 'השתתף בפעילות באופן עצמאי וממוקד, נעזר בכרטיסיית הניווט.'
+            }
+          ];
+        }
+      }
       savedSnapshotRef.current = JSON.stringify(updated);
       setFormData(updated);
       onSaveStudentPlan(updated);
+      setTimeout(() => {
+        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      }, 300);
       setAutoSavedTime(nowTime);
       if (onDraftStateChange) {
         onDraftStateChange({ isDirty: false, draftData: updated });
@@ -896,6 +913,23 @@ export default function EcologicalWorkPlanForm({
     setOpenPickerGoalId(newId);
     setPickerSearch('');
     setPickerEnvFilter('הכל');
+    setTimeout(() => {
+      const el = document.getElementById(newId) || document.querySelector('.ecological-goal-card:last-child');
+      if (el?.scrollIntoView) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'box-shadow 0.4s ease, border-color 0.4s ease';
+        el.style.boxShadow = '0 0 0 4px #86efac, 0 4px 16px rgba(22, 163, 74, 0.35)';
+        el.style.borderColor = '#16a34a';
+        setTimeout(() => {
+          if (el) {
+            el.style.boxShadow = '';
+            el.style.borderColor = '';
+          }
+        }, 2200);
+      }
+    }, 150);
+    setBankAddToast('✅ שורת יעד חדשה נוספה לתוכנית!');
+    setTimeout(() => setBankAddToast(''), 3000);
   };
 
   const handleDeleteGoalRow = (goalId) => {
@@ -1544,9 +1578,26 @@ ${rawText}
       };
       const updated = syncActiveReportSnapshot(updatedBase);
 
+      if (isDemoStudent(updated)) {
+        if (updated.goals && updated.goals.length > 0) {
+          updated.goals[0].observations = [
+            {
+              id: 'obs_demo_auto_1',
+              date: new Date().toLocaleDateString('he-IL'),
+              timestamp: new Date().toISOString(),
+              authorName: 'שרה כהן (מורת שילוב)',
+              supportLevel: 'עצמאי לחלוטין',
+              note: 'השתתף בפעילות באופן עצמאי וממוקד, נעזר בכרטיסיית הניווט.'
+            }
+          ];
+        }
+      }
       savedSnapshotRef.current = JSON.stringify(updated);
       setFormData(updated);
       onSaveStudentPlan(updated);
+      setTimeout(() => {
+        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      }, 300);
       (engineered.goals || []).forEach((g) => {
         if (g.title) recordGoalInBank(g);
       });
@@ -2353,7 +2404,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <span className="tour-arrow-anim">☝️</span>
                 <span>
                   {activeOnboardingStep === 6
-                    ? 'שלב 6: לחצי כאן לשמירת ההתקדמות בענן או על המנעול לנעילת הדו"ח!'
+                    ? 'שלב 6: לחצי כאן לשמירת התוכנית בענן (או על המנעול לקראת ועדות)!'
                     : 'צעד 8: לחצי כאן לשמירת התקדמות וסיום התוכנית!'}
                 </span>
               </div>
@@ -3583,7 +3634,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', display: 'inline-block', borderRadius: '8px' }} className={activeOnboardingStep === 7 ? 'tour-highlight-btn' : ''}>
+          <div style={{ position: 'relative', display: 'inline-block', borderRadius: '8px' }}>
             {activeOnboardingStep === 7 && (
               <div className="onboarding-tour-arrow-box" style={{ top: '-44px', right: '0' }}>
                 <span className="tour-arrow-anim">👇</span>
@@ -3595,18 +3646,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               currentUser={currentUser}
               disabled={isReportLocked}
               onMerge={handleMergeParentVoice}
+              highlight={activeOnboardingStep === 7}
             />
           </div>
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            {activeOnboardingStep === 10 && (
-              <div className="onboarding-tour-arrow-box" style={{ top: '-44px', right: '0' }}>
-                <span className="tour-arrow-anim">👇</span>
-                <span>שלב 10: לחצי כאן לשיתוף התוכנית עם עמיתות במתי״א וצוות רב-מקצועי!</span>
-              </div>
-            )}
             <button
-              type="button"
-              className={activeOnboardingStep === 10 ? 'tour-highlight-btn' : ''}
+              type="button" 
               disabled={isReportLocked && !userCanLockReport}
               onClick={() => setShowShareModal(true)}
               style={{
@@ -4578,13 +4623,49 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <div className="privacy-sensitive-info-note">
                 🔒 <strong>לתשומת לבך (שמירה על פרטיות):</strong> נא להימנע מהקלדת פרטים מזהים או מידע אישי רגיש בטקסט החופשי (כגון שמות מלאים של הילד/ה או בני משפחה, מספרי תעודת זהות, טלפונים או כתובות). מומלץ להשתמש בתיאור כללי כגון "הילד/ה" או בראשי תיבות בלבד.
               </div>
+              {/* Quick sample descriptions for live teacher trial */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>דוגמאות מוכנות להתנסות:</span>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleFieldChange('teacherFreeText', 'יונתן לומד בכיתה רגילה ומקבל תמיכה שבועית מסל שילוב. מאובחן עם הפרעת קשב ופעלתנות יתר (ADHD) וקשיי ויסות חושי. מפגין סקרנות יוצאת דופן ואינטליגנציה תקינה, אך מתקשה להתמיד במשימות כתיבה ממושכות, מגלה מוסחות גבוהה ברעש כיתתי, ונזקק לתיווך במעברים בין שיעור להפסקה. בתחום האורייני קיים פער ברכישת שטף ודיוק בקריאה. אוהב מאוד לבנות בלגו וסקרן לגבי בעלי חיים ודינוזאורים.');
+                    }}
+                    style={{
+                      background: '#f0fdf4',
+                      color: '#15803d',
+                      border: '1px solid #86efac',
+                      borderRadius: '8px',
+                      padding: '3px 9px',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🪄 דוגמה לבי"ס (יונתן)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleFieldChange('teacherFreeText', 'נועם ילד מתוק, סקרן וחברותי בן 5.5 בגן חובה. מתקשה במעברים בין חצר למפגש, זקוק לתיווך בפתרון קונפליקטים ובמשחק משותף במוקדי הגן, ומתקשה באחיזת מספריים ועפרון. מגלה חוזקות רבות במוזיקה, יצירתיות בקוביות ואמפתיה רבה לחבריו לגן.');
+                    }}
+                    style={{
+                      background: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px',
+                      padding: '3px 9px',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🪄 דוגמה לגן (נועם)
+                  </button>
+                </div>
+              </div>
               <div style={{ position: 'relative' }}>
-                {(onboardingTourStep === 6 || activeOnboardingStep === 3) && (
-                  <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
-                    <span className="tour-arrow-anim">👇</span>
-                    <span>{activeOnboardingStep === 3 ? 'שלב 3: הזיני כאן רקע תפקודי וחופשי של התלמיד/ה' : 'צעד 5: הזיני תיאור חופשי של התלמיד/ה'}</span>
-                  </div>
-                )}
                 <textarea
                   rows={4}
                   disabled={isReportLocked}
@@ -4598,9 +4679,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
               <div className="submit-summary-action-row" style={{ position: 'relative' }}>
                 {(onboardingTourStep === 6 || activeOnboardingStep === 3) && (
-                  <div className="onboarding-tour-arrow-box" style={{ top: '-46px', left: '0' }}>
+                  <div className="onboarding-tour-arrow-box" style={{ top: '-46px', left: '0', zIndex: 60 }}>
                     <span className="tour-arrow-anim">👈</span>
-                    <span>{activeOnboardingStep === 3 ? 'שלב 3: לחצי כאן לניתוח AI וגזירת מטרות אוטומטית מהרקע!' : 'צעד 7: לחצי כאן לניתוח וגזירת מטרות אוטומטית ב-AI'}</span>
+                    <span>{activeOnboardingStep === 3 ? 'שלב 3: לחצי כאן על "עיבוד המידע" — ה-AI ינתח את התיאור ויבנה את כל המטרות והיעדים!' : 'צעד 7: לחצי כאן לניתוח וגזירת מטרות אוטומטית ב-AI'}</span>
                   </div>
                 )}
                 <span className="submit-helper-text">
@@ -4937,7 +5018,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               {activeOnboardingStep === 4 && (
                 <div className="onboarding-tour-arrow-box" style={{ top: '-44px', left: '0' }}>
                   <span className="tour-arrow-anim">👇</span>
-                  <span>שלב 4: מכאן מוסיפים מטרות ויעדים מתוך המאגר האקולוגי!</span>
+                  <span>שלב 4: המטרות נגזרו בהצלחה! לחצי כאן להוספת מטרה נוספת מתוך המאגר האקולוגי!</span>
                 </div>
               )}
               <button
@@ -5095,7 +5176,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             });
 
             return (
-              <div key={goalRow.id} className="ecological-goal-card">
+              <div key={goalRow.id} id={goalRow.id} className="ecological-goal-card">
                 {/* Goal Block Top Bar: Environment + Delete */}
                 <div className="goal-card-top-bar">
                   <div className="goal-index-And-env">
