@@ -8,30 +8,37 @@ import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy.js';
 
 async function callDirectGeminiApi({ prompt, model = 'gemini-2.5-flash', apiKey }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.2
-      }
-    })
-  });
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Gemini Direct API error (${response.status}): ${errText}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error('AI_DIRECT_TIMEOUT')), 70000);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2
+        }
+      })
+    });
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Gemini Direct API error (${response.status}): ${errText}`);
+    }
+    const json = await response.json();
+    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const match = text.match(/[\{\[][\s\S]*[\}\]]/);
+    if (match) {
+      try {
+        return JSON.parse(match[0]);
+      } catch (_) {}
+    }
+    return { raw: text };
+  } finally {
+    clearTimeout(timer);
   }
-  const json = await response.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const match = text.match(/[\{\[][\s\S]*[\}\]]/);
-  if (match) {
-    try {
-      return JSON.parse(match[0]);
-    } catch (_) {}
-  }
-  return { raw: text };
 }
 
 /**
@@ -84,6 +91,8 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
 
   const isTransientFailure = (err) => {
     if (!err) return false;
+    // Client-side hard timeout: fail fast so fallback/error banner triggers immediately
+    if (err.isTimeout) return false;
     // Network / fetch failures (e.g. TypeError: Failed to fetch) have no status property
     if (!err.status) return true;
     // Transient 5xx status codes (cold start gateway timeout / bad gateway / temporary service unavailable)
@@ -91,27 +100,51 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
     return false;
   };
 
+  const AI_REQUEST_TIMEOUT_MS =
+    typeof process !== 'undefined' && process.env?.NODE_ENV === 'test' && process.env?.TEST_FAST_TIMEOUT
+      ? 50
+      : 70000;
+
   const executePost = async (url) => {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: bodyString
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort(new Error('AI_REQUEST_TIMEOUT'));
+    }, AI_REQUEST_TIMEOUT_MS);
 
-    if (!res.ok) {
-      let errData = {};
-      try {
-        errData = await res.json();
-      } catch (_) {}
-      const err = new Error(errData.error || `AI proxy request failed with status ${res.status}`);
-      err.status = res.status;
-      err.details = errData;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: bodyString,
+        signal: controller.signal
+      });
+
+      if (!res.ok) {
+        let errData = {};
+        try {
+          errData = await res.json();
+        } catch (_) {}
+        const err = new Error(errData.error || `AI proxy request failed with status ${res.status}`);
+        err.status = res.status;
+        err.details = errData;
+        throw err;
+      }
+
+      const data = await res.json();
+      return data.data; // The returned structured JSON or fallback object
+    } catch (err) {
+      if (err.name === 'AbortError' || err.message === 'AI_REQUEST_TIMEOUT') {
+        const timeoutErr = new Error('AI request timed out after 70 seconds. Please check your network connection.');
+        timeoutErr.isTimeout = true;
+        timeoutErr.status = 504;
+        throw timeoutErr;
+      }
       throw err;
+    } finally {
+      clearTimeout(timer);
     }
-
-    const data = await res.json();
-    return data.data; // The returned structured JSON or fallback object
   };
+
 
   const retryDelayMs =
     typeof process !== 'undefined' && process.env?.NODE_ENV === 'test' ? 10 : 800;

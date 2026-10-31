@@ -524,9 +524,10 @@ export default function App() {
       ...currentUser,
       name: userPreferences?.fullName || currentUser.name,
       title: userPreferences?.professionalTitle || currentUser.title,
-      group: userPreferences?.institutionalAffiliation || currentUser.group
+      // Zero-Trust Security Boundary: group/tenant is strictly from currentUser.group
+      group: currentUser.group || ''
     };
-  }, [currentUser, userPreferences?.fullName, userPreferences?.professionalTitle, userPreferences?.institutionalAffiliation]);
+  }, [currentUser, userPreferences?.fullName, userPreferences?.professionalTitle]);
 
   // All students across users (each student is strictly scoped by ownerEmail)
   const [students, setStudents] = useState(() => {

@@ -1528,15 +1528,44 @@ export default function TeacherPreferencesModal({
 
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                  שיוך מוסדי / מתי"א:
+                  שיוך מוסדי / מתי"א רשמי (קבוצת שיתוף מאובטחת):
+                </label>
+                <div
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '6px',
+                    background: '#f1f5f9',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '13px',
+                    color: '#334155',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px'
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>{currentUser.group || 'ללא שיוך צוות / מתי"א'}</span>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>
+                    🔒 נקבע ע"י מנהל/ת המערכת
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  שם בית הספר / הגן (להדפסה ולדוחות בלבד):
                 </label>
                 <input
                   type="text"
                   value={draftPrefs.institutionalAffiliation}
                   onChange={(e) => handleFieldChange('institutionalAffiliation', e.target.value)}
-                  placeholder={currentUser.group || 'מתי״א מרכז'}
+                  placeholder="למשל: בית ספר אלונים / גן חרצית"
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1.5px solid #cbd5e1', fontSize: '13px' }}
                 />
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                  * יוצג בכותרת הדוח המודפס ובחתימה בלבד, ואינו משנה את שיוך המתי"א או קבוצת השיתוף.
+                </div>
               </div>
             </div>
 

@@ -258,4 +258,29 @@ describe('AI Backend Proxy Client & Security Safeguards', () => {
     // Should NOT retry frozen service
     expect(globalThis.fetch).toHaveBeenCalledTimes(1);
   });
+
+  it('aborts hanging network requests and rejects with isTimeout: true (Network Glitch / Idle Timeout)', async () => {
+    process.env.TEST_FAST_TIMEOUT = 'true';
+    globalThis.fetch = vi.fn().mockImplementation((url, opts) => {
+      return new Promise((resolve, reject) => {
+        if (opts?.signal) {
+          opts.signal.addEventListener('abort', () => {
+            const abortErr = new Error('The operation was aborted');
+            abortErr.name = 'AbortError';
+            reject(abortErr);
+          });
+        }
+      });
+    });
+
+    await expect(
+      callAiProxyEndpoint({
+        operation: 'rawPrompt',
+        payload: { prompt: 'בדיקת timeout' }
+      })
+    ).rejects.toMatchObject({ isTimeout: true, status: 504 });
+
+    delete process.env.TEST_FAST_TIMEOUT;
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
 });
