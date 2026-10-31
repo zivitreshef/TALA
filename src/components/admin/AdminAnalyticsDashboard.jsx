@@ -204,10 +204,10 @@ export default function AdminAnalyticsDashboard({
       >
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-            <span>📊</span> לוח בינת חוויית משתמש וטלמטריה — TALA
+            <span>📊</span> טלמטריית האתר
           </h1>
           <p style={{ fontSize: '13.5px', opacity: 0.9, marginTop: '4px', marginBottom: 0 }}>
-            ניטור רציף של שגרת המורים, מעקב יומי, מוכנות לישיבות צוות, שיתוף מסמכים וצ'אט פדגוגי
+            מדדי שימוש וביצועים: ניטור רציף של שגרת המורים, מעקב יומי, מוכנות לישיבות צוות, שיתוף מסמכים וצ'אט פדגוגי
           </p>
         </div>
 

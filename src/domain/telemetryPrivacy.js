@@ -349,7 +349,7 @@ export function sanitizeTelemetryPayload(eventName, rawProperties = {}, userCont
     anonUserId,
     sessionId: getSessionId(),
     accountType,
-    appVersion: '2.4.19',
+    appVersion: '2.4.20',
     properties: sanitizedProps,
     timestampMs: Date.now()
   };

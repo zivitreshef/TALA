@@ -1140,6 +1140,27 @@ export default function AdminAllowlistModal({
 
           <button
             type="button"
+            onClick={() => setActiveTab('site_telemetry')}
+            style={{
+              padding: '12px 16px',
+              border: 'none',
+              background: 'transparent',
+              fontSize: '13.5px',
+              fontWeight: activeTab === 'site_telemetry' ? 800 : 600,
+              color: activeTab === 'site_telemetry' ? '#2563eb' : '#64748b',
+              borderBottom: activeTab === 'site_telemetry' ? '3px solid #2563eb' : '3px solid transparent',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px'
+            }}
+          >
+            <Activity size={16} />
+            <span>טלמטריית האתר</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('analytics')}
             style={{
               padding: '12px 16px',
@@ -2088,10 +2109,14 @@ export default function AdminAllowlistModal({
             </div>
           )}
 
+                    {/* TAB: SITE TELEMETRY (SEPARATE DEDICATED TAB) */}
+          {activeTab === 'site_telemetry' && (
+            <AdminAnalyticsDashboard currentUser={currentUser} />
+          )}
+
           {/* TAB 3: CAPACITY & ANALYTICS */}
           {activeTab === 'analytics' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-              <AdminAnalyticsDashboard currentUser={currentUser} />
               <AdminUsageAndSecurityDashboard
                 students={students}
                 settings={{ aiFreeze }}

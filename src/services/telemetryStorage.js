@@ -90,7 +90,7 @@ export async function saveTelemetryBatch(events = []) {
           anonUserId: event.anonUserId || 'anon',
           sessionId: event.sessionId || 'session',
           accountType: event.accountType || 'teacher',
-          appVersion: event.appVersion || '2.4.19',
+          appVersion: event.appVersion || '2.4.20',
           properties: event.properties || {},
           timestampMs: typeof event.timestampMs === 'number' ? event.timestampMs : Date.now()
         };
