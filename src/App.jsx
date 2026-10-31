@@ -207,7 +207,7 @@ const ADMIN_REQUESTS_STORAGE_KEY = 'tala_admin_requests_v1';
 const USER_USAGE_TRACKER_KEY = 'tala_user_usage_tracker_v1';
 const DISMISSED_SHARED_REPORTS_KEY = 'tala_dismissed_shared_reports_v1';
 const UPGRADE_BANNER_STORAGE_KEY = 'tala_upgrade_banner_v1';
-export const SHOW_NEW_USER_JOURNEY = false;
+export const SHOW_NEW_USER_JOURNEY = true;
 
 export default function App() {
   // Allowed users list
@@ -1959,12 +1959,8 @@ export default function App() {
         setShowGoalBankOverview(false);
         break;
       case 10:
-        if (fromSpotlightBtn) {
-          if (typeof window !== 'undefined' && window.scrollTo) {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-        } else {
-          setShowSelfPasswordModal(true);
+        if (typeof window !== 'undefined' && window.scrollTo) {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         break;
       default:
@@ -1976,6 +1972,15 @@ export default function App() {
 
   const handleNextOnboardingStep = () => {
     if (!currentUser?.email) return;
+    const currentStepId = onboardingState?.currentStep || 1;
+    if (currentStepId >= ONBOARDING_TOTAL_STEPS) {
+      const nextState = advanceOnboardingStep(currentUser.email);
+      setOnboardingState(nextState);
+      setBankAddToast('🎉 כל הכבוד! השלמת בהצלחה את כל 10 שלבי מסע ההדרכה ב-TALA!');
+      setTimeout(() => setBankAddToast(''), 4500);
+      handleCloseOnboarding();
+      return;
+    }
     const nextState = advanceOnboardingStep(currentUser.email);
     setOnboardingState(nextState);
     const stepDef = getStepById(nextState.currentStep);
@@ -2393,16 +2398,10 @@ export default function App() {
         <div className="tala-header-controls">
           {/* Zone 1: Main Workspaces Segmented Nav Bar */}
           <nav
-            className={`header-nav-segment ${activeOnboardingStep === 1 ? 'tour-highlight-btn' : ''}`}
+            className="header-nav-segment"
             aria-label="ניווט ראשי"
             style={{ position: 'relative' }}
           >
-            {activeOnboardingStep === 1 && (
-              <div className="onboarding-tour-arrow-box" style={{ top: '44px', right: '0', zIndex: 55 }}>
-                <span className="tour-arrow-anim">☝️</span>
-                <span>שלב 1: סרגל הניווט בין ניהול תלמידים, מעקב יומי ומאגר מטרות!</span>
-              </div>
-            )}
             <button
               type="button"
               className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker && !showGoalBankOverview ? 'active' : ''}`}
@@ -2752,15 +2751,9 @@ export default function App() {
               <h3>רשימת תלמידים</h3>
             </div>
             <div style={{ position: 'relative' }}>
-              {activeOnboardingStep === 1 && (
-                <div className="onboarding-tour-arrow-box" style={{ top: '-42px', left: '0', zIndex: 55 }}>
-                  <span className="tour-arrow-anim">👇</span>
-                  <span>שלב 1: מכאן מוסיפים תלמיד/ה או בוחרים מרשימת התלמידים!</span>
-                </div>
-              )}
               <button
                 type="button"
-                className={`btn-new-student ${activeOnboardingStep === 1 ? 'tour-highlight-btn' : ''}`}
+                className="btn-new-student" 
                 onClick={handleAddNewStudent}
               >
                 <Plus size={16} />
@@ -3197,7 +3190,7 @@ export default function App() {
 
               <div className="inside-landing-cards-grid">
                 {/* Onboarding Quickstart Banner for New Users */}
-                {SHOW_NEW_USER_JOURNEY && userStudents.length === 0 && (
+                {SHOW_NEW_USER_JOURNEY && (userStudents.length === 0 || activeOnboardingStep === 1) && (
                   <div
                     style={{
                       gridColumn: '1 / -1',
@@ -3258,17 +3251,25 @@ export default function App() {
                         justifyContent: 'space-between',
                         flexWrap: 'wrap',
                         gap: '12px',
-                        paddingTop: '16px',
-                        borderTop: '1px solid rgba(134, 239, 172, 0.5)'
+                        paddingTop: activeOnboardingStep === 1 ? '48px' : '16px',
+                        borderTop: '1px solid rgba(134, 239, 172, 0.5)',
+                        transition: 'padding-top 0.2s ease'
                       }}
                     >
                       {/* Dominant Primary CTA */}
-                      <button
-                        type="button"
-                        className="btn-inside-landing-primary tour-highlight-btn"
-                        onClick={() => {
-                          setShowOnboardingNavigator(true);
-                        }}
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        {activeOnboardingStep === 1 && (
+                          <div className="onboarding-tour-arrow-box" style={{ top: '-40px', right: '0', zIndex: 60 }}>
+                            <span className="tour-arrow-anim">👇</span>
+                            <span>שלב 1: לחצי כאן להתחלת הסיור ובחירת תלמיד לדוגמה!</span>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-inside-landing-primary tour-highlight-btn"
+                          onClick={() => {
+                            setShowOnboardingNavigator(true);
+                          }}
                         style={{
                           background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
                           color: '#ffffff',
@@ -3287,7 +3288,8 @@ export default function App() {
                         <span className="tour-arrow-anim-horizontal" style={{ fontSize: '16px' }}>👈</span>
                         <Sparkles size={18} />
                         <span>לחצי כאן להתחלה: סיור מודרך ובחירת מסלול</span>
-                      </button>
+                        </button>
+                      </div>
 
                       {/* Secondary Options Group */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

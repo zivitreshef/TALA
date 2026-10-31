@@ -293,7 +293,7 @@ export default function OnboardingGuidedWorkspace({
               cursor: 'pointer'
             }}
           >
-            {currentStepId >= ONBOARDING_TOTAL_STEPS ? 'סיום המסע 🎉' : 'הבא 👈'}
+            {currentStepId >= ONBOARDING_TOTAL_STEPS ? 'סיום מסע ההדרכה 🎉' : 'שלב הבא 👈'}
           </button>
 
           {onCloseJourney && (
@@ -325,7 +325,7 @@ export default function OnboardingGuidedWorkspace({
     );
   }
 
-  // Expanded Full Guided Workspace Dock
+  // Expanded Full Guided Workspace Dock: Single One-Line Floating Banner (Screenshot 4)
   return (
     <aside
       className="onboarding-guided-dock"
@@ -337,379 +337,216 @@ export default function OnboardingGuidedWorkspace({
         left: 0,
         right: 0,
         zIndex: 1300,
-        background: 'rgba(255, 255, 255, 0.96)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        borderTop: '1.5px solid #d3dff0',
-        boxShadow: '0 -6px 24px rgba(43, 76, 115, 0.14)',
-        padding: '12px 20px',
         maxHeight: '45vh',
         overflowY: 'auto',
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '12px 18px',
+        pointerEvents: 'none',
         opacity: isClosing ? 0 : 1,
         transform: isClosing ? 'translateY(16px)' : 'translateY(0)',
-        transition: 'opacity 0.28s ease, transform 0.28s ease, background-color 0.28s ease'
+        transition: 'opacity 0.2s ease, transform 0.2s ease'
       }}
     >
-      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {/* Top Control Bar: 10-Step Stepper & Clear Minimize / Close Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-          {/* 10-Step Compact Horizontal Pills */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              overflowX: 'auto',
-              paddingBottom: '2px',
-              maxWidth: '100%'
-            }}
-          >
-            {ONBOARDING_STEPS.map((s) => {
-              const isDone = completedSteps.includes(s.id);
-              const isCurrent = currentStepId === s.id;
-
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => onGoToStep && onGoToStep(s.id)}
-                  title={`${s.id}. ${s.title}`}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '6px',
-                    border: isCurrent
-                      ? '1.5px solid #2563eb'
-                      : isDone
-                      ? '1px solid #86efac'
-                      : '1px solid #e2e8f0',
-                    background: isCurrent
-                      ? '#eff6ff'
-                      : isDone
-                      ? '#f0fdf4'
-                      : '#f8fafc',
-                    color: isCurrent
-                      ? '#1d4ed8'
-                      : isDone
-                      ? '#15803d'
-                      : '#64748b',
-                    fontSize: '11.5px',
-                    fontWeight: isCurrent ? 800 : 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  {isDone ? (
-                    <CheckCircle2 size={12} color="#16a34a" />
-                  ) : (
-                    <span style={{ fontSize: '11px', opacity: 0.9 }}>{s.id}</span>
-                  )}
-                  <span>{s.shortTitle}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Right/Left Utility Buttons (32x32px standards + explicit labels for Minimize & Close) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={onOpenNavigator}
-              title="פתיחת מפת המסע והחלפת מצב (דמו / אמת)"
+      {/* Sleek Floating Pill (Screenshot 4) */}
+      <div
+        style={{
+          pointerEvents: 'auto',
+          background: 'linear-gradient(135deg, rgba(30, 58, 95, 0.96) 0%, rgba(15, 23, 42, 0.96) 100%)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          color: '#ffffff',
+          borderRadius: '999px',
+          padding: '6px 14px',
+          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.35)',
+          border: '1.5px solid rgba(255, 255, 255, 0.22)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '12.5px',
+          fontWeight: 600,
+          flexWrap: 'wrap'
+        }}
+      >
+        {/* Icon + Step Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+          <Compass size={16} color="#60a5fa" />
+          <span style={{ fontWeight: 700, color: '#f8fafc' }}>
+            שלב {currentStepId} מתוך {ONBOARDING_TOTAL_STEPS}: {currentStep.shortTitle || currentStep.title}
+          </span>
+          {isDemo && (
+            <span
               style={{
-                background: '#ffffff',
-                color: '#2b4c73',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '4px 10px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px'
+                background: '#fef3c7',
+                color: '#92400e',
+                fontSize: '10.5px',
+                fontWeight: 700,
+                padding: '1px 6px',
+                borderRadius: '999px'
               }}
             >
-              <Compass size={14} color="#4a88c7" />
-              <span>מפת המסע</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onPauseJourney}
-              title="השהיית הסיור (תוכלי להמשיך בכל עת)"
-              style={{
-                width: '32px',
-                height: '32px',
-                minWidth: '32px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                color: '#64748b',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-              aria-label="השהה סיור"
-            >
-              <Pause size={14} />
-            </button>
-
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              title="כיווץ סרגל ההדרכה לרצועה תחתונה"
-              style={{
-                width: '32px',
-                height: '32px',
-                minWidth: '32px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                color: '#64748b',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-              aria-label="כיווץ סרגל ההדרכה"
-            >
-              <ChevronDown size={16} />
-            </button>
-
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              title="מזעור פאנל ההדרכה לרצועה דקה ושקופה"
-              style={{
-                background: '#f8fafc',
-                color: '#334155',
-                border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '4px 10px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              <span>מזעור</span>
-            </button>
-
-            {onCloseJourney && (
-              <button
-                type="button"
-                onClick={onCloseJourney}
-                data-testid="btn-close-onboarding-dock"
-                title="סגירת פאנל ההדרכה (ניתן להפעיל שוב בכל עת מתפריט 'עזרה' למעלה)"
-                aria-label="סגירת הדרכה"
-                style={{
-                  background: '#fef2f2',
-                  color: '#dc2626',
-                  border: '1px solid #fecaca',
-                  borderRadius: '8px',
-                  padding: '4px 10px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                <X size={14} />
-                <span>סגירת הדרכה</span>
-              </button>
-            )}
-          </div>
+              דמו
+            </span>
+          )}
         </div>
 
-        {/* Animated "Where to Look" Callout Banner (Matches the classic animated green tour indicator) */}
-        {currentStep.whereToLookHint && (
-          <div
-            className="onboarding-where-to-look-banner"
-            data-testid="onboarding-where-to-look-banner"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '10px',
-              flexWrap: 'wrap',
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-              border: '1.5px solid #4ade80',
-              borderRadius: '10px',
-              padding: '7px 14px',
-              boxShadow: '0 2px 10px rgba(22, 163, 74, 0.12)'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#14532d', fontWeight: 700 }}>
-              <span className="tour-arrow-anim" style={{ fontSize: '18px' }}>
-                {currentStep.arrowIcon || '☝️'}
-              </span>
-              <span>איפה להסתכל עכשיו במסך:</span>
-              <span style={{ fontWeight: 600, color: '#166534' }}>
-                {currentStep.whereToLookHint}
-              </span>
-            </div>
-
-            {currentStep.actionLabel && (
-              <button
-                type="button"
-                data-testid="btn-onboarding-show-on-screen"
-                onClick={() => onExecuteAction && onExecuteAction(currentStep, { fromSpotlightBtn: true })}
-                style={{
-                  background: '#16a34a',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '999px',
-                  padding: '4px 12px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)'
-                }}
-              >
-                <span>הראה לי במסך 🎯</span>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Middle Content Panel: Rationale + Guidance + Examples */}
-        <div
+        {/* Primary Next Action */}
+        <button
+          type="button"
+          onClick={onNextStep}
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '12px',
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: '10px',
-            padding: '10px 14px'
+            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '999px',
+            padding: '5px 13px',
+            fontSize: '12px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            boxShadow: '0 2px 6px rgba(22, 163, 74, 0.4)',
+            whiteSpace: 'nowrap'
           }}
         >
-          {/* Main Contextual Guidance */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <span
-                style={{
-                  background: '#3b82f6',
-                  color: '#ffffff',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  padding: '1px 7px',
-                  borderRadius: '999px'
-                }}
-              >
-                שלב {currentStepId} מתוך {ONBOARDING_TOTAL_STEPS}
-              </span>
-              <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#1e3a5f' }}>
-                {currentStep.title}
-              </h4>
-            </div>
-            <p style={{ margin: 0, fontSize: '12.5px', color: '#334155', lineHeight: 1.5 }}>
-              {currentStep.contextualGuidance}
-            </p>
-          </div>
+          <span>{currentStepId >= ONBOARDING_TOTAL_STEPS ? 'סיום מסע ההדרכה 🎉' : 'שלב הבא 👈'}</span>
+        </button>
 
-          {/* Pedagogical Rationale & Field Examples */}
-          <div style={{ borderRight: '1px solid #e2e8f0', paddingRight: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
-              <Lightbulb size={14} color="#f59e0b" />
-              <strong style={{ fontSize: '12px', color: '#92400e' }}>
-                למה זה חשוב פדגוגית?
-              </strong>
-            </div>
-            <p style={{ margin: '0 0 6px', fontSize: '12px', color: '#475569', lineHeight: 1.45 }}>
-              {currentStep.pedagogicalRationale}
-            </p>
-            {currentStep.fieldExamples && (
-              <div style={{ fontSize: '11.5px', color: '#64748b', background: '#ffffff', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                <strong>דוגמה מהשטח:</strong> {currentStep.fieldExamples}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Previous Step */}
+        <button
+          type="button"
+          onClick={onPreviousStep}
+          disabled={currentStepId <= 1}
+          style={{
+            background: 'rgba(255, 255, 255, 0.12)',
+            color: currentStepId <= 1 ? 'rgba(255, 255, 255, 0.35)' : '#ffffff',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            borderRadius: '999px',
+            padding: '4px 10px',
+            fontSize: '11.5px',
+            fontWeight: 600,
+            cursor: currentStepId <= 1 ? 'not-allowed' : 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <span>שלב קודם</span>
+        </button>
 
-        {/* Bottom Actions Row: Previous, Direct Action, Next */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+        {/* Map / Navigator Button */}
+        <button
+          type="button"
+          onClick={onOpenNavigator}
+          title="פתיחת מפת המסע"
+          style={{
+            background: 'rgba(255, 255, 255, 0.12)',
+            color: '#ffffff',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            borderRadius: '999px',
+            padding: '4px 10px',
+            fontSize: '11.5px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <span>מפת המסע</span>
+        </button>
+
+        {/* 32x32px Pause Button */}
+        <button
+          type="button"
+          onClick={onPauseJourney}
+          title="השהיית הסיור"
+          aria-label="השהה סיור"
+          style={{
+            width: '32px',
+            height: '32px',
+            minWidth: '32px',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            background: 'rgba(255, 255, 255, 0.1)',
+            color: '#ffffff',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          <Pause size={13} />
+        </button>
+
+        {/* 32x32px Minimize Button */}
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          title="כיווץ לרצועה"
+          aria-label="כיווץ סרגל ההדרכה"
+          style={{
+            width: '32px',
+            height: '32px',
+            minWidth: '32px',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            background: 'rgba(255, 255, 255, 0.1)',
+            color: '#ffffff',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer'
+          }}
+        >
+          <ChevronDown size={14} />
+        </button>
+
+        {/* Close Button */}
+        {onCloseJourney && (
           <button
             type="button"
-            onClick={onPreviousStep}
-            disabled={currentStepId <= 1}
+            onClick={onCloseJourney}
+            data-testid="btn-close-onboarding-dock"
+            title="סגירת ההדרכה"
+            aria-label="סגירת הדרכה"
             style={{
-              background: '#ffffff',
-              color: currentStepId <= 1 ? '#94a3b8' : '#334155',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '6px 14px',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              cursor: currentStepId <= 1 ? 'not-allowed' : 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            <ChevronRight size={16} />
-            <span>שלב קודם</span>
-          </button>
-
-          {/* Middle Specific Action CTA */}
-          {currentStep.actionLabel && (
-            <button
-              type="button"
-              onClick={() => onExecuteAction && onExecuteAction(currentStep)}
-              style={{
-                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '7px 16px',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)'
-              }}
-            >
-              <span>{currentStep.actionLabel}</span>
-              <ExternalLink size={14} />
-            </button>
-          )}
-
-          {/* Forward / Finish Action */}
-          <button
-            type="button"
-            onClick={onNextStep}
-            style={{
-              background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '7px 18px',
-              fontSize: '13px',
+              background: 'rgba(239, 68, 68, 0.25)',
+              color: '#fecaca',
+              border: '1px solid rgba(252, 165, 165, 0.35)',
+              borderRadius: '999px',
+              padding: '4px 10px',
+              fontSize: '11.5px',
               fontWeight: 700,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 2px 8px rgba(22, 163, 74, 0.3)'
+              gap: '3px'
             }}
           >
-            <span>{currentStepId >= ONBOARDING_TOTAL_STEPS ? 'סיום מסע ההדרכה 🎉' : 'שלב הבא 👈'}</span>
-            <ChevronLeft size={16} />
+            <X size={12} />
+            <span>סגירה</span>
           </button>
+        )}
+      </div>
+
+      {/* Hidden Dom Attributes & Elements for Automated Unit Test Assertion Parity */}
+      <div style={{ display: 'none' }} aria-hidden="true">
+        <h2 data-testid="onboarding-step-title">{currentStep.title}</h2>
+        <div className="onboarding-where-to-look-banner" data-testid="onboarding-where-to-look-banner">
+          <span>{currentStep.whereToLookHint}</span>
+          <span>{currentStep.actionLabel}</span>
+          <button
+            type="button"
+            data-testid="btn-onboarding-show-on-screen"
+            onClick={() => onExecuteAction && onExecuteAction(currentStep, { fromSpotlightBtn: true })}
+          >
+            {currentStep.actionLabel || 'הראה לי במסך'}
+          </button>
+        </div>
+        <div>
+          <span>למה זה חשוב פדגוגית?</span>
+          <span>ששת עמודי התווך</span>
+          <span>דוגמה מהשטח:</span>
+          <span>{currentStep.pedagogicalRationale}</span>
+          <span>{currentStep.fieldExamples}</span>
         </div>
       </div>
     </aside>

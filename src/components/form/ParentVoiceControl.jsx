@@ -52,7 +52,8 @@ export default function ParentVoiceControl({
   disabled,
   onMerge,
   initialOpen = false,
-  initialInvites = null
+  initialInvites = null,
+  highlight = false
 }) {
   const [invites, setInvites] = useState(() => initialInvites || []);
   const [open, setOpen] = useState(initialOpen);
@@ -180,6 +181,7 @@ export default function ParentVoiceControl({
     <>
       <button
         type="button"
+        className={highlight ? "tour-highlight-btn" : ""}
         disabled={disabled || !studentId || !ownerEmail}
         onClick={() => setOpen(true)}
         title="איסוף דעת ההורים בקישור קצר"
