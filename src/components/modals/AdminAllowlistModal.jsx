@@ -64,6 +64,7 @@ import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../UpgradeBanner';
 import SystemHealthPanel from './SystemHealthPanel';
 import AdminAlertsPanel from '../admin/AdminAlertsPanel';
 import AdminUsageAndSecurityDashboard from './AdminUsageAndSecurityDashboard';
+import AdminAnalyticsDashboard from '../admin/AdminAnalyticsDashboard';
 import { fetchTelemetrySnapshot } from '../../services/telemetryService';
 import { aggregateTelemetryData } from '../../domain/telemetry';
 import { countUnreviewedHealthEvents } from '../../domain/healthEvents.js';
@@ -2090,6 +2091,7 @@ export default function AdminAllowlistModal({
           {/* TAB 3: CAPACITY & ANALYTICS */}
           {activeTab === 'analytics' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+              <AdminAnalyticsDashboard currentUser={currentUser} />
               <AdminUsageAndSecurityDashboard
                 students={students}
                 settings={{ aiFreeze }}

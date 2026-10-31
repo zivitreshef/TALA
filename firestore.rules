@@ -122,6 +122,14 @@ service cloud.firestore {
           request.resource.data.userEmail == currentEmail());
     }
 
+    // Usage telemetry & product analytics events.
+    // Any signed-in teacher/client can create events; only admins can read and delete; immutable.
+    match /tala_telemetry_events/{eventId} {
+      allow read, delete: if isAdmin();
+      allow create: if isSignedIn();
+      allow update: if false;
+    }
+
     // Student plans & status reports. Owner, shared teachers and the primary admin only.
     match /tala_students/{studentId} {
       allow read: if isOwnerOfResource(resource.data) || isSharedOnResource(resource.data);

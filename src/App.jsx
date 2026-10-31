@@ -195,9 +195,12 @@ import {
   resolveOnboardingDockStateForUser,
   getDemoStudent,
   saveDemoStudent,
-  clearDemoStudent
+  clearDemoStudent,
+  recordOnboardingMilestone
 } from './services/onboardingStorage';
 import { isDemoStudent, getStepById } from './domain/onboardingJourney';
+import { usageTelemetryService } from './services/usageTelemetryService';
+import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy';
 import './index.css';
 
 const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
@@ -208,6 +211,89 @@ const USER_USAGE_TRACKER_KEY = 'tala_user_usage_tracker_v1';
 const DISMISSED_SHARED_REPORTS_KEY = 'tala_dismissed_shared_reports_v1';
 const UPGRADE_BANNER_STORAGE_KEY = 'tala_upgrade_banner_v1';
 export const SHOW_NEW_USER_JOURNEY = true;
+
+/**
+ * Workflow & Document Telemetry Instrumentation Helpers
+ */
+export function trackPedagogicalSummaryGenerated({ summaryType = 'staff_meeting', studentCount = 1, email } = {}) {
+  const studentCountBand = studentCount <= 5 ? '1-5' : studentCount <= 15 ? '6-15' : '16+';
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.PEDAGOGICAL_SUMMARY_GENERATED,
+    {
+      summaryType,
+      studentCountBand
+    },
+    email ? { userContext: { email } } : {}
+  );
+}
+
+export function trackStaffMeetingReadinessChecked({ itemsCompletedCount = 0, isFullyReady = false, email } = {}) {
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.STAFF_MEETING_READINESS_CHECKED,
+    {
+      itemsCompletedCount,
+      isFullyReady
+    },
+    email ? { userContext: { email } } : {}
+  );
+}
+
+export function trackDocumentShared({ format = 'pdf', channel = 'download', email } = {}) {
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.DOCUMENT_SHARED,
+    {
+      format,
+      channel
+    },
+    email ? { userContext: { email } } : {}
+  );
+}
+
+export function trackPedagogicalChatSessionStarted({ triggerSource = 'floating_dock', email } = {}) {
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_STARTED,
+    {
+      triggerSource
+    },
+    email ? { userContext: { email } } : {}
+  );
+}
+
+export function trackPedagogicalChatToolDiscovered({ toolType = 'goal_suggester', email } = {}) {
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_TOOL_DISCOVERED,
+    {
+      toolType
+    },
+    email ? { userContext: { email } } : {}
+  );
+}
+
+export function trackPedagogicalChatSessionEnded({ durationSec = 0, turnsCount = 0, email } = {}) {
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_ENDED,
+    {
+      durationSec,
+      turnsCount
+    },
+    email ? { userContext: { email } } : {}
+  );
+}
+
+export function trackReportGenerated({ reportType = 'tala', email } = {}) {
+  if (email) {
+    try {
+      recordOnboardingMilestone(email, 'first_report');
+    } catch (_) {}
+  }
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.REPORT_GENERATED,
+    {
+      reportType
+    },
+    email ? { userContext: { email } } : {}
+  );
+}
 
 export default function App() {
   // Allowed users list
@@ -500,6 +586,31 @@ export default function App() {
       // ignore storage errors
     }
   };
+
+  // Pedagogical Chat Session Telemetry Tracking
+  const chatSessionStartRef = React.useRef(null);
+  useEffect(() => {
+    if (isSupportChatOpen) {
+      chatSessionStartRef.current = Date.now();
+      try {
+        usageTelemetryService.track(
+          TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_STARTED,
+          { triggerSource: selectedStudentId ? 'student_form' : 'floating_dock' },
+          currentUser?.email ? { userContext: { email: currentUser.email } } : {}
+        );
+      } catch (_) {}
+    } else if (chatSessionStartRef.current) {
+      const durationSec = Math.max(1, Math.round((Date.now() - chatSessionStartRef.current) / 1000));
+      try {
+        usageTelemetryService.track(
+          TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_ENDED,
+          { durationSec, turnsCount: 1 },
+          currentUser?.email ? { userContext: { email: currentUser.email } } : {}
+        );
+      } catch (_) {}
+      chatSessionStartRef.current = null;
+    }
+  }, [isSupportChatOpen, selectedStudentId, currentUser?.email]);
   // Student deletion & archive confirmation modal states
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [studentToArchive, setStudentToArchive] = useState(null);
@@ -1481,6 +1592,16 @@ export default function App() {
             totalStudents: (userStudents || []).length,
             privacyMode: userPreferences?.defaultPrivacyMode || 'full_name'
           });
+          trackPedagogicalSummaryGenerated({
+            summaryType: 'staff_meeting',
+            studentCount: (userStudents || []).length,
+            email: currentUser.email
+          });
+          trackStaffMeetingReadinessChecked({
+            itemsCompletedCount: 3,
+            isFullyReady: gaps.length === 0,
+            email: currentUser.email
+          });
           localStorage.setItem(storageKey, now.toISOString());
         }
       } catch (err) {
@@ -1689,6 +1810,15 @@ export default function App() {
       ...prev,
       'ללא מסגרת חינוכית מוגדרת': true
     }));
+
+    try {
+      recordOnboardingMilestone(currentUser.email, 'first_student');
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.STUDENT_CREATED,
+        { stage: newStudentPlan.stage, planType: newStudentPlan.planType },
+        { userContext: { email: currentUser.email } }
+      );
+    } catch (_) {}
   };
 
   // Load a rich sample student plan for quick onboarding exploration (isolated in sandbox)
@@ -1764,6 +1894,14 @@ export default function App() {
     setSelectedArchivedStudentId(id);
     setStudentToArchive(null);
     setStudentToDelete(null);
+
+    try {
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.STUDENT_ARCHIVED,
+        {},
+        currentUser?.email ? { userContext: { email: currentUser.email } } : {}
+      );
+    } catch (_) {}
   };
 
   const handleRestoreFromArchive = (studentId) => {

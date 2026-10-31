@@ -1,6 +1,8 @@
 import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { pruneStaleFirestoreKeys } from '../services/storage';
+import { usageTelemetryService } from '../services/usageTelemetryService';
+import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -14,6 +16,16 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('[ErrorBoundary] Caught runtime error:', error, errorInfo);
+    try {
+      const errName = error?.name || 'ComponentError';
+      const errMsg = (error?.message || '').slice(0, 100);
+      usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
+        errorCode: errName,
+        errorType: errName,
+        componentName: this.props?.componentName || 'ErrorBoundary',
+        errorMessageClamped: errMsg
+      });
+    } catch (_) {}
   }
 
   handleReset = () => {

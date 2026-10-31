@@ -2,12 +2,29 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { parseInviteTokenFromHash } from './domain/parentInvite';
 import ErrorBoundary from './components/ErrorBoundary';
+import { usageTelemetryService } from './services/usageTelemetryService';
+import { setupUsageTelemetryTransport } from './services/telemetryStorage';
+import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy';
 import './index.css';
+
+// Initialize usage telemetry transport
+setupUsageTelemetryTransport(usageTelemetryService);
 
 // Global error fallback to guard against blank white screens on iOS / iPadOS
 if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
     console.error('[GlobalWindowError]', event.error || event.message);
+    try {
+      const errName = event.error?.name || 'WindowError';
+      const errMsg = String(event.error?.message || event.message || 'Unknown error').slice(0, 100);
+      usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
+        errorCode: errName,
+        errorType: errName,
+        componentName: 'window',
+        errorMessageClamped: errMsg
+      });
+    } catch (_) {}
+
     const root = document.getElementById('root');
     if (root && (!root.innerHTML || root.innerHTML.trim() === '')) {
       root.innerHTML = `
@@ -20,6 +37,36 @@ if (typeof window !== 'undefined') {
       `;
     }
   });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    try {
+      const reason = event?.reason;
+      const errName = reason?.name || 'UnhandledRejection';
+      const errMsg = String(reason?.message || reason || 'Unhandled promise rejection').slice(0, 100);
+      usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
+        errorCode: errName,
+        errorType: errName,
+        componentName: 'window_promise',
+        errorMessageClamped: errMsg
+      });
+    } catch (_) {}
+  });
+
+  const recordPageLoad = () => {
+    try {
+      const loadTime = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : 0;
+      usageTelemetryService.track(TELEMETRY_EVENTS.PAGE_LOAD_RECORDED, {
+        loadDurationMs: loadTime,
+        loadTimeMs: loadTime
+      });
+    } catch (_) {}
+  };
+
+  if (document.readyState === 'complete') {
+    recordPageLoad();
+  } else {
+    window.addEventListener('load', recordPageLoad, { once: true });
+  }
 }
 
 // Public parent/student link (#/share-input/<token>) renders a standalone page:
