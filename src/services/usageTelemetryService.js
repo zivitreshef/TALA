@@ -32,7 +32,7 @@ export class UsageTelemetryService {
     this._samplingRate = 1.0; // 100% capture by default
     this._excludeInternalAccounts = false;
     this._userContext = null;
-    this._appVersion = '2.4.19';
+    this._appVersion = '2.4.20';
 
     // In-memory queues
     this._queue = []; // pending events awaiting dispatch

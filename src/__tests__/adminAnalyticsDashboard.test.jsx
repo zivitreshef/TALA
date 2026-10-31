@@ -330,7 +330,7 @@ describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
       );
 
       expect(html).toContain('admin-analytics-dashboard');
-      expect(html).toContain('לוח בינת חוויית משתמש וטלמטריה');
+      expect(html).toContain('טלמטריית האתר');
       expect(html).toContain('0% PII — אפס חשיפת פרטי תלמיד');
       expect(html).not.toContain('admin-access-denied');
     });
@@ -536,13 +536,13 @@ describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
   // Section 5: AdminAllowlistModal Integration Test
   // ==========================================================================
   describe('AdminAllowlistModal Integration', () => {
-    it('integrates AdminAnalyticsDashboard under activeTab="analytics"', () => {
+    it('integrates AdminAnalyticsDashboard under activeTab="site_telemetry"', () => {
       const html = renderToStaticMarkup(
         React.createElement(AdminAllowlistModal, {
           isOpen: true,
           onClose: () => {},
           currentUser: adminUser,
-          initialTab: 'analytics',
+          initialTab: 'site_telemetry',
           allowedUsers: [
             { id: 'u1', name: 'זיוית', email: 'zivit.reshef@gmail.com', role: 'admin' },
             { id: 'u2', name: 'שרה', email: 'sarah@school.org', role: 'teacher' }
@@ -554,7 +554,7 @@ describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
       );
 
       expect(html).toContain('admin-analytics-dashboard');
-      expect(html).toContain('לוח בינת חוויית משתמש וטלמטריה — TALA');
+      expect(html).toContain('טלמטריית האתר');
       expect(html).toContain('0% PII — אפס חשיפת פרטי תלמיד');
     });
   });
