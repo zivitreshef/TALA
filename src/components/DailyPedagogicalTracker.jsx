@@ -21,7 +21,9 @@ import {
   UserCheck,
   ClipboardList,
   Check,
-  ExternalLink
+  ExternalLink,
+  Mic,
+  MicOff
 } from 'lucide-react';
 import {
   getObservationGaps,
@@ -36,9 +38,41 @@ import {
   getEventBarThickness
 } from '../domain/dailyPedagogicalTracking';
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
+import { usageTelemetryService } from '../services/usageTelemetryService';
+import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import HebrewDatePicker from './HebrewDatePicker';
 import PedagogicalTasksModal from './modals/PedagogicalTasksModal';
 import './DailyPedagogicalTracker.css';
+
+/**
+ * Calculates the current consecutive tracking streak (in days) based on
+ * logged observation dates across all active students.
+ */
+export function calculateCurrentStreak(students, todayStr = new Date().toISOString().slice(0, 10)) {
+  const datesSet = new Set();
+  (students || []).forEach((st) => {
+    (st.goals || []).forEach((g) => {
+      (g.observations || []).forEach((obs) => {
+        if (obs.date) datesSet.add(obs.date.slice(0, 10));
+        else if (obs.timestamp) datesSet.add(obs.timestamp.slice(0, 10));
+      });
+    });
+  });
+  datesSet.add(todayStr);
+
+  let streak = 0;
+  const checkDate = new Date(todayStr);
+  while (true) {
+    const dateStr = checkDate.toISOString().slice(0, 10);
+    if (datesSet.has(dateStr)) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return Math.max(1, streak);
+}
 
 const TIME_SLOTS = [
   '07:30', '08:00', '08:15', '08:30', '08:45',
@@ -386,6 +420,54 @@ export default function DailyPedagogicalTracker({
   const [aiAnalysisResult, setAiAnalysisResult] = useState(null);
   const [aiAnalysisError, setAiAnalysisError] = useState('');
 
+  // Daily Tracking Telemetry State & Refs
+  const [isVoice, setIsVoice] = useState(false);
+  const entryStartTimeRef = React.useRef(null);
+  const hasDispatchedStartedRef = React.useRef(false);
+  const currentEntryModeRef = React.useRef('text');
+
+  const startObservationEntry = (mode = isVoice ? 'voice' : 'text', isEdit = false) => {
+    if (!hasDispatchedStartedRef.current) {
+      entryStartTimeRef.current = Date.now();
+      hasDispatchedStartedRef.current = true;
+      currentEntryModeRef.current = mode;
+      try {
+        usageTelemetryService.track(
+          TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_STARTED,
+          { mode, isEdit },
+          teacherEmail ? { userContext: { email: teacherEmail } } : {}
+        );
+      } catch (_) {}
+    }
+  };
+
+  const checkAndDispatchAbandonment = () => {
+    if (hasDispatchedStartedRef.current && (aiNoteText.trim() || manualNote.trim() || isVoice)) {
+      const timeSpentSec = entryStartTimeRef.current
+        ? Math.max(1, Math.round((Date.now() - entryStartTimeRef.current) / 1000))
+        : 5;
+      const mode = currentEntryModeRef.current || (isVoice ? 'voice' : 'text');
+      try {
+        usageTelemetryService.track(
+          TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_ABANDONED,
+          {
+            mode,
+            timeSpentSec
+          },
+          teacherEmail ? { userContext: { email: teacherEmail } } : {}
+        );
+      } catch (_) {}
+      entryStartTimeRef.current = null;
+      hasDispatchedStartedRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      checkAndDispatchAbandonment();
+    };
+  }, [aiNoteText, manualNote, isVoice]);
+
   // Manual Mode State
   const [selectedGoalId, setSelectedGoalId] = useState('');
   const activeStudentGoals = useMemo(() => {
@@ -497,6 +579,35 @@ export default function DailyPedagogicalTracker({
 
     onUpdateStudent?.(updatedStudent);
 
+    // Dispatch daily tracking completion and streak telemetry
+    const durationSec = entryStartTimeRef.current
+      ? Math.max(1, Math.round((Date.now() - entryStartTimeRef.current) / 1000))
+      : 10;
+    const streakDays = calculateCurrentStreak(students, todayStr);
+    const mode = currentEntryModeRef.current || (isVoice ? 'voice' : 'text');
+
+    try {
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_COMPLETED,
+        {
+          mode,
+          durationSec,
+          isEdit: false,
+          streakDays
+        },
+        teacherEmail ? { userContext: { email: teacherEmail } } : {}
+      );
+
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.DAILY_TRACKING_STREAK_RECORDED,
+        { currentStreakDays: streakDays },
+        teacherEmail ? { userContext: { email: teacherEmail } } : {}
+      );
+    } catch (_) {}
+
+    entryStartTimeRef.current = null;
+    hasDispatchedStartedRef.current = false;
+
     setAiAnalysisResult(null);
     setAiNoteText('');
     setSaveToast(`התצפית נשמרה בתיק של ${targetStudent.name || 'התלמיד/ה'} ועודכנה בענן!`);
@@ -538,6 +649,35 @@ export default function DailyPedagogicalTracker({
     };
 
     onUpdateStudent?.(updatedStudent);
+
+    // Dispatch daily tracking completion and streak telemetry
+    const durationSec = entryStartTimeRef.current
+      ? Math.max(1, Math.round((Date.now() - entryStartTimeRef.current) / 1000))
+      : 10;
+    const streakDays = calculateCurrentStreak(students, todayStr);
+
+    try {
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_COMPLETED,
+        {
+          mode: 'text',
+          durationSec,
+          isEdit: false,
+          streakDays
+        },
+        teacherEmail ? { userContext: { email: teacherEmail } } : {}
+      );
+
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.DAILY_TRACKING_STREAK_RECORDED,
+        { currentStreakDays: streakDays },
+        teacherEmail ? { userContext: { email: teacherEmail } } : {}
+      );
+    } catch (_) {}
+
+    entryStartTimeRef.current = null;
+    hasDispatchedStartedRef.current = false;
+
     setManualNote('');
     setSaveToast(`יעד "${selectedGoal.title}" עודכן ל-${manualProgress}% בהצלחה!`);
     setTimeout(() => setSaveToast(''), 3500);
@@ -613,7 +753,10 @@ export default function DailyPedagogicalTracker({
           {onClose && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                checkAndDispatchAbandonment();
+                onClose();
+              }}
               className="btn-cal-close"
             >
               חזרה לניהול תלמידים
@@ -1240,15 +1383,46 @@ export default function DailyPedagogicalTracker({
             {updaterMode === 'ai' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div className="ai-note-box">
-                  <div className="ai-note-header">
-                    <strong className="ai-note-title">תיעוד חופשי • ניתוח ושיוך אוטומטי ליעד</strong>
-                    <span className="ai-note-sub">כתבי מה קרה במפגש, ה-AI ידאג לשאר</span>
+                  <div className="ai-note-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <strong className="ai-note-title">תיעוד חופשי • ניתוח ושיוך אוטומטי ליעד</strong>
+                      <span className="ai-note-sub" style={{ display: 'block' }}>כתבי מה קרה במפגש, ה-AI ידאג לשאר</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextVoice = !isVoice;
+                        setIsVoice(nextVoice);
+                        startObservationEntry(nextVoice ? 'voice' : 'text', false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        border: `1.5px solid ${isVoice ? '#f87171' : '#cbd5e1'}`,
+                        background: isVoice ? '#fef2f2' : '#ffffff',
+                        color: isVoice ? '#dc2626' : '#475569',
+                        fontSize: '11.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      title={isVoice ? 'מעבר לתיעוד טקסט' : 'הפעלת תיעוד קולי'}
+                    >
+                      {isVoice ? <Mic size={14} color="#dc2626" /> : <MicOff size={14} />}
+                      <span>{isVoice ? 'קולי מופעל' : 'תיעוד קולי'}</span>
+                    </button>
                   </div>
 
                   <textarea
                     rows={3}
                     value={aiNoteText}
-                    onChange={(e) => setAiNoteText(e.target.value)}
+                    onFocus={() => startObservationEntry(isVoice ? 'voice' : 'text', false)}
+                    onChange={(e) => {
+                      startObservationEntry(isVoice ? 'voice' : 'text', false);
+                      setAiNoteText(e.target.value);
+                    }}
                     placeholder="למשל: היום בחצר איתי ניגש מיוזמתו לשחק בכדור עם שני חברים, והמתין לתורו ללא התפרצות..."
                     className={`ai-note-textarea ${activeOnboardingStep === 5 ? 'tour-highlight-input' : ''}`}
                   />
@@ -1305,7 +1479,10 @@ export default function DailyPedagogicalTracker({
                     <div className="ai-match-actions">
                       <button
                         type="button"
-                        onClick={() => setAiAnalysisResult(null)}
+                        onClick={() => {
+                          checkAndDispatchAbandonment();
+                          setAiAnalysisResult(null);
+                        }}
                         className="btn-match-cancel"
                       >
                         ביטול
@@ -1400,7 +1577,11 @@ export default function DailyPedagogicalTracker({
                     type="text"
                     placeholder="הערת תצפית מהירה..."
                     value={manualNote}
-                    onChange={(e) => setManualNote(e.target.value)}
+                    onFocus={() => startObservationEntry('text', false)}
+                    onChange={(e) => {
+                      startObservationEntry('text', false);
+                      setManualNote(e.target.value);
+                    }}
                     className="manual-note-input"
                   />
                   <button type="submit" className="btn-manual-save">

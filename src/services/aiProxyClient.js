@@ -3,6 +3,8 @@ import { incrementDailyQuotaCount } from '../allowedUsers';
 import { reportHealthEvent } from './healthTelemetry';
 import { HEALTH_EVENT_KINDS, buildPingResult } from '../domain/healthEvents.js';
 import { containsInjection } from '../domain/aiSecurityGuards.js';
+import { usageTelemetryService } from './usageTelemetryService';
+import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy.js';
 
 async function callDirectGeminiApi({ prompt, model = 'gemini-2.5-flash', apiKey }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -114,6 +116,9 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
   const retryDelayMs =
     typeof process !== 'undefined' && process.env?.NODE_ENV === 'test' ? 10 : 800;
 
+  const callStartTime = Date.now();
+  let callStatus = 'success';
+
   try {
     let result;
     try {
@@ -121,23 +126,46 @@ export async function callAiProxyEndpoint({ operation, payload, hints = {}, mode
     } catch (firstErr) {
       // Do not retry if explicitly frozen by admin (circuit breaker)
       if (firstErr.status === 503 && firstErr.message && firstErr.message.includes('frozen')) {
+        callStatus = 'failure';
         throw firstErr;
       }
       if (!isTransientFailure(firstErr)) {
+        callStatus = 'failure';
         throw firstErr;
       }
 
       console.warn('[aiProxyClient] Primary proxy transiently failed, attempting auto-retry...', firstErr.message);
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
 
+      callStatus = 'retry';
       // Attempt retry on fallback URL (v1) or re-attempt primary
       const retryUrl = fallbackUrl || primaryUrl;
       result = await executePost(retryUrl);
     }
 
+    const latencyMs = Math.max(0, Date.now() - callStartTime);
+    try {
+      usageTelemetryService.track(TELEMETRY_EVENTS.AI_LATENCY_RECORDED, {
+        operation: operation || 'unknown',
+        latencyMs,
+        durationMs: latencyMs,
+        status: callStatus
+      });
+    } catch (_) {}
+
     incrementDailyQuotaCount('ai');
     return result;
   } catch (proxyError) {
+    const latencyMs = Math.max(0, Date.now() - callStartTime);
+    try {
+      usageTelemetryService.track(TELEMETRY_EVENTS.AI_LATENCY_RECORDED, {
+        operation: operation || 'unknown',
+        latencyMs,
+        durationMs: latencyMs,
+        status: 'failure'
+      });
+    } catch (_) {}
+
     if (proxyError.status === 503 || (proxyError.message && proxyError.message.includes('frozen'))) {
       throw proxyError;
     }

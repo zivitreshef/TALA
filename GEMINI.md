@@ -41,6 +41,10 @@ For ANY enhancement or bug fix, ALWAYS strictly follow this 6-step lifecycle:
    - Develop on a dedicated feature/bugfix branch.
    - **Zero Uncovered Code**: Every new feature MUST include new unit tests covering its behavior and edge cases in `src/__tests__/`; every bug fix MUST include a regression test reproducing the issue and proving the fix.
 3. **Verification & Build**: Run all unit tests (`npx vitest run`) and verify the production build (`npm run build`). All tests must pass with 100% success before proceeding.
-4. **PR & Merge**: Open a PR with clear test evidence and squash/merge into `main`.
+4. **PR & Merge (Zero Bypass Policy)**:
+   - Push your feature/fix branch to `origin <branch>`.
+   - Open a PR using `gh pr create` or the repository helper `node scripts/github-pr.js create --branch <branch> --title "..." --body "..."`.
+   - Squash and merge via `gh pr merge --squash` or `node scripts/github-pr.js merge --pr <number> --squash`.
+   - **STRICT PROHIBITION**: NEVER push directly to `main` (`git push origin main` is blocked by `.git/hooks/pre-push`). If a PR cannot be opened or merged, the task is BLOCKED — stop immediately, report the failure, and do NOT bypass the gate.
 5. **Deploy Web**: Confirm that the GitHub Actions deployment workflow to GitHub Pages starts and finishes successfully.
 6. **Disable Banner**: Once the deployment is live, turn off the red warning banner: `npm run upgrade:end`.

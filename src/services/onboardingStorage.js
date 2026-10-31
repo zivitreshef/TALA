@@ -10,7 +10,9 @@
  */
 
 import { safeGetStorageJson, safeSetStorageJson, safeRemoveStorageItem } from './storage';
-import { ONBOARDING_TOTAL_STEPS, createFreshDemoStudent } from '../domain/onboardingJourney';
+import { ONBOARDING_TOTAL_STEPS, createFreshDemoStudent, getStepById } from '../domain/onboardingJourney';
+import { usageTelemetryService } from './usageTelemetryService';
+import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 
 const ONBOARDING_STATE_PREFIX = 'tala_onboarding_state_v1_';
 const ONBOARDING_DEMO_PREFIX = 'tala_onboarding_demo_v1_';
@@ -57,6 +59,11 @@ export function createDefaultOnboardingState(email = '') {
     startedAt: now,
     lastUpdatedAt: now,
     completedAt: null,
+    firstStudentAt: null,
+    timeToFirstStudentSec: null,
+    firstReportAt: null,
+    timeToFirstReportSec: null,
+    hasDispatchedStarted: false,
     demoStudentId: 'demo_yonatan_levi',
     activeStudentId: null,
     isDockCollapsed: false,
@@ -135,6 +142,21 @@ export function saveOnboardingState(email, updates = {}) {
  * Pauses the onboarding journey without losing progress.
  */
 export function pauseOnboarding(email) {
+  const current = getOnboardingState(email);
+  const stepDef = getStepById(current.currentStep);
+  const stepId = stepDef?.key || `step_${current.currentStep}`;
+
+  try {
+    usageTelemetryService.track(
+      TELEMETRY_EVENTS.ONBOARDING_PAUSED,
+      {
+        stepId,
+        stepIndex: current.currentStep
+      },
+      email ? { userContext: { email } } : {}
+    );
+  } catch (_) {}
+
   return saveOnboardingState(email, { isPaused: true });
 }
 
@@ -154,6 +176,21 @@ export function resumeOnboarding(email) {
  * Closes/dismisses the onboarding dock completely until re-launched.
  */
 export function dismissOnboarding(email) {
+  const current = getOnboardingState(email);
+  const stepDef = getStepById(current.currentStep);
+  const stepId = stepDef?.key || `step_${current.currentStep}`;
+
+  try {
+    usageTelemetryService.track(
+      TELEMETRY_EVENTS.ONBOARDING_DISMISSED,
+      {
+        stepId,
+        stepIndex: current.currentStep
+      },
+      email ? { userContext: { email } } : {}
+    );
+  } catch (_) {}
+
   return saveOnboardingState(email, { isDismissed: true });
 }
 
@@ -166,6 +203,14 @@ export function resetOnboardingState(email, mode = null) {
     fresh.mode = mode;
     fresh.userToggledDock = true;
   }
+  try {
+    usageTelemetryService.track(
+      TELEMETRY_EVENTS.ONBOARDING_STARTED,
+      { mode: fresh.mode || 'default' },
+      email ? { userContext: { email } } : {}
+    );
+  } catch (_) {}
+  fresh.hasDispatchedStarted = true;
   return saveOnboardingState(email, fresh);
 }
 
@@ -178,9 +223,51 @@ export function advanceOnboardingStep(email) {
   const current = getOnboardingState(email);
   const stepToComplete = current.currentStep;
 
+  // Dispatch onboarding_started on first step if not yet recorded
+  if (!current.hasDispatchedStarted || stepToComplete === 1) {
+    try {
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.ONBOARDING_STARTED,
+        { mode: current.mode || 'default' },
+        email ? { userContext: { email } } : {}
+      );
+    } catch (_) {}
+  }
+
   const nextCompleted = Array.from(new Set([...(current.completedSteps || []), stepToComplete]));
+  const stepDef = getStepById(stepToComplete);
+  const stepId = stepDef?.key || `step_${stepToComplete}`;
+
+  // Dispatch onboarding_step_completed ({ stepId, stepIndex, totalSteps: 10 })
+  try {
+    usageTelemetryService.track(
+      TELEMETRY_EVENTS.ONBOARDING_STEP_COMPLETED,
+      {
+        stepId,
+        stepIndex: stepToComplete,
+        stepNumber: stepToComplete,
+        step: stepToComplete,
+        totalSteps: ONBOARDING_TOTAL_STEPS
+      },
+      email ? { userContext: { email } } : {}
+    );
+  } catch (_) {}
 
   if (stepToComplete >= ONBOARDING_TOTAL_STEPS) {
+    const startedAtMs = current.startedAt ? new Date(current.startedAt).getTime() : Date.now();
+    const durationSec = Math.max(1, Math.round((Date.now() - startedAtMs) / 1000));
+
+    try {
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.ONBOARDING_COMPLETED,
+        {
+          totalSteps: ONBOARDING_TOTAL_STEPS,
+          durationSec
+        },
+        email ? { userContext: { email } } : {}
+      );
+    } catch (_) {}
+
     return saveOnboardingState(email, {
       completedSteps: nextCompleted,
       isCompleted: true,
@@ -188,7 +275,8 @@ export function advanceOnboardingStep(email) {
       isPaused: false,
       isDismissed: false,
       isDockCollapsed: false,
-      userToggledDock: true
+      userToggledDock: true,
+      hasDispatchedStarted: true
     });
   }
 
@@ -198,7 +286,8 @@ export function advanceOnboardingStep(email) {
     isPaused: false,
     isDismissed: false,
     isDockCollapsed: false,
-    userToggledDock: true
+    userToggledDock: true,
+    hasDispatchedStarted: true
   });
 }
 
@@ -206,14 +295,61 @@ export function advanceOnboardingStep(email) {
  * Navigates directly to a specific step in the journey.
  */
 export function goToOnboardingStep(email, stepNumber) {
+  const current = getOnboardingState(email);
   const validStep = Math.max(1, Math.min(ONBOARDING_TOTAL_STEPS, Number(stepNumber) || 1));
+  let hasDispatched = current.hasDispatchedStarted;
+
+  if (validStep === 1 && !current.hasDispatchedStarted) {
+    try {
+      usageTelemetryService.track(
+        TELEMETRY_EVENTS.ONBOARDING_STARTED,
+        { mode: current.mode || 'default' },
+        email ? { userContext: { email } } : {}
+      );
+    } catch (_) {}
+    hasDispatched = true;
+  }
+
   return saveOnboardingState(email, {
     currentStep: validStep,
     isPaused: false,
     isDismissed: false,
     isDockCollapsed: false,
-    userToggledDock: true
+    userToggledDock: true,
+    hasDispatchedStarted: hasDispatched
   });
+}
+
+/**
+ * Records milestone achievements during onboarding (time-to-first-student, time-to-first-report).
+ */
+export function recordOnboardingMilestone(email, milestoneName) {
+  const current = getOnboardingState(email);
+  const now = new Date();
+  const startedAt = current.startedAt ? new Date(current.startedAt) : now;
+  const elapsedSec = Math.max(0, Math.round((now.getTime() - startedAt.getTime()) / 1000));
+
+  const updates = {};
+  if (milestoneName === 'first_student' && !current.firstStudentAt) {
+    updates.firstStudentAt = now.toISOString();
+    updates.timeToFirstStudentSec = elapsedSec;
+  } else if (milestoneName === 'first_report' && !current.firstReportAt) {
+    updates.firstReportAt = now.toISOString();
+    updates.timeToFirstReportSec = elapsedSec;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    return saveOnboardingState(email, updates);
+  }
+  return current;
+}
+
+export function trackFirstStudentMilestone(email) {
+  return recordOnboardingMilestone(email, 'first_student');
+}
+
+export function trackFirstReportMilestone(email) {
+  return recordOnboardingMilestone(email, 'first_report');
 }
 
 /**
