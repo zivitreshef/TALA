@@ -530,4 +530,17 @@ describe('Teacher Profile in Reports and Exports', () => {
     const firstLines = appSource.slice(0, 500);
     expect(firstLines).toMatch(/import\s+React,\s*\{[^}]*useMemo[^}]*\}\s+from\s+['"]react['"]/);
   });
+
+  it('ensures App.jsx effectiveCurrentUser strictly maintains currentUser.group and forbids overriding by userPreferences (Zero-Trust Security Boundary)', () => {
+    const appSource = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
+    expect(appSource).toContain("group: currentUser.group || ''");
+    expect(appSource).not.toContain('group: userPreferences?.institutionalAffiliation || currentUser.group');
+  });
+
+  it('ensures TeacherPreferencesModal displays official group as read-only locked badge', () => {
+    const modalSource = fs.readFileSync(path.resolve(__dirname, '../components/modals/TeacherPreferencesModal.jsx'), 'utf8');
+    expect(modalSource).toContain('שיוך מוסדי / מתי"א רשמי (קבוצת שיתוף מאובטחת):');
+    expect(modalSource).toContain('נקבע ע"י מנהל/ת המערכת');
+    expect(modalSource).toContain('שם בית הספר / הגן (להדפסה ולדוחות בלבד):');
+  });
 });

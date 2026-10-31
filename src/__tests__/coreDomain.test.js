@@ -165,6 +165,17 @@ describe('Permissions & Shared Student Guards', () => {
       expect(canShareWithColleague(user, 'inactive@center.org', directory)).toBe(false);
       expect(canShareWithColleague({ email: 'admin@tala.org' }, 'teacher1@center.org', directory)).toBe(false);
     });
+
+    it('prevents user from spoofing group when allowedUsers directory is present (tenant isolation boundary)', () => {
+      // teacher1@center.org is registered under 'מתי"א מרכז' in directory
+      // User passes a tampered user object claiming to belong to 'מתי"א צפון'
+      const spoofedUser = { email: 'teacher1@center.org', group: 'מתי"א צפון' };
+      expect(getUserGroup(spoofedUser, directory)).toBe('מתי"א מרכז');
+      // Must NOT be able to share with north teachers despite spoofed group
+      expect(canShareWithColleague(spoofedUser, 'teacher3@north.org', directory)).toBe(false);
+      // Can still share only with legitimate center colleagues
+      expect(canShareWithColleague(spoofedUser, 'teacher2@center.org', directory)).toBe(true);
+    });
   });
 });
 

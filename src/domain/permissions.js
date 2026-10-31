@@ -53,12 +53,12 @@ export function canShareStudent(studentObj, userObj) {
  */
 export function getUserGroup(userObj, allowedUsers = []) {
   if (!userObj) return '';
-  const directGroup = String(userObj.group || '').trim();
-  if (directGroup) return directGroup;
   const userEmail = normalizeEmail(userObj.email);
-  if (!userEmail || !Array.isArray(allowedUsers)) return '';
-  const record = allowedUsers.find((u) => normalizeEmail(u.email) === userEmail);
-  return String(record?.group || '').trim();
+  if (userEmail && Array.isArray(allowedUsers) && allowedUsers.length > 0) {
+    const record = allowedUsers.find((u) => normalizeEmail(u.email) === userEmail);
+    if (record && record.group !== undefined) return String(record.group || '').trim();
+  }
+  return String(userObj.group || '').trim();
 }
 
 /**

@@ -285,6 +285,8 @@ export default function EcologicalWorkPlanForm({
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerStepIdx, setReverseEngineerStepIdx] = useState(0);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
+  const [reverseEngineerError, setReverseEngineerError] = useState('');
+  const [reverseEngineerElapsedSeconds, setReverseEngineerElapsedSeconds] = useState(0);
   const [showFullDocPreview, setShowFullDocPreview] = useState(() =>
     Boolean(student?.isLocked)
   );
@@ -330,12 +332,19 @@ export default function EcologicalWorkPlanForm({
   useEffect(() => {
     if (!isReverseEngineering) {
       setReverseEngineerStepIdx(0);
+      setReverseEngineerElapsedSeconds(0);
       return;
     }
     const stepTimer = setInterval(() => {
       setReverseEngineerStepIdx((prev) => (prev + 1) % 3);
     }, 1800);
-    return () => clearInterval(stepTimer);
+    const secTimer = setInterval(() => {
+      setReverseEngineerElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => {
+      clearInterval(stepTimer);
+      clearInterval(secTimer);
+    };
   }, [isReverseEngineering]);
 
   // State for Separate Mid-Year / End-of-Year Evaluation Report & AI Processing
@@ -1231,42 +1240,119 @@ export default function EcologicalWorkPlanForm({
     }
 
     setIsGeneratingSummary(true);
+    try {
+      if (freeText) {
+        const prompt = buildSummaryTablePrompt({
+          freeText,
+          goals: goalsList,
+          isKindergarten
+        });
 
-    if (freeText) {
-      const prompt = buildSummaryTablePrompt({
-        freeText,
-        goals: goalsList,
-        isKindergarten
-      });
-
-      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
-      if (parsed) {
-        const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-        const updated = applyAiSummary(formData, parsed, nowTime);
-        setFormData(updated);
-        onSaveStudentPlan(updated);
-        setIsGeneratingSummary(false);
-        setIsFreeTextCollapsed(true);
-        setSaveBanner(true);
-        setTimeout(() => setSaveBanner(false), 3000);
-        return;
+        const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
+        if (parsed) {
+          const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+          const updated = applyAiSummary(formData, parsed, nowTime);
+          setFormData(updated);
+          onSaveStudentPlan(updated);
+          setIsFreeTextCollapsed(true);
+          setSaveBanner(true);
+          setTimeout(() => setSaveBanner(false), 3000);
+          return;
+        }
       }
+
+      // Use the coherent Hebrew Semantic & Executive Summary Interpreter
+      const engineered = reverseEngineerRawTextLocally(freeText, formData, goalBank);
+      const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+      const updated = applyLocalSummary(formData, engineered, nowTime);
+
+      setFormData(updated);
+      onSaveStudentPlan(updated);
+      setIsFreeTextCollapsed(true);
+      setSaveBanner(true);
+      setTimeout(() => setSaveBanner(false), 3000);
+    } catch (err) {
+      console.warn('Failed to generate summary table:', err);
+    } finally {
+      setIsGeneratingSummary(false);
     }
-
-    // Use the coherent Hebrew Semantic & Executive Summary Interpreter
-    const engineered = reverseEngineerRawTextLocally(freeText, formData, goalBank);
-    const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-    const updated = applyLocalSummary(formData, engineered, nowTime);
-
-    setFormData(updated);
-    onSaveStudentPlan(updated);
-    setIsGeneratingSummary(false);
-    setIsFreeTextCollapsed(true);
-    setSaveBanner(true);
-    setTimeout(() => setSaveBanner(false), 3000);
   };
 
   // === AI Reverse Engineering from Raw Data Text to Full Formal Report ===
+  // Helper to apply local reverse engineered plan to student state
+  const applyEngineeredPlan = (engineered, isLocal = false) => {
+    if (!engineered) return;
+    const existingGoals = formData.goals || [];
+    const protectedGoals = existingGoals.filter((g) => isGoalProtectedFromAiOverwrite(g));
+    const stageCheck = enforceStageOnGeneratedGoals(engineered.goals || []);
+    const candidateGoals = stageCheck.goals;
+    const updatedBase = {
+      ...formData,
+      freeTextAnalyzed: true,
+      name: engineered.name || formData.name,
+      gender: engineered.gender || formData.gender || 'boy',
+      educationalFramework: engineered.educationalFramework || formData.educationalFramework,
+      strengthsExisting: isTalaMode ? '' : engineered.strengthsExisting,
+      strengthsToEmpower: isTalaMode ? '' : engineered.strengthsToEmpower,
+      studentGeneralBackground: isTalaMode ? engineered.studentGeneralBackground : '',
+      studentSupportReceived: isTalaMode ? engineered.studentSupportReceived : '',
+      studentMainGoal: isTalaMode ? engineered.studentMainGoal : '',
+      talaProfileRows: isTalaMode ? engineered.talaProfileRows : formData.talaProfileRows,
+      talaFocusDomains: isTalaMode ? engineered.talaFocusDomains : formData.talaFocusDomains,
+      goals: candidateGoals,
+      recommendations: engineered.recommendations,
+      status: 'מוכן להדפסה',
+      lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+    };
+    const updated = syncActiveReportSnapshot(updatedBase);
+
+    if (isDemoStudent(updated)) {
+      if (updated.goals && updated.goals.length > 0) {
+        updated.goals[0].observations = [
+          {
+            id: 'obs_demo_auto_1',
+            date: new Date().toLocaleDateString('he-IL'),
+            timestamp: new Date().toISOString(),
+            authorName: 'שרה כהן (מורת שילוב)',
+            supportLevel: 'עצמאי לחלוטין',
+            note: 'השתתף בפעילות באופן עצמאי וממוקד, נעזר בכרטיסיית הניווט.'
+          }
+        ];
+      }
+    }
+    savedSnapshotRef.current = JSON.stringify(updated);
+    setFormData(updated);
+    onSaveStudentPlan(updated);
+    setTimeout(() => {
+      section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    }, 300);
+    (candidateGoals || []).forEach((g) => {
+      if (g.title) recordGoalInBank(g);
+    });
+    setIsFreeTextCollapsed(true);
+    const preservedNote =
+      protectedGoals.length > 0
+        ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
+        : '';
+    setReverseEngineerBanner(
+      `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו ${isTalaMode ? 'פרופיל התלמיד/ה' : 'טבלת מוקדי הכוח'}, ${candidateGoals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות. (שירות ה-AI לא היה זמין – הדוח הופק במנוע המקומי, מותאם לשלב החינוכי: ${getStageLabelHe(currentStage)}. ניתן לנסות שוב מאוחר יותר.)`
+    );
+    setSaveBanner(true);
+    setTimeout(() => setSaveBanner(false), 3500);
+  };
+
+  // Fallback trigger that allows teacher to immediately exit AI waiting and synthesize locally
+  const handleForceLocalReverseEngineer = () => {
+    setIsReverseEngineering(false);
+    setReverseEngineerError('');
+    const rawText = (formData.teacherFreeText || '').trim();
+    if (!rawText) return;
+    const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
+    if (engineered) {
+      applyEngineeredPlan(engineered, true);
+    }
+  };
+
   const handleReverseEngineerFullReport = async () => {
     if (formData.isLocked) return;
     const rawText = (formData.teacherFreeText || '').trim();
@@ -1277,6 +1363,8 @@ export default function EcologicalWorkPlanForm({
 
     setIsReverseEngineering(true);
     setReverseEngineerBanner('');
+    setReverseEngineerError('');
+    try {
 
     const genderToUse = formData.gender || 'boy';
     const genderInstruction =
@@ -1538,7 +1626,6 @@ ${rawText}
     }
 
     // 2. Coherent Built-in Hebrew Pedagogical NLP & Synthesis Engine
-    // Give the busy indicator time to display clearly so the teacher sees the analysis in progress
     await new Promise((resolve) => setTimeout(resolve, 1400));
 
     reportHealthEvent({
@@ -1554,66 +1641,26 @@ ${rawText}
 
     const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
     if (engineered) {
-      // Safety net: the local engine is stage-aware, but every goal still passes the stage guard.
-      engineered.goals = enforceStageOnGeneratedGoals(engineered.goals).goals;
-      const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
-      const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
-      const updatedBase = {
-        ...formData,
-        freeTextAnalyzed: true,
-        name: engineered.name || formData.name,
-        gender: engineered.gender || formData.gender || 'boy',
-        educationalFramework: engineered.educationalFramework || formData.educationalFramework,
-        strengthsExisting: isTalaMode ? '' : engineered.strengthsExisting,
-        strengthsToEmpower: isTalaMode ? '' : engineered.strengthsToEmpower,
-        studentGeneralBackground: isTalaMode ? engineered.studentGeneralBackground : '',
-        studentSupportReceived: isTalaMode ? engineered.studentSupportReceived : '',
-        studentMainGoal: isTalaMode ? engineered.studentMainGoal : '',
-        talaProfileRows: isTalaMode ? engineered.talaProfileRows : formData.talaProfileRows,
-        talaFocusDomains: isTalaMode ? engineered.talaFocusDomains : formData.talaFocusDomains,
-        goals: engineered.goals,
-        recommendations: engineered.recommendations,
-        status: 'מוכן להדפסה',
-        lastSavedAt: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
-      };
-      const updated = syncActiveReportSnapshot(updatedBase);
-
-      if (isDemoStudent(updated)) {
-        if (updated.goals && updated.goals.length > 0) {
-          updated.goals[0].observations = [
-            {
-              id: 'obs_demo_auto_1',
-              date: new Date().toLocaleDateString('he-IL'),
-              timestamp: new Date().toISOString(),
-              authorName: 'שרה כהן (מורת שילוב)',
-              supportLevel: 'עצמאי לחלוטין',
-              note: 'השתתף בפעילות באופן עצמאי וממוקד, נעזר בכרטיסיית הניווט.'
-            }
-          ];
-        }
-      }
-      savedSnapshotRef.current = JSON.stringify(updated);
-      setFormData(updated);
-      onSaveStudentPlan(updated);
-      setTimeout(() => {
-        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-      }, 300);
-      (engineered.goals || []).forEach((g) => {
-        if (g.title) recordGoalInBank(g);
-      });
-      setIsFreeTextCollapsed(true);
-      const preservedNote =
-        protectedGoals.length > 0
-          ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
-          : '';
-      setReverseEngineerBanner(
-        `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו ${isTalaMode ? 'פרופיל התלמיד/ה' : 'טבלת מוקדי הכוח'}, ${engineered.goals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות. (שירות ה-AI לא היה זמין – הדוח הופק במנוע המקומי, מותאם לשלב החינוכי: ${getStageLabelHe(currentStage)}. ניתן לנסות שוב מאוחר יותר.)`
-      );
-      setSaveBanner(true);
-      setTimeout(() => setSaveBanner(false), 3500);
+      applyEngineeredPlan(engineered, true);
+      return;
     }
-
-    setIsReverseEngineering(false);
+    } catch (err) {
+      console.warn('[handleReverseEngineerFullReport] AI processing encountered error, attempting graceful local fallback:', err);
+      try {
+        const localEngineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
+        if (localEngineered && Array.isArray(localEngineered.goals) && localEngineered.goals.length > 0) {
+          applyEngineeredPlan(localEngineered, true);
+          return;
+        }
+      } catch (localErr) {
+        console.error('[handleReverseEngineerFullReport] Local fallback failed:', localErr);
+      }
+      setReverseEngineerError(
+        'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור ה-WiFi או עומס רשת). תוכלי לנסות שוב או להפיק מיידית במנוע המקומי ללא רשת.'
+      );
+    } finally {
+      setIsReverseEngineering(false);
+    }
   };
 
   // Save Progress explicitly
@@ -1776,6 +1823,7 @@ ${rawText}
 
     setIsProcessingFullEvalAi(true);
     setEvalReportAiBanner('');
+    try {
     const genderToUse = formData.gender || 'boy';
     const goalsList = formData.goals || [];
 
@@ -1882,12 +1930,16 @@ ${goalsContext}
     onSaveStudentPlan(updated);
     setIsProcessingFullEvalAi(false);
     setEvalReportAiBanner('✨ דוח הערכת מחצית / סוף שנה עובד ונוסח בהצלחה עבור מטרות התלמיד/ה!');
+    } finally {
+      setIsProcessingFullEvalAi(false);
+    }
   };
 
   // === Generate Professional Educational-Functional Status Report ("דו"ח מצב עדכני") ===
   const handleGenerateStatusReport = async () => {
     setIsGeneratingStatusReport(true);
     setStatusReportBanner('');
+    try {
 
     const genderToUse = formData.gender || 'boy';
     const isGirl = genderToUse === 'girl';
@@ -2045,6 +2097,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     setFormData(updated);
     onSaveStudentPlan(updated);
     setIsGeneratingStatusReport(false);
+    } finally {
+      setIsGeneratingStatusReport(false);
+    }
     setStatusReportBanner(
       '✨ דו"ח המצב העדכני הופק בהצלחה.'
     );
@@ -4719,14 +4774,132 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <Loader2 size={19} className="tala-spin-icon" />
                 <Sparkles size={16} />
                 <span>
-                  ה-AI מנתח את התיאור החופשי ובונה את תוכנית העבודה... (התהליך עשוי להימשך מספר שניות, נא להמתין)
+                  {reverseEngineerElapsedSeconds >= 25
+                    ? 'העיבוד מתעכב מעבר לרגיל (ייתכן חיבור רשת איטי)... המערכת ממשיכה לנסות.'
+                    : reverseEngineerElapsedSeconds >= 12
+                    ? 'ה-AI מעבד ניתוח מעמיק ומפורט לכל תחומי הפרופיל והמטרות, אנא המתיני...'
+                    : 'ה-AI מנתח את התיאור החופשי ובונה את תוכנית העבודה... (התהליך עשוי להימשך מספר שניות, נא להמתין)'}
                 </span>
               </div>
               <div className="ai-busy-indicator-sub">
                 {AI_BUSY_STEPS[reverseEngineerStepIdx]}
+                {reverseEngineerElapsedSeconds > 0 && ` (${reverseEngineerElapsedSeconds} שניות)`}
               </div>
               <div className="ai-busy-progress-track">
                 <div className="ai-busy-progress-bar" />
+              </div>
+
+              {reverseEngineerElapsedSeconds >= 15 && (
+                <div
+                  style={{
+                    marginTop: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                    paddingTop: '8px',
+                    borderTop: '1px dashed #cbd5e1'
+                  }}
+                >
+                  <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                    {reverseEngineerElapsedSeconds >= 25
+                      ? 'אם חיבור ה-WiFi איטי, תוכלי לעבור מיידית להפקה מקומית:'
+                      : 'אם את ממהרת, ניתן לעבור למנוע הפדגוגי המקומי בכל שלב:'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleForceLocalReverseEngineer()}
+                    style={{
+                      background: '#ffffff',
+                      color: '#4338ca',
+                      border: '1.5px solid #a5b4fc',
+                      borderRadius: '8px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    ⚡ מעבר לעיבוד מקומי ללא אינטרנט
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {reverseEngineerError && !isReverseEngineering && (
+            <div
+              className="reverse-engineer-error-banner"
+              style={{
+                marginTop: isFreeTextCollapsed ? '10px' : undefined,
+                background: '#fef2f2',
+                border: '1.5px solid #fca5a5',
+                borderRadius: '10px',
+                padding: '12px 14px',
+                color: '#991b1b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                flexWrap: 'wrap'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '220px' }}>
+                <ShieldAlert size={18} color="#dc2626" />
+                <span style={{ fontSize: '13px', fontWeight: 500 }}>{reverseEngineerError}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => handleReverseEngineerFullReport()}
+                  style={{
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '5px 12px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  🔄 נסי שוב
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleForceLocalReverseEngineer()}
+                  style={{
+                    background: '#ffffff',
+                    color: '#991b1b',
+                    border: '1px solid #f87171',
+                    borderRadius: '6px',
+                    padding: '5px 12px',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⚡ הפק במנוע מקומי
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReverseEngineerError('')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    padding: '2px 6px'
+                  }}
+                  title="סגור הודעה"
+                >
+                  ✕
+                </button>
               </div>
             </div>
           )}
