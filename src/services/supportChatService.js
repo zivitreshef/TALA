@@ -19,7 +19,7 @@ import {
   markThreadAsRead,
   SENDER_ROLES,
   THREAD_STATUS
-} from '../domain/supportChat.js';
+} from '../domain/supportChat';
 import { dispatchChatAlertToAdmins } from './alertDispatcher.js';
 
 export const SUPPORT_THREADS_COLLECTION = 'tala_support_threads';

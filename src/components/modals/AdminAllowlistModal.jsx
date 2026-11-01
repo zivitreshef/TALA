@@ -75,7 +75,7 @@ import {
   resolveSupportThreadInCloud,
   escalateSupportThreadInCloud
 } from '../../services/supportChatService.js';
-import { SENDER_ROLES, sanitizeThreadKey, THREAD_STATUS } from '../../domain/supportChat.js';
+import { SENDER_ROLES, sanitizeThreadKey, THREAD_STATUS } from '../../domain/supportChat';
 
 function PasswordPolicyChecklist({ password }) {
   const { checks } = validatePasswordPolicy(password);

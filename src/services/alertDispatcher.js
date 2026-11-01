@@ -1,7 +1,7 @@
 import {
   formatAdminChatNotificationMessage,
   buildAdminChatNotificationEmailHtml
-} from '../domain/supportChat.js';
+} from '../domain/supportChat';
 /**
  * Dispatcher service for Admin Real-Time Alerts across Email, WhatsApp, and Telegram.
  * Non-blocking, secure, and resilient.
