@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { containsInjection, INJECTION_PATTERNS } from '../domain/aiSecurityGuards.js';
+import { containsInjection, INJECTION_PATTERNS } from '../domain/aiSecurityGuards';
 
 describe('aiSecurityGuards - Injection Patterns & Behavioral Protection', () => {
   describe('Hebrew injection detection', () => {

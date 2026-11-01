@@ -1,8 +1,8 @@
 import { getActiveFirebaseConfig, getFirebaseAuth } from '../firebaseBackend';
 import { incrementDailyQuotaCount } from '../allowedUsers';
 import { reportHealthEvent } from './healthTelemetry';
-import { HEALTH_EVENT_KINDS, buildPingResult } from '../domain/healthEvents.js';
-import { containsInjection } from '../domain/aiSecurityGuards.js';
+import { HEALTH_EVENT_KINDS, buildPingResult } from '../domain/healthEvents';
+import { containsInjection } from '../domain/aiSecurityGuards';
 import { usageTelemetryService } from './usageTelemetryService';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy.js';
 

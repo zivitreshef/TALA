@@ -67,7 +67,7 @@ import AdminUsageAndSecurityDashboard from './AdminUsageAndSecurityDashboard';
 import AdminAnalyticsDashboard from '../admin/AdminAnalyticsDashboard';
 import { fetchTelemetrySnapshot } from '../../services/telemetryService';
 import { aggregateTelemetryData } from '../../domain/telemetry';
-import { countUnreviewedHealthEvents } from '../../domain/healthEvents.js';
+import { countUnreviewedHealthEvents } from '../../domain/healthEvents';
 import {
   subscribeToAllSupportThreads,
   sendChatMessageToCloud,

@@ -6,7 +6,7 @@ import {
   summarizeHealthEvents,
   normalizeHealthEvents,
   countUnreviewedHealthEvents
-} from '../../domain/healthEvents.js';
+} from '../../domain/healthEvents';
 import { pingAiProxy } from '../../services/aiProxyClient';
 import { pingFirestore } from '../../firebaseBackend';
 

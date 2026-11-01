@@ -3,7 +3,7 @@
  * Zero UI / Firebase dependencies – completely deterministic and testable.
  */
 
-import { HEALTH_CATEGORY_LABELS_HE, HEALTH_KIND_LABELS_HE } from './healthEvents.js';
+import { HEALTH_CATEGORY_LABELS_HE, HEALTH_KIND_LABELS_HE } from './healthEvents';
 
 export const ALERT_CHANNELS = {
   EMAIL: 'email',

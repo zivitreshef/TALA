@@ -135,7 +135,7 @@ import { callAiProxyEndpoint } from './services/aiProxyClient';
 import { usageTelemetryService } from './services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy.js';
 import { reportHealthEvent } from './services/healthTelemetry';
-import { HEALTH_EVENT_KINDS } from './domain/healthEvents.js';
+import { HEALTH_EVENT_KINDS } from './domain/healthEvents';
 
 // NEW: Firebase Functions imports
 import { getFunctions, httpsCallable } from 'firebase/functions';
