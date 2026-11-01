@@ -46,6 +46,92 @@ export function isUserAdmin(user) {
   return primaryAdmins.includes(email);
 }
 
+// Reusable styling objects
+const cardStyle = {
+  background: '#ffffff',
+  border: '1px solid var(--border, #d3dff0)',
+  borderRadius: '12px',
+  padding: '16px 20px',
+  boxShadow: '0 1px 3px rgba(36, 52, 77, 0.04)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '6px'
+};
+
+const cardHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center'
+};
+
+const cardTitleStyle = {
+  fontSize: '12.5px',
+  fontWeight: 600,
+  color: 'var(--text-muted, #5e718d)'
+};
+
+const cardIconStyle = {
+  width: '32px',
+  height: '32px',
+  borderRadius: '8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '14px'
+};
+
+const cardValueStyle = {
+  fontSize: '24px',
+  fontWeight: 700,
+  color: 'var(--text-main, #24344d)'
+};
+
+const panelStyle = {
+  background: '#ffffff',
+  border: '1px solid var(--border, #d3dff0)',
+  borderRadius: '12px',
+  padding: '20px 24px',
+  boxShadow: '0 1px 3px rgba(36, 52, 77, 0.04)'
+};
+
+const panelTitleStyle = {
+  fontSize: '15px',
+  fontWeight: 700,
+  color: 'var(--text-main, #24344d)',
+  margin: 0,
+  marginBottom: '14px'
+};
+
+const calloutBoxStyle = {
+  background: '#fdfbf7',
+  border: '1px solid #fde68a',
+  borderRadius: '10px',
+  padding: '14px 18px',
+  display: 'flex',
+  gap: '12px',
+  alignItems: 'center',
+  fontSize: '13px',
+  color: '#92400e'
+};
+
+const tableStyle = {
+  width: '100%',
+  borderCollapse: 'collapse',
+  fontSize: '13px'
+};
+
+const thStyle = {
+  padding: '10px 12px',
+  textAlign: 'right',
+  color: '#475569',
+  fontWeight: 600
+};
+
+const tdStyle = {
+  padding: '10px 12px'
+};
+
+
 export default function AdminAnalyticsDashboard({
   currentUser = null,
   initialTimeRange = '30d',
@@ -1132,87 +1218,3 @@ export default function AdminAnalyticsDashboard({
   );
 }
 
-// Reusable styling objects
-const cardStyle = {
-  background: '#ffffff',
-  border: '1px solid var(--border, #d3dff0)',
-  borderRadius: '12px',
-  padding: '16px 20px',
-  boxShadow: '0 1px 3px rgba(36, 52, 77, 0.04)',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '6px'
-};
-
-const cardHeaderStyle = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center'
-};
-
-const cardTitleStyle = {
-  fontSize: '12.5px',
-  fontWeight: 600,
-  color: 'var(--text-muted, #5e718d)'
-};
-
-const cardIconStyle = {
-  width: '32px',
-  height: '32px',
-  borderRadius: '8px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '14px'
-};
-
-const cardValueStyle = {
-  fontSize: '24px',
-  fontWeight: 700,
-  color: 'var(--text-main, #24344d)'
-};
-
-const panelStyle = {
-  background: '#ffffff',
-  border: '1px solid var(--border, #d3dff0)',
-  borderRadius: '12px',
-  padding: '20px 24px',
-  boxShadow: '0 1px 3px rgba(36, 52, 77, 0.04)'
-};
-
-const panelTitleStyle = {
-  fontSize: '15px',
-  fontWeight: 700,
-  color: 'var(--text-main, #24344d)',
-  margin: 0,
-  marginBottom: '14px'
-};
-
-const calloutBoxStyle = {
-  background: '#fdfbf7',
-  border: '1px solid #fde68a',
-  borderRadius: '10px',
-  padding: '14px 18px',
-  display: 'flex',
-  gap: '12px',
-  alignItems: 'center',
-  fontSize: '13px',
-  color: '#92400e'
-};
-
-const tableStyle = {
-  width: '100%',
-  borderCollapse: 'collapse',
-  fontSize: '13px'
-};
-
-const thStyle = {
-  padding: '10px 12px',
-  textAlign: 'right',
-  color: '#475569',
-  fontWeight: 600
-};
-
-const tdStyle = {
-  padding: '10px 12px'
-};

@@ -224,35 +224,7 @@ export default function EcologicalWorkPlanForm({
   const evalReportSectionRef = useRef(null);
   const statusReportSectionRef = useRef(null);
 
-  // Auto-scroll smooth effect when onboarding tour step advances or "הראה לי במסך" is pressed
-  useEffect(() => {
-    if (activeOnboardingStep) {
-      if (activeOnboardingStep === 2) {
-        section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-      } else if (activeOnboardingStep === 3) {
-        setIsFreeTextCollapsed(false);
-        setTimeout(() => section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
-      } else if (activeOnboardingStep === 4) {
-        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-      } else if (activeOnboardingStep === 6 || activeOnboardingStep === 10) {
-        window.scrollTo?.({ top: 0, behavior: 'smooth' });
-      } else if (activeOnboardingStep === 7) {
-        const pvEl = document.querySelector('[data-testid="onboarding-step7-parent-voice"]');
-        if (pvEl?.scrollIntoView) {
-          pvEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-          section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-        }
-      } else if (activeOnboardingStep === 8) {
-        setShowEvalReportSection(true);
-        setTimeout(() => evalReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 90);
-      } else if (activeOnboardingStep === 9) {
-        setShowStatusReportSection(true);
-        setTimeout(() => statusReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 90);
-      }
-      return;
-    }
-  }, [activeOnboardingStep, onboardingSpotlightTick]);
+
 
   const [formData, setFormData] = useState(() => normalizeStudentForForm(student));
   const savedSnapshotRef = useRef(JSON.stringify(normalizeStudentForForm(student)));
@@ -351,6 +323,36 @@ export default function EcologicalWorkPlanForm({
   const [statusReportStepIdx, setStatusReportStepIdx] = useState(0);
   const [statusReportBanner, setStatusReportBanner] = useState('');
   const [selectedNewStatusSectionNum, setSelectedNewStatusSectionNum] = useState('');
+
+  // Auto-scroll smooth effect when onboarding tour step advances or "הראה לי במסך" is pressed
+  useEffect(() => {
+    if (activeOnboardingStep) {
+      if (activeOnboardingStep === 2) {
+        section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      } else if (activeOnboardingStep === 3) {
+        setIsFreeTextCollapsed(false);
+        setTimeout(() => section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
+      } else if (activeOnboardingStep === 4) {
+        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      } else if (activeOnboardingStep === 6 || activeOnboardingStep === 10) {
+        window.scrollTo?.({ top: 0, behavior: 'smooth' });
+      } else if (activeOnboardingStep === 7) {
+        const pvEl = document.querySelector('[data-testid="onboarding-step7-parent-voice"]');
+        if (pvEl?.scrollIntoView) {
+          pvEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+        }
+      } else if (activeOnboardingStep === 8) {
+        setShowEvalReportSection(true);
+        setTimeout(() => evalReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 90);
+      } else if (activeOnboardingStep === 9) {
+        setShowStatusReportSection(true);
+        setTimeout(() => statusReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 90);
+      }
+      return;
+    }
+  }, [activeOnboardingStep, onboardingSpotlightTick]);
 
   const STATUS_REPORT_BUSY_STEPS = [
     'שלב 1/3: אוסף ומצליב נתונים מכרטיס התלמיד/ה, המטרות והערכת מחצית / סוף שנה...',
@@ -995,7 +997,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Generate up to 3 Facilitating Questions via Gemini AI (or smart fallback)
-  const handleGenerateAiQuestionsForGoal = async (goalRow) => {
+  async function handleGenerateAiQuestionsForGoal(goalRow) {
     if (formData.isLocked) return;
     const goalTitle = (goalRow.title || '').trim();
     if (!goalTitle) return;
@@ -1365,7 +1367,7 @@ export default function EcologicalWorkPlanForm({
     }
   };
 
-  const handleReverseEngineerFullReport = async () => {
+  async function handleReverseEngineerFullReport() {
     if (formData.isLocked) return;
     const rawText = (formData.teacherFreeText || '').trim();
     if (!rawText) {
