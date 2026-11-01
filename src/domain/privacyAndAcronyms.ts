@@ -1,12 +1,34 @@
 import { detectStudentStage } from '../studentStage.js';
-// === פונקציות עזר להסתרת פרטים מזהים בהדפסה (ראשי תיבות והשחרה) ===
+
+export interface StudentFormDataForPrivacy {
+  name?: string;
+  gender?: string;
+  stage?: string;
+  privacyMode?: string;
+  defaultPrivacyMode?: string;
+  idNumber?: string;
+  birthDate?: string;
+  address?: string;
+  phone?: string;
+  educationalFramework?: string;
+  schoolName?: string;
+  gradeClass?: string;
+  homeroomTeacher?: string;
+  integrationTeacher?: string;
+  learningSupportAssistant?: string;
+  counselorName?: string;
+  psychologistName?: string;
+  matyaCoordinator?: string;
+  emotionalTherapist?: string;
+  paraMedicalTeam?: string;
+  additionalPartners?: string;
+  [key: string]: unknown;
+}
 
 /**
  * Escapes unsafe HTML characters to prevent XSS injection.
- * @param {string|any} str 
- * @returns {string}
  */
-export function escapeHtml(str) {
+export function escapeHtml(str?: unknown): string {
   if (str == null) return '';
   return String(str)
     .replace(/&/g, '&amp;')
@@ -16,7 +38,7 @@ export function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-export function toHebrewAcronym(fullName) {
+export function toHebrewAcronym(fullName?: string | null): string {
   if (!fullName || !fullName.trim()) return 'א.א.';
   const parts = fullName
     .trim()
@@ -28,7 +50,7 @@ export function toHebrewAcronym(fullName) {
   return parts.map((p) => p.charAt(0)).join('.') + '.';
 }
 
-export function maskSensitiveValue(val) {
+export function maskSensitiveValue(val?: unknown): string {
   if (!val || !String(val).trim()) {
     return '████████';
   }
@@ -36,7 +58,11 @@ export function maskSensitiveValue(val) {
   return '█'.repeat(len);
 }
 
-export function redactStudentNameInText(text, studentFullName, hideDetails = true) {
+export function redactStudentNameInText(
+  text?: string | null,
+  studentFullName?: string | null,
+  hideDetails: boolean = true
+): string {
   if (!text) return '';
   if (!hideDetails || !studentFullName || !studentFullName.trim()) return text;
 
@@ -58,15 +84,16 @@ export function redactStudentNameInText(text, studentFullName, hideDetails = tru
   return result;
 }
 
-// === פונקציות עזר להסתרת פרטים מזהים לפני שליחה ל-AI ===
-
-// מחליף את כל המופעים של מילים רגישות בטקסט במחרוזות חלופיות
-export function maskKnownStudentDetails(text, formData, privacyMode) {
+export function maskKnownStudentDetails(
+  text?: string | null,
+  formData?: StudentFormDataForPrivacy | null,
+  privacyMode?: string | null
+): string {
   if (!text || typeof text !== 'string') return '';
   if (!formData) return text;
 
   let maskedText = text;
-  const replacements = [];
+  const replacements: Array<{ original: string; replacement: string }> = [];
 
   const studentName = (formData.name || '').trim();
   const studentGender = formData.gender || 'boy';
@@ -78,7 +105,7 @@ export function maskKnownStudentDetails(text, formData, privacyMode) {
 
   const mode = privacyMode || formData.privacyMode || formData.defaultPrivacyMode || 'full_name';
 
-  let studentReplacement;
+  let studentReplacement: string;
   if (mode === 'acronym') {
     studentReplacement = toHebrewAcronym(studentName);
   } else {
@@ -124,8 +151,8 @@ export function maskKnownStudentDetails(text, formData, privacyMode) {
   replacements.sort((a, b) => b.original.length - a.original.length);
 
   // Dedupe by original
-  const seen = new Set();
-  const uniqueReplacements = [];
+  const seen = new Set<string>();
+  const uniqueReplacements: Array<{ original: string; replacement: string }> = [];
   for (const r of replacements) {
     if (!seen.has(r.original)) {
       seen.add(r.original);
@@ -135,26 +162,22 @@ export function maskKnownStudentDetails(text, formData, privacyMode) {
 
   uniqueReplacements.forEach(({ original, replacement }) => {
     if (original && original.trim()) {
-      // Escape special regex characters in the original string
       const escapedOriginal = original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Replace all occurrences (case-sensitive, no word boundaries for Hebrew compatibility)
       const regex = new RegExp(escapedOriginal, 'g');
       maskedText = maskedText.replace(regex, replacement);
     }
   });
 
-  // Clean up any double spaces that might result from replacements (preserve newlines)
   maskedText = maskedText.replace(/ {2,}/g, ' ').trim();
-
   return maskedText;
 }
 
-// Function to mask the prompt before sending to AI
-export function maskPromptForAi(promptText, formData, privacyMode) {
+export function maskPromptForAi(
+  promptText?: string | null,
+  formData?: StudentFormDataForPrivacy | null,
+  privacyMode?: string | null
+): string {
   let masked = maskKnownStudentDetails(promptText, formData, privacyMode);
-
-  // Strip (ת.ל: DD/MM/YYYY) from ageDescription if present
   masked = masked.replace(/\(ת\.ל:[^)]*\)/g, '').trim();
-
   return masked;
 }
