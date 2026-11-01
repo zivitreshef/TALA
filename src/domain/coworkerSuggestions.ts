@@ -4,7 +4,7 @@
 // completely sandboxed and secure on the client side.
 // ============================================================================
 
-export const COWORKER_FIELDS = [
+export const COWORKER_FIELDS: readonly string[] = [
   'schoolName',
   'gradeClass',
   'homeroomTeacher',
@@ -18,11 +18,38 @@ export const COWORKER_FIELDS = [
   'additionalPartners'
 ];
 
+export interface StudentTeamCandidate {
+  id: string;
+  name: string;
+  schoolName: string;
+  gradeClass: string;
+}
+
+export interface UserDirectoryEntity {
+  email?: string;
+  name?: string;
+  title?: string;
+  group?: string;
+  active?: boolean;
+}
+
+export interface StudentEntityForTeam {
+  id?: string;
+  name?: string;
+  ownerEmail?: string;
+  sharedWith?: string[];
+  schoolName?: string;
+  gradeClass?: string;
+  reportsByYear?: Record<string, Record<string, unknown>>;
+  reportsByPlanType?: Record<string, Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
 /**
  * Builds a fast lookup map of user emails to their lowercase trimmed groups.
  */
-function buildUserGroupMap(allowedUsers = []) {
-  const map = new Map();
+function buildUserGroupMap(allowedUsers: UserDirectoryEntity[] = []): Map<string, string> {
+  const map = new Map<string, string>();
   if (Array.isArray(allowedUsers)) {
     for (const u of allowedUsers) {
       if (!u || !u.email) continue;
@@ -37,7 +64,11 @@ function buildUserGroupMap(allowedUsers = []) {
  * - If user has a group (e.g. מתי"א קרית שמונה): includes their own students + students from same group.
  * - If user has NO group (independent teacher or unassigned): strictly includes ONLY their own or shared students.
  */
-function isStudentInUserScope(st, currentUser, userGroupMap) {
+function isStudentInUserScope(
+  st?: StudentEntityForTeam | null,
+  currentUser?: UserDirectoryEntity | null,
+  userGroupMap?: Map<string, string>
+): boolean {
   if (!st) return false;
   const myEmail = String(currentUser?.email || '').trim().toLowerCase();
   const myGroup = String(currentUser?.group || '').trim().toLowerCase();
@@ -47,7 +78,7 @@ function isStudentInUserScope(st, currentUser, userGroupMap) {
 
   const owner = String(st.ownerEmail || '').trim().toLowerCase();
   const isMine =
-    (owner && owner === myEmail) ||
+    Boolean(owner && owner === myEmail) ||
     (Array.isArray(st.sharedWith) && st.sharedWith.some((e) => String(e).trim().toLowerCase() === myEmail));
 
   if (myGroup) {
@@ -63,16 +94,15 @@ function isStudentInUserScope(st, currentUser, userGroupMap) {
 /**
  * Extracts distinct coworker and educational framework suggestions per field
  * across authorized students of the teacher, and matching colleagues from the same group.
- *
- * @param {Array} allStudents - Roster of students available to the teacher
- * @param {Array} allowedUsers - Active directory users in the system
- * @param {Object} currentUser - Current logged-in user profile
- * @returns {Record<string, string[]>} Suggestions dictionary keyed by field name
  */
-export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], currentUser = null) {
-  const suggestions = {};
+export function extractCoworkerSuggestions(
+  allStudents: StudentEntityForTeam[] = [],
+  allowedUsers: UserDirectoryEntity[] = [],
+  currentUser: UserDirectoryEntity | null = null
+): Record<string, string[]> {
+  const suggestions: Record<string, Set<string>> = {};
   for (const field of COWORKER_FIELDS) {
-    suggestions[field] = new Set();
+    suggestions[field] = new Set<string>();
   }
 
   const userGroupMap = buildUserGroupMap(allowedUsers);
@@ -84,7 +114,7 @@ export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], 
 
       // Root fields
       for (const field of COWORKER_FIELDS) {
-        const val = typeof st[field] === 'string' ? st[field].trim() : '';
+        const val = typeof st[field] === 'string' ? (st[field] as string).trim() : '';
         if (val) suggestions[field].add(val);
       }
 
@@ -93,7 +123,7 @@ export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], 
         for (const yrData of Object.values(st.reportsByYear)) {
           if (!yrData || typeof yrData !== 'object') continue;
           for (const field of COWORKER_FIELDS) {
-            const val = typeof yrData[field] === 'string' ? yrData[field].trim() : '';
+            const val = typeof yrData[field] === 'string' ? (yrData[field] as string).trim() : '';
             if (val) suggestions[field].add(val);
           }
         }
@@ -104,7 +134,7 @@ export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], 
         for (const ptData of Object.values(st.reportsByPlanType)) {
           if (!ptData || typeof ptData !== 'object') continue;
           for (const field of COWORKER_FIELDS) {
-            const val = typeof ptData[field] === 'string' ? ptData[field].trim() : '';
+            const val = typeof ptData[field] === 'string' ? (ptData[field] as string).trim() : '';
             if (val) suggestions[field].add(val);
           }
         }
@@ -142,7 +172,7 @@ export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], 
   }
 
   // Convert Sets to sorted Arrays
-  const result = {};
+  const result: Record<string, string[]> = {};
   for (const field of COWORKER_FIELDS) {
     result[field] = Array.from(suggestions[field]).sort((a, b) => a.localeCompare(b, 'he'));
   }
@@ -152,14 +182,13 @@ export function extractCoworkerSuggestions(allStudents = [], allowedUsers = [], 
 /**
  * Returns candidate students that have at least one coworker/framework field populated,
  * strictly filtered by the current user's ownership and group scope.
- *
- * @param {Array} allStudents
- * @param {string|null} currentStudentId
- * @param {Object|null} currentUser
- * @param {Array} allowedUsers
- * @returns {Array<{id: string, name: string, schoolName: string, gradeClass: string}>}
  */
-export function getStudentsWithTeamData(allStudents = [], currentStudentId = null, currentUser = null, allowedUsers = []) {
+export function getStudentsWithTeamData(
+  allStudents: StudentEntityForTeam[] = [],
+  currentStudentId: string | null = null,
+  currentUser: UserDirectoryEntity | null = null,
+  allowedUsers: UserDirectoryEntity[] = []
+): StudentTeamCandidate[] {
   if (!Array.isArray(allStudents)) return [];
   const userGroupMap = buildUserGroupMap(allowedUsers);
 
@@ -169,30 +198,27 @@ export function getStudentsWithTeamData(allStudents = [], currentStudentId = nul
       if (!isStudentInUserScope(st, currentUser, userGroupMap)) return false;
 
       return COWORKER_FIELDS.some((field) => {
-        const val = typeof st[field] === 'string' ? st[field].trim() : '';
+        const val = typeof st[field] === 'string' ? (st[field] as string).trim() : '';
         return Boolean(val);
       });
     })
     .map((st) => ({
-      id: st.id,
-      name: st.name || 'תלמיד/ה ללא שם',
-      schoolName: st.schoolName || '',
-      gradeClass: st.gradeClass || ''
+      id: String(st.id || ''),
+      name: String(st.name || 'תלמיד/ה ללא שם'),
+      schoolName: String(st.schoolName || ''),
+      gradeClass: String(st.gradeClass || '')
     }));
 }
 
 /**
  * Extracts a clean dictionary of team/framework fields from a source student
- *
- * @param {Object} sourceStudent
- * @returns {Record<string, string>}
  */
-export function extractTeamDataFromStudent(sourceStudent) {
+export function extractTeamDataFromStudent(sourceStudent?: StudentEntityForTeam | null): Record<string, string> {
   if (!sourceStudent) return {};
-  const teamData = {};
+  const teamData: Record<string, string> = {};
   for (const field of COWORKER_FIELDS) {
-    if (typeof sourceStudent[field] === 'string' && sourceStudent[field].trim()) {
-      teamData[field] = sourceStudent[field].trim();
+    if (typeof sourceStudent[field] === 'string' && (sourceStudent[field] as string).trim()) {
+      teamData[field] = (sourceStudent[field] as string).trim();
     }
   }
   return teamData;

@@ -4,7 +4,7 @@ import {
   extractCoworkerSuggestions,
   getStudentsWithTeamData,
   extractTeamDataFromStudent
-} from '../domain/coworkerSuggestions.js';
+} from '../domain/coworkerSuggestions';
 
 describe('Coworker & Team Auto-Complete Suggestions', () => {
   const mockStudents = [
