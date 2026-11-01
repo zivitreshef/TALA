@@ -420,11 +420,38 @@ export default function DailyPedagogicalTracker({
   const [aiAnalysisResult, setAiAnalysisResult] = useState(null);
   const [aiAnalysisError, setAiAnalysisError] = useState('');
 
+  // Manual Mode State
+  const [selectedGoalId, setSelectedGoalId] = useState('');
+  const activeStudentGoals = useMemo(() => {
+    return Array.isArray(targetStudent?.goals) ? targetStudent.goals.filter((g) => g.title) : [];
+  }, [targetStudent]);
+
+  const selectedGoal = useMemo(() => {
+    return activeStudentGoals.find((g) => g.id === selectedGoalId) || activeStudentGoals[0] || null;
+  }, [activeStudentGoals, selectedGoalId]);
+
+  const [manualProgress, setManualProgress] = useState(60);
+  const [manualSupportLevel, setManualSupportLevel] = useState('תיווך חלקי');
+  const [manualNote, setManualNote] = useState('');
+  const [saveToast, setSaveToast] = useState('');
+
   // Daily Tracking Telemetry State & Refs
   const [isVoice, setIsVoice] = useState(false);
   const entryStartTimeRef = React.useRef(null);
   const hasDispatchedStartedRef = React.useRef(false);
   const currentEntryModeRef = React.useRef('text');
+
+  useEffect(() => {
+    if (activeStudentGoals.length > 0 && !selectedGoalId) {
+      setSelectedGoalId(activeStudentGoals[0].id);
+    }
+  }, [activeStudentGoals, selectedGoalId]);
+
+  useEffect(() => {
+    if (selectedGoal) {
+      setManualProgress(selectedGoal.currentProgress ?? 60);
+    }
+  }, [selectedGoal]);
 
   const startObservationEntry = (mode = isVoice ? 'voice' : 'text', isEdit = false) => {
     if (!hasDispatchedStartedRef.current) {
@@ -467,33 +494,6 @@ export default function DailyPedagogicalTracker({
       checkAndDispatchAbandonment();
     };
   }, [aiNoteText, manualNote, isVoice]);
-
-  // Manual Mode State
-  const [selectedGoalId, setSelectedGoalId] = useState('');
-  const activeStudentGoals = useMemo(() => {
-    return Array.isArray(targetStudent?.goals) ? targetStudent.goals.filter((g) => g.title) : [];
-  }, [targetStudent]);
-
-  useEffect(() => {
-    if (activeStudentGoals.length > 0 && !selectedGoalId) {
-      setSelectedGoalId(activeStudentGoals[0].id);
-    }
-  }, [activeStudentGoals, selectedGoalId]);
-
-  const selectedGoal = useMemo(() => {
-    return activeStudentGoals.find((g) => g.id === selectedGoalId) || activeStudentGoals[0] || null;
-  }, [activeStudentGoals, selectedGoalId]);
-
-  const [manualProgress, setManualProgress] = useState(60);
-  const [manualSupportLevel, setManualSupportLevel] = useState('תיווך חלקי');
-  const [manualNote, setManualNote] = useState('');
-  const [saveToast, setSaveToast] = useState('');
-
-  useEffect(() => {
-    if (selectedGoal) {
-      setManualProgress(selectedGoal.currentProgress ?? 60);
-    }
-  }, [selectedGoal]);
 
   // Handle AI Analysis Execution
   const handleRunAiAnalysis = async () => {
