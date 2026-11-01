@@ -5,7 +5,8 @@
 export const HEALTH_EVENT_KINDS = {
   AI_PROXY_ERROR: 'ai_proxy_error', // the cloud AI proxy call failed (may still be rescued by a direct key)
   AI_LOCAL_FALLBACK: 'ai_local_fallback', // the teacher received output from the local (non-AI) engine
-  AI_EMPTY_RESPONSE: 'ai_empty_response' // AI answered, but the response was unusable
+  AI_EMPTY_RESPONSE: 'ai_empty_response', // AI answered, but the response was unusable
+  AI_CLIENT_PROCESSING_ERROR: 'ai_client_processing_error'
 };
 
 export const HEALTH_EVENT_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -17,6 +18,7 @@ export const HEALTH_CATEGORY_LABELS_HE = {
   injection: 'נחסם כחשד להזרקת פקודות',
   auth: 'שגיאת הרשאה / התחברות',
   server_error: 'שגיאת שרת AI / Gemini',
+  client_code_error: 'שגיאת קוד קליינט / JavaScript Exception',
   network: 'שגיאת רשת / השרת לא זמין',
   empty_response: 'תשובת AI ריקה או לא תקינה',
   unknown: 'שגיאה לא מזוהה'
@@ -25,7 +27,8 @@ export const HEALTH_CATEGORY_LABELS_HE = {
 export const HEALTH_KIND_LABELS_HE = {
   [HEALTH_EVENT_KINDS.AI_PROXY_ERROR]: 'כשל בקריאת AI',
   [HEALTH_EVENT_KINDS.AI_LOCAL_FALLBACK]: 'מעבר למנוע מקומי (ללא AI)',
-  [HEALTH_EVENT_KINDS.AI_EMPTY_RESPONSE]: 'תשובת AI לא תקינה'
+  [HEALTH_EVENT_KINDS.AI_EMPTY_RESPONSE]: 'תשובת AI לא תקינה',
+  [HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR]: 'שגיאת עיבוד AI בקליינט'
 };
 
 const truncate = (value, max) => String(value ?? '').slice(0, max);
@@ -42,6 +45,7 @@ export function classifyAiError(error) {
   else if (status === 401 || status === 403) category = 'auth';
   else if (status === 400 && /too long|invalid length|length/.test(lower)) category = 'prompt_too_long';
   else if (status >= 500) category = 'server_error';
+  else if (/referenceerror|typeerror|syntaxerror|cannot read|undefined is not|is not defined/.test(lower) || error?.name === 'ReferenceError' || error?.name === 'TypeError') category = 'client_code_error';
   else if (!status && /failed to fetch|network|load failed|timeout|cors/.test(lower)) category = 'network';
   else if (!status && message) category = 'network';
 

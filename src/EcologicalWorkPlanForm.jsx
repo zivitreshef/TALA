@@ -132,6 +132,8 @@ import { appendToFreeText } from './domain/parentInvite';
 import { addObservationToGoal } from './domain/goalObservations';
 import { DISCIPLINE_LEAD_OPTIONS } from './domain/studentSyncMerge';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
+import { usageTelemetryService } from './services/usageTelemetryService';
+import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy.js';
 import { reportHealthEvent } from './services/healthTelemetry';
 import { HEALTH_EVENT_KINDS } from './domain/healthEvents.js';
 
@@ -938,8 +940,8 @@ export default function EcologicalWorkPlanForm({
         }, 2200);
       }
     }, 150);
-    setBankAddToast('✅ שורת יעד חדשה נוספה לתוכנית!');
-    setTimeout(() => setBankAddToast(''), 3000);
+
+
   };
 
   const handleDeleteGoalRow = (goalId) => {
@@ -1274,6 +1276,20 @@ export default function EcologicalWorkPlanForm({
       setTimeout(() => setSaveBanner(false), 3000);
     } catch (err) {
       console.warn('Failed to generate summary table:', err);
+      reportHealthEvent({
+        kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
+        operation: 'generateSummaryTable',
+        error: err,
+        extra: {
+          errorMessage: err?.message || String(err)
+        }
+      });
+      try {
+        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
+          errorType: err?.name || 'Error',
+          operation: 'generateSummaryTable'
+        });
+      } catch (_) {}
     } finally {
       setIsGeneratingSummary(false);
     }
@@ -1663,6 +1679,22 @@ ${rawText}
     }
     } catch (err) {
       console.warn('[handleReverseEngineerFullReport] AI processing encountered error, attempting graceful local fallback:', err);
+      reportHealthEvent({
+        kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
+        operation: 'reverseEngineerFullReport',
+        error: err,
+        extra: {
+          stage: currentStage,
+          promptLength: rawText ? rawText.length : 0,
+          errorMessage: err?.message || String(err)
+        }
+      });
+      try {
+        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
+          errorType: err?.name || 'Error',
+          operation: 'reverseEngineerFullReport'
+        });
+      } catch (_) {}
       try {
         const localEngineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
         if (localEngineered && Array.isArray(localEngineered.goals) && localEngineered.goals.length > 0) {
@@ -1947,6 +1979,23 @@ ${goalsContext}
     onSaveStudentPlan(updated);
     setIsProcessingFullEvalAi(false);
     setEvalReportAiBanner('✨ דוח הערכת מחצית / סוף שנה עובד ונוסח בהצלחה עבור מטרות התלמיד/ה!');
+    } catch (err) {
+      console.warn('[handleProcessFullEvalReportAi] AI processing error:', err);
+      reportHealthEvent({
+        kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
+        operation: 'processFullEvalReportAi',
+        error: err,
+        extra: {
+          stage: currentStage,
+          errorMessage: err?.message || String(err)
+        }
+      });
+      try {
+        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
+          errorType: err?.name || 'Error',
+          operation: 'processFullEvalReportAi'
+        });
+      } catch (_) {}
     } finally {
       setIsProcessingFullEvalAi(false);
     }
@@ -2114,6 +2163,22 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     setFormData(updated);
     onSaveStudentPlan(updated);
     setIsGeneratingStatusReport(false);
+} catch (err) {
+      console.warn('[handleGenerateStatusReport] AI processing error:', err);
+      reportHealthEvent({
+        kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
+        operation: 'generateStatusReport',
+        error: err,
+        extra: {
+          errorMessage: err?.message || String(err)
+        }
+      });
+      try {
+        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
+          errorType: err?.name || 'Error',
+          operation: 'generateStatusReport'
+        });
+      } catch (_) {}
     } finally {
       setIsGeneratingStatusReport(false);
     }

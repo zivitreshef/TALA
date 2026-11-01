@@ -198,9 +198,9 @@ import {
   clearDemoStudent,
   recordOnboardingMilestone
 } from './services/onboardingStorage';
-import { isDemoStudent, getStepById } from './domain/onboardingJourney';
+import { isDemoStudent, getStepById, ONBOARDING_TOTAL_STEPS } from './domain/onboardingJourney';
 import { usageTelemetryService } from './services/usageTelemetryService';
-import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy';
+import { TELEMETRY_EVENTS, CURRENT_APP_VERSION } from './domain/telemetryTaxonomy';
 import './index.css';
 
 const STUDENTS_STORAGE_KEY = 'tala_students_plans_v3';
@@ -2204,8 +2204,8 @@ export default function App() {
         : targetStudentObj;
 
     if (baseStudent.isLocked) {
-      setGoalBankAddedToast('הדו"ח של התלמיד/ה נעול לעריכה – יש לפתוח את הנעילה כדי להוסיף מטרות.');
-      setTimeout(() => setGoalBankAddedToast(''), 3500);
+      setBankAddToast('הדו"ח של התלמיד/ה נעול לעריכה – יש לפתוח את הנעילה כדי להוסיף מטרות.');
+      setTimeout(() => setBankAddToast(''), 3500);
       return;
     }
 
@@ -2477,7 +2477,7 @@ export default function App() {
 
 
   const siteVersion =
-    typeof __APP_VERSION__ !== 'undefined' && __APP_VERSION__ ? __APP_VERSION__ : '2.0.3';
+    CURRENT_APP_VERSION;
 
   const activeOnboardingStep =
     SHOW_NEW_USER_JOURNEY &&
