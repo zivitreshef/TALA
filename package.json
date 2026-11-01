@@ -1,12 +1,13 @@
 {
   "name": "tala-ecological-work-plan",
   "private": true,
-  "version": "2.4.26",
+  "version": "2.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run lint && vite build",
+    "build": "npm run lint && npm run type-check && vite build",
     "lint": "eslint src/",
+    "type-check": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
@@ -29,6 +30,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
+    "typescript": "^5.9.3",
     "vite": "^8.1.1",
     "vitest": "^5.0.3"
   }
