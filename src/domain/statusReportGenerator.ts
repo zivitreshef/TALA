@@ -2,7 +2,7 @@ import {
   adaptTextToGender,
   resolveStudentAgeAndDateInfo,
   isGoalEmpty
-} from './goalSizingAndMerge';
+} from './goalSizingAndMerge.js';
 
 // === מבנה קבוע של 15 סעיפי דו"ח מצב תפקודי-חינוכי ===
 export const STATUS_REPORT_SECTIONS_SCHEMA = [
@@ -21,12 +21,68 @@ export const STATUS_REPORT_SECTIONS_SCHEMA = [
   { sectionNumber: 13, title: 'השפעת הקשיים על ההשתתפות והתפקוד' },
   { sectionNumber: 14, title: 'מטרות להמשך' },
   { sectionNumber: 15, title: 'סיכום והמלצות מקצועיות' }
-];
+] as const;
+
+export interface StatusReportSection {
+  id?: string;
+  sectionNumber: number;
+  title: string;
+  content: string;
+}
+
+export interface StatusReportRawSection {
+  id?: string;
+  sectionNumber?: number | string;
+  title?: string;
+  content?: string;
+}
+
+export interface StatusReportGoal {
+  environment?: string;
+  title?: string;
+  activityParticipation?: string;
+  objectives?: string;
+  opportunities?: string;
+  partners?: string;
+  duration?: string;
+  evaluationCriteria?: string;
+  achievementStatus?: string;
+  midYearEvaluation?: string;
+  endYearEvaluation?: string;
+  [key: string]: unknown;
+}
+
+export interface StatusReportProfileRow {
+  strengthsAndFacilitators?: string;
+  areasToStrengthenAndBarriers?: string;
+  [key: string]: unknown;
+}
+
+export interface StatusReportFormData {
+  name?: string;
+  gender?: string;
+  birthDate?: string;
+  educationalFramework?: string;
+  schoolYear?: string;
+  planType?: string;
+  teacherFreeText?: string;
+  strengthsExisting?: string;
+  strengthsToEmpower?: string;
+  studentGeneralBackground?: string;
+  studentSupportReceived?: string;
+  studentMainGoal?: string;
+  talaProfileRows?: StatusReportProfileRow[];
+  recommendations?: string;
+  evalReportFreeText?: string;
+  evalReportSummary?: string;
+  goals?: StatusReportGoal[];
+  [key: string]: unknown;
+}
 
 const FORBIDDEN_MISSING_INFO_REGEX =
   /^(לא ידוע|לא קיים מידע|לא נמסר|אין מידע|לא צוין מידע|לא דווח)\.?$/;
 
-export function formatStatusReportBulletLines(rawContent = '', gender = 'boy') {
+export function formatStatusReportBulletLines(rawContent: string = '', gender: string = 'boy'): string {
   const lines = String(rawContent || '')
     .split('\n')
     .map((l) =>
@@ -42,13 +98,16 @@ export function formatStatusReportBulletLines(rawContent = '', gender = 'boy') {
   return adaptTextToGender(formatted.trim(), gender);
 }
 
-export function sanitizeStatusReportSections(rawSections = [], gender = 'boy') {
+export function sanitizeStatusReportSections(
+  rawSections: StatusReportRawSection[] = [],
+  gender: string = 'boy'
+): StatusReportSection[] {
   if (!Array.isArray(rawSections)) return [];
-  const validByNum = new Map(
+  const validByNum = new Map<number, string>(
     STATUS_REPORT_SECTIONS_SCHEMA.map((s) => [s.sectionNumber, s.title])
   );
 
-  const cleaned = [];
+  const cleaned: StatusReportSection[] = [];
   rawSections.forEach((sec, idx) => {
     if (!sec) return;
     const num = Number(sec.sectionNumber) || idx + 1;
@@ -74,7 +133,7 @@ export function sanitizeStatusReportSections(rawSections = [], gender = 'boy') {
 }
 
 // === מחולל דו"ח מצב עדכני ומקצועי המבוסס אך ורק על המידע הקיים בכרטיס התלמיד, במטרות ובהערכת מחצית/סוף שנה ===
-export function generateStatusReportLocally(formData) {
+export function generateStatusReportLocally(formData?: StatusReportFormData | null): StatusReportSection[] {
   if (!formData) return [];
 
   const gender = formData.gender || 'boy';
@@ -119,7 +178,7 @@ export function generateStatusReportLocally(formData) {
 
   const dateInfo = resolveStudentAgeAndDateInfo(formData, freeText);
 
-  const extractMatchingSentences = (regex) => {
+  const extractMatchingSentences = (regex: RegExp): string[] => {
     const sentences = [
       ...freeText.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
       ...studentGeneralBackground.split(/(?:[\.\!\?\n]+|\s+-\s+)/),
@@ -133,7 +192,7 @@ export function generateStatusReportLocally(formData) {
       .map((s) => s.replace(/^[•\-\*\s]+/, '').trim())
       .filter((s) => s.length >= 6 && regex.test(s));
 
-    const unique = [];
+    const unique: string[] = [];
     sentences.forEach((s) => {
       if (!unique.some((u) => u.includes(s) || s.includes(u))) {
         unique.push(s.replace(/\.$/, ''));
@@ -142,16 +201,16 @@ export function generateStatusReportLocally(formData) {
     return unique;
   };
 
-  const sections = [];
+  const sections: StatusReportSection[] = [];
 
   // 1. פרטים מזהים ורקע כללי
-  const idParts = [];
+  const idParts: string[] = [];
   if (formData.name && formData.name !== 'תלמיד/ה חדש/ה') {
     idParts.push(`${studentName}`);
   }
-  if (formData.birthDate || dateInfo.ageYears !== null) {
+  if (formData.birthDate || (dateInfo && dateInfo.ageYears !== null)) {
     const ageLabel =
-      dateInfo.ageYears !== null
+      dateInfo && dateInfo.ageYears !== null
         ? isGirl
           ? `בת כ-${dateInfo.ageYears}`
           : `בן כ-${dateInfo.ageYears}`
@@ -180,7 +239,7 @@ export function generateStatusReportLocally(formData) {
     });
   }
 
-  // 2. רקע התפתחותי ואבחוני רלוונטי (רק אם מופיע במפורש בטקסט הקיים)
+  // 2. רקע התפתחותי ואבחוני רלוונטי
   const diagSentences = extractMatchingSentences(
     /(אבחון|אובחן|אובחנה|טיפול|ריפוי בעיסוק|קלינאי|קלינאית תקשורת|פיזיותרפ|רגשי|רפואי|שמיעה|ראייה|מוטורי|תחושתי|וויסות חושי)/
   );
@@ -190,7 +249,7 @@ export function generateStatusReportLocally(formData) {
     .match(/(מרפאה בעיסוק|קלינאית תקשורת|מטפל[^\s,]*|פסיכולוג[^\s,]*|פיזיותרפ[^\s,]*)/g);
   if (diagSentences.length > 0 || (therapyPartners && therapyPartners.length > 0) || studentSupportReceived) {
     const uniquePartners = therapyPartners ? [...new Set(therapyPartners)] : [];
-    const parts = [];
+    const parts: string[] = [];
     if (diagSentences.length > 0) {
       parts.push(`${diagSentences.slice(0, 3).join('. ')}.`);
     }
@@ -210,7 +269,7 @@ export function generateStatusReportLocally(formData) {
   }
 
   // 3. תיאור תפקוד כללי במסגרת
-  const generalSentences = [];
+  const generalSentences: string[] = [];
   if (evalSummary) {
     generalSentences.push(evalSummary.replace(/\.$/, '') + '.');
   }
@@ -245,7 +304,7 @@ export function generateStatusReportLocally(formData) {
     )
   );
   if (cognitiveSentences.length > 0 || cognitiveGoals.length > 0) {
-    const parts = [];
+    const parts: string[] = [];
     if (cognitiveSentences.length > 0) {
       parts.push(`${cognitiveSentences.slice(0, 3).join('. ')}.`);
     }
@@ -287,7 +346,7 @@ export function generateStatusReportLocally(formData) {
     /(חבר|משחק משותף|חצר|קבוצ)/.test(`${g.environment || ''} ${g.title || ''} ${g.objectives || ''}`)
   );
   if (socialSentences.length > 0 || socialGoals.length > 0) {
-    const parts = [];
+    const parts: string[] = [];
     if (socialSentences.length > 0) {
       parts.push(`${socialSentences.slice(0, 3).join('. ')}.`);
     }
@@ -331,7 +390,7 @@ export function generateStatusReportLocally(formData) {
   }
 
   // 9. חוזקות ותחומי עניין
-  const strengthsParts = [];
+  const strengthsParts: string[] = [];
   if (strengthsExisting) {
     const cleanedExisting = strengthsExisting
       .split('\n')
@@ -369,8 +428,10 @@ export function generateStatusReportLocally(formData) {
         .map((l) => l.replace(/^[•\-\*\s]+/, '').trim())
         .filter(Boolean)
         .join(', ');
-      const partnersInfo = (g.partners || '').trim() ? ` (בשיתוף: ${g.partners.trim()})` : '';
-      const durationInfo = (g.duration || '').trim() ? ` [טווח/משך: ${g.duration.trim()}]` : '';
+      const partnersTrimmed = (g.partners || '').trim();
+      const partnersInfo = partnersTrimmed ? ` (בשיתוף: ${partnersTrimmed})` : '';
+      const durationTrimmed = (g.duration || '').trim();
+      const durationInfo = durationTrimmed ? ` [טווח/משך: ${durationTrimmed}]` : '';
       return `בסביבת "${g.environment}": ${oppClean}${partnersInfo}${durationInfo}`;
     });
   if (interventions.length > 0) {
@@ -381,9 +442,9 @@ export function generateStatusReportLocally(formData) {
     });
   }
 
-  // 11. התקדמות בעקבות ההתערבות (אך ורק כאשר קיים מידע בהערכת מחצית / סוף שנה או תיעוד התקדמות)
+  // 11. התקדמות בעקבות ההתערבות
   if (hasEvalData) {
-    const progressLines = [];
+    const progressLines: string[] = [];
     if (evalSummary) {
       progressLines.push(evalSummary.replace(/\.$/, '') + '.');
     } else if (evalFreeText) {
@@ -429,7 +490,7 @@ export function generateStatusReportLocally(formData) {
     (g) =>
       (g.activityParticipation || '').trim() &&
       /(מתקשה|קושי|מגביל|נמנע|נמנעת|זקוק|זקוקה|לא ניגש|לא ניגשת|לעיתים)/.test(
-        g.activityParticipation
+        g.activityParticipation as string
       )
   );
   if (impactGoals.length > 0) {
@@ -443,7 +504,7 @@ export function generateStatusReportLocally(formData) {
     });
   }
 
-  // 14. מטרות להמשך (מבוסס אך ורק על המטרות שהוגדרו ועל הערכת מחצית/סוף שנה, ללא המצאת מטרות או מדדים)
+  // 14. מטרות להמשך
   if (validGoals.length > 0) {
     const goalsLines = validGoals.map((g) => {
       const objClean = (g.objectives || '')
@@ -473,7 +534,7 @@ export function generateStatusReportLocally(formData) {
   }
 
   // 15. סיכום והמלצות מקצועיות
-  const summaryParts = [];
+  const summaryParts: string[] = [];
   if (recommendations) {
     const cleanRecs = recommendations
       .split('\n')

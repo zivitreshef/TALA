@@ -111,7 +111,7 @@ import {
   getStageLabelHe,
   textHasKindergartenMarker,
   adaptTextToSchoolStage
-} from './domain/stageGuard.js';
+} from './domain/stageGuard';
 import { INITIAL_GOAL_BANK } from './goalBankData';
 import { canLockReport, isStudentSharedWithUser, isStudentPlanShared } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';

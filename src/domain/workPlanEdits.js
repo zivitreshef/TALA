@@ -9,7 +9,7 @@ import { detectStudentStage } from '../studentStage.js';
 import {
   getDefaultEnvironmentForStage,
   getDefaultPartnersForStage
-} from './stageGuard.js';
+} from './stageGuard';
 import { syncActiveReportSnapshot } from './yearReport';
 import { canShareWithColleague } from './permissions';
 

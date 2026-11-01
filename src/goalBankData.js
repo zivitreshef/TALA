@@ -12,7 +12,7 @@ import {
   getDefaultPartnersForStage,
   textHasKindergartenMarker,
   remapEnvironmentForStage
-} from './domain/stageGuard.js';
+} from './domain/stageGuard';
 
 export { KINDERGARTEN_ENVIRONMENTS, SCHOOL_ENVIRONMENTS };
 

@@ -22,16 +22,48 @@ export {
   SCHOOL_ALLOWED_ENVIRONMENTS
 };
 
+export type EducationalStage = 'kindergarten' | 'school';
+
+export interface StageEnforceGoalOptions {
+  curatedOtherStageTitles?: string[];
+  isTalaMode?: boolean;
+  includeBarePlaceWords?: boolean;
+}
+
+export interface BankGoalItem {
+  id?: string;
+  title: string;
+  environment?: string;
+  stages?: string[];
+  suggestedObjectives?: string[];
+  [key: string]: unknown;
+}
+
+export interface BankPromptOptions {
+  maxItems?: number;
+  maxObjectivesPerItem?: number;
+  maxChars?: number;
+}
+
 const NOT_HEB = '[^\\u05D0-\\u05EA]';
 // Hebrew one-letter prefixes that attach to a word (ו, ב, ל, ה, ש, כ, and "מה") – up to two, e.g. "ובמפגש".
 // A lone "מ" is excluded on purpose: "מגננת" means "defensive", not "kindergarten teacher".
 const HEB_PREFIX = '(?:[ובלהשכ]|מה){0,2}';
 
-const escapeRx = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeRx = (s: string): string => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+interface WordRxOptions {
+  flags?: string;
+  allowPrefix?: boolean;
+  notFollowedBy?: string;
+}
 
 // Hebrew-aware whole-word / whole-phrase matcher (JS \b does not work with Hebrew letters).
 // Capture groups: 1 = preceding non-Hebrew char (or start), 2 = attached prefix letters, 3 = phrase.
-const wordRx = (phrase, { flags = '', allowPrefix = false, notFollowedBy = '' } = {}) =>
+const wordRx = (
+  phrase: string,
+  { flags = '', allowPrefix = false, notFollowedBy = '' }: WordRxOptions = {}
+): RegExp =>
   new RegExp(
     `(^|${NOT_HEB})(${allowPrefix ? HEB_PREFIX : ''})(${escapeRx(phrase)})(?=${NOT_HEB}|$)${
       notFollowedBy ? `(?!${notFollowedBy})` : ''
@@ -39,7 +71,7 @@ const wordRx = (phrase, { flags = '', allowPrefix = false, notFollowedBy = '' } 
     flags
   );
 
-export function normalizeStage(stage) {
+export function normalizeStage(stage?: unknown): EducationalStage | null {
   return stage === 'kindergarten' || stage === 'school' ? stage : null;
 }
 
@@ -47,8 +79,6 @@ export function normalizeStage(stage) {
 // 1. Kindergarten marker detection
 // ---------------------------------------------------------------------------
 
-// Explicit kindergarten phrases (may carry attached prefixes, e.g. "שהגננת", "במפגש בגן").
-// Bare "גן" is intentionally excluded (e.g. "רמת גן", "גן חיות").
 const KINDERGARTEN_PREFIXABLE_MARKERS = [
   'גן ילדים',
   'גני ילדים',
@@ -60,14 +90,12 @@ const KINDERGARTEN_PREFIXABLE_MARKERS = [
   'צוות הגן',
   'גננת'
 ];
-// Bare place words – matched exactly (no extra prefixes) so words like "בלגן" never match.
+
 const KINDERGARTEN_BARE_MARKERS = ['בגן', 'ובגן', 'שבגן', 'לגן', 'מהגן'];
-// Public gardens are not kindergartens: "בגן השעשועים", "לגן החיות", "הגן הלאומי"...
 const NOT_PUBLIC_GARDEN = '\\s+ה?(?:שעשועים|חיות|לאומי|ציבורי|בוטני|העירוני|עירוני)';
-// "הגן" as a noun, but not the verb "הגן על" ("defended") and not a public garden.
 const NOT_VERB_OR_PUBLIC_GARDEN = `(?:\\s+על|${NOT_PUBLIC_GARDEN})`;
 
-export function textHasKindergartenMarker(text) {
+export function textHasKindergartenMarker(text?: string | null): boolean {
   const s = String(text || '');
   if (!s.trim()) return false;
   if (KINDERGARTEN_PREFIXABLE_MARKERS.some((m) => wordRx(m, { allowPrefix: true }).test(s))) return true;
@@ -76,12 +104,10 @@ export function textHasKindergartenMarker(text) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Kindergarten → school wording conversion (for free-text fields of a school student's goal)
+// 2. Kindergarten → school wording conversion
 // ---------------------------------------------------------------------------
 
-// Unambiguous kindergarten staff / setting phrases (attached prefixes are kept, e.g. "שהגננת" → "שהמחנכת").
-// Ordered: longer / more specific phrases first.
-const KDG_TO_SCHOOL_PHRASES = [
+const KDG_TO_SCHOOL_PHRASES: [string, string][] = [
   ['בין הגן לבית', 'בין בית הספר לבית'],
   ['צוות הגן / הכיתה', 'צוות בית הספר'],
   ['מרחב הגן / הכיתה', 'מרחב הכיתה'],
@@ -96,9 +122,7 @@ const KDG_TO_SCHOOL_PHRASES = [
   ['גננת', 'מחנכת']
 ];
 
-// Bare place words (matched exactly). They may describe the child's past ("עבר מהגן"), so they are
-// only converted when `includeBarePlaceWords` is true (the teacher's own text never mentions kindergarten).
-const KDG_TO_SCHOOL_BARE_WORDS = [
+const KDG_TO_SCHOOL_BARE_WORDS: [string, string][] = [
   ['שבגן', 'שבבית הספר'],
   ['ובגן', 'ובבית הספר'],
   ['בגן', 'בבית הספר'],
@@ -106,9 +130,12 @@ const KDG_TO_SCHOOL_BARE_WORDS = [
   ['מהגן', 'מבית הספר']
 ];
 
-export function adaptTextToSchoolStage(text, { includeBarePlaceWords = true } = {}) {
-  if (typeof text !== 'string' || !text) return text;
-  const swap = (to) => (_m, pre, prefix) => `${pre}${prefix}${to}`;
+export function adaptTextToSchoolStage(
+  text?: string | null,
+  { includeBarePlaceWords = true }: { includeBarePlaceWords?: boolean } = {}
+): string {
+  if (typeof text !== 'string' || !text) return text || '';
+  const swap = (to: string) => (_m: string, pre: string, prefix: string) => `${pre}${prefix}${to}`;
   let out = text;
   KDG_TO_SCHOOL_PHRASES.forEach(([from, to]) => {
     out = out.replace(wordRx(from, { flags: 'g', allowPrefix: true }), swap(to));
@@ -117,14 +144,12 @@ export function adaptTextToSchoolStage(text, { includeBarePlaceWords = true } = 
     KDG_TO_SCHOOL_BARE_WORDS.forEach(([from, to]) => {
       out = out.replace(wordRx(from, { flags: 'g', notFollowedBy: NOT_PUBLIC_GARDEN }), swap(to));
     });
-    // "הגן" (noun) → "בית הספר", but keep the verb "הגן על" and public gardens.
     out = out.replace(wordRx('הגן', { flags: 'g', notFollowedBy: NOT_VERB_OR_PUBLIC_GARDEN }), swap('בית הספר'));
   }
   return out;
 }
 
-// Unambiguous school staff / setting phrases mapped to kindergarten equivalents
-const SCHOOL_TO_KDG_PHRASES = [
+const SCHOOL_TO_KDG_PHRASES: [string, string][] = [
   ['בין בית הספר לבית', 'בין הגן לבית'],
   ['צוות בית הספר', 'צוות הגן'],
   ['פעילות במרחב הכיתה', 'משחק במרחב הגן'],
@@ -140,9 +165,9 @@ const SCHOOL_TO_KDG_PHRASES = [
   ['מחנכת', 'גננת']
 ];
 
-export function adaptTextToKindergartenStage(text) {
-  if (typeof text !== 'string' || !text) return text;
-  const swap = (to) => (_m, pre, prefix) => `${pre}${prefix}${to}`;
+export function adaptTextToKindergartenStage(text?: string | null): string {
+  if (typeof text !== 'string' || !text) return text || '';
+  const swap = (to: string) => (_m: string, pre: string, prefix: string) => `${pre}${prefix}${to}`;
   let out = text;
   SCHOOL_TO_KDG_PHRASES.forEach(([from, to]) => {
     out = out.replace(wordRx(from, { flags: 'g', allowPrefix: true }), swap(to));
@@ -150,9 +175,13 @@ export function adaptTextToKindergartenStage(text) {
   return out;
 }
 
-export function adaptPartnersToStage(partnersText, stage, isTalaMode = false) {
+export function adaptPartnersToStage(
+  partnersText?: string | null,
+  stage?: string | null,
+  isTalaMode: boolean = false
+): string {
   const s = normalizeStage(stage);
-  if (!s) return partnersText;
+  if (!s) return partnersText || '';
   const current = String(partnersText || '').trim();
   if (!current) {
     return getDefaultPartnersForStage(s, isTalaMode);
@@ -178,22 +207,23 @@ export function adaptPartnersToStage(partnersText, stage, isTalaMode = false) {
 // 3. Environment validation & remapping
 // ---------------------------------------------------------------------------
 
-export function isEnvironmentAllowedForStage(environment, stage) {
+export function isEnvironmentAllowedForStage(
+  environment?: string | null,
+  stage?: string | null
+): boolean {
   const env = String(environment || '').trim();
   const s = normalizeStage(stage);
   if (!s) return true;
   if (!env) return false;
-  if (s === 'school') return SCHOOL_ALLOWED_ENVIRONMENTS.includes(env);
-  // Kindergarten: tolerate custom environments, but never school-only ones.
-  return !SCHOOL_ALLOWED_ENVIRONMENTS.includes(env) && !textHasSchoolOnlyEnvironmentHint(env);
+  if (s === 'school') return (SCHOOL_ALLOWED_ENVIRONMENTS as readonly string[]).includes(env);
+  return !(SCHOOL_ALLOWED_ENVIRONMENTS as readonly string[]).includes(env) && !textHasSchoolOnlyEnvironmentHint(env);
 }
 
-function textHasSchoolOnlyEnvironmentHint(env) {
-  return SCHOOL_ENVIRONMENTS.some((schoolEnv) => env.includes(schoolEnv));
+function textHasSchoolOnlyEnvironmentHint(env: string): boolean {
+  return (SCHOOL_ENVIRONMENTS as readonly string[]).some((schoolEnv) => env.includes(schoolEnv));
 }
 
-// Ordered keyword rules. Sources are checked by priority: environment → title → remaining text.
-const SCHOOL_ENV_RULES = [
+const SCHOOL_ENV_RULES: [string, RegExp][] = [
   ['מתמטיקה', /מתמטיק|חשבון|כמויות|מספרים|כפל|חילוק|חיבור וחיסור|גאומטר|הנדס|שברים/],
   ['כתיבה', /כתיב|כותב|לכתוב|כתב יד|העתק|איות|מחברת|חיבור/],
   ['קריאה והפקת משמעות', /קריא|קורא|לקרוא|פענוח|שטף|הבנת הנקרא|טקסט|ניקוד/],
@@ -205,7 +235,7 @@ const SCHOOL_ENV_RULES = [
 ];
 const SCHOOL_DEFAULT_ENV = 'האזנה ודיבור – כשירות תקשורתית';
 
-const KINDERGARTEN_ENV_RULES = [
+const KINDERGARTEN_ENV_RULES: [string, RegExp][] = [
   ['סדנא / יצירה', /כתיב|כותב|העתק|ציור|גזיר|יצירה|מוטורי/],
   ['שירותים', /שירותים|היגיינה|לבוש|ניקיון|טיפול עצמי/],
   ['אוכל', /אוכל|ארוחה/],
@@ -216,7 +246,7 @@ const KINDERGARTEN_ENV_RULES = [
 ];
 const KINDERGARTEN_DEFAULT_ENV = 'משחק במרחב הגן';
 
-function pickEnvByRules(rules, sources, fallback) {
+function pickEnvByRules(rules: [string, RegExp][], sources: (string | undefined)[], fallback: string): string {
   for (const src of sources) {
     const text = String(src || '');
     if (!text.trim()) continue;
@@ -227,27 +257,28 @@ function pickEnvByRules(rules, sources, fallback) {
   return fallback;
 }
 
-export function getDefaultEnvironmentForStage(stage) {
+export function getDefaultEnvironmentForStage(stage?: string | null): string {
   return normalizeStage(stage) === 'school' ? SCHOOL_DEFAULT_ENV : KINDERGARTEN_ENVIRONMENTS[0];
 }
 
-/**
- * Returns an environment that is valid for the given stage. Valid environments are kept as-is.
- */
-export function remapEnvironmentForStage(environment, stage, goal = {}) {
+export function remapEnvironmentForStage(
+  environment?: string | null,
+  stage?: string | null,
+  goal: Record<string, unknown> = {}
+): string {
   const s = normalizeStage(stage);
   const env = String(environment || '').trim();
   if (!s) return env;
   if (isEnvironmentAllowedForStage(env, s)) return env;
 
   const rest = [
-    goal.activityParticipation,
-    goal.objectives,
-    goal.evaluationCriteria
+    goal.activityParticipation as string | undefined,
+    goal.objectives as string | undefined,
+    goal.evaluationCriteria as string | undefined
   ]
     .filter(Boolean)
     .join(' ');
-  const sources = [env, goal.title, rest];
+  const sources = [env, goal.title as string | undefined, rest];
 
   if (s === 'school') {
     return pickEnvByRules(SCHOOL_ENV_RULES, sources, SCHOOL_DEFAULT_ENV);
@@ -259,7 +290,7 @@ export function remapEnvironmentForStage(environment, stage, goal = {}) {
 // 4. Partners defaults
 // ---------------------------------------------------------------------------
 
-export function getDefaultPartnersForStage(stage, isTalaMode = false) {
+export function getDefaultPartnersForStage(stage?: string | null, isTalaMode: boolean = false): string {
   if (normalizeStage(stage) === 'kindergarten') {
     return isTalaMode ? 'גננת, גננת שילוב, מטפלת באומנויות' : 'גננת, גננת שילוב, הורים';
   }
@@ -280,20 +311,18 @@ const GOAL_TEXT_FIELDS = [
   'learningAccommodations',
   'partners',
   'evaluationCriteria'
-];
+] as const;
 
-const normalizeTitleKey = (title) =>
+const normalizeTitleKey = (title?: string | null): string =>
   adaptTextToGender(String(title || ''), 'boy')
     .replace(/[^\w\u05D0-\u05EA\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
-/**
- * Titles of curated (built-in) bank goals that belong ONLY to the given stage.
- * Pass INITIAL_GOAL_BANK — custom bank items are excluded on purpose because their stage tags may be
- * unreliable (older versions defaulted every custom goal to kindergarten).
- */
-export function getCuratedTitlesExclusiveToStage(curatedBank = [], stage) {
+export function getCuratedTitlesExclusiveToStage(
+  curatedBank: Array<{ title?: string; stages?: string[] }> = [],
+  stage?: string | null
+): string[] {
   const s = normalizeStage(stage);
   if (!s || !Array.isArray(curatedBank)) return [];
   return curatedBank
@@ -301,17 +330,24 @@ export function getCuratedTitlesExclusiveToStage(curatedBank = [], stage) {
       const stages = Array.isArray(item?.stages) && item.stages.length > 0 ? item.stages : [];
       return stages.length > 0 && stages.every((st) => st === s);
     })
-    .map((item) => item.title)
+    .map((item) => item.title!)
     .filter(Boolean);
 }
 
-/**
- * Enforces the student's stage on a single goal.
- * @returns {{ goal: object|null, dropped: boolean, corrected: boolean, reason: string }}
- */
-export function enforceGoalStage(goal, stage, options = {}) {
+export interface EnforceGoalResult<T> {
+  goal: T | null;
+  dropped: boolean;
+  corrected: boolean;
+  reason: string;
+}
+
+export function enforceGoalStage<T extends Record<string, unknown>>(
+  goal?: T | null,
+  stage?: string | null,
+  options: StageEnforceGoalOptions = {}
+): EnforceGoalResult<T> {
   const s = normalizeStage(stage);
-  if (!goal || !s) return { goal, dropped: false, corrected: false, reason: '' };
+  if (!goal || !s) return { goal: goal || null, dropped: false, corrected: false, reason: '' };
 
   const { curatedOtherStageTitles = [], isTalaMode = false, includeBarePlaceWords = true } = options;
 
@@ -319,7 +355,6 @@ export function enforceGoalStage(goal, stage, options = {}) {
     const title = String(goal.title || '');
     const titleKey = normalizeTitleKey(title);
     const curatedKdgKeys = new Set(curatedOtherStageTitles.map(normalizeTitleKey).filter(Boolean));
-    // A title that also names a school setting is a transition goal (e.g. "מעבר מהגן לכיתה א'") – keep it.
     const isTransitionTitle = hasSchool(title);
     if (textHasKindergartenMarker(title) && !isTransitionTitle) {
       return { goal: null, dropped: true, corrected: false, reason: 'kindergarten_title' };
@@ -328,77 +363,71 @@ export function enforceGoalStage(goal, stage, options = {}) {
       return { goal: null, dropped: true, corrected: false, reason: 'kindergarten_bank_goal' };
     }
 
-    const next = { ...goal };
+    const next: Record<string, unknown> = { ...goal };
     GOAL_TEXT_FIELDS.forEach((f) => {
       if (typeof next[f] !== 'string') return;
       const bare = includeBarePlaceWords && !(f === 'title' && isTransitionTitle);
-      next[f] = adaptTextToSchoolStage(next[f], { includeBarePlaceWords: bare });
+      next[f] = adaptTextToSchoolStage(next[f] as string, { includeBarePlaceWords: bare });
     });
-    next.environment = remapEnvironmentForStage(goal.environment, 'school', next);
+    next.environment = remapEnvironmentForStage(goal.environment as string, 'school', next);
     if (!String(next.partners || '').trim()) {
       next.partners = getDefaultPartnersForStage('school', isTalaMode);
     }
     const corrected =
       next.environment !== goal.environment ||
       GOAL_TEXT_FIELDS.some((f) => (next[f] || '') !== (goal[f] || ''));
-    return { goal: next, dropped: false, corrected, reason: corrected ? 'adapted_to_school' : '' };
+    return { goal: next as T, dropped: false, corrected, reason: corrected ? 'adapted_to_school' : '' };
   }
 
-  // Kindergarten: adapt school staff/setting terminology in text fields and partners, and remap environment
-  const next = { ...goal };
+  // Kindergarten
+  const next: Record<string, unknown> = { ...goal };
   let corrected = false;
   GOAL_TEXT_FIELDS.forEach((f) => {
     if (typeof next[f] !== 'string') return;
-    const adapted = adaptTextToKindergartenStage(next[f]);
+    const adapted = adaptTextToKindergartenStage(next[f] as string);
     if (adapted !== next[f]) {
       next[f] = adapted;
       corrected = true;
     }
   });
-  const adaptedPartners = adaptPartnersToStage(next.partners, 'kindergarten', isTalaMode);
+  const adaptedPartners = adaptPartnersToStage(next.partners as string, 'kindergarten', isTalaMode);
   if (adaptedPartners !== next.partners) {
     next.partners = adaptedPartners;
     corrected = true;
   }
-  const nextEnv = remapEnvironmentForStage(next.environment, 'kindergarten', next);
+  const nextEnv = remapEnvironmentForStage(next.environment as string, 'kindergarten', next);
   if (nextEnv !== next.environment) {
     next.environment = nextEnv;
     corrected = true;
   }
   return {
-    goal: next,
+    goal: next as T,
     dropped: false,
     corrected,
     reason: corrected ? 'adapted_to_kindergarten' : ''
   };
 }
 
-/**
- * Stage to record in the shared goal bank for a goal used by a student of `studentStage`.
- * A goal that clearly belongs to the other stage (e.g. a legacy kindergarten goal on a school
- * student) keeps that other stage, so it never "leaks" into the wrong picker / AI prompt.
- */
-export function resolveGoalStageForBank(goal, studentStage) {
+export function resolveGoalStageForBank(
+  goal?: Record<string, unknown> | null,
+  studentStage?: string | null
+): EducationalStage {
   const s = normalizeStage(studentStage);
   const env = String(goal?.environment || '').trim();
   if (!s) return inferStagesFromEnvironment(env)[0];
   if (s === 'school') {
     const looksKindergarten =
-      KINDERGARTEN_ENVIRONMENTS.includes(env) ||
+      (KINDERGARTEN_ENVIRONMENTS as readonly string[]).includes(env) ||
       textHasKindergartenMarker(env) ||
-      textHasKindergartenMarker(goal?.title);
+      textHasKindergartenMarker(goal?.title as string);
     return looksKindergarten ? 'kindergarten' : 'school';
   }
-  return SCHOOL_ALLOWED_ENVIRONMENTS.includes(env) ? 'school' : 'kindergarten';
+  return (SCHOOL_ALLOWED_ENVIRONMENTS as readonly string[]).includes(env) ? 'school' : 'kindergarten';
 }
 
-/**
- * Default stage tags for a bank item that has none, inferred from its environment.
- * Unknown/custom environments keep the historical default (kindergarten).
- */
-export function inferStagesFromEnvironment(environment) {
+export function inferStagesFromEnvironment(environment?: string | null): EducationalStage[] {
   const env = String(environment || '').trim();
-  if (SCHOOL_ALLOWED_ENVIRONMENTS.includes(env)) return ['school'];
+  if ((SCHOOL_ALLOWED_ENVIRONMENTS as readonly string[]).includes(env)) return ['school'];
   return ['kindergarten'];
 }
 
@@ -406,11 +435,10 @@ export function inferStagesFromEnvironment(environment) {
 // 6. Prompt helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Goal bank items that may be shown to the AI as examples for a student of the given stage.
- * Requires BOTH a matching stage tag and an environment that is valid for the stage.
- */
-export function filterBankForStage(bank = [], stage) {
+export function filterBankForStage<T extends BankGoalItem>(
+  bank: T[] = [],
+  stage?: string | null
+): T[] {
   const s = normalizeStage(stage);
   const list = Array.isArray(bank) ? bank : [];
   if (!s) return list;
@@ -419,28 +447,28 @@ export function filterBankForStage(bank = [], stage) {
     if (!isGoalRelevantForStage(item, s)) return false;
     const env = String(item.environment || '').trim();
     if (s === 'school') {
-      return SCHOOL_ALLOWED_ENVIRONMENTS.includes(env) && !textHasKindergartenMarker(item.title);
+      return (SCHOOL_ALLOWED_ENVIRONMENTS as readonly string[]).includes(env) && !textHasKindergartenMarker(item.title);
     }
-    return !SCHOOL_ALLOWED_ENVIRONMENTS.includes(env);
+    return !(SCHOOL_ALLOWED_ENVIRONMENTS as readonly string[]).includes(env);
   });
 }
 
-/**
- * Builds the goal-bank reference block for the AI prompt, filtered by stage and capped by length
- * so the full prompt never exceeds the AI proxy limit (a rejected prompt silently triggers the
- * local fallback engine).
- */
-export function buildBankReferenceForPrompt(bank = [], stage, gender = 'boy', options = {}) {
+export function buildBankReferenceForPrompt(
+  bank: BankGoalItem[] = [],
+  stage?: string | null,
+  gender: string = 'boy',
+  options: BankPromptOptions = {}
+): string {
   const { maxItems = 20, maxObjectivesPerItem = 3, maxChars = 4000 } = options;
   const items = filterBankForStage(bank, stage).slice(0, maxItems);
-  const lines = [];
+  const lines: string[] = [];
   let total = 0;
   for (const b of items) {
     const objectives = (b.suggestedObjectives || [])
       .slice(0, maxObjectivesPerItem)
       .map((o) => adaptTextToGender(o, gender))
       .join(' ; ');
-    const line = `- סביבת השתתפות: "${b.environment}" | מטרה: "${adaptTextToGender(b.title, gender)}" | יעדים אפשריים: ${objectives}`;
+    const line = `- סביבת השתתפות: "${b.environment || ''}" | מטרה: "${adaptTextToGender(b.title, gender)}" | יעדים אפשריים: ${objectives}`;
     if (total + line.length + 1 > maxChars) break;
     lines.push(line);
     total += line.length + 1;
@@ -448,13 +476,7 @@ export function buildBankReferenceForPrompt(bank = [], stage, gender = 'boy', op
   return lines.join('\n');
 }
 
-/**
- * Mandatory stage rules for goal-generating prompts.
- * Written in Hebrew AND English on purpose: privacy masking replaces the student's
- * educational-framework text everywhere in the prompt (e.g. a framework literally named "בית ספר"),
- * so the English lines guarantee the rule survives masking.
- */
-export function buildStageRulesBlock(stage) {
+export function buildStageRulesBlock(stage?: string | null): string {
   const s = normalizeStage(stage);
   if (s === 'school') {
     const allowed = SCHOOL_ALLOWED_ENVIRONMENTS.map((e) => `"${e}"`).join(' | ');
@@ -476,6 +498,6 @@ MANDATORY EDUCATIONAL STAGE: KINDERGARTEN child (teacher-selected). Every goal "
   return '';
 }
 
-export function getStageLabelHe(stage) {
+export function getStageLabelHe(stage?: string | null): string {
   return normalizeStage(stage) === 'school' ? 'בית ספר' : normalizeStage(stage) === 'kindergarten' ? 'גן ילדים' : 'לא ידוע';
 }
