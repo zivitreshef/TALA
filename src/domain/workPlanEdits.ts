@@ -1,3 +1,9 @@
+/**
+ * Domain module for Ecological Work Plan Mutations & Editing Operations.
+ * Handles field changes, goal row manipulations, sharing boundaries,
+ * collaborative handoffs, and status report sections.
+ */
+
 import {
   buildDefaultTalaProfileRows,
   isGoalEmpty,
@@ -10,26 +16,112 @@ import {
   getDefaultEnvironmentForStage,
   getDefaultPartnersForStage
 } from './stageGuard';
-import { syncActiveReportSnapshot } from './yearReport';
+import { syncActiveReportSnapshot, type FormStudentInput, type YearReportGoal, type YearReportProfileRow, type YearReportStatusSection, type RemovedAiGoalSnapshot } from './yearReport';
 import { canShareWithColleague } from './permissions';
+import type { EducationalStage, StageSource } from './types';
 
-export const LOCKED_EDITABLE_FIELDS = new Set([
+export const LOCKED_EDITABLE_FIELDS: Set<string> = new Set([
   'evalReportFreeText',
   'evalReportSummary',
   'statusReportSections',
   'statusReportUpdatedAt'
 ]);
 
-export const EVAL_GOAL_FIELDS = new Set([
+export const EVAL_GOAL_FIELDS: Set<string> = new Set([
   'achievementStatus',
   'midYearEvaluation',
   'endYearEvaluation'
 ]);
 
-export const applyFieldChange = (prev, field, value, now = new Date()) => {
-  const next = { ...prev, [field]: value };
+export interface TeamMessage {
+  id: string;
+  authorEmail: string;
+  authorName: string;
+  authorRole: string;
+  text: string;
+  type: 'share_handoff' | 'comment';
+  recipientEmail?: string;
+  recipientName?: string;
+  schoolYear?: string;
+  readBy: string[];
+  createdAt: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+}
+
+export interface ColleagueActor {
+  email?: string;
+  name?: string;
+  title?: string;
+  role?: string;
+  group?: string;
+  [key: string]: unknown;
+}
+
+export interface ShareOptions {
+  allowedUsers?: Array<{ email?: string; name?: string; group?: string; [key: string]: unknown }>;
+  handoffNote?: string;
+  messageText?: string;
+  recipientName?: string;
+}
+
+export interface ShareToggleResult<T = FormStudentInput> {
+  next: T;
+  cleanEmail: string;
+  isNewlyShared: boolean;
+}
+
+export interface ShareSettingsParams {
+  selectedEmails?: string[];
+  handoffNote?: string;
+  actor?: ColleagueActor;
+  nowStamp?: string;
+  allowedUsers?: Array<{ email?: string; name?: string; group?: string; [key: string]: unknown }>;
+}
+
+export interface ShareSettingsResult<T = FormStudentInput> {
+  next: T;
+  newlyAdded: string[];
+  removed: string[];
+  messageCreated: boolean;
+  notifiedEmails: string[];
+}
+
+export interface WorkPlanEditResult extends FormStudentInput {
+  stage?: EducationalStage | string;
+  stageSource?: StageSource | string;
+  stageReason?: string;
+  stageUpdatedAt?: string;
+  talaProfileRows?: YearReportProfileRow[];
+  talaFocusDomains?: string[];
+  goals?: YearReportGoal[];
+  removedAiGoals?: RemovedAiGoalSnapshot[];
+  sharedWith?: string[];
+  sharedReadBy?: string[];
+  sharedByName?: string;
+  sharedAtByEmail?: Record<string, string>;
+  teamMessages?: TeamMessage[];
+  statusReportSections?: YearReportStatusSection[];
+  [key: string]: unknown;
+}
+
+export interface BuildNewGoalParams {
+  id: string;
+  stage?: EducationalStage | string;
+  isTalaMode?: boolean;
+  isKindergarten?: boolean;
+  plus3Months?: string;
+}
+
+export const applyFieldChange = <T extends FormStudentInput>(
+  prev: T,
+  field: string,
+  value: unknown,
+  now: Date = new Date()
+): T & WorkPlanEditResult => {
+  const next = { ...prev, [field]: value } as T & WorkPlanEditResult;
   if (field === 'stage') {
-    next.stage = value;
+    next.stage = value as EducationalStage;
     next.stageSource = 'user_explicit';
     next.stageReason = value === 'kindergarten' ? 'בחירת משתמש: גן ילדים' : 'בחירת משתמש: בית ספר';
     next.stageUpdatedAt = now.toISOString();
@@ -52,8 +144,13 @@ export const applyFieldChange = (prev, field, value, now = new Date()) => {
   return next;
 };
 
-export const updateTalaProfileRow = (prev, rowIdOrDomain, field, value) => {
-  const currentRows = buildDefaultTalaProfileRows(prev?.talaProfileRows);
+export const updateTalaProfileRow = <T extends FormStudentInput>(
+  prev: T,
+  rowIdOrDomain: string,
+  field: string,
+  value: string
+): T & { talaProfileRows: YearReportProfileRow[] } => {
+  const currentRows = buildDefaultTalaProfileRows(prev?.talaProfileRows) as YearReportProfileRow[];
   const isStrengthField = field === 'strengths' || field === 'strengthsAndFacilitators';
   return {
     ...prev,
@@ -67,7 +164,10 @@ export const updateTalaProfileRow = (prev, rowIdOrDomain, field, value) => {
   };
 };
 
-export const toggleFocusDomain = (prev, domain) => {
+export const toggleFocusDomain = <T extends FormStudentInput>(
+  prev: T,
+  domain: string
+): T & { talaFocusDomains: string[] } => {
   const current = Array.isArray(prev?.talaFocusDomains) ? prev.talaFocusDomains : [];
   const next = current.includes(domain)
     ? current.filter((d) => d !== domain)
@@ -78,11 +178,16 @@ export const toggleFocusDomain = (prev, domain) => {
   };
 };
 
-export const applyGoalChange = (prev, goalId, field, value) => {
+export const applyGoalChange = <T extends FormStudentInput>(
+  prev: T,
+  goalId: string,
+  field: string,
+  value: unknown
+): T & { goals: YearReportGoal[] } => {
   const isEvalField = EVAL_GOAL_FIELDS.has(field);
   return {
     ...prev,
-    goals: (prev?.goals || []).map((g) =>
+    goals: ((prev?.goals || []) as YearReportGoal[]).map((g) =>
       g.id === goalId
         ? isEvalField
           ? { ...g, [field]: value }
@@ -92,10 +197,13 @@ export const applyGoalChange = (prev, goalId, field, value) => {
   };
 };
 
-export const toggleGoalAiLock = (prev, goalId) => {
+export const toggleGoalAiLock = <T extends FormStudentInput>(
+  prev: T,
+  goalId: string
+): T & { goals: YearReportGoal[] } => {
   return {
     ...prev,
-    goals: (prev?.goals || []).map((g) => {
+    goals: ((prev?.goals || []) as YearReportGoal[]).map((g) => {
       if (g.id !== goalId) return g;
       const currentlyLocked = isGoalProtectedFromAiOverwrite(g);
       if (currentlyLocked) {
@@ -106,12 +214,15 @@ export const toggleGoalAiLock = (prev, goalId) => {
   };
 };
 
-export const removeGoalRow = (prev, goalId) => {
-  const targetGoal = (prev?.goals || []).find((g) => g.id === goalId);
-  const nextRemoved = [...(prev?.removedAiGoals || [])];
+export const removeGoalRow = <T extends FormStudentInput>(
+  prev: T,
+  goalId: string
+): T & { goals: YearReportGoal[]; removedAiGoals: RemovedAiGoalSnapshot[] } => {
+  const targetGoal = ((prev?.goals || []) as YearReportGoal[]).find((g) => g.id === goalId);
+  const nextRemoved: RemovedAiGoalSnapshot[] = [...((prev?.removedAiGoals || []) as RemovedAiGoalSnapshot[])];
   if (targetGoal && !isGoalEmpty(targetGoal)) {
     nextRemoved.push({
-      id: targetGoal.id,
+      id: targetGoal.id || '',
       environment: (targetGoal.environment || '').trim(),
       title: (targetGoal.title || '').trim(),
       activityParticipation: (targetGoal.activityParticipation || '').trim(),
@@ -121,11 +232,16 @@ export const removeGoalRow = (prev, goalId) => {
   return {
     ...prev,
     removedAiGoals: nextRemoved,
-    goals: (prev?.goals || []).filter((g) => g.id !== goalId)
+    goals: ((prev?.goals || []) as YearReportGoal[]).filter((g) => g.id !== goalId)
   };
 };
 
-export const buildNewGoalRow = ({ id, stage, isTalaMode, isKindergarten, plus3Months }) => {
+export const buildNewGoalRow = ({
+  id,
+  stage = 'school',
+  isTalaMode = true,
+  plus3Months = ''
+}: BuildNewGoalParams): YearReportGoal => {
   return {
     id,
     environment: getDefaultEnvironmentForStage(stage),
@@ -144,13 +260,13 @@ export const buildNewGoalRow = ({ id, stage, isTalaMode, isKindergarten, plus3Mo
   };
 };
 
-export const applyShareToggle = (
-  data,
-  colleagueEmail,
-  actor = {},
+export const applyShareToggle = <T extends FormStudentInput>(
+  data: T,
+  colleagueEmail?: string | null,
+  actor: ColleagueActor = {},
   nowStamp = '',
-  options = {}
-) => {
+  options: ShareOptions = {}
+): ShareToggleResult<T> | null => {
   const cleanEmail = String(colleagueEmail || '').trim().toLowerCase();
   if (!cleanEmail) return null;
   const currentShared = Array.isArray(data?.sharedWith) ? data.sharedWith : [];
@@ -167,27 +283,27 @@ export const applyShareToggle = (
     ? currentShared.filter((em) => String(em || '').toLowerCase() !== cleanEmail)
     : [...currentShared, cleanEmail];
 
-  const currentReadBy = Array.isArray(data?.sharedReadBy) ? data.sharedReadBy : [];
+  const currentReadBy = Array.isArray(data?.sharedReadBy) ? (data.sharedReadBy as string[]) : [];
   const nextReadBy = currentReadBy.filter(
     (em) => String(em || '').trim().toLowerCase() !== cleanEmail
   );
-  const nextSharedAtByEmail = {
-    ...(data?.sharedAtByEmail || {}),
+  const nextSharedAtByEmail: Record<string, string> = {
+    ...((data?.sharedAtByEmail as Record<string, string>) || {}),
     ...(!exists ? { [cleanEmail]: nowStamp } : {})
   };
 
-  let nextTeamMessages = Array.isArray(data?.teamMessages) ? [...data.teamMessages] : [];
+  const nextTeamMessages: TeamMessage[] = Array.isArray(data?.teamMessages) ? [...(data.teamMessages as TeamMessage[])] : [];
   if (!exists && (options.handoffNote || options.messageText)) {
     const noteText = options.handoffNote || options.messageText;
     const handoffMsg = createTeamMessage({
-      authorEmail: actor?.email || data?.ownerEmail || '',
+      authorEmail: actor?.email || (data?.ownerEmail as string) || '',
       authorName: actor?.name || actor?.email || 'מחבר/ת התוכנית',
       authorRole: actor?.title || actor?.role || 'צוות חינוכי',
       text: noteText,
       type: 'share_handoff',
       recipientEmail: cleanEmail,
       recipientName: options.recipientName || '',
-      schoolYear: data?.schoolYear || ''
+      schoolYear: (data?.schoolYear as string) || ''
     });
     if (handoffMsg) {
       nextTeamMessages.push(handoffMsg);
@@ -198,10 +314,10 @@ export const applyShareToggle = (
     ...syncActiveReportSnapshot(data),
     sharedWith: nextShared,
     sharedReadBy: nextReadBy,
-    sharedByName: actor?.name || actor?.email || data?.sharedByName || '',
+    sharedByName: actor?.name || actor?.email || (data?.sharedByName as string) || '',
     sharedAtByEmail: nextSharedAtByEmail,
     teamMessages: nextTeamMessages
-  };
+  } as unknown as T;
 
   return {
     next,
@@ -210,16 +326,16 @@ export const applyShareToggle = (
   };
 };
 
-export const applyShareSettings = (
-  data,
+export const applyShareSettings = <T extends FormStudentInput>(
+  data: T,
   {
     selectedEmails = [],
     handoffNote = '',
     actor = {},
     nowStamp = '',
     allowedUsers = []
-  } = {}
-) => {
+  }: ShareSettingsParams = {}
+): ShareSettingsResult<T> | null => {
   if (!data) return null;
 
   const currentShared = (Array.isArray(data.sharedWith) ? data.sharedWith : []).map((e) =>
@@ -231,7 +347,7 @@ export const applyShareSettings = (
   );
 
   // Security Tenant Boundary Check: verify any newly added colleague belongs to actor's group
-  const newlyAdded = [];
+  const newlyAdded: string[] = [];
   for (const email of cleanSelected) {
     if (!currentShared.includes(email)) {
       if (allowedUsers && allowedUsers.length > 0) {
@@ -249,7 +365,7 @@ export const applyShareSettings = (
   const nextShared = cleanSelected;
 
   // Next sharedReadBy: keep only those still in sharedWith, and remove newlyAdded so they get an unread alert
-  const currentReadBy = (Array.isArray(data.sharedReadBy) ? data.sharedReadBy : []).map((e) =>
+  const currentReadBy = (Array.isArray(data.sharedReadBy) ? (data.sharedReadBy as string[]) : []).map((e) =>
     String(e || '').trim().toLowerCase()
   );
   const nextReadBy = currentReadBy.filter(
@@ -257,7 +373,7 @@ export const applyShareSettings = (
   );
 
   // Next sharedAtByEmail
-  const nextSharedAtByEmail = { ...(data.sharedAtByEmail || {}) };
+  const nextSharedAtByEmail: Record<string, string> = { ...((data.sharedAtByEmail as Record<string, string>) || {}) };
   newlyAdded.forEach((em) => {
     nextSharedAtByEmail[em] = nowStamp || new Date().toISOString();
   });
@@ -266,7 +382,7 @@ export const applyShareSettings = (
   });
 
   // Handoff message creation
-  let nextTeamMessages = Array.isArray(data.teamMessages) ? [...data.teamMessages] : [];
+  const nextTeamMessages: TeamMessage[] = Array.isArray(data.teamMessages) ? [...(data.teamMessages as TeamMessage[])] : [];
   const cleanNote = String(handoffNote || '').trim();
   let messageCreated = false;
 
@@ -280,14 +396,14 @@ export const applyShareSettings = (
         (u) => (u.email || '').trim().toLowerCase() === recEmail
       );
       const handoffMsg = createTeamMessage({
-        authorEmail: actor?.email || data?.ownerEmail || '',
+        authorEmail: actor?.email || (data?.ownerEmail as string) || '',
         authorName: actor?.name || actor?.email || 'מחבר/ת התוכנית',
         authorRole: actor?.title || actor?.role || 'צוות חינוכי',
         text: cleanNote,
         type: 'share_handoff',
         recipientEmail: recEmail,
         recipientName: recUser?.name || '',
-        schoolYear: data?.schoolYear || ''
+        schoolYear: (data?.schoolYear as string) || ''
       });
       if (handoffMsg) {
         nextTeamMessages.push(handoffMsg);
@@ -300,10 +416,10 @@ export const applyShareSettings = (
     ...syncActiveReportSnapshot(data),
     sharedWith: nextShared,
     sharedReadBy: nextReadBy,
-    sharedByName: actor?.name || actor?.email || data?.sharedByName || '',
+    sharedByName: actor?.name || actor?.email || (data?.sharedByName as string) || '',
     sharedAtByEmail: nextSharedAtByEmail,
     teamMessages: nextTeamMessages
-  };
+  } as unknown as T;
 
   return {
     next,
@@ -314,26 +430,43 @@ export const applyShareSettings = (
   };
 };
 
-export const updateStatusSection = (prev, sectionNumber, content) => {
+export const updateStatusSection = <T extends FormStudentInput>(
+  prev: T,
+  sectionNumber: number,
+  content: string
+): T & { statusReportSections: YearReportStatusSection[] } => {
   return {
     ...prev,
-    statusReportSections: (prev?.statusReportSections || []).map((sec) =>
+    statusReportSections: ((prev?.statusReportSections || []) as YearReportStatusSection[]).map((sec) =>
       sec.sectionNumber === sectionNumber ? { ...sec, content } : sec
     )
   };
 };
 
-export const removeStatusSection = (prev, sectionNumber) => {
+export const removeStatusSection = <T extends FormStudentInput>(
+  prev: T,
+  sectionNumber: number
+): T & { statusReportSections: YearReportStatusSection[] } => {
   return {
     ...prev,
-    statusReportSections: (prev?.statusReportSections || []).filter(
+    statusReportSections: ((prev?.statusReportSections || []) as YearReportStatusSection[]).filter(
       (sec) => sec.sectionNumber !== sectionNumber
     )
   };
 };
 
-export function createTeamMessage({
+export interface CreateTeamMessageParams {
+  authorEmail?: string;
+  authorName?: string;
+  authorRole?: string;
+  text?: string;
+  type?: 'share_handoff' | 'comment' | string;
+  recipientEmail?: string;
+  recipientName?: string;
+  schoolYear?: string;
+}
 
+export function createTeamMessage({
   authorEmail,
   authorName = '',
   authorRole = '',
@@ -342,7 +475,7 @@ export function createTeamMessage({
   recipientEmail = '',
   recipientName = '',
   schoolYear = ''
-} = {}) {
+}: CreateTeamMessageParams = {}): TeamMessage | null {
   const cleanAuthorEmail = String(authorEmail || '').trim().toLowerCase();
   if (!cleanAuthorEmail) return null;
 
@@ -371,11 +504,14 @@ export function createTeamMessage({
     readBy: [cleanAuthorEmail],
     createdAt: new Date().toISOString()
   };
-};
+}
 
-export const appendTeamMessage = (data, messageObj) => {
-  if (!data || !messageObj || !messageObj.id) return data;
-  const currentMessages = Array.isArray(data.teamMessages) ? data.teamMessages : [];
+export const appendTeamMessage = <T extends FormStudentInput>(
+  data: T,
+  messageObj?: TeamMessage | null
+): T & { teamMessages: TeamMessage[]; lastTeamMessageAt?: string; lastTeamMessageBy?: string; sharedReadBy?: string[] } => {
+  if (!data || !messageObj || !messageObj.id) return data as T & { teamMessages: TeamMessage[]; lastTeamMessageAt?: string; lastTeamMessageBy?: string; sharedReadBy?: string[] };
+  const currentMessages = Array.isArray(data.teamMessages) ? (data.teamMessages as TeamMessage[]) : [];
   const authorEmail = String(messageObj.authorEmail || '').trim().toLowerCase();
   return {
     ...syncActiveReportSnapshot(data),
@@ -384,19 +520,23 @@ export const appendTeamMessage = (data, messageObj) => {
     lastTeamMessageBy: authorEmail,
     // Reset sharedReadBy so other colleagues receive unread notification
     sharedReadBy: [authorEmail]
-  };
+  } as unknown as T & { teamMessages: TeamMessage[]; lastTeamMessageAt?: string; lastTeamMessageBy?: string; sharedReadBy?: string[] };
 };
 
-export const retractTeamMessage = (data, messageId, userEmail) => {
-  if (!data || !messageId || !userEmail) return data;
+export const retractTeamMessage = <T extends FormStudentInput>(
+  data: T,
+  messageId: string,
+  userEmail: string
+): T & { teamMessages: TeamMessage[] } => {
+  if (!data || !messageId || !userEmail) return data as T & { teamMessages: TeamMessage[] };
   const cleanUserEmail = String(userEmail).trim().toLowerCase();
-  const currentMessages = Array.isArray(data.teamMessages) ? data.teamMessages : [];
+  const currentMessages = Array.isArray(data.teamMessages) ? (data.teamMessages as TeamMessage[]) : [];
   const target = currentMessages.find((m) => m.id === messageId);
-  if (!target) return data;
+  if (!target) return data as T & { teamMessages: TeamMessage[] };
 
   // Author-only check
   if (String(target.authorEmail || '').trim().toLowerCase() !== cleanUserEmail) {
-    return data;
+    return data as T & { teamMessages: TeamMessage[] };
   }
 
   const updatedMessages = currentMessages.map((m) => {
@@ -414,17 +554,20 @@ export const retractTeamMessage = (data, messageId, userEmail) => {
   return {
     ...syncActiveReportSnapshot(data),
     teamMessages: updatedMessages
-  };
+  } as unknown as T & { teamMessages: TeamMessage[] };
 };
 
-export const addManualStatusSection = (prev, sectionNumber) => {
+export const addManualStatusSection = <T extends FormStudentInput>(
+  prev: T,
+  sectionNumber: number | string
+): T & { statusReportSections: YearReportStatusSection[] } => {
   const num = Number(sectionNumber);
-  if (!num) return prev;
+  if (!num) return prev as T & { statusReportSections: YearReportStatusSection[] };
   const schemaItem = STATUS_REPORT_SECTIONS_SCHEMA.find((s) => s.sectionNumber === num);
-  if (!schemaItem) return prev;
-  const current = prev?.statusReportSections || [];
-  if (current.some((s) => s.sectionNumber === num)) return prev;
-  const next = [
+  if (!schemaItem) return prev as T & { statusReportSections: YearReportStatusSection[] };
+  const current = (prev?.statusReportSections || []) as YearReportStatusSection[];
+  if (current.some((s) => s.sectionNumber === num)) return prev as T & { statusReportSections: YearReportStatusSection[] };
+  const next: YearReportStatusSection[] = [
     ...current,
     {
       id: `status_sec_${num}`,

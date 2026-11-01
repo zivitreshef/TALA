@@ -5,15 +5,72 @@
  */
 
 import { safeGetStorageItem, safeSetStorageItem } from '../services/storage.js';
-import { DEFAULT_PLAN_TYPE, TACHI_PLAN_TYPE } from './yearReport.js';
+import { DEFAULT_PLAN_TYPE, TACHI_PLAN_TYPE } from './yearReport';
 
-export const DEFAULT_USER_PREFERENCES = {
+export type ReportTypePreference = 'tala' | 'tachi';
+export type ReportDateFormatPreference = 'both' | 'gregorian' | 'hebrew';
+export type PrivacyModePreference = 'full_name' | 'acronym';
+export type AiWritingTonePreference = 'formal' | 'empathetic';
+export type NotificationFrequencyPreference = 'instant' | 'daily_digest' | 'in_app_only';
+export type PedagogicalReminderFrequencyPreference = 'weekly' | 'monthly';
+export type PedagogicalReminderWeeklyDayPreference =
+  | 'sunday'
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday';
+export type PedagogicalReminderTimePreference = '09:00' | '12:00' | '17:00';
+export type BesadTextPreference = 'בס"ד' | 'ב"ה';
+
+export interface PrivateGoalItem {
+  id: string;
+  text: string;
+  domain: string;
+  environment: string;
+  createdAt: string;
+}
+
+export interface UserPreferences {
   // 1. ברירות מחדל לדוחות
-  defaultReportType: 'tala', // 'tala' | 'tachi'
-  reportDateFormat: 'both', // 'both' | 'gregorian' | 'hebrew'
-  defaultPrivacyMode: 'full_name', // 'full_name' | 'acronym'
+  defaultReportType: ReportTypePreference;
+  reportDateFormat: ReportDateFormatPreference;
+  defaultPrivacyMode: PrivacyModePreference;
+  defaultEducationalFramework: string;
+  aiWritingTone: AiWritingTonePreference;
+
+  // 2. בנק מטרות אישי (שלי בלבד)
+  privateGoals: PrivateGoalItem[];
+
+  // 3. התראות ותקשורת
+  notifyOnTeamMessage: boolean;
+  notifyOnSharedReport: boolean;
+  notificationFrequency: NotificationFrequencyPreference;
+  dailyDigestTime: string;
+  monthlyPedagogicalReminder: boolean;
+  pedagogicalReminderEnabled: boolean;
+  pedagogicalReminderFrequency: PedagogicalReminderFrequencyPreference;
+  pedagogicalReminderWeeklyDay: PedagogicalReminderWeeklyDayPreference;
+  pedagogicalReminderMonthlyDay: number;
+  pedagogicalReminderTime: PedagogicalReminderTimePreference;
+
+  // 4. פרופיל מקצועי, בס"ד וחתימה
+  fullName: string;
+  professionalTitle: string;
+  institutionalAffiliation: string;
+  showBesad: boolean;
+  besadText: BesadTextPreference;
+  signatureImage: string | null;
+}
+
+export const DEFAULT_USER_PREFERENCES: UserPreferences = {
+  // 1. ברירות מחדל לדוחות
+  defaultReportType: 'tala',
+  reportDateFormat: 'both',
+  defaultPrivacyMode: 'full_name',
   defaultEducationalFramework: '',
-  aiWritingTone: 'formal', // 'formal' | 'empathetic'
+  aiWritingTone: 'formal',
 
   // 2. בנק מטרות אישי (שלי בלבד)
   privateGoals: [],
@@ -21,50 +78,52 @@ export const DEFAULT_USER_PREFERENCES = {
   // 3. התראות ותקשורת
   notifyOnTeamMessage: true,
   notifyOnSharedReport: true,
-  notificationFrequency: 'instant', // 'instant' | 'daily_digest' | 'in_app_only'
-  dailyDigestTime: '14:00', // Preferred daily digest hour (e.g. '13:00', '14:00')
+  notificationFrequency: 'instant',
+  dailyDigestTime: '14:00',
   monthlyPedagogicalReminder: false,
   pedagogicalReminderEnabled: false,
-  pedagogicalReminderFrequency: 'monthly', // 'weekly' | 'monthly'
-  pedagogicalReminderWeeklyDay: 'sunday', // 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
-  pedagogicalReminderMonthlyDay: 1, // 1-31
-  pedagogicalReminderTime: '09:00', // '09:00' | '12:00' | '17:00'
+  pedagogicalReminderFrequency: 'monthly',
+  pedagogicalReminderWeeklyDay: 'sunday',
+  pedagogicalReminderMonthlyDay: 1,
+  pedagogicalReminderTime: '09:00',
 
   // 4. פרופיל מקצועי, בס"ד וחתימה
   fullName: '',
   professionalTitle: '',
   institutionalAffiliation: '',
   showBesad: false,
-  besadText: 'בס"ד', // 'בס"ד' | 'ב"ה'
+  besadText: 'בס"ד',
   signatureImage: null
 };
 
-export function normalizeEmailKey(email) {
+export function normalizeEmailKey(email?: string | null): string {
   if (!email || typeof email !== 'string') return '';
   return email.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
 }
 
-export function getUserPreferencesStorageKey(email) {
+export function getUserPreferencesStorageKey(email?: string | null): string {
   const norm = (email || '').trim().toLowerCase();
   return `tala_user_pref_v1_${norm}`;
 }
 
-export function normalizeUserPreferences(raw = {}) {
+export function normalizeUserPreferences(
+  raw?: Partial<UserPreferences> | Record<string, unknown> | null
+): UserPreferences {
   if (!raw || typeof raw !== 'object') {
     return { ...DEFAULT_USER_PREFERENCES };
   }
 
-  const result = {
+  const result: UserPreferences = {
     ...DEFAULT_USER_PREFERENCES,
-    ...raw
+    ...(raw as Partial<UserPreferences>)
   };
 
   // Enforce types & allowed values
   result.defaultReportType = raw.defaultReportType === 'tachi' ? 'tachi' : 'tala';
 
-  const validDateFormats = ['both', 'gregorian', 'hebrew'];
-  result.reportDateFormat = validDateFormats.includes(raw.reportDateFormat)
-    ? raw.reportDateFormat
+  const validDateFormats: ReportDateFormatPreference[] = ['both', 'gregorian', 'hebrew'];
+  result.reportDateFormat = validDateFormats.includes(raw.reportDateFormat as ReportDateFormatPreference)
+    ? (raw.reportDateFormat as ReportDateFormatPreference)
     : 'both';
 
   result.defaultPrivacyMode = raw.defaultPrivacyMode === 'acronym' ? 'acronym' : 'full_name';
@@ -72,8 +131,8 @@ export function normalizeUserPreferences(raw = {}) {
   result.aiWritingTone = raw.aiWritingTone === 'empathetic' ? 'empathetic' : 'formal';
 
   result.privateGoals = Array.isArray(raw.privateGoals)
-    ? raw.privateGoals
-        .filter((g) => g && typeof g === 'object' && (g.text || '').trim())
+    ? (raw.privateGoals as Array<Partial<PrivateGoalItem>>)
+        .filter((g) => g && typeof g === 'object' && String(g.text || '').trim())
         .map((g) => ({
           id: g.id || `p_goal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           text: String(g.text || '').trim(),
@@ -86,26 +145,45 @@ export function normalizeUserPreferences(raw = {}) {
   result.notifyOnTeamMessage = raw.notifyOnTeamMessage !== false;
   result.notifyOnSharedReport = raw.notifyOnSharedReport !== false;
 
-  const validFreqs = ['instant', 'daily_digest', 'in_app_only'];
-  result.notificationFrequency = validFreqs.includes(raw.notificationFrequency)
-    ? raw.notificationFrequency
+  const validFreqs: NotificationFrequencyPreference[] = ['instant', 'daily_digest', 'in_app_only'];
+  result.notificationFrequency = validFreqs.includes(raw.notificationFrequency as NotificationFrequencyPreference)
+    ? (raw.notificationFrequency as NotificationFrequencyPreference)
     : 'instant';
 
-  result.dailyDigestTime = typeof raw.dailyDigestTime === 'string' && raw.dailyDigestTime.trim()
-    ? raw.dailyDigestTime.trim()
-    : '14:00';
-  result.monthlyPedagogicalReminder = Boolean(raw.monthlyPedagogicalReminder || raw.pedagogicalReminderEnabled);
-  result.pedagogicalReminderEnabled = Boolean(raw.pedagogicalReminderEnabled || raw.monthlyPedagogicalReminder);
-  result.pedagogicalReminderFrequency = raw.pedagogicalReminderFrequency === 'weekly' ? 'weekly' : 'monthly';
-  const validWeeklyDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  result.pedagogicalReminderWeeklyDay = validWeeklyDays.includes(raw.pedagogicalReminderWeeklyDay)
-    ? raw.pedagogicalReminderWeeklyDay
+  result.dailyDigestTime =
+    typeof raw.dailyDigestTime === 'string' && raw.dailyDigestTime.trim()
+      ? raw.dailyDigestTime.trim()
+      : '14:00';
+  result.monthlyPedagogicalReminder = Boolean(
+    raw.monthlyPedagogicalReminder || raw.pedagogicalReminderEnabled
+  );
+  result.pedagogicalReminderEnabled = Boolean(
+    raw.pedagogicalReminderEnabled || raw.monthlyPedagogicalReminder
+  );
+  result.pedagogicalReminderFrequency =
+    raw.pedagogicalReminderFrequency === 'weekly' ? 'weekly' : 'monthly';
+  const validWeeklyDays: PedagogicalReminderWeeklyDayPreference[] = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday'
+  ];
+  result.pedagogicalReminderWeeklyDay = validWeeklyDays.includes(
+    raw.pedagogicalReminderWeeklyDay as PedagogicalReminderWeeklyDayPreference
+  )
+    ? (raw.pedagogicalReminderWeeklyDay as PedagogicalReminderWeeklyDayPreference)
     : 'sunday';
   const mDay = Number(raw.pedagogicalReminderMonthlyDay);
-  result.pedagogicalReminderMonthlyDay = Number.isInteger(mDay) && mDay >= 1 && mDay <= 31 ? mDay : 1;
-  const validReminderTimes = ['09:00', '12:00', '17:00'];
-  result.pedagogicalReminderTime = validReminderTimes.includes(raw.pedagogicalReminderTime)
-    ? raw.pedagogicalReminderTime
+  result.pedagogicalReminderMonthlyDay =
+    Number.isInteger(mDay) && mDay >= 1 && mDay <= 31 ? mDay : 1;
+  const validReminderTimes: PedagogicalReminderTimePreference[] = ['09:00', '12:00', '17:00'];
+  result.pedagogicalReminderTime = validReminderTimes.includes(
+    raw.pedagogicalReminderTime as PedagogicalReminderTimePreference
+  )
+    ? (raw.pedagogicalReminderTime as PedagogicalReminderTimePreference)
     : '09:00';
 
   result.fullName = String(raw.fullName || '').trim();
@@ -115,14 +193,15 @@ export function normalizeUserPreferences(raw = {}) {
   result.showBesad = Boolean(raw.showBesad);
   result.besadText = raw.besadText === 'ב"ה' ? 'ב"ה' : 'בס"ד';
 
-  result.signatureImage = typeof raw.signatureImage === 'string' && raw.signatureImage.startsWith('data:image/')
-    ? raw.signatureImage
-    : (raw.signatureImage || null);
+  result.signatureImage =
+    typeof raw.signatureImage === 'string' && raw.signatureImage.startsWith('data:image/')
+      ? raw.signatureImage
+      : (typeof raw.signatureImage === 'string' ? raw.signatureImage : null);
 
   return result;
 }
 
-export function loadLocalUserPreferences(email) {
+export function loadLocalUserPreferences(email?: string | null): UserPreferences {
   if (!email) return { ...DEFAULT_USER_PREFERENCES };
   const key = getUserPreferencesStorageKey(email);
   const raw = safeGetStorageItem(key, null);
@@ -135,18 +214,24 @@ export function loadLocalUserPreferences(email) {
   }
 }
 
-export function saveLocalUserPreferences(email, prefs) {
+export function saveLocalUserPreferences(
+  email?: string | null,
+  prefs?: Partial<UserPreferences> | null
+): boolean {
   if (!email) return false;
   const key = getUserPreferencesStorageKey(email);
   const normalized = normalizeUserPreferences(prefs);
   return safeSetStorageItem(key, JSON.stringify(normalized));
 }
 
-export function addPrivateGoal(prefs, goalData) {
+export function addPrivateGoal(
+  prefs?: Partial<UserPreferences> | null,
+  goalData?: { id?: string; text?: string; domain?: string; environment?: string } | null
+): UserPreferences {
   const current = normalizeUserPreferences(prefs);
   if (!goalData || !String(goalData.text || '').trim()) return current;
 
-  const newGoal = {
+  const newGoal: PrivateGoalItem = {
     id: goalData.id || `p_goal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     text: String(goalData.text || '').trim(),
     domain: String(goalData.domain || 'כללי').trim(),
@@ -160,7 +245,10 @@ export function addPrivateGoal(prefs, goalData) {
   };
 }
 
-export function removePrivateGoal(prefs, goalId) {
+export function removePrivateGoal(
+  prefs?: Partial<UserPreferences> | null,
+  goalId?: string | null
+): UserPreferences {
   const current = normalizeUserPreferences(prefs);
   if (!goalId) return current;
 
@@ -170,7 +258,11 @@ export function removePrivateGoal(prefs, goalId) {
   };
 }
 
-export function updatePrivateGoal(prefs, goalId, patch = {}) {
+export function updatePrivateGoal(
+  prefs?: Partial<UserPreferences> | null,
+  goalId?: string | null,
+  patch: { text?: string; domain?: string; environment?: string } = {}
+): UserPreferences {
   const current = normalizeUserPreferences(prefs);
   if (!goalId) return current;
 
@@ -188,12 +280,23 @@ export function updatePrivateGoal(prefs, goalId, patch = {}) {
   };
 }
 
+export interface StudentPreferencesApplicationInput {
+  planType?: string;
+  educationalFramework?: string;
+  homeroomTeacher?: string;
+  integrationTeacher?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Applies default preferences (report type, educational framework) when initializing a new student.
  */
-export function applyPreferencesToNewStudent(studentData = {}, prefs = {}) {
+export function applyPreferencesToNewStudent<T extends StudentPreferencesApplicationInput>(
+  studentData: T = {} as T,
+  prefs: Partial<UserPreferences> = {}
+): T {
   const normalizedPrefs = normalizeUserPreferences(prefs);
-  const result = { ...studentData };
+  const result = { ...studentData } as T;
 
   // Set default report type if not already explicitly chosen
   if (!result.planType) {
@@ -219,16 +322,15 @@ export function applyPreferencesToNewStudent(studentData = {}, prefs = {}) {
 /**
  * Returns Besad HTML markup for document headers if enabled.
  */
-export function getBesadHeaderHtml(prefs = {}) {
+export function getBesadHeaderHtml(prefs: Partial<UserPreferences> = {}): string {
   const normalized = normalizeUserPreferences(prefs);
   if (!normalized.showBesad) return '';
   const text = normalized.besadText || 'בס"ד';
   return `<div class="doc-besad-header" style="text-align: left; font-size: 11pt; font-weight: bold; color: #475569; margin-bottom: 4px; font-family: 'Assistant', Arial, sans-serif;">${text}</div>`;
 }
 
-
-export function toHebrewGematria(num) {
-  const letters = [
+export function toHebrewGematria(num: number): string {
+  const letters: [number, string][] = [
     [400, 'ת'], [300, 'ש'], [200, 'ר'], [100, 'ק'],
     [90, 'צ'], [80, 'פ'], [70, 'ע'], [60, 'ס'], [50, 'נ'], [40, 'מ'], [30, 'ל'], [20, 'כ'], [10, 'י'],
     [9, 'ט'], [8, 'ח'], [7, 'ז'], [6, 'ו'], [5, 'ה'], [4, 'ד'], [3, 'ג'], [2, 'ב'], [1, 'א']
@@ -247,7 +349,7 @@ export function toHebrewGematria(num) {
   return res.slice(0, -1) + '״' + res.slice(-1);
 }
 
-export function formatHebrewCalendarDate(dateObj) {
+export function formatHebrewCalendarDate(dateObj: Date): string {
   try {
     const parts = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', {
       day: 'numeric',
@@ -259,10 +361,10 @@ export function formatHebrewCalendarDate(dateObj) {
     const m = parts.find((p) => p.type === 'month')?.value;
     const y = parts.find((p) => p.type === 'year')?.value;
 
-    const dNum = parseInt(d, 10);
+    const dNum = parseInt(d || '', 10);
     const dHeb = !isNaN(dNum) ? toHebrewGematria(dNum) : (d || '');
 
-    const yNum = parseInt(y, 10);
+    const yNum = parseInt(y || '', 10);
     let yHeb = y || '';
     if (!isNaN(yNum)) {
       const rem = yNum % 1000;
@@ -279,8 +381,9 @@ export function formatHebrewCalendarDate(dateObj) {
   }
 }
 
-export function parseFlexibleDate(str) {
+export function parseFlexibleDate(str?: string | Date | null): Date {
   if (!str) return new Date();
+  if (str instanceof Date) return isNaN(str.getTime()) ? new Date() : str;
   const trimmed = String(str).trim();
   const parts = trimmed.split(/[./-]/).map(Number);
   if (parts.length === 3 && !parts.some(isNaN)) {
@@ -291,7 +394,10 @@ export function parseFlexibleDate(str) {
   return isNaN(d.getTime()) ? new Date() : d;
 }
 
-export function formatDateWithPreferences(dateStr, formatPref = 'both') {
+export function formatDateWithPreferences(
+  dateStr?: string | Date | null,
+  formatPref: ReportDateFormatPreference | string = 'both'
+): string {
   if (!dateStr) return '';
   const d = parseFlexibleDate(dateStr);
   const day = String(d.getDate()).padStart(2, '0');
@@ -309,7 +415,10 @@ export function formatDateWithPreferences(dateStr, formatPref = 'both') {
  * Automatically removes white and near-white backgrounds from an uploaded signature
  * image and converts it into a clean, transparent PNG with smooth antialiased edges.
  */
-export function makeSignatureBackgroundTransparent(dataUrl, callback) {
+export function makeSignatureBackgroundTransparent(
+  dataUrl: string,
+  callback: (transparentDataUrl: string) => void
+): void {
   if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) {
     callback(dataUrl);
     return;

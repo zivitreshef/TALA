@@ -1,30 +1,187 @@
+/**
+ * Domain module for Annual Student Reports and Multi-Year Snapshots.
+ * Manages year-over-year report versioning, separation between TALA and TACHI plans,
+ * and forms normalization for historical tracking.
+ */
+
 import {
-  ENVIRONMENTS_LIST,
   buildDefaultTalaProfileRows,
   isTalaPlanType,
   adaptGoalToGender
 } from '../goalBankData';
 import { hasPopulatedTalaProfile } from '../export/wordAndPrintBuilders';
 import { detectStudentStage } from '../studentStage.js';
-import {
-  getDefaultEnvironmentForStage,
-  getDefaultPartnersForStage
-} from './stageGuard';
+import type { EducationalStage, StageSource } from './types';
 
 export const DEFAULT_SCHOOL_YEAR = 'תשפ"ו (2025-2026)';
 export const DEFAULT_PLAN_TYPE = 'תוכנית לתלמיד ביה"ס';
 export const TACHI_PLAN_TYPE = 'תוכנית אקולוגית לילדי הגן';
 
-export const getPlanTypeStorageKey = (schoolYear, planType) => {
+export interface RemovedAiGoalSnapshot {
+  id: string;
+  environment?: string;
+  title?: string;
+  activityParticipation?: string;
+  aiSnapshot?: Record<string, unknown> | null;
+}
+
+export interface YearReportStatusSection {
+  id?: string;
+  sectionNumber: number;
+  title?: string;
+  content: string;
+}
+
+export interface YearReportGoal {
+  id?: string;
+  environment?: string;
+  activityParticipation?: string;
+  title?: string;
+  objectives?: string;
+  opportunities?: string;
+  opportunitiesIntegration?: string;
+  opportunitiesTherapist?: string;
+  learningAccommodations?: string;
+  partners?: string;
+  duration?: string;
+  evaluationCriteria?: string;
+  achievementStatus?: string;
+  midYearEvaluation?: string;
+  endYearEvaluation?: string;
+  isTeacherAdded?: boolean;
+  isTeacherModified?: boolean;
+  aiSnapshot?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
+export interface YearReportProfileRow {
+  id?: string;
+  domain?: string;
+  subDomain?: string;
+  strengths?: string;
+  strengthsAndFacilitators?: string;
+  toStrengthen?: string;
+  areasToStrengthenAndBarriers?: string;
+  [key: string]: unknown;
+}
+
+export interface YearReportSnapshot {
+  date: string;
+  planType: string;
+  isLocked: boolean;
+  lockedAt: string;
+  lockedBy: string;
+  schoolName: string;
+  gradeClass: string;
+  homeroomTeacher: string;
+  integrationTeacher: string;
+  additionalPartners: string;
+  learningSupportAssistant: string;
+  counselorName: string;
+  psychologistName: string;
+  matyaCoordinator: string;
+  emotionalTherapist: string;
+  paraMedicalTeam: string;
+  teacherFreeText: string;
+  freeTextAnalyzed: boolean;
+  removedAiGoals: RemovedAiGoalSnapshot[];
+  strengthsExisting: string;
+  strengthsToEmpower: string;
+  studentGeneralBackground: string;
+  studentSupportReceived: string;
+  studentMainGoal: string;
+  talaProfileRows: YearReportProfileRow[];
+  talaFocusDomains: string[];
+  recommendations: string;
+  evalReportFreeText: string;
+  evalReportSummary: string;
+  statusReportSections: YearReportStatusSection[];
+  statusReportUpdatedAt: string;
+  lastSavedAt: string;
+  goals: YearReportGoal[];
+  schoolYear?: string;
+  reportsByYear?: Record<string, YearReportSnapshot | Record<string, unknown>>;
+  reportsByPlanType?: Record<string, YearReportSnapshot | Record<string, unknown>>;
+  stage?: EducationalStage | string;
+  stageSource?: StageSource | string;
+  stageReason?: string;
+  stageUpdatedAt?: string;
+}
+
+export interface NormalizedStudentResult extends YearReportSnapshot {
+  schoolYear: string;
+  gender: string;
+  stage: EducationalStage;
+  stageSource: StageSource;
+  stageReason: string;
+  stageUpdatedAt: string;
+  sharedWith: string[];
+  teamMessages: unknown[];
+  reportsByYear: Record<string, YearReportSnapshot>;
+  reportsByPlanType: Record<string, YearReportSnapshot>;
+}
+
+export interface FormStudentInput {
+  date?: string;
+  planType?: string;
+  isLocked?: boolean;
+  lockedAt?: string;
+  lockedBy?: string;
+  schoolName?: string;
+  gradeClass?: string;
+  homeroomTeacher?: string;
+  integrationTeacher?: string;
+  additionalPartners?: string;
+  learningSupportAssistant?: string;
+  counselorName?: string;
+  psychologistName?: string;
+  matyaCoordinator?: string;
+  emotionalTherapist?: string;
+  paraMedicalTeam?: string;
+  teacherFreeText?: string;
+  freeTextAnalyzed?: boolean;
+  removedAiGoals?: RemovedAiGoalSnapshot[];
+  strengthsExisting?: string;
+  strengthsToEmpower?: string;
+  studentGeneralBackground?: string;
+  studentSupportReceived?: string;
+  studentMainGoal?: string;
+  talaProfileRows?: YearReportProfileRow[];
+  talaFocusDomains?: string[];
+  recommendations?: string;
+  evalReportFreeText?: string;
+  evalReportSummary?: string;
+  statusReportSections?: YearReportStatusSection[];
+  statusReportUpdatedAt?: string;
+  lastSavedAt?: string;
+  goals?: YearReportGoal[];
+  gender?: 'boy' | 'girl' | string;
+  schoolYear?: string;
+  educationalFramework?: string;
+  birthDate?: string;
+  stage?: EducationalStage | string;
+  stageSource?: StageSource | string;
+  stageReason?: string;
+  stageUpdatedAt?: string;
+  diagnosticDocuments?: unknown[];
+  teamMessages?: unknown[];
+  sharedWith?: string[];
+  reportsByYear?: Record<string, YearReportSnapshot | Record<string, unknown>>;
+  reportsByPlanType?: Record<string, YearReportSnapshot | Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+export const getPlanTypeStorageKey = (schoolYear?: string, planType?: string): string => {
   const yr = schoolYear || DEFAULT_SCHOOL_YEAR;
   const typeKey = isTalaPlanType(planType) ? 'tala' : 'tachi';
   return `${yr}__${typeKey}`;
 };
 
-export const buildFreshReportForPlanType = (planType, stage) => {
+export const buildFreshReportForPlanType = (
+  planType?: string,
+  _stage?: EducationalStage | string
+): YearReportSnapshot => {
   const resolvedPlanType = planType || DEFAULT_PLAN_TYPE;
-  const isTala = isTalaPlanType(resolvedPlanType);
-  const isSchoolStage = stage === 'school';
 
   return {
     date: new Date().toLocaleDateString('he-IL'),
@@ -51,7 +208,7 @@ export const buildFreshReportForPlanType = (planType, stage) => {
     studentGeneralBackground: '',
     studentSupportReceived: '',
     studentMainGoal: '',
-    talaProfileRows: buildDefaultTalaProfileRows(),
+    talaProfileRows: buildDefaultTalaProfileRows() as YearReportProfileRow[],
     talaFocusDomains: [],
     recommendations: '',
     evalReportFreeText: '',
@@ -63,7 +220,7 @@ export const buildFreshReportForPlanType = (planType, stage) => {
   };
 };
 
-export const extractYearReportFromFormData = (data) => ({
+export const extractYearReportFromFormData = (data?: FormStudentInput | null): YearReportSnapshot => ({
   date: data?.date || new Date().toLocaleDateString('he-IL'),
   planType: data?.planType || DEFAULT_PLAN_TYPE,
   isLocked: Boolean(data?.isLocked),
@@ -88,7 +245,7 @@ export const extractYearReportFromFormData = (data) => ({
   studentGeneralBackground: data?.studentGeneralBackground || '',
   studentSupportReceived: data?.studentSupportReceived || '',
   studentMainGoal: data?.studentMainGoal || '',
-  talaProfileRows: buildDefaultTalaProfileRows(data?.talaProfileRows),
+  talaProfileRows: buildDefaultTalaProfileRows(data?.talaProfileRows) as YearReportProfileRow[],
   talaFocusDomains: Array.isArray(data?.talaFocusDomains) ? data.talaFocusDomains : [],
   recommendations: data?.recommendations || '',
   evalReportFreeText: data?.evalReportFreeText || '',
@@ -96,10 +253,12 @@ export const extractYearReportFromFormData = (data) => ({
   statusReportSections: Array.isArray(data?.statusReportSections) ? data.statusReportSections : [],
   statusReportUpdatedAt: data?.statusReportUpdatedAt || '',
   lastSavedAt: data?.lastSavedAt || '',
-  goals: (data?.goals || []).map((g) => adaptGoalToGender(g, data?.gender || 'boy'))
+  goals: ((data?.goals || []) as YearReportGoal[]).map((g) =>
+    adaptGoalToGender(g, (data?.gender as 'boy' | 'girl') || 'boy')
+  ) as YearReportGoal[]
 });
 
-export const isRawFreeTextAlreadyAnalyzed = (data) =>
+export const isRawFreeTextAlreadyAnalyzed = (data?: FormStudentInput | null): boolean =>
   Boolean(
     data?.freeTextAnalyzed ||
       ((data?.teacherFreeText || '').trim() &&
@@ -108,11 +267,11 @@ export const isRawFreeTextAlreadyAnalyzed = (data) =>
           (data?.studentGeneralBackground || '').trim() ||
           (data?.studentSupportReceived || '').trim() ||
           (data?.studentMainGoal || '').trim() ||
-          hasPopulatedTalaProfile(data) ||
+          hasPopulatedTalaProfile(data || {}) ||
           (data?.goals || []).some((g) => (g?.title || '').trim())))
   );
 
-export const hasContentInYearReport = (rep) => {
+export const hasContentInYearReport = (rep?: FormStudentInput | YearReportSnapshot | null): boolean => {
   if (!rep) return false;
   return Boolean(
     (rep.teacherFreeText && rep.teacherFreeText.trim()) ||
@@ -121,7 +280,7 @@ export const hasContentInYearReport = (rep) => {
       (rep.studentGeneralBackground && rep.studentGeneralBackground.trim()) ||
       (rep.studentSupportReceived && rep.studentSupportReceived.trim()) ||
       (rep.studentMainGoal && rep.studentMainGoal.trim()) ||
-      hasPopulatedTalaProfile(rep) ||
+      hasPopulatedTalaProfile(rep || {}) ||
       (rep.recommendations && rep.recommendations.trim()) ||
       (rep.evalReportFreeText && rep.evalReportFreeText.trim()) ||
       (rep.evalReportSummary && rep.evalReportSummary.trim()) ||
@@ -132,19 +291,19 @@ export const hasContentInYearReport = (rep) => {
   );
 };
 
-export const normalizeStudentForForm = (st) => {
+export const normalizeStudentForForm = <T extends FormStudentInput>(st: T): T & NormalizedStudentResult => {
   const initialGender = st?.gender || 'boy';
   const currentYear = st?.schoolYear || DEFAULT_SCHOOL_YEAR;
   const currentPlanType = st?.planType || DEFAULT_PLAN_TYPE;
-  const normalizedGoals = (st?.goals || []).map((g) =>
-    adaptGoalToGender(g, initialGender)
-  );
-  const normalizedTalaProfileRows = buildDefaultTalaProfileRows(st?.talaProfileRows);
+  const normalizedGoals = ((st?.goals || []) as YearReportGoal[]).map((g) =>
+    adaptGoalToGender(g, initialGender as 'boy' | 'girl')
+  ) as YearReportGoal[];
+  const normalizedTalaProfileRows = buildDefaultTalaProfileRows(st?.talaProfileRows) as YearReportProfileRow[];
   const normalizedTalaFocusDomains = Array.isArray(st?.talaFocusDomains)
     ? st.talaFocusDomains
     : [];
-  const existingReports = { ...(st?.reportsByYear || {}) };
-  const existingReportsByPlanType = { ...(st?.reportsByPlanType || {}) };
+  const existingReports = { ...(st?.reportsByYear || {}) } as Record<string, YearReportSnapshot>;
+  const existingReportsByPlanType = { ...(st?.reportsByPlanType || {}) } as Record<string, YearReportSnapshot>;
   const initialRemovedAiGoals = Array.isArray(st?.removedAiGoals) ? st.removedAiGoals : [];
   const initialStatusReportSections = Array.isArray(st?.statusReportSections)
     ? st.statusReportSections
@@ -160,7 +319,7 @@ export const normalizeStudentForForm = (st) => {
     !(st?.studentMainGoal || '').trim() &&
     !hasPopulatedTalaProfile(st);
 
-  const baseSnapshot = {
+  const baseSnapshot: YearReportSnapshot = {
     date: st?.date || new Date().toLocaleDateString('he-IL'),
     planType: currentPlanType,
     isLocked: initialLocked,
@@ -193,9 +352,7 @@ export const normalizeStudentForForm = (st) => {
     statusReportSections: initialStatusReportSections,
     statusReportUpdatedAt: st?.statusReportUpdatedAt || '',
     lastSavedAt: st?.lastSavedAt || '',
-    goals: normalizedGoals,
-    diagnosticDocuments: Array.isArray(st?.diagnosticDocuments) ? st.diagnosticDocuments : [],
-    teamMessages: Array.isArray(st?.teamMessages) ? st.teamMessages : []
+    goals: normalizedGoals
   };
 
   const stageInfo = detectStudentStage(
@@ -206,10 +363,10 @@ export const normalizeStudentForForm = (st) => {
     },
     baseSnapshot.date || st?.date
   );
-  const resolvedStage = (st?.stage === 'kindergarten' || st?.stage === 'school')
-    ? st.stage
+  const resolvedStage: EducationalStage = (st?.stage === 'kindergarten' || st?.stage === 'school')
+    ? (st.stage as EducationalStage)
     : (stageInfo.stage === 'kindergarten' ? 'kindergarten' : 'school');
-  const resolvedStageSource = st?.stageSource || (st?.stage ? 'user_explicit' : (stageInfo.stageSource || 'user_explicit'));
+  const resolvedStageSource: StageSource = (st?.stageSource as StageSource) || (st?.stage ? 'user_explicit' : (stageInfo.stageSource || 'user_explicit'));
   const resolvedStageReason = st?.stageReason || (st?.stage ? 'בחירת משתמש' : stageInfo.stageReason);
   const resolvedStageUpdatedAt = st?.stageUpdatedAt || stageInfo.stageUpdatedAt;
 
@@ -262,18 +419,25 @@ export const normalizeStudentForForm = (st) => {
   };
 };
 
-export const syncActiveReportSnapshot = (data) => {
+export const syncActiveReportSnapshot = <T extends FormStudentInput>(
+  data: T
+): T & {
+  reportsByYear: Record<string, YearReportSnapshot>;
+  reportsByPlanType: Record<string, YearReportSnapshot>;
+} => {
   const yr = data.schoolYear || DEFAULT_SCHOOL_YEAR;
   const snap = extractYearReportFromFormData(data);
   const key = getPlanTypeStorageKey(yr, data.planType);
+  const existingByYear = { ...(data.reportsByYear || {}) } as Record<string, YearReportSnapshot>;
+  const existingByPlanType = { ...(data.reportsByPlanType || {}) } as Record<string, YearReportSnapshot>;
   return {
     ...data,
     reportsByYear: {
-      ...(data.reportsByYear || {}),
+      ...existingByYear,
       [yr]: snap
     },
     reportsByPlanType: {
-      ...(data.reportsByPlanType || {}),
+      ...existingByPlanType,
       [key]: snap
     }
   };
