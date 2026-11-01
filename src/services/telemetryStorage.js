@@ -23,6 +23,7 @@ import {
   generateUuidV4,
   isInternalAccount
 } from '../domain/telemetryPrivacy.js';
+import { CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy.js';
 
 export const TELEMETRY_EVENTS_COLLECTION = 'tala_telemetry_events';
 export const FIRESTORE_BATCH_LIMIT = 450; // Under Firestore max 500 write operations per batch
@@ -90,7 +91,7 @@ export async function saveTelemetryBatch(events = []) {
           anonUserId: event.anonUserId || 'anon',
           sessionId: event.sessionId || 'session',
           accountType: event.accountType || 'teacher',
-          appVersion: event.appVersion || '2.4.20',
+          appVersion: event.appVersion || CURRENT_APP_VERSION,
           properties: event.properties || {},
           timestampMs: typeof event.timestampMs === 'number' ? event.timestampMs : Date.now()
         };

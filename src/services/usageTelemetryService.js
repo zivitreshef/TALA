@@ -14,7 +14,7 @@ import {
   sanitizeTelemetryPayload,
   isInternalAccount
 } from '../domain/telemetryPrivacy.js';
-import { isValidEventName } from '../domain/telemetryTaxonomy.js';
+import { isValidEventName, CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy.js';
 
 export const OFFLINE_STORAGE_KEY = 'tala_telemetry_offline_queue';
 export const RING_BUFFER_CAPACITY = 100;
@@ -32,7 +32,7 @@ export class UsageTelemetryService {
     this._samplingRate = 1.0; // 100% capture by default
     this._excludeInternalAccounts = false;
     this._userContext = null;
-    this._appVersion = '2.4.20';
+    this._appVersion = CURRENT_APP_VERSION;
 
     // In-memory queues
     this._queue = []; // pending events awaiting dispatch
