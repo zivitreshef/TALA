@@ -9,7 +9,7 @@ import { detectStudentStage } from '../studentStage.js';
 import {
   getDefaultEnvironmentForStage,
   getDefaultPartnersForStage
-} from './stageGuard.js';
+} from './stageGuard';
 
 export const DEFAULT_SCHOOL_YEAR = 'תשפ"ו (2025-2026)';
 export const DEFAULT_PLAN_TYPE = 'תוכנית לתלמיד ביה"ס';

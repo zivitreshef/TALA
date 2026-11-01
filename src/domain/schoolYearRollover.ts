@@ -6,30 +6,112 @@ export const SCHOOL_YEARS_LIST = [
   'תשפ"ח (2027-2028)',
   'תשפ"ט (2028-2029)',
   'תש"צ (2029-2030)'
-];
+] as const;
+
+export type SchoolYear = (typeof SCHOOL_YEARS_LIST)[number];
 
 const DEFAULT_ENVIRONMENT = 'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה';
 
-export function getNextSchoolYear(currentYear) {
-  const idx = SCHOOL_YEARS_LIST.indexOf(currentYear);
+export function getNextSchoolYear(currentYear?: string | null): string {
+  if (!currentYear) return 'תשפ"ז (2026-2027)';
+  const idx = (SCHOOL_YEARS_LIST as readonly string[]).indexOf(currentYear);
   if (idx !== -1 && idx + 1 < SCHOOL_YEARS_LIST.length) {
     return SCHOOL_YEARS_LIST[idx + 1];
   }
   return 'תשפ"ז (2026-2027)';
 }
 
-export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYearOverride = null) {
+export interface RolloverGoal {
+  id: string;
+  environment: string;
+  activityParticipation: string;
+  title: string;
+  objectives: string;
+  opportunities: string;
+  opportunitiesIntegration: string;
+  opportunitiesTherapist: string;
+  partners: string;
+  duration: string;
+  evaluationCriteria: string;
+  learningAccommodations: string;
+  achievementStatus: string;
+  midYearEvaluation: string;
+  endYearEvaluation: string;
+}
+
+export interface YearReportData {
+  date: string;
+  planType: string;
+  isLocked: boolean;
+  lockedAt: string;
+  lockedBy: string;
+  teacherFreeText: string;
+  strengthsExisting: string;
+  strengthsToEmpower: string;
+  studentGeneralBackground: string;
+  studentSupportReceived: string;
+  studentMainGoal: string;
+  talaProfileRows: Array<Record<string, unknown>>;
+  talaFocusDomains: string[];
+  recommendations: string;
+  lastSavedAt: string;
+  goals: RolloverGoal[];
+}
+
+export interface StudentRolloverInput {
+  id?: string;
+  name?: string;
+  date?: string;
+  schoolYear?: string;
+  planType?: string;
+  isLocked?: boolean;
+  lockedAt?: string;
+  lockedBy?: string;
+  teacherFreeText?: string;
+  strengthsExisting?: string;
+  strengthsToEmpower?: string;
+  studentGeneralBackground?: string;
+  studentSupportReceived?: string;
+  studentMainGoal?: string;
+  talaProfileRows?: Array<Record<string, unknown>>;
+  talaFocusDomains?: string[];
+  recommendations?: string;
+  lastSavedAt?: string;
+  goals?: Partial<RolloverGoal>[];
+  reportsByYear?: Record<string, Partial<YearReportData>>;
+  archived?: boolean;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export type RolledStudentResult<T> = Omit<T, 'goals' | 'reportsByYear'> &
+  YearReportData & {
+    archived: boolean;
+    status: string;
+    schoolYear: string;
+    reportsByYear: Record<string, Partial<YearReportData>>;
+  };
+
+export function buildRolloverStudentForNextYear<T extends StudentRolloverInput>(
+  studentObj?: T | null,
+  sourceYear?: string | null,
+  targetYearOverride: string | null = null
+): RolledStudentResult<T> | null {
   if (!studentObj) return null;
   const fromYear = sourceYear || studentObj.schoolYear || 'תשפ"ו (2025-2026)';
   const nextYear = targetYearOverride || getNextSchoolYear(fromYear);
-  const sourceReport = studentObj.reportsByYear?.[fromYear] || studentObj;
+  const sourceReport = (studentObj.reportsByYear?.[fromYear] || studentObj) as StudentRolloverInput;
   const todayStr = new Date().toLocaleDateString('he-IL');
   const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
 
-  const rolledGoals = (sourceReport.goals || []).map((g, idx) => {
+  const rolledGoals: RolloverGoal[] = (sourceReport.goals || []).map((g, idx) => {
     const evalNotes = [
       g.achievementStatus ? `סטטוס שנה קודמת (${fromYear}): ${g.achievementStatus}` : '',
-      g.endYearEvaluation ? `סיכום שנה קודמת: ${g.endYearEvaluation}` : g.midYearEvaluation ? `הערכת מחצית קודמת: ${g.midYearEvaluation}` : ''
+      g.endYearEvaluation
+        ? `סיכום שנה קודמת: ${g.endYearEvaluation}`
+        : g.midYearEvaluation
+        ? `הערכת מחצית קודמת: ${g.midYearEvaluation}`
+        : ''
     ]
       .filter(Boolean)
       .join(' | ');
@@ -60,7 +142,7 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
     };
   });
 
-  const newYearReport = {
+  const newYearReport: YearReportData = {
     date: todayStr,
     planType: sourceReport.planType || studentObj.planType || 'תל"א (תוכנית לימודים אישית)',
     isLocked: false,
@@ -75,10 +157,10 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
       sourceReport.studentSupportReceived || studentObj.studentSupportReceived || '',
     studentMainGoal: sourceReport.studentMainGoal || studentObj.studentMainGoal || '',
     talaProfileRows: Array.isArray(sourceReport.talaProfileRows || studentObj.talaProfileRows)
-      ? (sourceReport.talaProfileRows || studentObj.talaProfileRows).map((r) => ({ ...r }))
+      ? (sourceReport.talaProfileRows || studentObj.talaProfileRows)!.map((r) => ({ ...r }))
       : [],
     talaFocusDomains: Array.isArray(sourceReport.talaFocusDomains || studentObj.talaFocusDomains)
-      ? [...(sourceReport.talaFocusDomains || studentObj.talaFocusDomains)]
+      ? [...(sourceReport.talaFocusDomains || studentObj.talaFocusDomains)!]
       : [],
     recommendations: sourceReport.recommendations || studentObj.recommendations || '',
     lastSavedAt: nowTime,
@@ -134,7 +216,7 @@ export function buildRolloverStudentForNextYear(studentObj, sourceYear, targetYe
           : [],
         recommendations: sourceReport.recommendations || '',
         lastSavedAt: sourceReport.lastSavedAt || '',
-        goals: sourceReport.goals || []
+        goals: (sourceReport.goals || []) as RolloverGoal[]
       },
       [nextYear]: newYearReport
     }

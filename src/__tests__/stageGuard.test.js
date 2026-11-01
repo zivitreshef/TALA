@@ -15,7 +15,7 @@ import {
   getDefaultPartnersForStage,
   KINDERGARTEN_ENVIRONMENTS,
   SCHOOL_ALLOWED_ENVIRONMENTS
-} from '../domain/stageGuard.js';
+} from '../domain/stageGuard';
 import {
   INITIAL_GOAL_BANK,
   reverseEngineerRawTextLocally,

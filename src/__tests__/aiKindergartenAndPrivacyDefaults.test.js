@@ -5,7 +5,7 @@ import {
   getDefaultPartnersForStage,
   enforceGoalStage,
   buildStageRulesBlock
-} from '../domain/stageGuard.js';
+} from '../domain/stageGuard';
 import {
   maskKnownStudentDetails,
   maskPromptForAi,
