@@ -4,7 +4,7 @@
  * PII, clinical diagnoses, teacher notes, and AI prompts before telemetry persistence.
  */
 
-import { isValidEventName, getEventCategory } from './telemetryTaxonomy.js';
+import { isValidEventName, getEventCategory, CURRENT_APP_VERSION } from './telemetryTaxonomy.js';
 import { sha256Hex } from '../allowedUsers.js';
 
 export const DEFAULT_TELEMETRY_SALT = 'tala_telemetry_salt_2026_v1';
@@ -349,7 +349,7 @@ export function sanitizeTelemetryPayload(eventName, rawProperties = {}, userCont
     anonUserId,
     sessionId: getSessionId(),
     accountType,
-    appVersion: '2.4.20',
+    appVersion: CURRENT_APP_VERSION,
     properties: sanitizedProps,
     timestampMs: Date.now()
   };
