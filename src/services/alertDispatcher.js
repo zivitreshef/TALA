@@ -13,7 +13,7 @@ import {
   buildAdminAlertEmailHtml,
   validateAlertChannel,
   normalizeAdminAlerts
-} from '../domain/adminAlerts.js';
+} from '../domain/adminAlerts';
 import { sendReportEmailInBackground, loadEmailEngineConfig } from '../emailService.js';
 
 export const DEFAULT_TELEGRAM_BOT_TOKEN = '7774912239:AAHOkYkO6xLqQfLd80Zg3aR90pG7yG9mK10'; // Fallback / system notification bot if user doesn't provide custom bot

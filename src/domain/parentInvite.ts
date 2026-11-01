@@ -1,26 +1,78 @@
-// === קול ההורים: לוגיקה טהורה (ללא Firebase / React) ===
-//
-// הקישור הציבורי הוא capability URL: ה-token (128 ביט אקראיים) הוא גם מזהה המסמך
-// ב-Firestore. אין בקישור או במסמך שם משפחה / ת.ז / כל פרט מזהה מלבד שם פרטי.
+/**
+ * Domain module for Parent Voice Capability Invitations (TALA Parent Voice).
+ * Zero UI / Firebase dependencies – pure, deterministic and testable.
+ *
+ * The public link is a capability URL: the 128-bit random token is also the document
+ * ID in Firestore. The link contains only the child's first name, zero PII or id numbers.
+ */
 
 export const INVITE_COLLECTION = 'tala_invites';
 export const INVITE_TTL_DAYS = 7;
 export const MAX_ANSWER_LENGTH = 1500;
 export const MAX_CUSTOM_QUESTIONS = 5;
 export const MAX_QUESTION_LENGTH = 150;
-export const INVITE_ANSWER_KEYS = ['strengths', 'challenges', 'goal'];
-export const CUSTOM_ANSWER_KEYS = ['custom_0', 'custom_1', 'custom_2', 'custom_3', 'custom_4'];
+export const INVITE_ANSWER_KEYS = ['strengths', 'challenges', 'goal'] as const;
+export const CUSTOM_ANSWER_KEYS = [
+  'custom_0',
+  'custom_1',
+  'custom_2',
+  'custom_3',
+  'custom_4'
+] as const;
+
+export type InviteAnswerKey = typeof INVITE_ANSWER_KEYS[number];
+export type CustomAnswerKey = typeof CUSTOM_ANSWER_KEYS[number];
 
 const TOKEN_REGEX = /^[A-Za-z0-9_-]{22}$/;
 const SHARE_ROUTE_PREFIX = '#/share-input/';
 
-const MERGE_LABELS = {
+const MERGE_LABELS: Record<InviteAnswerKey, string> = {
   strengths: 'חוזקות ותחומי עניין',
   challenges: 'קשיים ואתגרים',
   goal: 'מה חשוב להשיג השנה'
 };
 
-export function generateInviteToken(cryptoObj = globalThis.crypto) {
+export interface InviteQuestion {
+  key: string;
+  label: string;
+  isCustom?: boolean;
+}
+
+export interface BuildInviteDocParams {
+  ownerEmail: string;
+  studentId: string | number;
+  childFirstName?: string;
+  gender?: 'boy' | 'girl' | string;
+  customQuestions?: string[];
+  overrideDefaults?: boolean;
+  now?: Date;
+}
+
+export interface InviteDoc {
+  ownerEmail: string;
+  studentId: string;
+  childFirstName: string;
+  gender: 'boy' | 'girl';
+  status: 'pending' | 'submitted' | string;
+  createdAt: Date;
+  expiresAt: Date;
+  customQuestions?: string[];
+  overrideDefaults?: boolean;
+  responses?: Record<string, string>;
+  reviewedAction?: string;
+  [key: string]: unknown;
+}
+
+export type InviteState = 'missing' | 'expired' | 'submitted' | 'pending';
+
+export interface InvitesSummary {
+  status: 'received' | 'waiting' | 'none';
+  unreviewed: Array<Partial<InviteDoc>>;
+  history: Array<Partial<InviteDoc>>;
+  pending: Partial<InviteDoc> | null;
+}
+
+export function generateInviteToken(cryptoObj: Crypto = globalThis.crypto): string {
   if (!cryptoObj || typeof cryptoObj.getRandomValues !== 'function') {
     throw new Error('Secure random generator is not available');
   }
@@ -32,34 +84,36 @@ export function generateInviteToken(cryptoObj = globalThis.crypto) {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export function isValidInviteToken(token) {
+export function isValidInviteToken(token?: unknown): token is string {
   return typeof token === 'string' && TOKEN_REGEX.test(token);
 }
 
-export function parseInviteTokenFromHash(hash = '') {
+export function parseInviteTokenFromHash(hash = ''): string | null {
   const raw = String(hash || '');
   if (!raw.startsWith(SHARE_ROUTE_PREFIX)) return null;
   const token = raw.slice(SHARE_ROUTE_PREFIX.length);
   return isValidInviteToken(token) ? token : null;
 }
 
-// האתר מתארח ב-GitHub Pages (אין rewrite לנתיבים), לכן הנתיב הוא hash-route.
-export function buildInviteUrl(baseHref, token) {
+export function buildInviteUrl(baseHref: string, token: string): string {
   const base = String(baseHref || '').split('#')[0].split('?')[0];
   return `${base}${SHARE_ROUTE_PREFIX}${token}`;
 }
 
-export function buildWhatsAppShareUrl(inviteUrl, { childFirstName = '' } = {}) {
+export function buildWhatsAppShareUrl(
+  inviteUrl: string,
+  { childFirstName = '' }: { childFirstName?: string } = {}
+): string {
   const name = String(childFirstName || '').trim();
   const text = `שלום, לקראת בניית תוכנית העבודה${name ? ' של ' + name : ''} נשמח לשמוע את דעתכם. זה לוקח כ-3 דקות:\n${inviteUrl}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 
-function pick(gender, boyText, girlText) {
+function pick(gender: string, boyText: string, girlText: string): string {
   return gender === 'girl' ? girlText : boyText;
 }
 
-export function sanitizeCustomQuestions(questions = []) {
+export function sanitizeCustomQuestions(questions: unknown = []): string[] {
   if (!Array.isArray(questions)) return [];
   return questions
     .map((q) =>
@@ -73,7 +127,10 @@ export function sanitizeCustomQuestions(questions = []) {
     .slice(0, MAX_CUSTOM_QUESTIONS);
 }
 
-export function getDefaultQuestions({ childName = '', gender = 'boy' } = {}) {
+export function getDefaultQuestions({
+  childName = '',
+  gender = 'boy'
+}: { childName?: string; gender?: 'boy' | 'girl' | string } = {}): string[] {
   const name = String(childName || '').trim() || pick(gender, 'הילד', 'הילדה');
   return [
     pick(
@@ -91,7 +148,12 @@ export function getInviteQuestions({
   gender = 'boy',
   customQuestions = [],
   overrideDefaults = false
-} = {}) {
+}: {
+  childName?: string;
+  gender?: 'boy' | 'girl' | string;
+  customQuestions?: string[];
+  overrideDefaults?: boolean;
+} = {}): InviteQuestion[] {
   const cleanCustom = sanitizeCustomQuestions(customQuestions);
 
   if (overrideDefaults && cleanCustom.length > 0) {
@@ -103,7 +165,7 @@ export function getInviteQuestions({
   }
 
   const name = String(childName || '').trim() || pick(gender, 'הילד', 'הילדה');
-  const base = [
+  const base: InviteQuestion[] = [
     {
       key: 'strengths',
       label: pick(
@@ -116,7 +178,7 @@ export function getInviteQuestions({
     { key: 'goal', label: `מה הכי חשוב לכם שנעבוד עליו עם ${name} השנה?` }
   ];
 
-  const custom = cleanCustom.map((label, idx) => ({
+  const custom: InviteQuestion[] = cleanCustom.map((label, idx) => ({
     key: `custom_${idx}`,
     label,
     isCustom: true
@@ -133,12 +195,12 @@ export function buildInviteDoc({
   customQuestions = [],
   overrideDefaults = false,
   now = new Date()
-}) {
+}: BuildInviteDocParams): InviteDoc {
   const owner = String(ownerEmail || '').trim().toLowerCase();
   if (!owner || !studentId) throw new Error('ownerEmail and studentId are required');
   const cleanQuestions = sanitizeCustomQuestions(customQuestions);
 
-  const docData = {
+  const docData: InviteDoc = {
     ownerEmail: owner,
     studentId: String(studentId),
     // שם פרטי בלבד - מוצג להורה בדף הציבורי
@@ -159,8 +221,11 @@ export function buildInviteDoc({
   return docData;
 }
 
-export function sanitizeResponses(rawResponses = {}, customQuestions = []) {
-  const clean = {};
+export function sanitizeResponses(
+  rawResponses: Record<string, unknown> = {},
+  _customQuestions: unknown = []
+): Record<string, string> {
+  const clean: Record<string, string> = {};
   INVITE_ANSWER_KEYS.forEach((key) => {
     const value = String(rawResponses?.[key] ?? '').trim().slice(0, MAX_ANSWER_LENGTH);
     if (value) clean[key] = value;
@@ -172,20 +237,24 @@ export function sanitizeResponses(rawResponses = {}, customQuestions = []) {
   return clean;
 }
 
-export function hasAnyAnswer(responses, customQuestions = []) {
-  return Object.keys(sanitizeResponses(responses, customQuestions)).length > 0;
+export function hasAnyAnswer(
+  responses?: Record<string, unknown>,
+  customQuestions: unknown = []
+): boolean {
+  return Object.keys(sanitizeResponses(responses || {}, customQuestions)).length > 0;
 }
 
-export function toMillis(value) {
+export function toMillis(value: unknown): number {
   if (!value) return NaN;
   if (value instanceof Date) return value.getTime();
-  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof (value as { toMillis?: () => number }).toMillis === 'function') {
+    return (value as { toMillis: () => number }).toMillis();
+  }
   if (typeof value === 'number') return value;
   return NaN;
 }
 
-// 'missing' | 'expired' | 'submitted' | 'pending'
-export function getInviteState(invite, now = Date.now()) {
+export function getInviteState(invite?: Partial<InviteDoc> | null, now: number = Date.now()): InviteState {
   if (!invite) return 'missing';
   if (invite.status === 'submitted') return 'submitted';
   const expiresMs = toMillis(invite.expiresAt);
@@ -193,10 +262,10 @@ export function getInviteState(invite, now = Date.now()) {
   return 'pending';
 }
 
-// === צד המורה: סיכום מצב, והעברת התשובות לתיאור החופשי ===
-
-// status: 'received' (יש מענה שטרם נבדק) | 'waiting' (יש קישור פעיל) | 'none'
-export function summarizeInvites(invites = [], now = Date.now()) {
+export function summarizeInvites(
+  invites: Array<Partial<InviteDoc>> = [],
+  now: number = Date.now()
+): InvitesSummary {
   const list = [...invites].sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0));
   const unreviewed = list.filter(
     (i) => i.status === 'submitted' && !i.reviewedAction && hasAnyAnswer(i.responses, i.customQuestions)
@@ -209,9 +278,9 @@ export function summarizeInvites(invites = [], now = Date.now()) {
   return { status, unreviewed, history, pending };
 }
 
-export function buildVoiceMergeText(invite) {
+export function buildVoiceMergeText(invite?: Partial<InviteDoc> | null): string {
   const responses = sanitizeResponses(invite?.responses, invite?.customQuestions);
-  const lines = [];
+  const lines: string[] = [];
 
   if (!invite?.overrideDefaults) {
     INVITE_ANSWER_KEYS.forEach((key) => {
@@ -233,6 +302,9 @@ export function buildVoiceMergeText(invite) {
   return ['— קול ההורים (כפי שנמסר על ידי ההורים) —', ...lines].join('\n');
 }
 
-export function appendToFreeText(existingText, block) {
+export function appendToFreeText(
+  existingText?: string | null,
+  block?: string | null
+): string {
   return [String(existingText || '').trim(), String(block || '').trim()].filter(Boolean).join('\n\n');
 }

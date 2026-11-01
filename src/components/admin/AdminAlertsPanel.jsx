@@ -17,7 +17,7 @@ import {
   ALERT_CHANNELS,
   normalizeAdminAlerts,
   validateAlertChannel
-} from '../../domain/adminAlerts.js';
+} from '../../domain/adminAlerts';
 import { sendTestAdminAlert } from '../../services/alertDispatcher.js';
 
 export default function AdminAlertsPanel({

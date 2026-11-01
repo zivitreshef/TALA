@@ -1,3 +1,9 @@
+/**
+ * Domain module for formatting plain-text blocks for Ministry of Education portals
+ * (מנב"ס / משו"ב / ועדת זכאות ואפיון).
+ * Produces clean, table-free text blocks ready for single-click copy/paste.
+ */
+
 import {
   getDisplayStudentName,
   getDisplayMaskedField,
@@ -7,33 +13,75 @@ import {
   getEffectiveTalaProfileRows
 } from '../export/wordAndPrintBuilders';
 
-function cleanLine(text, formData, hideDetails) {
-  return getRedactedText(String(text || ''), formData, hideDetails).trim();
+export interface MinistryCopyBlock {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface MinistryCopyGoal {
+  title?: string;
+  objectives?: string;
+  activityParticipation?: string;
+  opportunities?: string;
+  opportunitiesIntegration?: string;
+  opportunitiesTherapist?: string;
+  evaluationCriteria?: string;
+  learningAccommodations?: string;
+  partners?: string;
+  duration?: string;
+  environment?: string;
+  leadProfessional?: string;
+  achievementStatus?: string;
+  midYearEvaluation?: string;
+  endYearEvaluation?: string;
+  [key: string]: unknown;
+}
+
+export interface MinistryCopyFormData {
+  idNumber?: string;
+  educationalFramework?: string;
+  schoolYear?: string;
+  planType?: string;
+  strengthsExisting?: string;
+  strengthsToEmpower?: string;
+  teacherFreeText?: string;
+  evalReportSummary?: string;
+  recommendations?: string;
+  goals?: MinistryCopyGoal[];
+  [key: string]: unknown;
+}
+
+function cleanLine(text: unknown, formData: MinistryCopyFormData, hideDetails: boolean): string {
+  return getRedactedText(String(text || ''), formData as Record<string, unknown>, hideDetails).trim();
 }
 
 /**
  * Builds table-free, plain-text blocks ready for 1-click copy/paste into
  * Ministry of Education portals (מנב"ס / משו"ב / ועדת זכאות ואפיון).
  */
-export function buildMinistryCopyBlocks(formData = {}, hideDetails = false) {
-  const blocks = [];
-  const name = getDisplayStudentName(formData, hideDetails);
+export function buildMinistryCopyBlocks(
+  formData: MinistryCopyFormData = {},
+  hideDetails = false
+): MinistryCopyBlock[] {
+  const blocks: MinistryCopyBlock[] = [];
+  const name = getDisplayStudentName(formData as Record<string, unknown>, hideDetails);
   const idNum = getDisplayMaskedField(formData.idNumber, hideDetails);
   const framework = getDisplayMaskedField(formData.educationalFramework, hideDetails);
   const year = formData.schoolYear || '2026';
   const planType = formData.planType || 'תל"א / תח"י';
 
-  const bgLines = [
+  const bgLines: string[] = [
     `שם התלמיד/ה: ${name} | ת.ז: ${idNum}`,
     `מסגרת חינוכית: ${framework} | שנת לימודים: ${year} | סוג תוכנית: ${planType}`
   ];
 
-  const metaItems = getAdditionalMetadataItems(formData, hideDetails);
+  const metaItems = getAdditionalMetadataItems(formData as Record<string, unknown>, hideDetails);
   if (metaItems.length > 0) {
     bgLines.push(metaItems.map((m) => `${m.label}: ${m.value}`).join(' | '));
   }
 
-  const talaProfile = getEffectiveStudentProfileForTala(formData, hideDetails);
+  const talaProfile = getEffectiveStudentProfileForTala(formData as Record<string, unknown>, hideDetails);
   if (talaProfile.generalBackground) {
     bgLines.push(`\nרקע כללי:\n${talaProfile.generalBackground}`);
   }
@@ -44,7 +92,11 @@ export function buildMinistryCopyBlocks(formData = {}, hideDetails = false) {
     bgLines.push(`\nמטרות התלמיד/ה (שיח אישי):\n${talaProfile.studentMainGoal}`);
   }
 
-  const profileRows = getEffectiveTalaProfileRows(formData).filter(
+  const profileRows = (getEffectiveTalaProfileRows(formData as Record<string, unknown>) as Array<{
+    subDomain?: string;
+    strengthsAndFacilitators?: string;
+    areasToStrengthenAndBarriers?: string;
+  }>).filter(
     (r) =>
       String(r?.strengthsAndFacilitators || '').trim() ||
       String(r?.areasToStrengthenAndBarriers || '').trim()
@@ -114,7 +166,7 @@ export function buildMinistryCopyBlocks(formData = {}, hideDetails = false) {
     const evalCrit = cleanLine(g.evaluationCriteria, formData, hideDetails);
     const accomm = cleanLine(g.learningAccommodations, formData, hideDetails);
 
-    const lines = [`תחום / סביבה: ${env}`];
+    const lines: string[] = [`תחום / סביבה: ${env}`];
     if (g.leadProfessional && g.leadProfessional !== 'צוות משותף') {
       lines.push(`מוביל/ת המטרה: ${g.leadProfessional}`);
     }
@@ -149,7 +201,7 @@ export function buildMinistryCopyBlocks(formData = {}, hideDetails = false) {
   );
 
   if (evalSummary || recommendations || goalsWithEval.length > 0) {
-    const evalLines = [];
+    const evalLines: string[] = [];
     goalsWithEval.forEach((g, idx) => {
       const gTitle = cleanLine(g.title, formData, hideDetails) || g.environment || `מטרה ${idx + 1}`;
       const status = g.achievementStatus || 'בתהליך';
@@ -174,7 +226,7 @@ export function buildMinistryCopyBlocks(formData = {}, hideDetails = false) {
   return blocks;
 }
 
-export function formatAllMinistryBlocks(blocks = []) {
+export function formatAllMinistryBlocks(blocks: MinistryCopyBlock[] = []): string {
   return blocks
     .map((b) => `=== ${b.title} ===\n${b.content}`)
     .join('\n\n────────────────────────\n\n');
