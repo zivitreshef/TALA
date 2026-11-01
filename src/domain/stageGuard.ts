@@ -12,7 +12,7 @@ import {
   SCHOOL_EXTRA_DOMAINS,
   SCHOOL_ALLOWED_ENVIRONMENTS
 } from './stageEnvironments';
-import { adaptTextToGender } from './goalSizingAndMerge.js';
+import { adaptTextToGender } from './goalSizingAndMerge';
 import { isGoalRelevantForStage, hasSchool } from '../studentStage.js';
 
 export {

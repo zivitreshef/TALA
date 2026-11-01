@@ -117,7 +117,7 @@ import {
   shouldSendPedagogicalDigest,
   getObservationGaps,
   getPedagogicalAccomplishmentsSummary
-} from './domain/dailyPedagogicalTracking.js';
+} from './domain/dailyPedagogicalTracking';
 import { toHebrewAcronym } from './domain/privacyAndAcronyms';
 import {
   loadEmailEngineConfig,

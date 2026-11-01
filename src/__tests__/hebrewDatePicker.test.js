@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getIsraeliHolidayInfo } from '../domain/dailyPedagogicalTracking.js';
+import { getIsraeliHolidayInfo } from '../domain/dailyPedagogicalTracking';
 
 describe('HebrewDatePicker domain and date navigation logic', () => {
   const shiftDate = (dateStr, deltaDays) => {

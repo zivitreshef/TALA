@@ -11,7 +11,7 @@ import {
   getIsraeliHolidayInfo,
   calculateDurationMinutes,
   getEventBarThickness
-} from '../domain/dailyPedagogicalTracking.js';
+} from '../domain/dailyPedagogicalTracking';
 
 describe('dailyPedagogicalTracking domain tests', () => {
   it('correctly identifies observation gaps when goal has no observations', () => {

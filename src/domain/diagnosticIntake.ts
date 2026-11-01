@@ -1,10 +1,48 @@
 import { adaptTextToGender } from './goalSizingAndMerge';
+import type {
+  DiagnosticDocumentRecord,
+  DiagnosticSuggestedGoal,
+  SanitizedDiagnosticIntake
+} from './types';
+
+export interface BuildDiagnosticPromptOptions {
+  diagnosticText?: string;
+  gender?: string;
+  studentName?: string;
+  planType?: string;
+}
+
+export interface CreateDiagnosticDocumentRecordOptions {
+  fileName?: string;
+  fileType?: string;
+  fullText?: string;
+  fileSizeFormatted?: string;
+  storageUrl?: string;
+  storagePath?: string;
+}
+
+declare global {
+  interface PromiseConstructor {
+    withResolvers?<T>(): {
+      promise: Promise<T>;
+      resolve: (value: T | PromiseLike<T>) => void;
+      reject: (reason?: unknown) => void;
+    };
+  }
+}
+
+declare class DecompressionStream {
+  constructor(format: string);
+  readonly readable: ReadableStream<Uint8Array>;
+  readonly writable: WritableStream<Uint8Array>;
+}
 
 // Polyfill Promise.withResolvers for Node 20 / older browser runtimes needed by pdfjs-dist
 if (typeof Promise.withResolvers === 'undefined') {
-  Promise.withResolvers = function () {
-    let resolve, reject;
-    const promise = new Promise((res, rej) => {
+  Promise.withResolvers = function <T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
       resolve = res;
       reject = rej;
     });
@@ -15,7 +53,7 @@ if (typeof Promise.withResolvers === 'undefined') {
 /**
  * Extracts plain text from an uncompressed or deflate-compressed .docx (Word) file ArrayBuffer.
  */
-export async function extractTextFromDocx(buffer) {
+export async function extractTextFromDocx(buffer?: ArrayBuffer | null): Promise<string> {
   if (!buffer) return '';
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
@@ -43,7 +81,7 @@ export async function extractTextFromDocx(buffer) {
             writer.write(compressedData);
             writer.close();
             const reader = ds.readable.getReader();
-            const chunks = [];
+            const chunks: Uint8Array[] = [];
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
@@ -64,7 +102,7 @@ export async function extractTextFromDocx(buffer) {
 
         if (xmlStr) {
           const paragraphs = xmlStr.split(/<\/w:p>/);
-          const lines = [];
+          const lines: string[] = [];
           for (const p of paragraphs) {
             const textMatches = p.match(/<w:t[^>]*>([^<]+)<\/w:t>/g) || [];
             if (textMatches.length > 0) {
@@ -86,7 +124,7 @@ export async function extractTextFromDocx(buffer) {
 /**
  * Extracts plain text from a PDF file ArrayBuffer using PDF.js with raw stream fallback.
  */
-export async function extractTextFromPdf(buffer) {
+export async function extractTextFromPdf(buffer?: ArrayBuffer | null): Promise<string> {
   if (!buffer) return '';
 
   // 1. Primary: PDF.js legacy engine (handles compressed streams, embedded font CMaps, multi-page)
@@ -96,16 +134,17 @@ export async function extractTextFromPdf(buffer) {
     const loadingTask = pdfjsLib.getDocument({
       data,
       useWorkerFetch: false,
+      // @ts-expect-error pdfjs-dist legacy option
       isEvalSupported: false,
       useSystemFonts: true
     });
     const pdf = await loadingTask.promise;
-    const pages = [];
+    const pages: string[] = [];
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = (textContent.items || [])
-        .map((item) => (item.str ? item.str : ''))
+      const pageText = ((textContent.items as Record<string, unknown>[]) || [])
+        .map((item) => (typeof item.str === 'string' ? item.str : ''))
         .join(' ');
       if (pageText.trim()) {
         pages.push(`--- עמוד ${i} ---\n${pageText.trim()}`);
@@ -124,7 +163,7 @@ export async function extractTextFromPdf(buffer) {
     const textDecoder = new TextDecoder('latin1');
     const rawStr = textDecoder.decode(buffer);
     const btMatches = rawStr.match(/BT[\s\S]*?ET/g) || [];
-    const extractedChunks = [];
+    const extractedChunks: string[] = [];
     for (const block of btMatches) {
       const strMatches = block.match(/\(([^)]+)\)\s*(?:Tj|'|")/g) || [];
       for (const m of strMatches) {
@@ -147,18 +186,19 @@ export async function extractTextFromPdf(buffer) {
 /**
  * Extracts plain text from an uploaded File (.txt, .docx, markdown, or .pdf).
  */
-export async function extractTextFromFile(file) {
+export async function extractTextFromFile(file?: { name?: string; text?: () => Promise<string>; arrayBuffer?: () => Promise<ArrayBuffer> } | File | null): Promise<string> {
   if (!file) return '';
   const fileName = (file.name || '').toLowerCase();
 
   // 1. Text files (.txt, .csv, markdown)
   if (fileName.endsWith('.txt') || fileName.endsWith('.csv') || fileName.endsWith('.md')) {
-    return await file.text();
+    return typeof file.text === 'function' ? await file.text() : '';
   }
 
   // 2. Word files (.docx)
   if (fileName.endsWith('.docx')) {
     try {
+      if (typeof file.arrayBuffer !== 'function') return '';
       const buffer = await file.arrayBuffer();
       const extracted = await extractTextFromDocx(buffer);
       if (extracted && extracted.trim()) {
@@ -172,6 +212,7 @@ export async function extractTextFromFile(file) {
   // 3. PDF files (.pdf)
   if (fileName.endsWith('.pdf')) {
     try {
+      if (typeof file.arrayBuffer !== 'function') return '';
       const buffer = await file.arrayBuffer();
       const extracted = await extractTextFromPdf(buffer);
       if (extracted && extracted.trim()) {
@@ -193,7 +234,7 @@ export function buildDiagnosticPrompt({
   gender = 'boy',
   studentName = '',
   planType = 'תל"א'
-}) {
+}: BuildDiagnosticPromptOptions = {}): string {
   const isGirl = gender === 'girl';
   const genderInstruction = isGirl
     ? 'נסח הכל בלשון נקבה בלבד (התלמידה, מזהה, מתמידה, מתקשה).'
@@ -236,21 +277,27 @@ ${diagnosticText.slice(0, 10000)}
 /**
  * Sanitizes and normalizes the parsed diagnostic intake response.
  */
-export function sanitizeDiagnosticIntakeResult(rawResult = {}, gender = 'boy') {
-  const g = (txt) => adaptTextToGender(String(txt || '').trim(), gender);
+export function sanitizeDiagnosticIntakeResult(
+  rawResult: Record<string, unknown> = {},
+  gender = 'boy'
+): SanitizedDiagnosticIntake {
+  const g = (txt: unknown): string => adaptTextToGender(String(txt || '').trim(), gender);
 
   const rawGoals = Array.isArray(rawResult.suggestedGoals) ? rawResult.suggestedGoals : [];
-  const suggestedGoals = rawGoals.map((gObj, idx) => ({
-    id: `intake_g_${Date.now()}_${idx}`,
-    environment: g(gObj.environment) || 'כיתה ולימודים',
-    title: g(gObj.title) || '',
-    objectives: g(gObj.objectives) || '',
-    opportunities: g(gObj.opportunities) || '',
-    duration: g(gObj.duration) || '3 חודשים',
-    evaluationCriteria: g(gObj.evaluationCriteria) || '',
-    leadProfessional: gObj.leadProfessional || 'צוות משותף',
-    isTeacherAdded: true
-  }));
+  const suggestedGoals: DiagnosticSuggestedGoal[] = rawGoals.map((gItem: unknown, idx: number) => {
+    const gObj = (gItem && typeof gItem === 'object' ? gItem : {}) as Record<string, unknown>;
+    return {
+      id: `intake_g_${Date.now()}_${idx}`,
+      environment: g(gObj.environment) || 'כיתה ולימודים',
+      title: g(gObj.title) || '',
+      objectives: g(gObj.objectives) || '',
+      opportunities: g(gObj.opportunities) || '',
+      duration: g(gObj.duration) || '3 חודשים',
+      evaluationCriteria: g(gObj.evaluationCriteria) || '',
+      leadProfessional: String(gObj.leadProfessional || 'צוות משותף'),
+      isTeacherAdded: true
+    };
+  });
 
   return {
     studentGeneralBackground: g(rawResult.studentGeneralBackground),
@@ -267,18 +314,19 @@ export function sanitizeDiagnosticIntakeResult(rawResult = {}, gender = 'boy') {
  * Merges the approved diagnostic intake data into the existing student formData.
  */
 export function applyDiagnosticIntakeToStudent(
-  formData = {},
-  intake = {},
-  selectedGoalIds = [],
-  attachedDocRecord = null
-) {
+  formData: Record<string, unknown> = {},
+  intake: Partial<SanitizedDiagnosticIntake> = {},
+  selectedGoalIds: string[] = [],
+  attachedDocRecord?: DiagnosticDocumentRecord | null
+): Record<string, unknown> {
   const approvedGoals = (intake.suggestedGoals || []).filter((g) =>
     selectedGoalIds.includes(g.id)
   );
 
-  const nextGoals = [...(formData.goals || []), ...approvedGoals];
+  const existingGoals = Array.isArray(formData.goals) ? (formData.goals as unknown[]) : [];
+  const nextGoals = [...existingGoals, ...approvedGoals];
 
-  const mergeText = (cur, add) => {
+  const mergeText = (cur: unknown, add: unknown): string => {
     const c = String(cur || '').trim();
     const a = String(add || '').trim();
     if (!a) return c;
@@ -287,7 +335,7 @@ export function applyDiagnosticIntakeToStudent(
     return `${c}\n\n${a}`;
   };
 
-  let nextFormData = {
+  let nextFormData: Record<string, unknown> = {
     ...formData,
     studentGeneralBackground: mergeText(
       formData.studentGeneralBackground,
@@ -323,7 +371,7 @@ export function createDiagnosticDocumentRecord({
   fileSizeFormatted = '',
   storageUrl = '',
   storagePath = ''
-}) {
+}: CreateDiagnosticDocumentRecordOptions = {}): DiagnosticDocumentRecord {
   const cleanText = String(fullText || '').trim();
   const snippet = cleanText
     ? (cleanText.length > 200 ? `${cleanText.slice(0, 200)}...` : cleanText)
@@ -345,9 +393,14 @@ export function createDiagnosticDocumentRecord({
 /**
  * Attaches a diagnostic document record to the student's diagnosticDocuments list.
  */
-export function addDiagnosticDocumentToStudent(formData = {}, docRecord = {}) {
+export function addDiagnosticDocumentToStudent(
+  formData: Record<string, unknown> = {},
+  docRecord?: DiagnosticDocumentRecord | null
+): Record<string, unknown> {
   if (!docRecord || !docRecord.fileName) return formData;
-  const existingDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+  const existingDocs: DiagnosticDocumentRecord[] = Array.isArray(formData.diagnosticDocuments)
+    ? (formData.diagnosticDocuments as DiagnosticDocumentRecord[])
+    : [];
 
   const exists = existingDocs.some(
     (d) => d.id === docRecord.id || (d.fileName === docRecord.fileName && d.fullText === docRecord.fullText)
@@ -364,9 +417,14 @@ export function addDiagnosticDocumentToStudent(formData = {}, docRecord = {}) {
 /**
  * Removes a diagnostic document from the student's diagnosticDocuments list by id.
  */
-export function removeDiagnosticDocumentFromStudent(formData = {}, docId = '') {
+export function removeDiagnosticDocumentFromStudent(
+  formData: Record<string, unknown> = {},
+  docId: string = ''
+): Record<string, unknown> {
   if (!docId) return formData;
-  const existingDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+  const existingDocs: DiagnosticDocumentRecord[] = Array.isArray(formData.diagnosticDocuments)
+    ? (formData.diagnosticDocuments as DiagnosticDocumentRecord[])
+    : [];
   const filtered = existingDocs.filter((d) => d.id !== docId);
 
   return {

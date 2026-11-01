@@ -1,5 +1,27 @@
+import type { SizedGoal, GoalAiSnapshot, DurationTshirtOption } from './types';
+
+export interface DateInfo {
+  entryDateObj: Date;
+  entryDateFormatted: string;
+  plus1Month: string;
+  plus2Months: string;
+  plus3Months: string;
+  plus4Months: string;
+  plus6Months: string;
+  endOfYear: string;
+  ageYears: number | null;
+  ageDescription: string;
+}
+
+export interface MergeReanalyzedGoalsOptions {
+  existingGoals?: SizedGoal[];
+  candidateNewGoals?: SizedGoal[];
+  removedGoals?: SizedGoal[];
+  gender?: string;
+}
+
 // === עזר להתאמה סמנטית סובלנית לשגיאות כתיב והקלדה (Fuzzy & Contextual Normalization) ===
-export function normalizeHebrewTextForContext(raw) {
+export function normalizeHebrewTextForContext(raw?: string): string {
   if (!raw) return '';
   let s = raw
     // תיקון אוטומטי של שגיאות כתיב והקלדה נפוצות בהקשר חינוכי-טיפולי
@@ -235,7 +257,7 @@ const GENDER_WORD_PAIRS = [
   ['נמנע', 'נמנעת']
 ];
 
-export function adaptTextToGender(text, gender = 'boy') {
+export function adaptTextToGender(text?: string, gender: string = 'boy'): string {
   if (!text || typeof text !== 'string') return text || '';
   const targetIsGirl = gender === 'girl' || gender === 'בת' || gender === 'נקבה';
   let out = text;
@@ -266,30 +288,32 @@ export function adaptTextToGender(text, gender = 'boy') {
   return out;
 }
 
-export function adaptGoalToGender(goalObj, gender = 'boy') {
+export function adaptGoalToGender<T extends Record<string, unknown>>(goalObj: T, gender: string = 'boy'): T {
   if (!goalObj) return goalObj;
-  const adapted = {
+  const raw = goalObj as Record<string, unknown>;
+  const adapted: Record<string, unknown> = {
     ...goalObj,
-    title: adaptTextToGender(goalObj.title || '', gender),
-    activityParticipation: adaptTextToGender(goalObj.activityParticipation || '', gender),
-    objectives: adaptTextToGender(goalObj.objectives || '', gender),
-    evaluationCriteria: adaptTextToGender(goalObj.evaluationCriteria || '', gender)
+    title: adaptTextToGender(String(raw.title || ''), gender),
+    activityParticipation: adaptTextToGender(String(raw.activityParticipation || ''), gender),
+    objectives: adaptTextToGender(String(raw.objectives || ''), gender),
+    evaluationCriteria: adaptTextToGender(String(raw.evaluationCriteria || ''), gender)
   };
-  if (goalObj.aiSnapshot && typeof goalObj.aiSnapshot === 'object') {
+  if (raw.aiSnapshot && typeof raw.aiSnapshot === 'object') {
+    const snap = raw.aiSnapshot as Record<string, unknown>;
     adapted.aiSnapshot = {
-      ...goalObj.aiSnapshot,
-      title: adaptTextToGender(goalObj.aiSnapshot.title || '', gender),
-      activityParticipation: adaptTextToGender(goalObj.aiSnapshot.activityParticipation || '', gender),
-      objectives: adaptTextToGender(goalObj.aiSnapshot.objectives || '', gender),
-      evaluationCriteria: adaptTextToGender(goalObj.aiSnapshot.evaluationCriteria || '', gender)
+      ...snap,
+      title: adaptTextToGender(String(snap.title || ''), gender),
+      activityParticipation: adaptTextToGender(String(snap.activityParticipation || ''), gender),
+      objectives: adaptTextToGender(String(snap.objectives || ''), gender),
+      evaluationCriteria: adaptTextToGender(String(snap.evaluationCriteria || ''), gender)
     };
   }
-  return adapted;
+  return adapted as T;
 }
 
 // === עזרים לחישוב גיל התלמיד/ה, תאריך הזנת המטרות ותיחום משך זמן יחסי לפי T-Shirt Size (S / M / L) ===
 
-function parseFlexibleDate(dateStr) {
+function parseFlexibleDate(dateStr?: unknown): Date | null {
   if (!dateStr || typeof dateStr !== 'string') return null;
   const trimmed = dateStr.trim();
   const dmyMatch = trimmed.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
@@ -312,7 +336,7 @@ function parseFlexibleDate(dateStr) {
   return null;
 }
 
-function formatDateHe(dateObj) {
+function formatDateHe(dateObj?: unknown): string {
   const d = dateObj instanceof Date && !isNaN(dateObj.getTime()) ? dateObj : new Date();
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -320,7 +344,7 @@ function formatDateHe(dateObj) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-function addMonthsClamped(baseDate, monthsToAdd) {
+function addMonthsClamped(baseDate: Date, monthsToAdd: number): Date {
   const d = new Date(baseDate.getTime());
   const origDay = d.getDate();
   d.setDate(1);
@@ -330,7 +354,7 @@ function addMonthsClamped(baseDate, monthsToAdd) {
   return d;
 }
 
-export function resolveStudentAgeAndDateInfo(formData = {}, rawText = '') {
+export function resolveStudentAgeAndDateInfo(formData: Record<string, unknown> = {}, rawText: string = ''): DateInfo {
   const entryDateObj = parseFlexibleDate(formData?.date) || new Date();
   const entryDateFormatted = formatDateHe(entryDateObj);
 
@@ -374,7 +398,7 @@ export function resolveStudentAgeAndDateInfo(formData = {}, rawText = '') {
         ageDescription = `${val} שנים (צוין בתיאור המורה)`;
       }
     } else {
-      const hebWordAges = {
+      const hebWordAges: Record<string, number> = {
         שנתיים: 2,
         שלוש: 3,
         ארבע: 4,
@@ -431,7 +455,7 @@ export function resolveStudentAgeAndDateInfo(formData = {}, rawText = '') {
   };
 }
 
-export const DURATION_TSHIRT_OPTIONS = [
+export const DURATION_TSHIRT_OPTIONS: DurationTshirtOption[] = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
   { size: 'S+', label: 'חודשיים', value: 'חודשיים' },
   { size: 'M', label: '3 חודשים', value: '3 חודשים' },
@@ -446,7 +470,7 @@ export const DURATION_TSHIRT_OPTIONS = [
  * @param {any} [formData]
  * @param {any} [dateInfo]
  */
-export function normalizeAndSizeGoalDuration(goalObj, rawText = '', formData = {}, dateInfo = null) {
+export function normalizeAndSizeGoalDuration(goalObj?: Partial<SizedGoal> | null, rawText: string = '', formData: Record<string, unknown> = {}, dateInfo?: DateInfo | null): string {
   const info = dateInfo || resolveStudentAgeAndDateInfo(formData, rawText);
   const rawDur = String(goalObj?.duration || '').trim();
   const explicitSize = String(goalObj?.tShirtSize || '').trim().toUpperCase();
@@ -532,7 +556,7 @@ export function normalizeAndSizeGoalDuration(goalObj, rawText = '', formData = {
   }
 
   if (/סדנא|יצירה|וויזו מוטורי|גזירה|ציור/.test(combinedGoalText)) {
-    if (hasHighBaseline && /מתוכננת|ציוד|עצמאי/.test(goalObj?.title || '')) {
+    if (hasHighBaseline && /מתוכננת|ציוד|עצמאי/.test(String(goalObj?.title || ''))) {
       return `חודש (עד ${info.plus1Month})`;
     }
     return hasHighBaseline
@@ -564,38 +588,50 @@ export function normalizeAndSizeGoalDuration(goalObj, rawText = '', formData = {
 
 // === עזרים לנעילת מטרות שנערכו / נוספו / הוסרו על ידי המורה בניתוח חוזר (Re-Analysis Protection) ===
 
-export function isGoalEmpty(goalObj) {
+export function isGoalEmpty(goalObj?: Partial<SizedGoal> | null): boolean {
   if (!goalObj) return true;
   return (
-    !(goalObj.title || '').trim() &&
-    !(goalObj.activityParticipation || '').trim() &&
-    !(goalObj.objectives || '').trim() &&
-    !(goalObj.opportunities || '').trim() &&
-    !(goalObj.evaluationCriteria || '').trim()
+    !String(goalObj.title || '').trim() &&
+    !String(goalObj.activityParticipation || '').trim() &&
+    !String(goalObj.objectives || '').trim() &&
+    !String(goalObj.opportunities || '').trim() &&
+    !String(goalObj.evaluationCriteria || '').trim()
   );
 }
 
-export function attachAiBaselineToGoal(goalObj) {
-  if (!goalObj) return goalObj;
+export function attachAiBaselineToGoal<T extends Partial<SizedGoal>>(goalObj: T): T & {
+  isAiGenerated: true;
+  isTeacherModified: false;
+  isTeacherAdded: false;
+  aiSnapshot: GoalAiSnapshot;
+} {
+  if (!goalObj) {
+    return goalObj as T & {
+      isAiGenerated: true;
+      isTeacherModified: false;
+      isTeacherAdded: false;
+      aiSnapshot: GoalAiSnapshot;
+    };
+  }
   return {
     ...goalObj,
     isAiGenerated: true,
     isTeacherModified: false,
     isTeacherAdded: false,
     aiSnapshot: {
-      environment: (goalObj.environment || '').trim(),
-      activityParticipation: (goalObj.activityParticipation || '').trim(),
-      title: (goalObj.title || '').trim(),
-      objectives: (goalObj.objectives || '').trim(),
-      opportunities: (goalObj.opportunities || '').trim(),
-      partners: (goalObj.partners || '').trim(),
-      duration: (goalObj.duration || '').trim(),
-      evaluationCriteria: (goalObj.evaluationCriteria || '').trim()
+      environment: String(goalObj.environment || '').trim(),
+      activityParticipation: String(goalObj.activityParticipation || '').trim(),
+      title: String(goalObj.title || '').trim(),
+      objectives: String(goalObj.objectives || '').trim(),
+      opportunities: String(goalObj.opportunities || '').trim(),
+      partners: String(goalObj.partners || '').trim(),
+      duration: String(goalObj.duration || '').trim(),
+      evaluationCriteria: String(goalObj.evaluationCriteria || '').trim()
     }
   };
 }
 
-export function isGoalProtectedFromAiOverwrite(goalObj) {
+export function isGoalProtectedFromAiOverwrite(goalObj?: Partial<SizedGoal> | null): boolean {
   if (!goalObj || isGoalEmpty(goalObj)) return false;
   if (goalObj.isTeacherModified || goalObj.isTeacherAdded) return true;
   if (Array.isArray(goalObj.observations) && goalObj.observations.length > 0) return true;
@@ -613,32 +649,39 @@ export function isGoalProtectedFromAiOverwrite(goalObj) {
       'duration',
       'evaluationCriteria'
     ];
+    const snap = goalObj.aiSnapshot as Record<string, unknown>;
+    const cur = goalObj as Record<string, unknown>;
     return compareFields.some(
-      (f) => (goalObj[f] || '').trim() !== (goalObj.aiSnapshot[f] || '').trim()
+      (f) => String(cur[f] || '').trim() !== String(snap[f] || '').trim()
     );
   }
   return false;
 }
 
-function normalizeGoalKeyForMatch(str) {
+function normalizeGoalKeyForMatch(str?: unknown): string {
   return adaptTextToGender(String(str || ''), 'boy')
     .replace(/[^\wא-ת\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function doSingleGoalPairMatch(a, b) {
+function doSingleGoalPairMatch(
+  a?: Partial<SizedGoal> | GoalAiSnapshot | null,
+  b?: Partial<SizedGoal> | GoalAiSnapshot | null
+): boolean {
   if (!a || !b) return false;
-  if (a.id && b.id && a.id === b.id) return true;
+  const aRec = a as Record<string, unknown>;
+  const bRec = b as Record<string, unknown>;
+  if (aRec.id && bRec.id && aRec.id === bRec.id) return true;
 
-  const titleA = normalizeGoalKeyForMatch(a.title);
-  const titleB = normalizeGoalKeyForMatch(b.title);
+  const titleA = normalizeGoalKeyForMatch(aRec.title);
+  const titleB = normalizeGoalKeyForMatch(bRec.title);
   if (titleA && titleB && (titleA === titleB || titleA.includes(titleB) || titleB.includes(titleA))) {
     return true;
   }
 
-  const envA = (a.environment || '').trim();
-  const envB = (b.environment || '').trim();
+  const envA = String(aRec.environment || '').trim();
+  const envB = String(bRec.environment || '').trim();
   if (envA && envB && envA === envB && titleA && titleB) {
     const wordsA = titleA.split(' ').filter((w) => w.length >= 3);
     const wordsB = new Set(titleB.split(' ').filter((w) => w.length >= 3));
@@ -648,7 +691,7 @@ function doSingleGoalPairMatch(a, b) {
   return false;
 }
 
-export function doGoalsReferToSameTopic(goalA, goalB) {
+export function doGoalsReferToSameTopic(goalA?: Partial<SizedGoal> | null, goalB?: Partial<SizedGoal> | null): boolean {
   if (!goalA || !goalB) return false;
   if (doSingleGoalPairMatch(goalA, goalB)) return true;
   if (goalA.aiSnapshot && doSingleGoalPairMatch(goalA.aiSnapshot, goalB)) return true;
@@ -664,12 +707,12 @@ export function mergeReanalyzedGoals({
   candidateNewGoals = [],
   removedGoals = [],
   gender = 'boy'
-}) {
+}: MergeReanalyzedGoalsOptions = {}): SizedGoal[] {
   const protectedGoals = (existingGoals || []).filter((g) => isGoalProtectedFromAiOverwrite(g));
   const removedList = Array.isArray(removedGoals) ? removedGoals : [];
 
   // 1. סנן מטרות שהמורה מחקה בעבר או שכבר קיימות ברשימת המטרות הנעולות של המורה
-  const filteredCandidates = [];
+  const filteredCandidates: SizedGoal[] = [];
   (candidateNewGoals || []).forEach((cand) => {
     if (!cand || isGoalEmpty(cand)) return;
     const adaptedCand = attachAiBaselineToGoal(adaptGoalToGender(cand, gender));
@@ -696,7 +739,7 @@ export function mergeReanalyzedGoals({
   }
 
   // 3. שמור על המטרות שהמורה ערכה/הוסיפה במקומן המדויק (ללא שום שינוי!), ושבץ את המטרות המנותחות החדשות בשאר המקומות
-  const merged = [];
+  const merged: SizedGoal[] = [];
   let candidateCursor = 0;
 
   (existingGoals || []).forEach((existingGoal) => {
