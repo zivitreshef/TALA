@@ -133,7 +133,7 @@ import { addObservationToGoal } from './domain/goalObservations';
 import { DISCIPLINE_LEAD_OPTIONS } from './domain/studentSyncMerge';
 import { callAiProxyEndpoint } from './services/aiProxyClient';
 import { usageTelemetryService } from './services/usageTelemetryService';
-import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy.js';
+import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy';
 import { reportHealthEvent } from './services/healthTelemetry';
 import { HEALTH_EVENT_KINDS } from './domain/healthEvents';
 

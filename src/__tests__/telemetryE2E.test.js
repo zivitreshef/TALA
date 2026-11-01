@@ -9,7 +9,7 @@ import {
   TELEMETRY_CATEGORIES,
   isValidEventName,
   getEventCategory
-} from '../domain/telemetryTaxonomy.js';
+} from '../domain/telemetryTaxonomy';
 import {
   sanitizeTelemetryPayload,
   getAnonUserId,
@@ -17,7 +17,7 @@ import {
   isInternalAccount,
   isProhibitedKey,
   scrubPiiFromString
-} from '../domain/telemetryPrivacy.js';
+} from '../domain/telemetryPrivacy';
 import { safeGetStorageJson, safeRemoveStorageItem } from '../services/storage.js';
 
 describe('Comprehensive Telemetry E2E Test Suite (Tiers 1-4 for F1-F18)', () => {

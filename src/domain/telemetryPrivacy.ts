@@ -4,70 +4,100 @@
  * PII, clinical diagnoses, teacher notes, and AI prompts before telemetry persistence.
  */
 
-import { isValidEventName, getEventCategory, CURRENT_APP_VERSION } from './telemetryTaxonomy.js';
+import { isValidEventName, getEventCategory, CURRENT_APP_VERSION } from './telemetryTaxonomy';
 import { sha256Hex } from '../allowedUsers.js';
 
 export const DEFAULT_TELEMETRY_SALT = 'tala_telemetry_salt_2026_v1';
+
+export type AccountType = 'teacher' | 'admin' | 'internal_test' | 'demo';
+
+export interface TelemetryEnvelope {
+  eventId: string;
+  eventName: string;
+  category: string | null;
+  anonUserId: string;
+  sessionId: string;
+  accountType: AccountType;
+  appVersion: string;
+  properties: Record<string, unknown>;
+  timestampMs: number;
+}
+
+export interface UserContext {
+  email?: string;
+  userId?: string;
+  uid?: string;
+  salt?: string;
+  role?: string;
+  isDemo?: boolean;
+  isAdmin?: boolean;
+  isTest?: boolean;
+  isInternalTest?: boolean;
+  accountType?: AccountType;
+  [key: string]: unknown;
+}
 
 /**
  * Exact prohibited property keys (case-insensitive normalized).
  * Any property matching these keys will be unconditionally dropped.
  */
-export const PROHIBITED_KEYS = Object.freeze(new Set([
-  'name',
-  'idnumber',
-  'notes',
-  'prompt',
-  'studentid',
-  'email',
-  'phone',
-  'phonenumber',
-  'address',
-  'assessment',
-  'diagnosis',
-  'studentname',
-  'teachername',
-  'parentname',
-  'childname',
-  'fullname',
-  'firstname',
-  'lastname',
-  'parentphone',
-  'parentemail',
-  'teacheremail',
-  'teacherphone',
-  'tz',
-  'teudatzehut',
-  'israeliid',
-  'personalid',
-  'note',
-  'content',
-  'message',
-  'query',
-  'comment',
-  'response',
-  'password',
-  'token',
-  'secret',
-  'credential',
-  'credentials',
-  'medical',
-  'clinical',
-  'evaluation',
-  'chatmessage',
-  'chatcontent',
-  'rawtext',
-  'studenttext',
-  'freeprompt',
-  'userprompt',
-  'aiprompt',
-  'birthdate'
-]));
+export const PROHIBITED_KEYS: ReadonlySet<string> = Object.freeze(
+  new Set([
+    'name',
+    'idnumber',
+    'notes',
+    'prompt',
+    'studentid',
+    'email',
+    'phone',
+    'phonenumber',
+    'address',
+    'assessment',
+    'diagnosis',
+    'studentname',
+    'teachername',
+    'parentname',
+    'childname',
+    'fullname',
+    'firstname',
+    'lastname',
+    'parentphone',
+    'parentemail',
+    'teacheremail',
+    'teacherphone',
+    'tz',
+    'teudatzehut',
+    'israeliid',
+    'personalid',
+    'note',
+    'content',
+    'message',
+    'query',
+    'comment',
+    'response',
+    'password',
+    'token',
+    'secret',
+    'credential',
+    'credentials',
+    'medical',
+    'clinical',
+    'evaluation',
+    'chatmessage',
+    'chatcontent',
+    'rawtext',
+    'studenttext',
+    'freeprompt',
+    'userprompt',
+    'aiprompt',
+    'birthdate'
+  ])
+);
 
 /**
  * Checks whether a property key is prohibited.
  */
-export function isProhibitedKey(key) {
+export function isProhibitedKey(key?: unknown): boolean {
   if (typeof key !== 'string' || !key) return true;
 
   // Non-ASCII check: telemetry property keys are strictly standard ASCII identifiers.
@@ -84,7 +114,6 @@ export function isProhibitedKey(key) {
   if (PROHIBITED_KEYS.has(clean)) return true;
 
   // Compound keyword checks (clinical, medical, diagnosis, profile, assessment, evaluation, note, prompt)
-  // Exception: 'dirtyexitnote' is an allowed UX friction telemetry property whose string content is scrubbed
   if (
     clean.includes('prompt') ||
     clean.includes('medical') ||
@@ -122,18 +151,18 @@ export function isProhibitedKey(key) {
  * Multi-pattern regex scrubber.
  * Sanitizes strings against Israeli IDs (9 digits), emails, and phone numbers.
  */
-export function scrubPiiFromString(str) {
+export function scrubPiiFromString(str?: unknown): string {
   if (typeof str !== 'string') return '';
   let result = str;
 
   // 1. Email addresses
   result = result.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[REDACTED_EMAIL]');
 
-  // 2. Israeli phone numbers (e.g. 050-1234567, +972-50-1234567, 03-1234567, 0541234567)
+  // 2. Israeli phone numbers
   result = result.replace(/(?:\+972[- ]?|0)(?:5[0-9]|[23489])[- ]?\d{3}[- ]?\d{4}\b/g, '[REDACTED_PHONE]');
   result = result.replace(/\b05\d[- ]?\d{7}\b/g, '[REDACTED_PHONE]');
 
-  // 3. Israeli ID (9 consecutive digits, or separated formats: 8+1 or 3-3-3 with hyphens or spaces)
+  // 3. Israeli ID (9 consecutive digits, or separated formats)
   result = result.replace(/(?<!\d)(?:\d{9}|\d{8}[- ]\d|\d{3}[- ]\d{3}[- ]\d{3})(?!\d)/g, '[REDACTED_ID]');
 
   return result;
@@ -141,18 +170,13 @@ export function scrubPiiFromString(str) {
 
 /**
  * Tier 4 Sanitizer: Clamps and types properties.
- * - Drops prohibited keys
- * - Drops nested objects and arrays
- * - Clamps strings to max 100 characters after scrubbing PII
- * - Clamps numbers to finite values
- * - Retains booleans
  */
-export function sanitizeProperties(rawProperties = {}) {
+export function sanitizeProperties(rawProperties?: Record<string, unknown> | null): Record<string, unknown> {
   if (!rawProperties || typeof rawProperties !== 'object' || Array.isArray(rawProperties)) {
     return {};
   }
 
-  const sanitized = {};
+  const sanitized: Record<string, unknown> = {};
 
   for (const [key, val] of Object.entries(rawProperties)) {
     if (!Object.prototype.hasOwnProperty.call(rawProperties, key)) continue;
@@ -174,7 +198,6 @@ export function sanitizeProperties(rawProperties = {}) {
       }
     } else if (valType === 'string') {
       const scrubbed = scrubPiiFromString(val);
-      // Clamp to 100 characters max
       sanitized[key] = scrubbed.slice(0, 100);
     }
   }
@@ -185,7 +208,7 @@ export function sanitizeProperties(rawProperties = {}) {
 /**
  * RFC4122-compliant UUID v4 generator with cryptographic fallback.
  */
-export function generateUuidV4() {
+export function generateUuidV4(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
@@ -199,7 +222,6 @@ export function generateUuidV4() {
     }
   }
 
-  // Set version 4 (0100) and variant (10xx)
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
 
@@ -207,12 +229,9 @@ export function generateUuidV4() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
-/**
- * Ephemeral session identifier cache (per browser tab lifetime).
- */
-let currentSessionId = null;
+let currentSessionId: string | null = null;
 
-export function getSessionId() {
+export function getSessionId(): string {
   if (!currentSessionId) {
     if (typeof window !== 'undefined' && window.sessionStorage) {
       try {
@@ -237,7 +256,7 @@ export function getSessionId() {
   return currentSessionId;
 }
 
-export function resetSessionId() {
+export function resetSessionId(): string {
   currentSessionId = generateUuidV4();
   if (typeof window !== 'undefined' && window.sessionStorage) {
     try {
@@ -249,19 +268,15 @@ export function resetSessionId() {
   return currentSessionId;
 }
 
-/**
- * Generates an ephemeral workflow correlation ID.
- */
-export function generateCorrelationId() {
+export function generateCorrelationId(): string {
   return generateUuidV4();
 }
 
 /**
  * Generates a deterministic salted SHA-256 hash for user pseudonymization.
- * Formula: TALA_ANON_USER_V1:${salt}:${userEmail || userId}
  */
-export function getAnonUserId(userIdentifier, salt = DEFAULT_TELEMETRY_SALT) {
-  const cleanId = (userIdentifier ? String(userIdentifier).trim().toLowerCase() : 'anonymous');
+export function getAnonUserId(userIdentifier?: unknown, salt: string = DEFAULT_TELEMETRY_SALT): string {
+  const cleanId = userIdentifier ? String(userIdentifier).trim().toLowerCase() : 'anonymous';
   const message = `TALA_ANON_USER_V1:${salt}:${cleanId}`;
   return sha256Hex(message);
 }
@@ -270,10 +285,10 @@ export function getAnonUserId(userIdentifier, salt = DEFAULT_TELEMETRY_SALT) {
  * Classifies the user account into:
  * 'teacher' | 'admin' | 'internal_test' | 'demo'
  */
-export function classifyAccount(userContext = {}) {
+export function classifyAccount(userContext?: UserContext | string | null): AccountType {
   if (!userContext) return 'teacher';
 
-  const ctx = typeof userContext === 'string' ? { email: userContext } : userContext;
+  const ctx: UserContext = typeof userContext === 'string' ? { email: userContext } : userContext;
 
   if (ctx.accountType && ['teacher', 'admin', 'internal_test', 'demo'].includes(ctx.accountType)) {
     return ctx.accountType;
@@ -314,25 +329,26 @@ export function classifyAccount(userContext = {}) {
   return 'teacher';
 }
 
-/**
- * Checks whether the given accountType is an internal/non-standard user.
- */
-export function isInternalAccount(accountType) {
+export function isInternalAccount(accountType?: string | null): boolean {
   return accountType === 'admin' || accountType === 'internal_test' || accountType === 'demo';
 }
 
 /**
  * Sanitizes an incoming telemetry event payload through the 5-tier Zero-Trust pipeline.
- * Rejects invalid event names by returning null.
  */
-export function sanitizeTelemetryPayload(eventName, rawProperties = {}, userContext = {}, customSalt) {
+export function sanitizeTelemetryPayload(
+  eventName: string,
+  rawProperties: Record<string, unknown> = {},
+  userContext: UserContext | string = {},
+  customSalt?: string
+): TelemetryEnvelope | null {
   // Tier 1: Taxonomy whitelist
   if (!isValidEventName(eventName)) {
     return null;
   }
 
   const category = getEventCategory(eventName);
-  const ctx = typeof userContext === 'string' ? { email: userContext } : (userContext || {});
+  const ctx: UserContext = typeof userContext === 'string' ? { email: userContext } : userContext || {};
   const userIdentifier = ctx.email || ctx.userId || ctx.uid || '';
   const salt = customSalt || ctx.salt || DEFAULT_TELEMETRY_SALT;
   const anonUserId = getAnonUserId(userIdentifier, salt);

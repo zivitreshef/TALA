@@ -5,7 +5,7 @@
  * onboarding, friction, and technical health.
  */
 
-export const CURRENT_APP_VERSION = '2.5.6';
+export const CURRENT_APP_VERSION = '2.5.7';
 
 export const TELEMETRY_CATEGORIES = Object.freeze({
   ENGAGEMENT: 'engagement',
@@ -16,7 +16,9 @@ export const TELEMETRY_CATEGORIES = Object.freeze({
   ONBOARDING: 'onboarding',
   FRICTION: 'friction',
   TECHNICAL_HEALTH: 'technical_health'
-});
+} as const);
+
+export type TelemetryCategory = (typeof TELEMETRY_CATEGORIES)[keyof typeof TELEMETRY_CATEGORIES];
 
 export const TELEMETRY_EVENTS = Object.freeze({
   // Engagement
@@ -67,9 +69,11 @@ export const TELEMETRY_EVENTS = Object.freeze({
   API_OPERATION_FAILED: 'api_operation_failed',
   AI_LATENCY_RECORDED: 'ai_latency_recorded',
   PAGE_LOAD_RECORDED: 'page_load_recorded'
-});
+} as const);
 
-export const EVENT_CATEGORY_MAP = Object.freeze({
+export type TelemetryEvent = (typeof TELEMETRY_EVENTS)[keyof typeof TELEMETRY_EVENTS];
+
+export const EVENT_CATEGORY_MAP: Readonly<Record<string, string>> = Object.freeze({
   // Engagement
   [TELEMETRY_EVENTS.SESSION_START]: TELEMETRY_CATEGORIES.ENGAGEMENT,
   [TELEMETRY_EVENTS.SESSION_END]: TELEMETRY_CATEGORIES.ENGAGEMENT,
@@ -120,10 +124,17 @@ export const EVENT_CATEGORY_MAP = Object.freeze({
   [TELEMETRY_EVENTS.PAGE_LOAD_RECORDED]: TELEMETRY_CATEGORIES.TECHNICAL_HEALTH
 });
 
+export interface PropertyRule {
+  type?: 'string' | 'number' | 'boolean';
+  enum?: readonly string[];
+  min?: number;
+  max?: number;
+}
+
 /**
  * Property schemas defining expected types and constraints for key events.
  */
-export const EVENT_SCHEMAS = Object.freeze({
+export const EVENT_SCHEMAS: Readonly<Record<string, Record<string, PropertyRule>>> = Object.freeze({
   [TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_STARTED]: {
     mode: { type: 'string', enum: ['text', 'voice'] },
     isEdit: { type: 'boolean' }
@@ -196,7 +207,7 @@ export const EVENT_SCHEMAS = Object.freeze({
 /**
  * Check whether an event name belongs to the standardized taxonomy.
  */
-export function isValidEventName(eventName) {
+export function isValidEventName(eventName?: unknown): boolean {
   if (typeof eventName !== 'string' || !eventName) return false;
   return Object.prototype.hasOwnProperty.call(EVENT_CATEGORY_MAP, eventName);
 }
@@ -204,15 +215,15 @@ export function isValidEventName(eventName) {
 /**
  * Retrieve the category name for an event.
  */
-export function getEventCategory(eventName) {
-  if (!isValidEventName(eventName)) return null;
+export function getEventCategory(eventName?: string | null): string | null {
+  if (!eventName || !isValidEventName(eventName)) return null;
   return EVENT_CATEGORY_MAP[eventName] || null;
 }
 
 /**
  * Retrieve all event names mapped to a specific category.
  */
-export function getEventsByCategory(category) {
+export function getEventsByCategory(category?: string | null): string[] {
   if (!category || typeof category !== 'string') return [];
   return Object.keys(EVENT_CATEGORY_MAP).filter((evt) => EVENT_CATEGORY_MAP[evt] === category);
 }
@@ -220,23 +231,30 @@ export function getEventsByCategory(category) {
 /**
  * List all available telemetry categories.
  */
-export function getAllCategories() {
+export function getAllCategories(): string[] {
   return Object.values(TELEMETRY_CATEGORIES);
 }
 
 /**
  * List all available telemetry event names.
  */
-export function getAllEvents() {
+export function getAllEvents(): string[] {
   return Object.values(TELEMETRY_EVENTS);
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
 }
 
 /**
  * Validates properties against the event's defined schema (if any).
- * Returns { valid: boolean, errors: string[] }.
  */
-export function validateEventProperties(eventName, properties = {}) {
-  const errors = [];
+export function validateEventProperties(
+  eventName: string,
+  properties: Record<string, unknown> | null = {}
+): ValidationResult {
+  const errors: string[] = [];
 
   if (!isValidEventName(eventName)) {
     return {
@@ -259,15 +277,15 @@ export function validateEventProperties(eventName, properties = {}) {
     };
   }
 
+  const props = properties || {};
   const schema = EVENT_SCHEMAS[eventName];
   if (!schema) {
-    // No specific constraints for this event
     return { valid: true, errors: [] };
   }
 
   for (const [propKey, rules] of Object.entries(schema)) {
-    if (Object.prototype.hasOwnProperty.call(properties, propKey)) {
-      const val = properties[propKey];
+    if (Object.prototype.hasOwnProperty.call(props, propKey)) {
+      const val = props[propKey];
       if (val === undefined || val === null) continue;
 
       if (rules.type && typeof val !== rules.type) {
@@ -275,17 +293,18 @@ export function validateEventProperties(eventName, properties = {}) {
         continue;
       }
 
-      if (rules.enum && !rules.enum.includes(val)) {
+      if (rules.enum && !rules.enum.includes(val as string)) {
         errors.push(`Property "${propKey}" value "${val}" is not in allowed list [${rules.enum.join(', ')}]`);
       }
 
       if (rules.type === 'number') {
-        if (!Number.isFinite(val)) {
+        const numVal = val as number;
+        if (!Number.isFinite(numVal)) {
           errors.push(`Property "${propKey}" must be a finite number`);
-        } else if (rules.min !== undefined && val < rules.min) {
-          errors.push(`Property "${propKey}" must be >= ${rules.min}, received ${val}`);
-        } else if (rules.max !== undefined && val > rules.max) {
-          errors.push(`Property "${propKey}" must be <= ${rules.max}, received ${val}`);
+        } else if (rules.min !== undefined && numVal < rules.min) {
+          errors.push(`Property "${propKey}" must be >= ${rules.min}, received ${numVal}`);
+        } else if (rules.max !== undefined && numVal > rules.max) {
+          errors.push(`Property "${propKey}" must be <= ${rules.max}, received ${numVal}`);
         }
       }
     }

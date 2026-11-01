@@ -22,11 +22,11 @@ import {
   computeUxFrictionMetrics,
   computeTechnicalHealthMetrics,
   computeTelemetryAnalytics
-} from '../domain/telemetryAggregator.js';
+} from '../domain/telemetryAggregator';
 import {
   TELEMETRY_CATEGORIES,
   TELEMETRY_EVENTS
-} from '../domain/telemetryTaxonomy.js';
+} from '../domain/telemetryTaxonomy';
 import AdminAllowlistModal from '../components/modals/AdminAllowlistModal.jsx';
 
 describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {

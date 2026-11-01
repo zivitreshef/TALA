@@ -10,7 +10,7 @@ import {
   getAllCategories,
   getAllEvents,
   validateEventProperties
-} from '../domain/telemetryTaxonomy.js';
+} from '../domain/telemetryTaxonomy';
 
 describe('Telemetry Event Taxonomy Registry (F2, F12, F16, F17, F18)', () => {
   describe('Tier 1: Category & Event Registry Completeness', () => {

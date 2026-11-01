@@ -11,19 +11,19 @@ import {
   scrubPiiFromString,
   sanitizeProperties,
   sanitizeTelemetryPayload
-} from '../domain/telemetryPrivacy.js';
+} from '../domain/telemetryPrivacy';
 import {
   TELEMETRY_EVENTS,
   TELEMETRY_CATEGORIES,
   isValidEventName
-} from '../domain/telemetryTaxonomy.js';
+} from '../domain/telemetryTaxonomy';
 import {
   computeTelemetryAnalytics,
   computeFeatureAdoption,
   computeOnboardingFunnel,
   computeUxFrictionMetrics,
   computeCohortRetention
-} from '../domain/telemetryAggregator.js';
+} from '../domain/telemetryAggregator';
 
 describe('Adversarial Coverage Hardening & Stress Testing (Challenger Gate)', () => {
   let service;
