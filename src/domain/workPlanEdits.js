@@ -332,7 +332,8 @@ export const removeStatusSection = (prev, sectionNumber) => {
   };
 };
 
-export const createTeamMessage = ({
+export function createTeamMessage({
+
   authorEmail,
   authorName = '',
   authorRole = '',
@@ -341,7 +342,7 @@ export const createTeamMessage = ({
   recipientEmail = '',
   recipientName = '',
   schoolYear = ''
-} = {}) => {
+} = {}) {
   const cleanAuthorEmail = String(authorEmail || '').trim().toLowerCase();
   if (!cleanAuthorEmail) return null;
 

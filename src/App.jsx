@@ -372,28 +372,6 @@ export default function App() {
     saveSettingsToCloud({ upgradeBanner: nextBanner });
   };
 
-  const handleQuickSaveFromBanner = () => {
-    if (unsavedDraftState?.isDirty && unsavedDraftState?.draftData) {
-      const updated = {
-        ...unsavedDraftState.draftData,
-        lastSavedAt: new Date().toLocaleTimeString('he-IL', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      };
-      setStudents((prev) =>
-        prev.map((s) => (s.id === updated.id ? updated : s))
-      );
-      saveStudentToCloud(updated);
-      (updated.goals || []).forEach((g) => {
-        if (g.title && g.title.trim()) {
-          handleUseOrAddGoalToBank(g);
-        }
-      });
-      setUnsavedDraftState({ isDirty: false, draftData: updated });
-    }
-  };
-
   const handleUpdateEmailEngineConfig = (nextCfg) => {
     const saved = saveEmailEngineConfig(nextCfg);
     setEmailEngineConfig(saved);
@@ -655,6 +633,19 @@ export default function App() {
     return getDemoStudent('');
   });
 
+  const [whatsNewDismissed, setWhatsNewDismissed] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem(SESSION_USER_KEY);
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed?.email) {
+          return localStorage.getItem(`tala_whats_new_help_journey_v1_${parsed.email.trim().toLowerCase()}`) === 'true';
+        }
+      }
+    } catch (_) {}
+    return false;
+  });
+
   useEffect(() => {
     if (!currentUser?.email) return;
     const st = getOnboardingState(currentUser.email);
@@ -670,19 +661,6 @@ export default function App() {
       setWhatsNewDismissed(false);
     }
   }, [currentUser?.email]);
-
-  const [whatsNewDismissed, setWhatsNewDismissed] = useState(() => {
-    try {
-      const savedUser = localStorage.getItem(SESSION_USER_KEY);
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        if (parsed?.email) {
-          return localStorage.getItem(`tala_whats_new_help_journey_v1_${parsed.email.trim().toLowerCase()}`) === 'true';
-        }
-      }
-    } catch (_) {}
-    return false;
-  });
 
   const handleDismissWhatsNewBanner = () => {
     setWhatsNewDismissed(true);
@@ -1679,7 +1657,7 @@ export default function App() {
     setInsideLandingSearch('');
   };
 
-  const performLogout = async () => {
+  async function performLogout() {
     const userToClear = currentUser;
     setShowLogoutUnsavedModal(false);
     setShowFeedbackSurveyModal(false);
@@ -1967,7 +1945,7 @@ export default function App() {
      Guided Onboarding Journey Handlers (Milestone 1)
      ========================================================================= */
 
-  const handleStartOnboarding = ({ mode = null, restart = false } = {}) => {
+  function handleStartOnboarding({ mode = null, restart = false } = {}) {
     if (!currentUser?.email) return;
     let nextState;
     if (restart) {
@@ -2034,7 +2012,7 @@ export default function App() {
     }
   };
 
-  const triggerOnboardingDomSpotlight = () => {
+  function triggerOnboardingDomSpotlight() {
     setOnboardingSpotlightTick((t) => t + 1);
     setTimeout(() => {
       if (typeof document === 'undefined') return;
@@ -2189,7 +2167,7 @@ export default function App() {
     setOnboardingState(nextState);
   };
 
-  const handleCloseOnboarding = () => {
+  function handleCloseOnboarding() {
     if (!currentUser?.email) return;
     setOnboardingState((prev) => (prev ? { ...prev, isClosing: true } : prev));
     setTimeout(() => {
@@ -2206,11 +2184,33 @@ export default function App() {
     setSelectedStudentId(null);
   };
 
-  const handleUseOrAddGoalToBank = (goalData) => {
+  function handleUseOrAddGoalToBank(goalData) {
     const nextBank = recordGoalUsageOrAdd(goalData, goalBank);
     setGoalBank(nextBank);
     saveGoalBank(nextBank);
     saveGoalBankToCloud(nextBank).catch(() => {});
+  };
+
+  const handleQuickSaveFromBanner = () => {
+    if (unsavedDraftState?.isDirty && unsavedDraftState?.draftData) {
+      const updated = {
+        ...unsavedDraftState.draftData,
+        lastSavedAt: new Date().toLocaleTimeString('he-IL', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      };
+      setStudents((prev) =>
+        prev.map((s) => (s.id === updated.id ? updated : s))
+      );
+      saveStudentToCloud(updated);
+      (updated.goals || []).forEach((g) => {
+        if (g.title && g.title.trim()) {
+          handleUseOrAddGoalToBank(g);
+        }
+      });
+      setUnsavedDraftState({ isDirty: false, draftData: updated });
+    }
   };
 
   const handleAddBankGoalToStudent = (bankItem, targetStudentObj) => {
