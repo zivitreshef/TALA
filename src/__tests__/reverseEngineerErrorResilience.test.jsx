@@ -3,7 +3,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { reverseEngineerRawTextLocally } from '../goalBankData';
 import EcologicalWorkPlanForm from '../EcologicalWorkPlanForm.jsx';
-import { HEALTH_EVENT_KINDS } from '../domain/healthEvents.js';
+import { HEALTH_EVENT_KINDS } from '../domain/healthEvents';
 
 vi.mock('../firebaseBackend.js', () => ({
   getFirebaseAuth: vi.fn(() => ({

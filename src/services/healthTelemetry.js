@@ -1,5 +1,5 @@
 import { getFirebaseAuth, reportHealthEventToCloud } from '../firebaseBackend';
-import { buildHealthEvent } from '../domain/healthEvents.js';
+import { buildHealthEvent } from '../domain/healthEvents';
 
 const DEDUPE_WINDOW_MS = 30 * 1000;
 const recentKeys = new Map();

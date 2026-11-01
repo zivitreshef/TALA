@@ -7,7 +7,7 @@ import {
   countUnreviewedHealthEvents,
   normalizeHealthEvents,
   buildPingResult
-} from '../domain/healthEvents.js';
+} from '../domain/healthEvents';
 
 const NOW = 1_800_000_000_000;
 const HOUR = 60 * 60 * 1000;

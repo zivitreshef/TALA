@@ -6,12 +6,12 @@
  * teacher behavioral observations (e.g. "הילד מתעלם מהוראות הצוות") are NEVER falsely flagged.
  */
 
-export const INJECTION_PATTERNS = [
+export const INJECTION_PATTERNS: readonly RegExp[] = [
   // English meta-instruction overrides
-  /ignore\s+(?:all\s+|previous\s+|system\s+)?instructions/i,
-  /disregard\s+(?:all\s+|previous\s+)?instructions/i,
+  /ignore\s+(?:(?:all|previous|system)\s+)*instructions/i,
+  /disregard\s+(?:(?:all|previous)\s+)*instructions/i,
   /you\s+are\s+now\s+(?:a|an)?/i,
-  /forget\s+(?:all\s+|your\s+)?instructions/i,
+  /forget\s+(?:(?:all|your|previous)\s+)*instructions/i,
   /system\s*:\s*/i,
   /assistant\s*:\s*/i,
   /jailbreak/i,
@@ -33,10 +33,10 @@ export const INJECTION_PATTERNS = [
 
 /**
  * Checks whether an input text contains prompt injection or adversarial override attempts.
- * @param {string} text - Untrusted text to evaluate
- * @returns {boolean} True if malicious injection is detected
+ * @param text - Untrusted text to evaluate
+ * @returns True if malicious injection is detected
  */
-export function containsInjection(text) {
+export function containsInjection(text?: unknown): boolean {
   if (!text || typeof text !== 'string') return false;
   return INJECTION_PATTERNS.some((re) => re.test(text));
 }
@@ -44,10 +44,10 @@ export function containsInjection(text) {
 /**
  * Wraps untrusted user/teacher observation text in strict structural boundary tags
  * accompanied by clear passive data instructions for LLMs.
- * @param {string} text - Untrusted user input
- * @returns {string} Enclosed prompt segment
+ * @param text - Untrusted user input
+ * @returns Enclosed prompt segment
  */
-export function wrapUntrustedInput(text) {
+export function wrapUntrustedInput(text?: string | null): string {
   const safe = (text || '').trim();
   return `<untrusted_student_data>\n${safe}\n</untrusted_student_data>`;
 }

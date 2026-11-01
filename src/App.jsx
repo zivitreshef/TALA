@@ -111,7 +111,7 @@ import {
   subscribeToHealthEvents,
   clearHealthEventsInCloud
 } from './firebaseBackend';
-import { countUnreviewedHealthEvents } from './domain/healthEvents.js';
+import { countUnreviewedHealthEvents } from './domain/healthEvents';
 import { dispatchServerInquiryAlerts } from './services/alertDispatcher.js';
 import {
   shouldSendPedagogicalDigest,

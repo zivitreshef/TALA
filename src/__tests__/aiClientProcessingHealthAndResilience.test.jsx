@@ -6,7 +6,7 @@ import {
   HEALTH_KIND_LABELS_HE,
   classifyAiError,
   buildHealthEvent
-} from '../domain/healthEvents.js';
+} from '../domain/healthEvents';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy.js';
 import { reportHealthEvent } from '../services/healthTelemetry.js';
 import { usageTelemetryService } from '../services/usageTelemetryService.js';
