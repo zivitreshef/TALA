@@ -1,4 +1,4 @@
-import { getDefaultPartnersForStage, adaptPartnersToStage } from './stageGuard.js';
+import { getDefaultPartnersForStage, adaptPartnersToStage } from './stageGuard';
 import {
   ENVIRONMENTS_LIST,
   adaptTextToGender,
@@ -8,7 +8,50 @@ import {
 } from '../goalBankData';
 import { syncActiveReportSnapshot } from './yearReport';
 
-export const personalizeBankItem = (bankItem, student) => {
+export interface BankGoalItem {
+  title?: string;
+  defaultActivity?: string;
+  suggestedObjectives?: string[];
+  defaultOpportunities?: string;
+  defaultEvaluation?: string;
+  defaultPartners?: string;
+  environment?: string;
+  [key: string]: unknown;
+}
+
+export interface StudentEntityForBank {
+  gender?: string;
+  name?: string;
+  stage?: string;
+  educationalFramework?: string;
+  teacherFreeText?: string;
+  goals?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+export interface PersonalizedBankItem {
+  title: string;
+  activity: string;
+  objectives: string;
+  opportunities: string;
+  evaluation: string;
+}
+
+export interface FillGoalRowOptions {
+  fillTemplate?: boolean;
+  isTalaMode?: boolean;
+}
+
+export interface AppendBankGoalResult {
+  student: StudentEntityForBank;
+  added: boolean;
+  goalTitle: string;
+}
+
+export const personalizeBankItem = (
+  bankItem?: BankGoalItem | null,
+  student?: StudentEntityForBank | null
+): PersonalizedBankItem => {
   const genderToUse = student?.gender || 'boy';
   const studentFirstName = (
     student?.name || (genderToUse === 'girl' ? 'הילדה' : 'הילד')
@@ -37,11 +80,11 @@ export const personalizeBankItem = (bankItem, student) => {
 };
 
 export const fillGoalRowFromBank = (
-  goal,
-  bankItem,
-  student,
-  { fillTemplate = true, isTalaMode = false } = {}
-) => {
+  goal: Record<string, unknown>,
+  bankItem?: BankGoalItem | null,
+  student?: StudentEntityForBank | null,
+  { fillTemplate = true, isTalaMode = false }: FillGoalRowOptions = {}
+): Record<string, unknown> => {
   const p = personalizeBankItem(bankItem, student);
   if (!fillTemplate) {
     return {
@@ -52,8 +95,9 @@ export const fillGoalRowFromBank = (
     };
   }
 
+  const safeStudent = student || {};
   const dateInfo = resolveStudentAgeAndDateInfo(
-    student,
+    safeStudent,
     student?.teacherFreeText || ''
   );
 
@@ -69,7 +113,7 @@ export const fillGoalRowFromBank = (
     learningAccommodations: goal?.learningAccommodations || '',
     partners:
       goal?.partners
-        ? adaptPartnersToStage(goal.partners, student?.stage || (String(student?.educationalFramework || '').includes('גן') ? 'kindergarten' : 'school'), isTalaMode)
+        ? adaptPartnersToStage(String(goal.partners), student?.stage || (String(student?.educationalFramework || '').includes('גן') ? 'kindergarten' : 'school'), isTalaMode)
         : bankItem?.defaultPartners
         ? adaptPartnersToStage(bankItem.defaultPartners, student?.stage || (String(student?.educationalFramework || '').includes('גן') ? 'kindergarten' : 'school'), isTalaMode)
         : getDefaultPartnersForStage(student?.stage || (String(student?.educationalFramework || '').includes('גן') ? 'kindergarten' : 'school'), isTalaMode),
@@ -86,19 +130,23 @@ export const fillGoalRowFromBank = (
         : normalizeAndSizeGoalDuration(
             draftGoal,
             student?.teacherFreeText || '',
-            student,
-            dateInfo
+            safeStudent,
+            dateInfo ?? null
           )
   };
 };
 
-export const appendBankGoalToStudent = (student, bankItem, now = new Date()) => {
+export const appendBankGoalToStudent = (
+  student: StudentEntityForBank,
+  bankItem?: BankGoalItem | null,
+  now: Date = new Date()
+): AppendBankGoalResult => {
   const p = personalizeBankItem(bankItem, student);
   const existingGoals = Array.isArray(student?.goals) ? student.goals : [];
   const alreadyExists = existingGoals.some(
     (g) =>
-      (g.title || '').trim() === p.title.trim() ||
-      (g.title || '').trim() === (bankItem?.title || '').trim()
+      (String(g.title || '')).trim() === p.title.trim() ||
+      (String(g.title || '')).trim() === (bankItem?.title || '').trim()
   );
 
   if (alreadyExists) {
@@ -109,8 +157,9 @@ export const appendBankGoalToStudent = (student, bankItem, now = new Date()) => 
     };
   }
 
+  const safeStudent = student || {};
   const dateInfo = resolveStudentAgeAndDateInfo(
-    student,
+    safeStudent,
     student?.teacherFreeText || ''
   );
 
@@ -133,8 +182,8 @@ export const appendBankGoalToStudent = (student, bankItem, now = new Date()) => 
     duration: normalizeAndSizeGoalDuration(
       draftGoal,
       student?.teacherFreeText || '',
-      student,
-      dateInfo
+      safeStudent,
+      dateInfo ?? null
     )
   };
 

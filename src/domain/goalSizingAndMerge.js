@@ -440,6 +440,12 @@ export const DURATION_TSHIRT_OPTIONS = [
   { size: 'XL', label: 'עד סוף השנה (שנתי)', value: 'עד סוף השנה' }
 ];
 
+/**
+ * @param {any} goalObj
+ * @param {string} [rawText]
+ * @param {any} [formData]
+ * @param {any} [dateInfo]
+ */
 export function normalizeAndSizeGoalDuration(goalObj, rawText = '', formData = {}, dateInfo = null) {
   const info = dateInfo || resolveStudentAgeAndDateInfo(formData, rawText);
   const rawDur = String(goalObj?.duration || '').trim();
