@@ -56,23 +56,23 @@ export const ONBOARDING_STEPS = [
   {
     id: 3,
     key: 'student_profile',
-    title: 'פרופיל תפקודי ומוקדי כוח',
-    shortTitle: 'פרופיל וכוחות',
+    title: 'פרופיל תפקודי ועיבוד AI',
+    shortTitle: 'עיבוד מידע ב-AI',
     stepNumberLabel: 'צעד 3 מתוך 10',
     targetView: 'student_form',
     targetSection: 'section_2_profile',
     isImplemented: true,
-    arrowIcon: '☝️',
+    arrowIcon: '👈',
     whereToLookHint:
-      'הביטי בסעיף "2. תיאור חופשי של התלמיד/ה, רקע ומוקדי כוח" (מסומן בחץ ירוק): תיבת הטקסט החופשי, כפתור "עיבוד המידע" ב-AI וטבלת הפרופיל התפקודי.',
+      'הביטי בסעיף "2. תיאור חופשי של התלמיד/ה, רקע ומוקדי כוח": לחצי על כפתור "עיבוד המידע" הסגול כדי להפעיל את ה-AI על הטקסט לדוגמה ולראות כיצד נחלצים מוקדי כוח, רקע ומטרות.',
     pedagogicalRationale:
-      'בחינוך מיוחד אפקטיבי, תוכנית עבודה נבנית תמיד על בסיס מוקדי הכוח ותחומי העניין של התלמיד, ולא רק על קשייו. כוחות אלו מהווים את המנוף המרכזי להתקדמות.',
+      'במקום להקליד שעות מול מסמכים, המערכת מנתחת תיאור פדגוגי חופשי, חוסכת זמן יקר ומחלצת מוקדי כוח, קשיים והמלצות באופן אוטומטי.',
     contextualGuidance:
-      'תארי את תפקוד התלמיד/ה. הקפידי לציין מוקדי כוח ותחומי עניין (תחביבים, כישורים חברתיים, חוסן) לצד מוקדים לחיזוק. מידע זה יזין את ניתוח ה-AI ויעצב את יעדי ההתערבות.',
+      'קראי את התיאור החופשי לדוגמה, ולחצי על "עיבוד המידע". ה-AI ינתח את המידע ויבנה עבורך פרופיל תפקודי מקיף וחלוקה לקטגוריות.',
     fieldExamples:
-      'מוקדי כוח: יכולת ביטוי מילולית עשירה, אמפתיה לחברים, תשוקה לבנייה בלגו. מוקדים לחיזוק: ויסות תנועתי במליאה, שטף קריאה, התארגנות בתחילת שיעור.',
-    actionLabel: 'מעבר לסקירת מוקדי הכוח והרקע',
-    tip: 'שילוב תחומי עניין (כגון דינוזאורים או לגו) במשימות למידה מגביר משמעותית את המוטיבציה.'
+      'טקסט חופשי: יונתן תלמיד כיתה ב\'2, סקרן, קשיי קשב וריכוז, ויסות תנועתי... בלחיצת כפתור ה-AI מחלץ רקע, תמיכות, מוקדי כוח ומטרות!',
+    actionLabel: 'הפעלת עיבוד מידע ב-AI',
+    tip: 'ניתן תמיד לערוך, להוסיף או לתקן כל שדה שנוצר על ידי ה-AI. את המומחית הפדגוגית הקובעת!'
   },
   {
     id: 4,
@@ -680,14 +680,19 @@ export function createFreshDemoStudent(options = {}) {
       'יונתן לומד בכיתה רגילה ומקבל תמיכה שבועית מסל שילוב. מאובחן עם הפרעת קשב ופעלתנות יתר (ADHD) וקשיי ויסות חושי. מפגין סקרנות יוצאת דופן ואינטליגנציה תקינה, אך מתקשה להתמיד במשימות כתיבה ממושכות, מגלה מוסחות גבוהה ברעש כיתתי, ונזקק לתיווך במעברים בין שיעור להפסקה. בתחום האורייני קיים פער ברכישת שטף ודיוק בקריאה. אוהב מאוד לבנות בלגו וסקרן לגבי בעלי חיים ודינוזאורים.';
   }
 
-  // Interactive walkthrough starts with blank goals & profile so the teacher experiences the live AI generation
+  // Interactive walkthrough starts with minimal data: raw text is provided so the teacher experiences live AI execution
+  cloned.freeTextAnalyzed = false;
+  cloned.isReverseEngineered = false;
   cloned.goals = [];
   cloned.talaProfileRows = [];
+  cloned.talaFocusDomains = [];
   cloned.observations = [];
   cloned.studentGeneralBackground = '';
   cloned.studentSupportReceived = '';
   cloned.studentMainGoal = '';
+  cloned.recommendations = '';
   cloned.evalReportFreeText = '';
+  cloned.summaryReports = [];
 
   cloned.lastSavedAt = new Date().toLocaleTimeString('he-IL', {
     hour: '2-digit',

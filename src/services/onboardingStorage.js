@@ -198,6 +198,10 @@ export function dismissOnboarding(email) {
  * Resets the onboarding state for a user, allowing a fresh start.
  */
 export function resetOnboardingState(email, mode = null) {
+  const demoKey = getDemoStudentKey(email);
+  safeRemoveStorageItem(demoKey);
+  inMemoryStore.delete(demoKey);
+
   const fresh = createDefaultOnboardingState(email);
   if (mode === 'demo' || mode === 'real') {
     fresh.mode = mode;
@@ -370,8 +374,17 @@ export function setOnboardingDockCollapsed(email, isCollapsed) {
 /**
  * Retrieves the local demo student record for the user, or creates a fresh one.
  */
-export function getDemoStudent(email) {
+export function getDemoStudent(email, options = {}) {
   const key = getDemoStudentKey(email);
+
+  if (options && options.forceFresh) {
+    safeRemoveStorageItem(key);
+    inMemoryStore.delete(key);
+    const fresh = createFreshDemoStudent(options);
+    saveDemoStudent(email, fresh);
+    return fresh;
+  }
+
   const stored = safeGetStorageJson(key, null);
 
   if (stored && stored.id === 'demo_yonatan_levi') {
@@ -383,7 +396,7 @@ export function getDemoStudent(email) {
     return inMemoryStore.get(key);
   }
 
-  const fresh = createFreshDemoStudent();
+  const fresh = createFreshDemoStudent(options);
   saveDemoStudent(email, fresh);
   return fresh;
 }
