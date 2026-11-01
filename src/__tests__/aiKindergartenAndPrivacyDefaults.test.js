@@ -11,7 +11,7 @@ import {
   maskPromptForAi,
   toHebrewAcronym
 } from '../domain/privacyAndAcronyms';
-import { shouldSendPedagogicalDigest } from '../domain/dailyPedagogicalTracking.js';
+import { shouldSendPedagogicalDigest } from '../domain/dailyPedagogicalTracking';
 import { buildPedagogicalReminderEmailHtml } from '../emailService.js';
 
 describe('AI Kindergarten & Privacy Defaults (Issue Fixes)', () => {

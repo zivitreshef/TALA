@@ -2,7 +2,7 @@ import {
   adaptTextToGender,
   resolveStudentAgeAndDateInfo,
   isGoalEmpty
-} from './goalSizingAndMerge.js';
+} from './goalSizingAndMerge';
 
 // === מבנה קבוע של 15 סעיפי דו"ח מצב תפקודי-חינוכי ===
 export const STATUS_REPORT_SECTIONS_SCHEMA = [

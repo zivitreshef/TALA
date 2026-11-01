@@ -1,10 +1,21 @@
+import type {
+  IsraeliHolidayInfo,
+  ObservationGap,
+  PedagogicalAccomplishmentsSummary,
+  RecentObservationSummary,
+  AdvancedGoalSummary,
+  CalendarEventUrlOptions,
+  CalendarEvent,
+  AiGoalMatchResult
+} from './types';
+
 /**
  * Detailed Israeli Holiday and Vacation Descriptor.
  * Distinguishes between:
  * - isVacation: true -> Students do NOT arrive to school (אין לימודים - סוכות, פסח, חנוכה, פורים, שבועות, יום העצמאות, החופש הגדול, ראש השנה, יום כיפור)
  * - isVacation: false -> Students DO arrive to school (יש לימודים - יום הזיכרון לשואה, יום הזיכרון לחללי צה"ל, ט"ו בשבט, ל"ג בעומר, יום ירושלים)
  */
-export function getIsraeliHolidayInfo(dateStr) {
+export function getIsraeliHolidayInfo(dateStr?: string | null): IsraeliHolidayInfo | null {
   if (!dateStr || typeof dateStr !== 'string') return null;
   const parts = dateStr.trim().split('-');
   if (parts.length !== 3) return null;
@@ -106,7 +117,7 @@ export function getIsraeliHolidayInfo(dateStr) {
  * Returns the name of the Israeli Holiday or Vacation, or null.
  * Maintained for backward compatibility.
  */
-export function getIsraeliHolidayOrVacation(dateStr) {
+export function getIsraeliHolidayOrVacation(dateStr?: string | null): string | null {
   const info = getIsraeliHolidayInfo(dateStr);
   return info ? info.name : null;
 }
@@ -115,22 +126,26 @@ export function getIsraeliHolidayOrVacation(dateStr) {
  * Calculates observation gaps for students' active goals.
  * Returns goals that have not had an observation within the threshold days.
  */
-export function getObservationGaps(students = [], thresholdDays = 21, referenceDate = new Date()) {
-  const gaps = [];
+export function getObservationGaps(
+  students: Record<string, unknown>[] = [],
+  thresholdDays: number = 21,
+  referenceDate: Date = new Date()
+): ObservationGap[] {
+  const gaps: ObservationGap[] = [];
   const nowMs = referenceDate.getTime();
   const thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
 
   for (const student of students) {
-    const goals = Array.isArray(student.goals) ? student.goals : [];
+    const goals = Array.isArray(student.goals) ? (student.goals as Record<string, unknown>[]) : [];
     for (const goal of goals) {
-      if (!goal.title || !goal.title.trim()) continue;
+      if (!goal.title || !String(goal.title).trim()) continue;
 
-      const observations = Array.isArray(goal.observations) ? goal.observations : [];
-      let latestObservationMs = null;
+      const observations = Array.isArray(goal.observations) ? (goal.observations as Record<string, unknown>[]) : [];
+      let latestObservationMs: number | null = null;
 
       for (const obs of observations) {
         if (obs.timestamp) {
-          const obsMs = new Date(obs.timestamp).getTime();
+          const obsMs = new Date(String(obs.timestamp)).getTime();
           if (!Number.isNaN(obsMs) && (latestObservationMs === null || obsMs > latestObservationMs)) {
             latestObservationMs = obsMs;
           }
@@ -144,14 +159,14 @@ export function getObservationGaps(students = [], thresholdDays = 21, referenceD
 
       if (latestObservationMs === null || (nowMs - latestObservationMs) > thresholdMs) {
         gaps.push({
-          studentId: student.id,
-          studentName: student.name || 'תלמיד/ה',
-          framework: student.educationalFramework || '',
-          goalId: goal.id,
-          goalTitle: goal.title,
-          environment: goal.environment || 'כללי',
-          currentProgress: goal.currentProgress ?? 0,
-          targetProgress: goal.targetProgress ?? 80,
+          studentId: typeof student.id === 'string' ? student.id : undefined,
+          studentName: String(student.name || 'תלמיד/ה'),
+          framework: String(student.educationalFramework || ''),
+          goalId: typeof goal.id === 'string' ? goal.id : undefined,
+          goalTitle: String(goal.title || ''),
+          environment: String(goal.environment || 'כללי'),
+          currentProgress: Number(goal.currentProgress ?? 0),
+          targetProgress: Number(goal.targetProgress ?? 80),
           daysSinceObservation: daysSince,
           neverObserved: latestObservationMs === null
         });
@@ -170,12 +185,16 @@ export function getObservationGaps(students = [], thresholdDays = 21, referenceD
  * Summarizes pedagogical accomplishments, recent observations, adhoc notes,
  * and progress milestones across students for weekly/monthly digests and team meetings.
  */
-export function getPedagogicalAccomplishmentsSummary(students = [], windowDays = 30, referenceDate = new Date()) {
+export function getPedagogicalAccomplishmentsSummary(
+  students: Record<string, unknown>[] = [],
+  windowDays: number = 30,
+  referenceDate: Date = new Date()
+): PedagogicalAccomplishmentsSummary {
   const nowMs = referenceDate.getTime();
   const windowMs = windowDays * 24 * 60 * 60 * 1000;
 
-  const recentObservations = [];
-  const advancedGoals = [];
+  const recentObservations: RecentObservationSummary[] = [];
+  const advancedGoals: AdvancedGoalSummary[] = [];
   let totalGoals = 0;
   let onTrackGoalsCount = 0;
 
@@ -192,11 +211,11 @@ export function getPedagogicalAccomplishmentsSummary(students = [], windowDays =
       }
       if (currentProg >= 70) {
         advancedGoals.push({
-          studentId: student.id,
-          studentName: student.name || 'תלמיד/ה',
-          framework: student.educationalFramework || '',
-          goalTitle: goal.title,
-          environment: goal.environment || 'כללי',
+          studentId: typeof student.id === 'string' ? student.id : undefined,
+          studentName: String(student.name || 'תלמיד/ה'),
+          framework: String(student.educationalFramework || ''),
+          goalTitle: String(goal.title || ''),
+          environment: String(goal.environment || 'כללי'),
           currentProgress: currentProg,
           targetProgress: targetProg
         });
@@ -210,15 +229,15 @@ export function getPedagogicalAccomplishmentsSummary(students = [], windowDays =
 
         if (nowMs - obsMs <= windowMs) {
           recentObservations.push({
-            studentId: student.id,
-            studentName: student.name || 'תלמיד/ה',
-            framework: student.educationalFramework || '',
-            goalTitle: goal.title,
-            environment: goal.environment || 'כללי',
-            timestamp: obs.timestamp,
-            progress: obs.progress ?? currentProg,
+            studentId: typeof student.id === 'string' ? student.id : undefined,
+            studentName: String(student.name || 'תלמיד/ה'),
+            framework: String(student.educationalFramework || ''),
+            goalTitle: String(goal.title || ''),
+            environment: String(goal.environment || 'כללי'),
+            timestamp: String(obs.timestamp),
+            progress: Number(obs.progress ?? currentProg),
             note: String(obs.note || '').trim(),
-            supportLevel: obs.supportLevel || ''
+            supportLevel: String(obs.supportLevel || '')
           });
         }
       }
@@ -243,7 +262,7 @@ export function createOutlook365CalendarUrl({
   endIso = '',
   details = '',
   location = ''
-}) {
+}: CalendarEventUrlOptions = {}): string {
   const baseUrl = 'https://outlook.office.com/calendar/0/deeplink/compose';
   const params = new URLSearchParams({
     subject: title,
@@ -264,13 +283,13 @@ export function createGoogleCalendarUrl({
   endIso = '',
   details = '',
   location = ''
-}) {
+}: CalendarEventUrlOptions = {}): string {
   const baseUrl = 'https://calendar.google.com/calendar/render';
-  // Google requires format YYYYMMDDTHHmmssZ or YYYYMMDDTHHmmss
-  const formatGoogleDate = (iso) => {
+  const formatGoogleDate = (iso: string): string => {
     if (!iso) return '';
     return iso.replace(/[-:]/g, '').slice(0, 15);
   };
+
 
   const dates = `${formatGoogleDate(startIso)}/${formatGoogleDate(endIso)}`;
   const params = new URLSearchParams({
@@ -286,13 +305,13 @@ export function createGoogleCalendarUrl({
 /**
  * Generates an iCalendar (.ics) string for calendar event export.
  */
-export function generateIcsFileContent(events = []) {
-  const formatIcsDate = (iso) => {
+export function generateIcsFileContent(events: CalendarEvent[] = []): string {
+  const formatIcsDate = (iso: string): string => {
     if (!iso) return '';
     return iso.replace(/[-:]/g, '').slice(0, 15);
   };
 
-  const lines = [
+  const lines: string[] = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//TALA//Ecological Work Plan Calendar//HE',
@@ -319,10 +338,16 @@ export function generateIcsFileContent(events = []) {
 /**
  * Formats AI Prompt to match a teacher's free-text observation note against a student's active goals.
  */
-export function buildAiGoalMatchPrompt({ note = '', student = {} }) {
-  const goals = Array.isArray(student.goals) ? student.goals : [];
+export function buildAiGoalMatchPrompt({
+  note = '',
+  student = {}
+}: {
+  note?: string;
+  student?: Record<string, unknown>;
+} = {}): string {
+  const goals = Array.isArray(student.goals) ? (student.goals as Record<string, unknown>[]) : [];
   const goalsSummary = goals
-    .filter((g) => g.title && g.title.trim())
+    .filter((g) => g.title && String(g.title).trim())
     .map((g, idx) => `[יעד ${idx + 1}] מזהה: ${g.id} | סביבה: ${g.environment || 'כללי'} | כותרת: ${g.title} | התקדמות נוכחית: ${g.currentProgress ?? 0}% מתוך ${g.targetProgress ?? 80}%`)
     .join('\n');
 
@@ -351,36 +376,37 @@ ${goalsSummary || 'אין עדיין יעדים מוגדרים'}
 /**
  * Parses and validates the AI response for goal matching.
  */
-export function parseAiGoalMatchResponse(aiResult) {
+export function parseAiGoalMatchResponse(aiResult?: unknown): AiGoalMatchResult | null {
   if (!aiResult) return null;
-  let parsed = aiResult;
+  let parsed: unknown = aiResult;
   if (typeof parsed === 'string') {
     try {
       parsed = JSON.parse(parsed);
     } catch (_) {
       try {
-        const cleaned = parsed.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const rawStr = parsed as string;
+        const cleaned = rawStr.replace(/```json/gi, '').replace(/```/g, '').trim();
         const match = cleaned.match(/\{[\s\S]*\}/);
         if (match) parsed = JSON.parse(match[0]);
       } catch (_) {}
     }
-  } else if (parsed && typeof parsed === 'object' && typeof parsed.raw === 'string') {
+  } else if (parsed && typeof parsed === 'object' && typeof (parsed as Record<string, unknown>).raw === 'string') {
     try {
-      const cleaned = parsed.raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const cleaned = String((parsed as Record<string, unknown>).raw).replace(/```json/gi, '').replace(/```/g, '').trim();
       const match = cleaned.match(/\{[\s\S]*\}/);
       if (match) parsed = JSON.parse(match[0]);
     } catch (_) {}
   }
-  const raw = parsed && typeof parsed === 'object' ? parsed : {};
+  const raw = (parsed && typeof parsed === 'object' ? parsed : {}) as Record<string, unknown>;
   return {
-    matchedGoalId: raw.matchedGoalId || null,
-    matchedGoalTitle: raw.matchedGoalTitle || '',
-    environment: raw.environment || 'כללי',
-    observedSupportLevel: raw.observedSupportLevel || 'תיווך חלקי',
-    conciseObservationNote: raw.conciseObservationNote || '',
+    matchedGoalId: typeof raw.matchedGoalId === 'string' ? raw.matchedGoalId : null,
+    matchedGoalTitle: String(raw.matchedGoalTitle || ''),
+    environment: String(raw.environment || 'כללי'),
+    observedSupportLevel: String(raw.observedSupportLevel || 'תיווך חלקי'),
+    conciseObservationNote: String(raw.conciseObservationNote || ''),
     suggestedProgressDelta: Number(raw.suggestedProgressDelta) || 0,
     confidenceScore: Number(raw.confidenceScore) || 0.8,
-    explanation: raw.explanation || ''
+    explanation: String(raw.explanation || '')
   };
 }
 
@@ -388,7 +414,7 @@ export function parseAiGoalMatchResponse(aiResult) {
 /**
  * Calculates meeting/event duration in minutes from HH:mm start and end strings.
  */
-export function calculateDurationMinutes(startTime = '', endTime = '') {
+export function calculateDurationMinutes(startTime: string = '', endTime: string = ''): number {
   if (!startTime || !endTime) return 45;
   const [sh, sm] = startTime.split(':').map(Number);
   const [eh, em] = endTime.split(':').map(Number);
@@ -406,7 +432,7 @@ export function calculateDurationMinutes(startTime = '', endTime = '') {
  * Returns thickness in pixels (3 to 6px) for an event bar on the calendar day cell
  * proportionally based on the meeting timeframe.
  */
-export function getEventBarThickness(startTime = '', endTime = '') {
+export function getEventBarThickness(startTime: string = '', endTime: string = ''): number {
   const duration = calculateDurationMinutes(startTime, endTime);
   if (duration <= 30) return 3;
   if (duration <= 60) return 4.5;
@@ -421,7 +447,7 @@ export function getEventBarThickness(startTime = '', endTime = '') {
  * @param {Date} now 
  * @returns {boolean}
  */
-export function shouldSendPedagogicalDigest(userPreferences, lastSentIso, now = new Date()) {
+export function shouldSendPedagogicalDigest(userPreferences?: Record<string, unknown> | null, lastSentIso?: string | null, now: Date = new Date()): boolean {
   if (!userPreferences) return false;
   const isEnabled = Boolean(
     userPreferences.pedagogicalReminderEnabled || userPreferences.monthlyPedagogicalReminder
@@ -429,8 +455,8 @@ export function shouldSendPedagogicalDigest(userPreferences, lastSentIso, now = 
   if (!isEnabled) return false;
 
   const freq = userPreferences.pedagogicalReminderFrequency || 'monthly';
-  const time = userPreferences.pedagogicalReminderTime || '09:00';
-  const [targetH = 9, targetM = 0] = time.split(':').map((n) => parseInt(n, 10));
+  const time = String(userPreferences.pedagogicalReminderTime || '09:00');
+  const [targetH = 9, targetM = 0] = time.split(':').map((n: string) => parseInt(n, 10));
 
   const currentH = now.getHours();
   const currentM = now.getMinutes();
@@ -453,7 +479,7 @@ export function shouldSendPedagogicalDigest(userPreferences, lastSentIso, now = 
   }
 
   if (freq === 'weekly') {
-    const daysMap = {
+    const daysMap: Record<string, number> = {
       sunday: 0,
       monday: 1,
       tuesday: 2,
@@ -462,11 +488,11 @@ export function shouldSendPedagogicalDigest(userPreferences, lastSentIso, now = 
       friday: 5,
       saturday: 6
     };
-    const targetDay = daysMap[userPreferences.pedagogicalReminderWeeklyDay] ?? 0;
+    const targetDay = daysMap[String(userPreferences.pedagogicalReminderWeeklyDay)] ?? 0;
     if (now.getDay() !== targetDay) return false;
   } else {
     // monthly
-    const targetMonthDay = userPreferences.pedagogicalReminderMonthlyDay || 1;
+    const targetMonthDay = Number(userPreferences.pedagogicalReminderMonthlyDay) || 1;
     if (now.getDate() !== targetMonthDay) return false;
   }
 

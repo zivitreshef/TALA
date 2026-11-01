@@ -1,3 +1,5 @@
+import type { OnboardingStep } from './types';
+
 /**
  * Domain specification for TALA's 10-step End-to-End Guided Onboarding Journey
  * and the realistic Israeli Special Education Demo Dataset ("יונתן לוי").
@@ -10,7 +12,7 @@
 
 export const ONBOARDING_TOTAL_STEPS = 10;
 
-export const ONBOARDING_STEPS = [
+export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     id: 1,
     key: 'getting_started',
@@ -235,7 +237,7 @@ export const ONBOARDING_STEPS = [
  * - Full 15-section Ministry-format status report
  * - Matya collaboration record with OT therapist
  */
-export const DEMO_STUDENT_DATA = {
+export const DEMO_STUDENT_DATA: Record<string, unknown> = {
   id: 'demo_yonatan_levi',
   isDemo: true,
   ownerEmail: 'demo@tala.internal',
@@ -626,7 +628,7 @@ export const DEMO_STUDENT_DATA = {
 /**
  * Returns a step definition by its 1-based numerical ID.
  */
-export function getStepById(stepId) {
+export function getStepById(stepId: number | string): OnboardingStep | null {
   const numericId = Number(stepId);
   return ONBOARDING_STEPS.find((s) => s.id === numericId) || null;
 }
@@ -634,7 +636,7 @@ export function getStepById(stepId) {
 /**
  * Returns the next step in the journey, or null if at the end.
  */
-export function getNextStep(currentStepId) {
+export function getNextStep(currentStepId: number | string): OnboardingStep | null {
   const nextId = Number(currentStepId) + 1;
   return nextId <= ONBOARDING_TOTAL_STEPS ? getStepById(nextId) : null;
 }
@@ -642,7 +644,7 @@ export function getNextStep(currentStepId) {
 /**
  * Returns the previous step in the journey, or null if at the start.
  */
-export function getPreviousStep(currentStepId) {
+export function getPreviousStep(currentStepId: number | string): OnboardingStep | null {
   const prevId = Number(currentStepId) - 1;
   return prevId >= 1 ? getStepById(prevId) : null;
 }
@@ -650,7 +652,7 @@ export function getPreviousStep(currentStepId) {
 /**
  * Checks whether an object is the isolated demo student record.
  */
-export function isDemoStudent(student) {
+export function isDemoStudent(student?: Record<string, unknown> | null): boolean {
   if (!student) return false;
   return Boolean(
     student.isDemo === true ||
@@ -662,7 +664,7 @@ export function isDemoStudent(student) {
 /**
  * Creates a fresh clone of the demo student plan with current timestamps.
  */
-export function createFreshDemoStudent(options = {}) {
+export function createFreshDemoStudent(options: { stage?: string } = {}): Record<string, unknown> {
   const isKindergarten = options?.stage === 'kindergarten';
   const cloned = JSON.parse(JSON.stringify(DEMO_STUDENT_DATA));
 

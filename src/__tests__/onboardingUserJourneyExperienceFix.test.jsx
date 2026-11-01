@@ -3,7 +3,7 @@ import {
   createFreshDemoStudent,
   ONBOARDING_STEPS,
   getStepById
-} from '../domain/onboardingJourney.js';
+} from '../domain/onboardingJourney';
 import {
   getDemoStudent,
   saveDemoStudent,
