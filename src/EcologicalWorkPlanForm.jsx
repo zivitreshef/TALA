@@ -180,6 +180,7 @@ import {
   applyLocalSummary
 } from './domain/summaryTable';
 import { isDemoStudent } from './domain/onboardingJourney';
+import { advanceOnboardingStep } from './services/onboardingStorage';
 
 const DURATION_TSHIRT_OPTIONS = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
@@ -208,8 +209,6 @@ export default function EcologicalWorkPlanForm({
   onNotifySharedColleague,
   emailEngineConfig,
   onUpdateEmailEngineConfig,
-  onboardingTourStep = 0,
-  setOnboardingTourStep,
   activeOnboardingStep = 0,
   onboardingSpotlightTick = 0,
   onGoHome,
@@ -224,8 +223,6 @@ export default function EcologicalWorkPlanForm({
   const saveProgressRef = useRef(null);
   const evalReportSectionRef = useRef(null);
   const statusReportSectionRef = useRef(null);
-
-  const [showTourCompletionModal, setShowTourCompletionModal] = useState(false);
 
   // Auto-scroll smooth effect when onboarding tour step advances or "הראה לי במסך" is pressed
   useEffect(() => {
@@ -255,17 +252,7 @@ export default function EcologicalWorkPlanForm({
       }
       return;
     }
-    if (!onboardingTourStep) return;
-    if (onboardingTourStep === 2 || onboardingTourStep === 3 || onboardingTourStep === 3.5 || onboardingTourStep === 4) {
-      section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else if (onboardingTourStep === 4.5 || onboardingTourStep === 5) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else if (onboardingTourStep === 6) {
-      section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else if (onboardingTourStep === 7) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [onboardingTourStep, activeOnboardingStep, onboardingSpotlightTick]);
+  }, [activeOnboardingStep, onboardingSpotlightTick]);
 
   const [formData, setFormData] = useState(() => normalizeStudentForForm(student));
   const savedSnapshotRef = useRef(JSON.stringify(normalizeStudentForForm(student)));
@@ -1640,6 +1627,11 @@ ${rawText}
           });
           setIsReverseEngineering(false);
           setIsFreeTextCollapsed(true);
+          if (activeOnboardingStep === 3 && currentUser?.email) {
+            try {
+              advanceOnboardingStep(currentUser.email);
+            } catch (_) {}
+          }
           const preservedNote =
             protectedGoals.length > 0
               ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
@@ -2536,25 +2528,17 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            {(onboardingTourStep === 7 || activeOnboardingStep === 6) && (
+            {activeOnboardingStep === 6 && (
               <div className="onboarding-tour-arrow-box" style={{ top: '44px', right: '0' }}>
                 <span className="tour-arrow-anim">☝️</span>
-                <span>
-                  {activeOnboardingStep === 6
-                    ? 'שלב 6: לחצי כאן לשמירת התוכנית בענן (או על המנעול לקראת ועדות)!'
-                    : 'צעד 8: לחצי כאן לשמירת התקדמות וסיום התוכנית!'}
-                </span>
+                <span>שלב 6: לחצי כאן לשמירת התוכנית בענן (או על המנעול לקראת ועדות)!</span>
               </div>
             )}
             <button
               type="button"
-              className={`btn-save-progress ${onboardingTourStep === 7 || activeOnboardingStep === 6 ? 'tour-highlight-btn' : ''}`}
+              className={`btn-save-progress ${activeOnboardingStep === 6 ? 'tour-highlight-btn' : ''}`}
               onClick={() => {
                 handleSaveProgress();
-                if (onboardingTourStep === 7) {
-                  setOnboardingTourStep?.(0);
-                  setShowTourCompletionModal(true);
-                }
               }}
             >
               <Save size={17} />
@@ -3845,14 +3829,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
         {/* Radio Buttons for תל"א OR תח"י */}
         <div className="plan-type-radio-bar" style={{ position: 'relative' }}>
-          {(onboardingTourStep === 4.5 || activeOnboardingStep === 2) && (
+          {activeOnboardingStep === 2 && (
             <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
               <span className="tour-arrow-anim">👇</span>
-              <span>
-                {activeOnboardingStep === 2
-                  ? 'שלב 2: כאן בוחרים סוג תוכנית ומזינים את פרטי הילד/ה, השלב והמסגרת החינוכית!'
-                  : 'צעד 5: בחרי סוג תוכנית (תוכנית לתלמיד ביה"ס / תוכנית אקולוגית לילדי הגן)'}
-              </span>
+              <span>שלב 2: כאן בוחרים סוג תוכנית ומזינים את פרטי הילד/ה, השלב והמסגרת החינוכית!</span>
             </div>
           )}
           <span className="plan-type-label">סוג התוכנית:</span>
@@ -3860,7 +3840,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label
               className={`plan-type-radio-card ${
                 isTalaMode ? 'selected' : ''
-              } ${onboardingTourStep === 4.5 || activeOnboardingStep === 2 ? 'tour-highlight-input' : ''}`}
+              } ${activeOnboardingStep === 2 ? 'tour-highlight-input' : ''}`}
             >
               <input
                 type="radio"
@@ -3870,7 +3850,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 checked={isTalaMode}
                 onChange={(e) => {
                   handlePlanTypeChange(e.target.value);
-                  if (onboardingTourStep === 4.5) setOnboardingTourStep?.(5);
+                  
                 }}
               />
               <span>{DEFAULT_PLAN_TYPE}</span>
@@ -3879,7 +3859,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <label
               className={`plan-type-radio-card ${
                 !isTalaMode ? 'selected' : ''
-              } ${onboardingTourStep === 4.5 ? 'tour-highlight-input' : ''}`}
+              } `}
             >
               <input
                 type="radio"
@@ -3889,7 +3869,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 checked={!isTalaMode}
                 onChange={(e) => {
                   handlePlanTypeChange(e.target.value);
-                  if (onboardingTourStep === 4.5) setOnboardingTourStep?.(5);
+                  
                 }}
               />
               <span>{TACHI_PLAN_TYPE}</span>
@@ -3899,37 +3879,24 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
         <div className="personal-details-grid">
           <div className="form-field" style={{ position: 'relative' }}>
-            {onboardingTourStep === 2 && (
-              <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
-                <span className="tour-arrow-anim">👇</span>
-                <span>צעד 1: הקלידי את שם הילד/ה</span>
-              </div>
-            )}
+            
             <label>שם הילד/ה:</label>
             <input
               type="text"
               disabled={isReportLocked}
-              className={onboardingTourStep === 2 || activeOnboardingStep === 2 ? 'tour-highlight-input' : ''}
+              className={activeOnboardingStep === 2 ? 'tour-highlight-input' : ''}
               value={formData.name === 'תלמיד/ה חדש/ה' ? '' : (formData.name || '')}
               onChange={(e) => {
                 handleFieldChange('name', e.target.value);
-                if (onboardingTourStep === 2 && e.target.value.trim()) {
-                  setOnboardingTourStep?.(3);
-                }
               }}
               placeholder="שם פרטי ושם משפחה"
             />
           </div>
 
           <div className="form-field" style={{ position: 'relative' }}>
-            {onboardingTourStep === 3 && (
-              <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
-                <span className="tour-arrow-anim">👇</span>
-                <span>צעד 2: בחרי מין (בן / בת)</span>
-              </div>
-            )}
+            
             <label>מין הילד/ה:</label>
-            <div className={`gender-radio-group ${onboardingTourStep === 3 ? 'tour-highlight-input' : ''}`} role="radiogroup" aria-label="מין הילד/ה">
+            <div className="gender-radio-group" role="radiogroup" aria-label="מין הילד/ה">
               <label className={`gender-radio-option ${currentGender === 'boy' ? 'selected' : ''}`}>
                 <input
                   type="radio"
@@ -3939,7 +3906,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   checked={currentGender === 'boy'}
                   onChange={() => {
                     handleGenderChange('boy');
-                    if (onboardingTourStep === 3) setOnboardingTourStep?.(3.5);
+                    
                   }}
                 />
                 <span>בן</span>
@@ -3953,7 +3920,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   checked={currentGender === 'girl'}
                   onChange={() => {
                     handleGenderChange('girl');
-                    if (onboardingTourStep === 3) setOnboardingTourStep?.(3.5);
+                    
                   }}
                 />
                 <span>בת</span>
@@ -3962,16 +3929,11 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           <div className="form-field" style={{ position: 'relative' }}>
-            {onboardingTourStep === 3.5 && (
-              <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
-                <span className="tour-arrow-anim">👇</span>
-                <span>צעד 3: בחרי שלב חינוכי (בית ספר / גן ילדים)</span>
-              </div>
-            )}
+            
             <label>
               שלב חינוכי: <span style={{ color: '#e11d48', fontWeight: 'bold' }} title="שדה חובה">*</span>
             </label>
-            <div className={`gender-radio-group ${onboardingTourStep === 3.5 ? 'tour-highlight-input' : ''}`} role="radiogroup" aria-label="שלב חינוכי">
+            <div className="gender-radio-group" role="radiogroup" aria-label="שלב חינוכי">
               <label className={`gender-radio-option ${currentStage === 'school' ? 'selected' : ''}`}>
                 <input
                   type="radio"
@@ -3982,7 +3944,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   onChange={() => {
                     handleFieldChange('stage', 'school');
                     setPickerStageFilter(null);
-                    if (onboardingTourStep === 3.5) setOnboardingTourStep?.(4);
+                    
                   }}
                 />
                 <span>בית ספר</span>
@@ -3997,7 +3959,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   onChange={() => {
                     handleFieldChange('stage', 'kindergarten');
                     setPickerStageFilter(null);
-                    if (onboardingTourStep === 3.5) setOnboardingTourStep?.(4);
+                    
                   }}
                 />
                 <span>גן ילדים</span>
@@ -4028,23 +3990,15 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           <div className="form-field" style={{ position: 'relative' }}>
-            {onboardingTourStep === 4 && (
-              <div className="onboarding-tour-arrow-box" style={{ top: '-42px', right: '0' }}>
-                <span className="tour-arrow-anim">👇</span>
-                <span>צעד 4: הזני מסגרת חינוכית ({isKindergarten ? 'שם הגן' : 'שם בית הספר'})</span>
-              </div>
-            )}
+            
             <label>מסגרת חינוכית:</label>
             <input
               type="text"
               disabled={isReportLocked}
-              className={onboardingTourStep === 4 ? 'tour-highlight-input' : ''}
+              className=""
               value={formData.educationalFramework || ''}
               onChange={(e) => {
                 handleFieldChange('educationalFramework', e.target.value);
-                if (onboardingTourStep === 4 && e.target.value.trim()) {
-                  setOnboardingTourStep?.(4.5);
-                }
               }}
               placeholder={isKindergarten ? 'שם הגן' : 'שם בית הספר והכיתה'}
             />
@@ -4806,7 +4760,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <textarea
                   rows={4}
                   disabled={isReportLocked}
-                  className={onboardingTourStep === 6 || activeOnboardingStep === 3 ? 'tour-highlight-input' : ''}
+                  className={activeOnboardingStep === 3 ? 'tour-highlight-input' : ''}
                   value={formData.teacherFreeText || ''}
                   onInput={handleTextareaAutoResize}
                   onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
@@ -4815,10 +4769,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               </div>
 
               <div className="submit-summary-action-row" style={{ position: 'relative' }}>
-                {(onboardingTourStep === 6 || activeOnboardingStep === 3) && (
+                {activeOnboardingStep === 3 && (
                   <div className="onboarding-tour-arrow-box" style={{ top: '-46px', left: '0', zIndex: 60 }}>
                     <span className="tour-arrow-anim">👈</span>
-                    <span>{activeOnboardingStep === 3 ? 'שלב 3: לחצי כאן על "עיבוד המידע" — ה-AI ינתח את התיאור ויבנה את כל המטרות והיעדים!' : 'צעד 7: לחצי כאן לניתוח וגזירת מטרות אוטומטית ב-AI'}</span>
+                    <span>שלב 3: לחצי כאן על "עיבוד המידע" — ה-AI ינתח את התיאור ויבנה את כל המטרות והיעדים!</span>
                   </div>
                 )}
                 <span className="submit-helper-text">
@@ -4828,12 +4782,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 </span>
                 <button
                   type="button"
-                  className={`btn-submit-generate-summary ${onboardingTourStep === 6 || activeOnboardingStep === 3 ? 'tour-highlight-btn' : ''}`}
+                  className={`btn-submit-generate-summary ${activeOnboardingStep === 3 ? 'tour-highlight-btn' : ''}`}
                   onClick={() => {
                     handleReverseEngineerFullReport();
-                    if (onboardingTourStep === 6) {
-                      setOnboardingTourStep?.(7);
-                    }
                   }}
                   disabled={isReportLocked || isReverseEngineering}
                 >
@@ -5365,18 +5316,17 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               תוכל לבחור מטרה מתוך מאגר המטרות הדינמי לפי סביבה ותחום לימודי או להגדיר מטרה חדשה.
             </p>
             <div style={{ position: 'relative', display: 'inline-block' }}>
-              {(onboardingTourStep === 5 || activeOnboardingStep === 4) && (
+              {activeOnboardingStep === 4 && (
                 <div className="onboarding-tour-arrow-box" style={{ top: '-48px', left: '50%', transform: 'translateX(-50%)' }}>
                   <span className="tour-arrow-anim">👇</span>
-                  <span>{activeOnboardingStep === 4 ? 'שלב 4: לחצי כאן להוספת מטרות מהמאגר האקולוגי!' : 'צעד 6: לחצי כאן להוספת מטרות מהמאגר האקולוגי'}</span>
+                  <span>שלב 4: לחצי כאן להוספת מטרות מהמאגר האקולוגי!</span>
                 </div>
               )}
               <button
                 type="button"
-                className={`btn-add-goal-block-large ${onboardingTourStep === 5 || activeOnboardingStep === 4 ? 'tour-highlight-btn' : ''}`}
+                className={`btn-add-goal-block-large ${activeOnboardingStep === 4 ? 'tour-highlight-btn' : ''}`}
                 onClick={() => {
                   handleAddGoalRow();
-                  if (onboardingTourStep === 5) setOnboardingTourStep?.(6);
                 }}
                 disabled={isReportLocked}
                 style={{ display: 'inline-flex', width: 'auto', padding: '10px 24px' }}
@@ -7190,53 +7140,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       )}
 
-      {/* Tour Completion Success Modal */}
-      {showTourCompletionModal && (
-        <div className="modal-backdrop" onClick={() => setShowTourCompletionModal(false)} dir="rtl">
-          <div
-            className="modal-container"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '520px', padding: '28px 24px', textAlign: 'center', borderRadius: '20px' }}
-          >
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', boxShadow: '0 4px 14px rgba(22, 163, 74, 0.2)' }}>
-              <CheckCircle2 size={36} />
-            </div>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '20px', color: '#14532d', fontWeight: 800 }}>
-              🎉 כל הכבוד! תוכנית העבודה נשמרה בהצלחה!
-            </h3>
-            <p style={{ margin: '0 0 18px 0', fontSize: '14px', color: '#166534', lineHeight: 1.6 }}>
-              תוכנית העבודה הראשונה שלך נשמרה בענן. כעת תוכלי להמשיך לעדכן, להוסיף מטרות, להדפיס, לייצא ל-Word או לשתף עם שאר חברי הצוות.
-            </p>
-
-            <div style={{
-              background: '#f0fdf4',
-              border: '1.5px solid #86efac',
-              borderRadius: '12px',
-              padding: '14px 16px',
-              margin: '0 0 20px 0',
-              textAlign: 'right',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '12px'
-            }}>
-              <MessageCircle size={24} style={{ color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
-              <div style={{ fontSize: '13.5px', color: '#166534', lineHeight: 1.5 }}>
-                <strong>אנחנו תמיד כאן בשבילך!</strong>
-                <div>לכל שאלה, רעיון, קושי או משוב – את מוזמנת לפנות אלינו בכל עת באמצעות כפתור <strong>"עזרה"</strong> בסרגל העליון (תמיכה, וואטסאפ או פנייה ישירה).</div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="btn-inside-landing-primary"
-              onClick={() => setShowTourCompletionModal(false)}
-              style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', width: '100%', justifyContent: 'center', padding: '12px', fontSize: '15px', fontWeight: 700 }}
-            >
-              <span>מעבר לעבודה שוטפת במערכת 👍</span>
-            </button>
-          </div>
-        </div>
-      )}
+      
       {showMinistryCopyModal && (
         <MinistryCopyModal
           formData={formData}

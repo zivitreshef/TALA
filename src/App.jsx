@@ -627,8 +627,6 @@ export default function App() {
   });
   const [showLogoutUnsavedModal, setShowLogoutUnsavedModal] = useState(false);
   const [showIntroVideoModal, setShowIntroVideoModal] = useState(false);
-  // Guided Onboarding Interactive Tour Step (legacy fallback)
-  const [onboardingTourStep, setOnboardingTourStep] = useState(0);
 
   // Guided Onboarding Journey State (Milestone 1)
   const [onboardingState, setOnboardingState] = useState(() => {
@@ -1820,6 +1818,7 @@ export default function App() {
         { userContext: { email: currentUser.email } }
       );
     } catch (_) {}
+    return newId;
   };
 
   // Load a rich sample student plan for quick onboarding exploration (isolated in sandbox)
@@ -1994,26 +1993,44 @@ export default function App() {
 
   const handleSelectOnboardingMode = (chosenMode) => {
     if (!currentUser?.email) return;
-    const nextState = saveOnboardingState(currentUser.email, {
-      mode: chosenMode,
-      isPaused: false,
-      isDismissed: false,
-      isDockCollapsed: false,
-      userToggledDock: true
-    });
-    setOnboardingState(nextState);
 
     if (chosenMode === 'demo') {
-      const demo = getDemoStudent(currentUser.email);
+      const demo = getDemoStudent(currentUser.email, { forceFresh: true });
       setDemoStudent(demo);
       setSelectedStudentId(demo.id);
       setShowDailyTracker(false);
       setShowGoalBankOverview(false);
       setShowOnboardingNavigator(false);
+      const nextState = saveOnboardingState(currentUser.email, {
+        mode: 'demo',
+        currentStep: 2,
+        completedSteps: [1],
+        activeStudentId: demo.id,
+        isPaused: false,
+        isDismissed: false,
+        isDockCollapsed: false,
+        userToggledDock: true
+      });
+      setOnboardingState(nextState);
+      setTimeout(() => triggerOnboardingDomSpotlight(), 150);
     } else {
       // Real student mode
       setShowOnboardingNavigator(false);
-      handleAddNewStudent();
+      setShowDailyTracker(false);
+      setShowGoalBankOverview(false);
+      const newId = handleAddNewStudent();
+      const nextState = saveOnboardingState(currentUser.email, {
+        mode: 'real',
+        currentStep: 2,
+        completedSteps: [1],
+        activeStudentId: newId || undefined,
+        isPaused: false,
+        isDismissed: false,
+        isDockCollapsed: false,
+        userToggledDock: true
+      });
+      setOnboardingState(nextState);
+      setTimeout(() => triggerOnboardingDomSpotlight(), 150);
     }
   };
 
@@ -2234,9 +2251,6 @@ export default function App() {
     setBankAddToast(
       `✅ המטרה "${res.goalTitle}" נוספה לתכנית של ${studentDisplayName} ומשקלה במאגר עלה ב-+1!`
     );
-    if (onboardingTourStep === 5) {
-      setOnboardingTourStep(6);
-    }
     setTimeout(() => setBankAddToast(''), 3500);
   };
 
@@ -2578,25 +2592,16 @@ export default function App() {
 
             <button
               type="button"
-              className={`header-nav-btn ${showGoalBankOverview && selectedStudentId === null ? 'active' : ''} ${onboardingTourStep === 5 ? 'tour-highlight-btn' : ''}`}
+              className={`header-nav-btn ${showGoalBankOverview && selectedStudentId === null ? 'active' : ''}`}
               onClick={() => {
                 setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
                 setSelectedStudentId(null);
                 setShowDailyTracker(false);
                 setShowGoalBankOverview(true);
-                if (onboardingTourStep === 5) {
-                  setOnboardingTourStep(6);
-                }
               }}
               style={{ position: 'relative' }}
               title="מאגר מטרות דינמי"
             >
-              {onboardingTourStep === 5 && (
-                <div className="onboarding-tour-arrow-box" style={{ top: '42px', right: '0' }}>
-                  <span className="tour-arrow-anim">☝️</span>
-                  <span>צעד 5: לחצי כאן לפתיחת מאגר המטרות הדינמי</span>
-                </div>
-              )}
               <TrendingUp size={15} />
               <span>מאגר מטרות</span>
             </button>
@@ -3234,8 +3239,6 @@ export default function App() {
                 emailEngineConfig={emailEngineConfig}
                 onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
                 onNotifySharedColleague={handleNotifySharedColleague}
-                onboardingTourStep={onboardingTourStep}
-                setOnboardingTourStep={setOnboardingTourStep}
                 activeOnboardingStep={activeOnboardingStep}
                 onboardingSpotlightTick={onboardingSpotlightTick}
                 onGoHome={() => setSelectedStudentId(null)}
@@ -3397,12 +3400,7 @@ export default function App() {
                     >
                       {/* Dominant Primary CTA */}
                       <div style={{ position: 'relative', display: 'inline-block' }}>
-                        {activeOnboardingStep === 1 && (
-                          <div className="onboarding-tour-arrow-box" style={{ top: '-40px', right: '0', zIndex: 60 }}>
-                            <span className="tour-arrow-anim">👇</span>
-                            <span>שלב 1: לחצי כאן להתחלת הסיור ובחירת תלמיד לדוגמה!</span>
-                          </div>
-                        )}
+                        
                         <button
                           type="button"
                           className="btn-inside-landing-primary tour-highlight-btn"
@@ -3515,14 +3513,9 @@ export default function App() {
                   </p>
                   <button
                     type="button"
-                    className={`btn-inside-landing-primary ${userStudents.length === 0 && onboardingTourStep === 1 ? 'tour-highlight-btn' : ''}`}
+                    className="btn-inside-landing-primary"
                     onClick={() => {
                       handleAddNewStudent();
-                      if (userStudents.length === 0) {
-                        setOnboardingTourStep(2);
-                      } else {
-                        setOnboardingTourStep(0);
-                      }
                     }}
                   >
                     <UserPlus size={18} />
@@ -3585,7 +3578,6 @@ export default function App() {
                           className="inside-landing-student-row"
                           onClick={() => {
                             setSelectedStudentId(st.id);
-                            setOnboardingTourStep(0);
                           }}
                         >
                           <div className="inside-st-main">
