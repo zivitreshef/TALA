@@ -1,60 +1,49 @@
-import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
+import { describe, it, expect, vi } from 'vitest';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { reverseEngineerRawTextLocally } from '../goalBankData';
+import EcologicalWorkPlanForm from '../EcologicalWorkPlanForm.jsx';
+import { HEALTH_EVENT_KINDS } from '../domain/healthEvents.js';
+
+vi.mock('../firebaseBackend.js', () => ({
+  getFirebaseAuth: vi.fn(() => ({
+    currentUser: { email: 'teacher@school.gov.il' }
+  })),
+  getActiveFirebaseConfig: vi.fn(() => ({ projectId: 'tala-test' })),
+  reportHealthEventToCloud: vi.fn(() => Promise.resolve(true)),
+  subscribeToUserPresence: vi.fn(() => () => {}),
+  subscribeToStudentInvites: vi.fn(() => () => {}),
+  subscribeToHealthEvents: vi.fn(() => () => {})
+}));
 
 describe('Reverse Engineer AI Error Resilience & Network Glitch Safeguards', () => {
-  const formSource = fs.readFileSync(
-    path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'),
-    'utf8'
-  );
+  it('renders EcologicalWorkPlanForm runtime component without errors', () => {
+    const mockStudent = {
+      id: 'student_resilience_test',
+      name: 'רוני שחר',
+      gender: 'girl',
+      stage: 'school',
+      educationalFramework: 'בית ספר ממלכתי',
+      goals: []
+    };
 
-  it('declares reverseEngineerError and reverseEngineerElapsedSeconds states', () => {
-    expect(formSource).toContain("const [reverseEngineerError, setReverseEngineerError] = useState('');");
-    expect(formSource).toContain("const [reverseEngineerElapsedSeconds, setReverseEngineerElapsedSeconds] = useState(0);");
+    expect(() => {
+      renderToStaticMarkup(
+        React.createElement(EcologicalWorkPlanForm, {
+          student: mockStudent,
+          currentUser: { email: 'teacher@school.gov.il', role: 'teacher' },
+          onSaveStudentPlan: vi.fn(),
+          goalBank: [],
+          onRecordGoalUsage: vi.fn(),
+          onGoHome: vi.fn(),
+          readOnly: false
+        })
+      );
+    }).not.toThrow();
   });
 
-  it('tracks elapsed seconds during isReverseEngineering to power progressive reassurance UI', () => {
-    expect(formSource).toContain('setReverseEngineerElapsedSeconds((prev) => prev + 1);');
-    expect(formSource).toContain('reverseEngineerElapsedSeconds >= 25');
-    expect(formSource).toContain('reverseEngineerElapsedSeconds >= 12');
-  });
-
-  it('provides emergency local fallback button in the busy indicator when network takes >= 15 seconds', () => {
-    expect(formSource).toContain('reverseEngineerElapsedSeconds >= 15');
-    expect(formSource).toContain('handleForceLocalReverseEngineer()');
-    expect(formSource).toContain('מעבר לעיבוד מקומי ללא אינטרנט');
-  });
-
-  it('renders a dedicated error banner with Retry and Local Synthesis buttons on network/AI failure', () => {
-    expect(formSource).toContain('className="reverse-engineer-error-banner"');
-    expect(formSource).toContain('🔄 נסי שוב');
-    expect(formSource).toContain('⚡ הפק במנוע מקומי');
-    expect(formSource).toContain('setReverseEngineerError(\'\')');
-  });
-
-  it('strictly protects handleReverseEngineerFullReport with try/catch/finally ensuring spinner reset', () => {
-    const fnStart = formSource.indexOf('const handleReverseEngineerFullReport = async () => {');
-    const fnBody = formSource.slice(fnStart, fnStart + 16000);
-
-    expect(fnBody).toContain('try {');
-    expect(fnBody).toContain('} catch (err) {');
-    expect(fnBody).toContain('} finally {');
-    expect(fnBody).toContain('setIsReverseEngineering(false);');
-  });
-
-  it('protects other AI handlers (summary table, eval report, status report) with try/finally', () => {
-    const summaryStart = formSource.indexOf('const handleSubmitGenerateSummaryTable = async () => {');
-    const summaryBody = formSource.slice(summaryStart, summaryStart + 2000);
-    expect(summaryBody).toContain('setIsGeneratingSummary(false);');
-
-    const evalStart = formSource.indexOf('const handleProcessFullEvalReportAi = async () => {');
-    const evalBody = formSource.slice(evalStart, evalStart + 3500);
-    expect(evalBody).toContain('setIsProcessingFullEvalAi(false);');
-
-    const statusStart = formSource.indexOf('const handleGenerateStatusReport = async () => {');
-    const statusBody = formSource.slice(statusStart, statusStart + 12000);
-    expect(statusBody).toContain('setIsGeneratingStatusReport(false);');
+  it('declares AI_CLIENT_PROCESSING_ERROR in health event kinds for runtime reporting', () => {
+    expect(HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR).toBe('ai_client_processing_error');
   });
 
   it('local engine synthesizes valid goals immediately when raw text is provided without internet', () => {

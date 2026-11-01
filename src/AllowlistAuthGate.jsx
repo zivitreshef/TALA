@@ -670,6 +670,7 @@ const generateRandomTempPassword = () => {
 export function AdminAllowlistModal({
   isOpen,
   onClose,
+  currentUser,
   allowedUsers,
   onUpdateAllowedUsers,
 
