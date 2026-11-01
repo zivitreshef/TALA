@@ -6,18 +6,172 @@
  */
 
 import {
-  TELEMETRY_CATEGORIES,
   TELEMETRY_EVENTS
-} from './telemetryTaxonomy.js';
+} from './telemetryTaxonomy';
+
+export interface TelemetryEventInput {
+  eventName: string;
+  anonUserId?: string;
+  timestampMs?: number;
+  properties?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ActiveUsersMetrics {
+  dau: number;
+  wau: number;
+  mau: number;
+  prevMau: number;
+  dauMauRatio: number;
+  mauTrendPct: number;
+  eventsIn30d: number;
+  avgEventsPerActiveUser: number;
+}
+
+export interface CohortRetentionItem {
+  cohort: string;
+  size: number;
+  week1: number;
+  week2: number;
+  week3: number;
+  week4: number;
+}
+
+export interface StreakDistributionItem {
+  range: string;
+  count: number;
+  pct: number;
+}
+
+export interface DailyTrackingMetrics {
+  started: number;
+  completed: number;
+  abandoned: number;
+  completionRate: number;
+  abandonmentRate: number;
+  voiceCount: number;
+  textCount: number;
+  voicePct: number;
+  textPct: number;
+  creationCount: number;
+  editCount: number;
+  creationPct: number;
+  editPct: number;
+  maxStreak: number;
+  avgStreak: number;
+  streakDistribution: StreakDistributionItem[];
+  avgDurationSec: number;
+  avgAbandonTimeSec: number;
+}
+
+export interface StaffReadinessMetrics {
+  summariesGenerated: number;
+  staffMeetingSummaries: number;
+  periodicReviewSummaries: number;
+  band1To5: number;
+  band6To15: number;
+  band16Plus: number;
+  teacherAdoptionCount: number;
+  teacherAdoptionRate: number;
+  readinessChecksCount: number;
+  fullyReadyCount: number;
+  fullyReadyRate: number;
+  avgItemsCompleted: number;
+}
+
+export interface SharingAndChatMetrics {
+  totalDocsShared: number;
+  formats: Record<string, number>;
+  channels: Record<string, number>;
+  chatSessionsStarted: number;
+  chatSessionsEnded: number;
+  triggerSources: Record<string, number>;
+  avgChatDurationSec: number;
+  avgTurnsPerSession: number;
+  toolDiscoveryCounts: Record<string, number>;
+}
+
+export interface ModuleAdoptionItem {
+  name: string;
+  count: number;
+  pct: number;
+}
+
+export interface FeatureAdoptionMetrics {
+  totalEvents: number;
+  modules: ModuleAdoptionItem[];
+}
+
+export interface OnboardingStepItem {
+  stepNumber: number;
+  name: string;
+  count: number;
+  conversionPct: number;
+  dropOffPct: number;
+}
+
+export interface OnboardingFunnelMetrics {
+  started: number;
+  completed: number;
+  paused: number;
+  dismissed: number;
+  completionRate: number;
+  steps: OnboardingStepItem[];
+}
+
+export interface UxFrictionMetrics {
+  dirtyExits: number;
+  repeatedFailures: number;
+  observationGaps: number;
+  zeroResults: number;
+  aiLatenciesCount: number;
+  p50: number;
+  p90: number;
+  p95: number;
+  avgLatency: number;
+  fastPct: number;
+  mediumPct: number;
+  slowPct: number;
+}
+
+export interface ErrorCountItem {
+  message: string;
+  count: number;
+}
+
+export interface TechnicalHealthMetrics {
+  jsErrorsCount: number;
+  apiFailuresCount: number;
+  avgPageLoadMs: number;
+  topErrors: ErrorCountItem[];
+  devices: Record<string, number>;
+  browsers: Record<string, number>;
+}
+
+export interface AnalyticsOptions {
+  nowMs?: number;
+  timeRange?: string;
+}
+
+export interface TelemetryAnalyticsResult {
+  timeRange: string;
+  totalEvents: number;
+  generatedAt: string;
+  overview: ActiveUsersMetrics;
+  cohorts: CohortRetentionItem[];
+  dailyTracking: DailyTrackingMetrics;
+  staffReadiness: StaffReadinessMetrics;
+  sharingAndChat: SharingAndChatMetrics;
+  featureAdoption: FeatureAdoptionMetrics;
+  userJourneys: OnboardingFunnelMetrics;
+  uxFriction: UxFrictionMetrics;
+  technicalHealth: TechnicalHealthMetrics;
+}
 
 /**
  * Calculates percentile value from an array of numbers.
- *
- * @param {Array<number>} numbers - Raw numbers
- * @param {number} percentile - 0 to 100
- * @returns {number}
  */
-export function calculatePercentile(numbers, percentile) {
+export function calculatePercentile(numbers: number[] = [], percentile: number = 0): number {
   if (!Array.isArray(numbers) || numbers.length === 0) return 0;
   const sorted = [...numbers].filter((n) => typeof n === 'number' && Number.isFinite(n)).sort((a, b) => a - b);
   if (sorted.length === 0) return 0;
@@ -32,17 +186,17 @@ export function calculatePercentile(numbers, percentile) {
 /**
  * Computes active user metrics (DAU, WAU, MAU, stickiness ratio, trends).
  */
-export function computeActiveUsers(events = [], nowMs = Date.now()) {
+export function computeActiveUsers(events: TelemetryEventInput[] = [], nowMs: number = Date.now()): ActiveUsersMetrics {
   const dayMs = 24 * 60 * 60 * 1000;
   const t24h = nowMs - dayMs;
   const t7d = nowMs - 7 * dayMs;
   const t30d = nowMs - 30 * dayMs;
   const t60d = nowMs - 60 * dayMs;
 
-  const dauUsers = new Set();
-  const wauUsers = new Set();
-  const mauUsers = new Set();
-  const prevMauUsers = new Set();
+  const dauUsers = new Set<string>();
+  const wauUsers = new Set<string>();
+  const mauUsers = new Set<string>();
+  const prevMauUsers = new Set<string>();
 
   let eventsIn30d = 0;
 
@@ -88,10 +242,10 @@ export function computeActiveUsers(events = [], nowMs = Date.now()) {
 /**
  * Computes weekly cohort retention matrix over the past 4 weeks.
  */
-export function computeCohortRetention(events = [], nowMs = Date.now()) {
+export function computeCohortRetention(events: TelemetryEventInput[] = [], nowMs: number = Date.now()): CohortRetentionItem[] {
   const weekMs = 7 * 24 * 60 * 60 * 1000;
-  const userFirstSeen = new Map();
-  const userActivityByWeek = new Map();
+  const userFirstSeen = new Map<string, number>();
+  const userActivityByWeek = new Map<string, Set<number>>();
 
   // Find first event timestamp for each user
   for (const ev of events) {
@@ -105,20 +259,19 @@ export function computeCohortRetention(events = [], nowMs = Date.now()) {
     if (!userActivityByWeek.has(ev.anonUserId)) {
       userActivityByWeek.set(ev.anonUserId, new Set());
     }
-    // Calculate week offset relative to now
     const weekIndex = Math.floor((nowMs - ts) / weekMs);
     if (weekIndex >= 0 && weekIndex <= 4) {
-      userActivityByWeek.get(ev.anonUserId).add(weekIndex);
+      userActivityByWeek.get(ev.anonUserId)!.add(weekIndex);
     }
   }
 
   // Build 4 weekly cohorts
-  const cohorts = [];
+  const cohorts: CohortRetentionItem[] = [];
   for (let w = 3; w >= 0; w--) {
     const cohortStart = nowMs - (w + 1) * weekMs;
     const cohortEnd = nowMs - w * weekMs;
 
-    const cohortUsers = [];
+    const cohortUsers: string[] = [];
     for (const [userId, firstSeen] of userFirstSeen.entries()) {
       if (firstSeen >= cohortStart && firstSeen < cohortEnd) {
         cohortUsers.push(userId);
@@ -140,7 +293,6 @@ export function computeCohortRetention(events = [], nowMs = Date.now()) {
       continue;
     }
 
-    // Measure retention for subsequent weeks
     const retW1 = 100;
     let retainedW2 = 0;
     let retainedW3 = 0;
@@ -169,7 +321,7 @@ export function computeCohortRetention(events = [], nowMs = Date.now()) {
 /**
  * Computes deep Daily Tracking metrics (streaks, voice vs text, edits vs creations, abandonment).
  */
-export function computeDailyTrackingMetrics(events = []) {
+export function computeDailyTrackingMetrics(events: TelemetryEventInput[] = []): DailyTrackingMetrics {
   let started = 0;
   let completed = 0;
   let abandoned = 0;
@@ -180,9 +332,9 @@ export function computeDailyTrackingMetrics(events = []) {
   let creationCount = 0;
   let editCount = 0;
 
-  const durations = [];
-  const abandonTimes = [];
-  const streaks = [];
+  const durations: number[] = [];
+  const abandonTimes: number[] = [];
+  const streaks: number[] = [];
 
   for (const ev of events) {
     if (!ev) continue;
@@ -231,7 +383,6 @@ export function computeDailyTrackingMetrics(events = []) {
   const creationPct = totalTypes > 0 ? Math.round((creationCount / totalTypes) * 1000) / 10 : 0;
   const editPct = totalTypes > 0 ? Math.round((editCount / totalTypes) * 1000) / 10 : 0;
 
-  // Streak distribution
   let streak1To2 = 0;
   let streak3To5 = 0;
   let streak6To10 = 0;
@@ -245,7 +396,7 @@ export function computeDailyTrackingMetrics(events = []) {
   }
 
   const streakTotal = streaks.length || 1;
-  const streakDistribution = [
+  const streakDistribution: StreakDistributionItem[] = [
     { range: '1-2 ימים (מתחילים)', count: streak1To2, pct: Math.round((streak1To2 / streakTotal) * 100) },
     { range: '3-5 ימים (רצף שבועי)', count: streak3To5, pct: Math.round((streak3To5 / streakTotal) * 100) },
     { range: '6-10 ימים (עקביות גבוהה)', count: streak6To10, pct: Math.round((streak6To10 / streakTotal) * 100) },
@@ -283,7 +434,10 @@ export function computeDailyTrackingMetrics(events = []) {
 /**
  * Computes Pedagogical Summary & Staff Meeting Readiness metrics.
  */
-export function computeStaffReadinessMetrics(events = [], totalActiveTeachers = 1) {
+export function computeStaffReadinessMetrics(
+  events: TelemetryEventInput[] = [],
+  totalActiveTeachers: number = 1
+): StaffReadinessMetrics {
   let summariesGenerated = 0;
   let staffMeetingSummaries = 0;
   let periodicReviewSummaries = 0;
@@ -292,11 +446,11 @@ export function computeStaffReadinessMetrics(events = [], totalActiveTeachers = 
   let band6To15 = 0;
   let band16Plus = 0;
 
-  const summaryUsers = new Set();
+  const summaryUsers = new Set<string>();
 
   let readinessChecksCount = 0;
   let fullyReadyCount = 0;
-  const itemsCompletedList = [];
+  const itemsCompletedList: number[] = [];
 
   for (const ev of events) {
     if (!ev) continue;
@@ -354,18 +508,18 @@ export function computeStaffReadinessMetrics(events = [], totalActiveTeachers = 
 /**
  * Computes Document Sharing & Pedagogical Chat metrics.
  */
-export function computeSharingAndChatMetrics(events = []) {
+export function computeSharingAndChatMetrics(events: TelemetryEventInput[] = []): SharingAndChatMetrics {
   let totalDocsShared = 0;
-  const formats = { pdf: 0, docx: 0, print: 0 };
-  const channels = { download: 0, whatsapp_link: 0, email_link: 0 };
+  const formats: Record<string, number> = { pdf: 0, docx: 0, print: 0 };
+  const channels: Record<string, number> = { download: 0, whatsapp_link: 0, email_link: 0 };
 
   let chatSessionsStarted = 0;
   let chatSessionsEnded = 0;
-  const triggerSources = { floating_dock: 0, student_form: 0 };
-  const sessionDurations = [];
-  const sessionTurns = [];
+  const triggerSources: Record<string, number> = { floating_dock: 0, student_form: 0 };
+  const sessionDurations: number[] = [];
+  const sessionTurns: number[] = [];
 
-  const toolDiscoveryCounts = {};
+  const toolDiscoveryCounts: Record<string, number> = {};
 
   for (const ev of events) {
     if (!ev) continue;
@@ -374,16 +528,19 @@ export function computeSharingAndChatMetrics(events = []) {
 
     if (name === TELEMETRY_EVENTS.DOCUMENT_SHARED) {
       totalDocsShared++;
-      if (props.format && formats[props.format] !== undefined) {
-        formats[props.format]++;
+      const fmt = props.format as string;
+      if (fmt && formats[fmt] !== undefined) {
+        formats[fmt]++;
       }
-      if (props.channel && channels[props.channel] !== undefined) {
-        channels[props.channel]++;
+      const ch = props.channel as string;
+      if (ch && channels[ch] !== undefined) {
+        channels[ch]++;
       }
     } else if (name === TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_STARTED) {
       chatSessionsStarted++;
-      if (props.triggerSource && triggerSources[props.triggerSource] !== undefined) {
-        triggerSources[props.triggerSource]++;
+      const src = props.triggerSource as string;
+      if (src && triggerSources[src] !== undefined) {
+        triggerSources[src]++;
       }
     } else if (name === TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_ENDED) {
       chatSessionsEnded++;
@@ -394,7 +551,7 @@ export function computeSharingAndChatMetrics(events = []) {
         sessionTurns.push(props.turnsCount);
       }
     } else if (name === TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_TOOL_DISCOVERED) {
-      const tool = props.toolType || 'general_helper';
+      const tool = (props.toolType as string) || 'general_helper';
       toolDiscoveryCounts[tool] = (toolDiscoveryCounts[tool] || 0) + 1;
     }
   }
@@ -423,8 +580,8 @@ export function computeSharingAndChatMetrics(events = []) {
 /**
  * Computes feature adoption breakdown across all core modules.
  */
-export function computeFeatureAdoption(events = []) {
-  const moduleCounts = {
+export function computeFeatureAdoption(events: TelemetryEventInput[] = []): FeatureAdoptionMetrics {
+  const moduleCounts: Record<string, number> = {
     'מעקב פדגוגי יומי': 0,
     'ניהול תלמידים ותוכניות': 0,
     'בנק יעדים ומטרות': 0,
@@ -460,7 +617,7 @@ export function computeFeatureAdoption(events = []) {
   }
 
   const total = Object.values(moduleCounts).reduce((a, b) => a + b, 0) || 1;
-  const list = Object.entries(moduleCounts).map(([moduleName, count]) => ({
+  const list: ModuleAdoptionItem[] = Object.entries(moduleCounts).map(([moduleName, count]) => ({
     name: moduleName,
     count,
     pct: Math.round((count / total) * 100)
@@ -475,13 +632,13 @@ export function computeFeatureAdoption(events = []) {
 /**
  * Computes 10-step Onboarding Journey funnel and drop-off rates.
  */
-export function computeOnboardingFunnel(events = []) {
+export function computeOnboardingFunnel(events: TelemetryEventInput[] = []): OnboardingFunnelMetrics {
   let started = 0;
   let completed = 0;
   let paused = 0;
   let dismissed = 0;
 
-  const stepCounts = new Array(11).fill(0); // index 1 to 10
+  const stepCounts = new Array(11).fill(0);
 
   for (const ev of events) {
     if (!ev) continue;
@@ -517,7 +674,7 @@ export function computeOnboardingFunnel(events = []) {
     'סיום והורדת מסמך רשמי'
   ];
 
-  const steps = [];
+  const steps: OnboardingStepItem[] = [];
   let prevCount = baseCount;
 
   for (let i = 1; i <= 10; i++) {
@@ -549,13 +706,13 @@ export function computeOnboardingFunnel(events = []) {
 /**
  * Computes UX Friction Intelligence (dirty form exits, AI latency percentiles, error spikes).
  */
-export function computeUxFrictionMetrics(events = []) {
+export function computeUxFrictionMetrics(events: TelemetryEventInput[] = []): UxFrictionMetrics {
   let dirtyExits = 0;
   let repeatedFailures = 0;
   let observationGaps = 0;
   let zeroResults = 0;
 
-  const aiLatencies = [];
+  const aiLatencies: number[] = [];
 
   for (const ev of events) {
     if (!ev) continue;
@@ -581,9 +738,9 @@ export function computeUxFrictionMetrics(events = []) {
     ? Math.round(aiLatencies.reduce((a, b) => a + b, 0) / aiLatencies.length)
     : 0;
 
-  let fastCount = 0; // < 1000ms
-  let mediumCount = 0; // 1000ms - 3000ms
-  let slowCount = 0; // > 3000ms
+  let fastCount = 0;
+  let mediumCount = 0;
+  let slowCount = 0;
 
   for (const lat of aiLatencies) {
     if (lat < 1000) fastCount++;
@@ -612,14 +769,14 @@ export function computeUxFrictionMetrics(events = []) {
 /**
  * Computes Technical Health & Client exceptions.
  */
-export function computeTechnicalHealthMetrics(events = []) {
+export function computeTechnicalHealthMetrics(events: TelemetryEventInput[] = []): TechnicalHealthMetrics {
   let jsErrorsCount = 0;
   let apiFailuresCount = 0;
-  const loadTimes = [];
+  const loadTimes: number[] = [];
 
-  const errorMessages = {};
-  const devices = { desktop: 0, mobile: 0, tablet: 0 };
-  const browsers = {};
+  const errorMessages: Record<string, number> = {};
+  const devices: Record<string, number> = { desktop: 0, mobile: 0, tablet: 0 };
+  const browsers: Record<string, number> = {};
 
   for (const ev of events) {
     if (!ev) continue;
@@ -628,7 +785,7 @@ export function computeTechnicalHealthMetrics(events = []) {
 
     if (name === TELEMETRY_EVENTS.CLIENT_JS_ERROR) {
       jsErrorsCount++;
-      const msg = props.errorMessage || props.message || 'שגיאת ממשק לא מזוהה';
+      const msg = (props.errorMessage as string) || (props.message as string) || 'שגיאת ממשק לא מזוהה';
       errorMessages[msg] = (errorMessages[msg] || 0) + 1;
     } else if (name === TELEMETRY_EVENTS.API_OPERATION_FAILED) {
       apiFailuresCount++;
@@ -638,11 +795,13 @@ export function computeTechnicalHealthMetrics(events = []) {
       }
     }
 
-    if (props.deviceCategory && devices[props.deviceCategory] !== undefined) {
-      devices[props.deviceCategory]++;
+    const dev = props.deviceCategory as string;
+    if (dev && devices[dev] !== undefined) {
+      devices[dev]++;
     }
-    if (props.browser) {
-      browsers[props.browser] = (browsers[props.browser] || 0) + 1;
+    const br = props.browser as string;
+    if (br) {
+      browsers[br] = (browsers[br] || 0) + 1;
     }
   }
 
@@ -650,7 +809,7 @@ export function computeTechnicalHealthMetrics(events = []) {
     ? Math.round(loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length)
     : 0;
 
-  const topErrors = Object.entries(errorMessages)
+  const topErrors: ErrorCountItem[] = Object.entries(errorMessages)
     .map(([message, count]) => ({ message, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
@@ -667,14 +826,11 @@ export function computeTechnicalHealthMetrics(events = []) {
 
 /**
  * Master aggregate function returning full analytics payload.
- *
- * @param {Array<object>} events - Raw telemetry events array
- * @param {object} [options]
- * @param {number} [options.nowMs] - Evaluation timestamp
- * @param {string} [options.timeRange] - Filter range ('24h' | '7d' | '30d' | '90d' | 'custom')
- * @returns {object} Comprehensive analytics summary
  */
-export function computeTelemetryAnalytics(events = [], options = {}) {
+export function computeTelemetryAnalytics(
+  events: TelemetryEventInput[] = [],
+  options: AnalyticsOptions = {}
+): TelemetryAnalyticsResult {
   const nowMs = options.nowMs || Date.now();
   const timeRange = options.timeRange || '30d';
 

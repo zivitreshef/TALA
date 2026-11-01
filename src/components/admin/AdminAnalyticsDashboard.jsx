@@ -31,7 +31,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { fetchTelemetryEvents } from '../../services/telemetryStorage.js';
-import { computeTelemetryAnalytics } from '../../domain/telemetryAggregator.js';
+import { computeTelemetryAnalytics } from '../../domain/telemetryAggregator';
 
 export function isUserAdmin(user) {
   if (!user) return false;

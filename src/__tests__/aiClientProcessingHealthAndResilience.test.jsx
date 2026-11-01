@@ -7,7 +7,7 @@ import {
   classifyAiError,
   buildHealthEvent
 } from '../domain/healthEvents';
-import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy.js';
+import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import { reportHealthEvent } from '../services/healthTelemetry.js';
 import { usageTelemetryService } from '../services/usageTelemetryService.js';
 import * as firebaseBackend from '../firebaseBackend.js';

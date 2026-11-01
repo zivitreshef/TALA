@@ -4,7 +4,7 @@ import { reportHealthEvent } from './healthTelemetry';
 import { HEALTH_EVENT_KINDS, buildPingResult } from '../domain/healthEvents';
 import { containsInjection } from '../domain/aiSecurityGuards';
 import { usageTelemetryService } from './usageTelemetryService';
-import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy.js';
+import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 
 async function callDirectGeminiApi({ prompt, model = 'gemini-2.5-flash', apiKey }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;

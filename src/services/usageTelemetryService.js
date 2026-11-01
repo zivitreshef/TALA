@@ -13,8 +13,8 @@ import {
 import {
   sanitizeTelemetryPayload,
   isInternalAccount
-} from '../domain/telemetryPrivacy.js';
-import { isValidEventName, CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy.js';
+} from '../domain/telemetryPrivacy';
+import { isValidEventName, CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
 
 export const OFFLINE_STORAGE_KEY = 'tala_telemetry_offline_queue';
 export const RING_BUFFER_CAPACITY = 100;

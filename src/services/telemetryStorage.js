@@ -22,8 +22,8 @@ import {
 import {
   generateUuidV4,
   isInternalAccount
-} from '../domain/telemetryPrivacy.js';
-import { CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy.js';
+} from '../domain/telemetryPrivacy';
+import { CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
 
 export const TELEMETRY_EVENTS_COLLECTION = 'tala_telemetry_events';
 export const FIRESTORE_BATCH_LIMIT = 450; // Under Firestore max 500 write operations per batch

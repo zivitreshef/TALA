@@ -13,8 +13,8 @@ import {
   classifyAccount,
   isInternalAccount,
   sanitizeTelemetryPayload
-} from '../domain/telemetryPrivacy.js';
-import { TELEMETRY_EVENTS, TELEMETRY_CATEGORIES } from '../domain/telemetryTaxonomy.js';
+} from '../domain/telemetryPrivacy';
+import { TELEMETRY_EVENTS, TELEMETRY_CATEGORIES } from '../domain/telemetryTaxonomy';
 
 describe('Zero-Trust Privacy Guard & Pseudonymization Engine (F3, F4, F6)', () => {
   describe('Tier 1: Prohibited Key Denylist & Verification', () => {
