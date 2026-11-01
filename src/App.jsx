@@ -118,7 +118,7 @@ import {
   getObservationGaps,
   getPedagogicalAccomplishmentsSummary
 } from './domain/dailyPedagogicalTracking.js';
-import { toHebrewAcronym } from './domain/privacyAndAcronyms.js';
+import { toHebrewAcronym } from './domain/privacyAndAcronyms';
 import {
   loadEmailEngineConfig,
   saveEmailEngineConfig,

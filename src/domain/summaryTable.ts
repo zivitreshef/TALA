@@ -1,8 +1,38 @@
-export const buildSummaryTablePrompt = ({ freeText = '', goals = [], isKindergarten = false }) => {
+export interface SummaryTablePromptParams {
+  freeText?: string;
+  goals?: Array<{
+    environment?: string;
+    title?: string;
+    activityParticipation?: string;
+    objectives?: string;
+    [key: string]: unknown;
+  }>;
+  isKindergarten?: boolean;
+}
+
+export interface SummaryParsedData {
+  name?: string;
+  gender?: string;
+  educationalFramework?: string;
+  strengthsExisting?: string;
+  strengthsToEmpower?: string;
+  studentGeneralBackground?: string;
+  studentSupportReceived?: string;
+  studentMainGoal?: string;
+  talaFocusDomains?: string[];
+  talaProfileRows?: unknown[];
+  [key: string]: unknown;
+}
+
+export const buildSummaryTablePrompt = ({
+  freeText = '',
+  goals = [],
+  isKindergarten = false
+}: SummaryTablePromptParams): string => {
   const goalsSummary = goals
     .map(
       (g, idx) =>
-        `${idx + 1}. סביבה: ${g.environment} | מטרה: ${g.title} | תפקוד: ${g.activityParticipation || ''} | יעדים: ${g.objectives || ''}`
+        `${idx + 1}. סביבה: ${g.environment || ''} | מטרה: ${g.title || ''} | תפקוד: ${g.activityParticipation || ''} | יעדים: ${g.objectives || ''}`
     )
     .join('\n');
 
@@ -32,7 +62,27 @@ ${goalsSummary}
 }`;
 };
 
-export const applyAiSummary = (data, parsed, nowTime = '') => {
+export interface AppliedSummaryFields {
+  freeTextAnalyzed: boolean;
+  strengthsExisting?: unknown;
+  strengthsToEmpower?: unknown;
+  studentGeneralBackground?: unknown;
+  studentSupportReceived?: unknown;
+  studentMainGoal?: unknown;
+  talaFocusDomains?: unknown;
+  status: string;
+  lastSavedAt: string;
+  name?: unknown;
+  gender?: unknown;
+  educationalFramework?: unknown;
+  talaProfileRows?: unknown;
+}
+
+export const applyAiSummary = <T extends Record<string, unknown>>(
+  data: T,
+  parsed?: SummaryParsedData | null,
+  nowTime: string = ''
+): T & AppliedSummaryFields => {
   const nextExisting = parsed?.strengthsExisting || data.strengthsExisting;
   const nextEmpower = parsed?.strengthsToEmpower || data.strengthsToEmpower;
   return {
@@ -55,7 +105,11 @@ export const applyAiSummary = (data, parsed, nowTime = '') => {
   };
 };
 
-export const applyLocalSummary = (data, engineered, nowTime = '') => {
+export const applyLocalSummary = <T extends Record<string, unknown>>(
+  data: T,
+  engineered?: SummaryParsedData | null,
+  nowTime: string = ''
+): T & AppliedSummaryFields => {
   return {
     ...data,
     freeTextAnalyzed: true,

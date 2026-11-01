@@ -10,7 +10,7 @@ import {
   maskKnownStudentDetails,
   maskPromptForAi,
   toHebrewAcronym
-} from '../domain/privacyAndAcronyms.js';
+} from '../domain/privacyAndAcronyms';
 import { shouldSendPedagogicalDigest } from '../domain/dailyPedagogicalTracking.js';
 import { buildPedagogicalReminderEmailHtml } from '../emailService.js';
 
