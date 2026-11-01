@@ -9,7 +9,7 @@ import {
   detectAbnormalSpikes,
   DAILY_AI_QUOTA_LIMIT,
   DAILY_EMAIL_QUOTA_LIMIT
-} from '../domain/telemetry.js';
+} from '../domain/telemetry';
 import {
   maskEmailForPrivacy,
   recordEmailAuditLogToCloud,

@@ -24,7 +24,7 @@ import {
   runTransaction
 } from 'firebase/firestore';
 import { ensureUsersListPasswordsHashed } from './allowedUsers.js';
-import { mergeStudentSnapshots } from './domain/studentSyncMerge.js';
+import { mergeStudentSnapshots } from './domain/studentSyncMerge';
 import {
   pruneStaleFirestoreKeys,
   hasLocalStorageQuotaHeadroom,

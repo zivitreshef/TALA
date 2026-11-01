@@ -158,7 +158,7 @@ import TrialNdaModal from './components/modals/TrialNdaModal';
 import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import TeacherChatWidget from './components/chat/TeacherChatWidget';
 import { subscribeToAllSupportThreads } from './services/supportChatService';
-import { computePendingInquiriesCount, THREAD_STATUS } from './domain/supportChat.js';
+import { computePendingInquiriesCount, THREAD_STATUS } from './domain/supportChat';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import { appendBankGoalToStudent } from './domain/bankGoalApplication';

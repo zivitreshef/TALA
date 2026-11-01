@@ -29,7 +29,7 @@ import {
   THREAD_STATUS,
   RESOLUTION_FEEDBACK,
   countUnreadMessages
-} from '../../domain/supportChat.js';
+} from '../../domain/supportChat';
 import { processChatImageFile } from '../../services/chatImageHelper.js';
 
 export default function TeacherChatWidget({

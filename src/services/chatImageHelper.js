@@ -4,7 +4,7 @@
  * and zero storage bloat without external dependencies.
  */
 
-import { validateChatImageSecurity } from '../domain/supportChat.js';
+import { validateChatImageSecurity } from '../domain/supportChat';
 
 export async function processChatImageFile(file) {
   if (!file) {

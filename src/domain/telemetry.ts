@@ -11,15 +11,121 @@ export const FREE_FIRESTORE_DAILY_READS = 50000;
 export const FREE_FIRESTORE_DAILY_WRITES = 20000;
 export const FREE_CLOUD_FUNCTIONS_INVOCATIONS_MONTHLY = 2000000;
 
-// Average token cost estimation for Gemini 2.5/2.0 Flash (~$0.075 per 1M input, ~$0.30 per 1M output)
-// Typical pedagogical query: ~1,500 input tokens + ~800 output tokens =~ $0.00035 USD per query
 export const ESTIMATED_USD_PER_AI_QUERY = 0.00035;
 export const USD_TO_ILS_ESTIMATE = 3.75;
+
+export interface StorageFileItem {
+  id?: string;
+  fileName: string;
+  fileSize: number;
+  formattedSize: string;
+  studentName: string;
+  studentId: string;
+  uploadedAt: string;
+}
+
+export interface StorageFootprintResult {
+  totalFiles: number;
+  totalBytes: number;
+  formattedMb: string;
+  usagePercent: number;
+  largestFiles: StorageFileItem[];
+}
+
+export interface AnomalyItem {
+  id: string;
+  type: 'soft_quota' | 'user_spike' | 'volume_spike' | string;
+  title: string;
+  detail: string;
+  severity: 'warning' | 'critical';
+}
+
+export interface AnomalyReport {
+  hasAnomalies: boolean;
+  anomalies: AnomalyItem[];
+}
+
+export interface UserActivity {
+  email: string;
+  aiCount: number;
+  emailCount: number;
+  lastActiveMs: number;
+}
+
+export interface DayTimelineItem {
+  key: string;
+  dayName: string;
+  dateShort: string;
+  aiCount: number;
+  emailCount: number;
+}
+
+export interface BlazeServiceBreakdown {
+  service: string;
+  freeTier: string;
+  currentUsage: string;
+  status: 'free' | 'billed' | 'warning' | string;
+  estimatedCostIls: string;
+}
+
+export interface AggregatedTelemetryData {
+  nowMs: number;
+  aiTodayCount: number;
+  aiMonthCount: number;
+  aiQuotaLimit: number;
+  aiRemainingToday: number;
+  aiUsageRatio: number;
+
+  emailTodayCount: number;
+  emailMonthCount: number;
+  emailQuotaLimit: number;
+  emailRemainingToday: number;
+  emailUsageRatio: number;
+
+  storage: StorageFootprintResult;
+  estimatedAiCostUsd: number;
+  estimatedAiCostIls: number;
+
+  threatLevel: 'safe' | 'warning' | 'critical';
+  blockedInjections: Array<Record<string, unknown>>;
+  recentInjectionsCount: number;
+  rateLimitEvents: Array<Record<string, unknown>>;
+  recentRateLimitsCount: number;
+  geminiErrors: Array<Record<string, unknown>>;
+
+  anomalyReport: AnomalyReport;
+
+  last7Days: DayTimelineItem[];
+  topActiveTeachers: UserActivity[];
+  blazeBreakdown: BlazeServiceBreakdown[];
+  isAiFrozen: boolean;
+}
+
+export interface AnomalyDetectorParams {
+  aiTodayCount?: number;
+  emailTodayCount?: number;
+  storage?: Partial<StorageFootprintResult>;
+  topActiveTeachers?: UserActivity[];
+  last7Days?: DayTimelineItem[];
+}
+
+export interface AggregateTelemetryParams {
+  aiLogs?: Array<Record<string, unknown>>;
+  emailLogs?: Array<Record<string, unknown>>;
+  students?: Array<Record<string, unknown>>;
+  settings?: { aiFreeze?: boolean; [key: string]: unknown };
+  now?: Date | string | number;
+}
+
+export interface GenerateTelemetryCsvParams {
+  aiLogs?: Array<Record<string, unknown>>;
+  emailLogs?: Array<Record<string, unknown>>;
+}
 
 /**
  * Format a Date to 'YYYY-MM-DD' in local time.
  */
-export function getLocalDayKey(date = new Date()) {
+export function getLocalDayKey(date: Date | string | number = new Date()): string {
   const d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) return '';
   const year = d.getFullYear();
@@ -31,7 +137,7 @@ export function getLocalDayKey(date = new Date()) {
 /**
  * Format a Date to 'YYYY-MM' (calendar month).
  */
-export function getLocalMonthKey(date = new Date()) {
+export function getLocalMonthKey(date: Date | string | number = new Date()): string {
   const d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) return '';
   const year = d.getFullYear();
@@ -42,12 +148,17 @@ export function getLocalMonthKey(date = new Date()) {
 /**
  * Converts a Firestore timestamp or date string/number to milliseconds.
  */
-export function toTimestampMs(timeVal) {
+export function toTimestampMs(timeVal?: unknown): number {
   if (!timeVal) return 0;
   if (typeof timeVal === 'number') return timeVal;
-  if (typeof timeVal.toMillis === 'function') return timeVal.toMillis();
-  if (timeVal.seconds) return timeVal.seconds * 1000 + Math.floor((timeVal.nanoseconds || 0) / 1000000);
-  const parsed = new Date(timeVal).getTime();
+  if (typeof (timeVal as { toMillis?: () => number }).toMillis === 'function') {
+    return (timeVal as { toMillis: () => number }).toMillis();
+  }
+  const fsTime = timeVal as { seconds?: number; nanoseconds?: number };
+  if (fsTime.seconds) {
+    return fsTime.seconds * 1000 + Math.floor((fsTime.nanoseconds || 0) / 1000000);
+  }
+  const parsed = new Date(timeVal as string | number).getTime();
   return isNaN(parsed) ? 0 : parsed;
 }
 
@@ -55,22 +166,22 @@ export function toTimestampMs(timeVal) {
  * Computes storage metrics across all student diagnostic dossiers.
  * Also extracts top 5 largest files to identify storage hogs.
  */
-export function calculateStorageFootprint(students = []) {
+export function calculateStorageFootprint(students: Array<Record<string, unknown>> = []): StorageFootprintResult {
   if (!Array.isArray(students)) {
     return { totalFiles: 0, totalBytes: 0, formattedMb: '0.0 MB', usagePercent: 0, largestFiles: [] };
   }
 
   let totalFiles = 0;
   let totalBytes = 0;
-  const allFiles = [];
+  const allFiles: StorageFileItem[] = [];
 
   students.forEach((student) => {
-    const studentName = student?.name || 'תלמיד/ה ללא שם';
-    const studentId = student?.id || '';
+    const studentName = (student?.name as string) || 'תלמיד/ה ללא שם';
+    const studentId = (student?.id as string) || '';
     const docs = Array.isArray(student?.diagnosticDocuments)
-      ? student.diagnosticDocuments
-      : Array.isArray(student?.diagnosticDossier?.documents)
-      ? student.diagnosticDossier.documents
+      ? (student.diagnosticDocuments as Array<Record<string, unknown>>)
+      : Array.isArray((student?.diagnosticDossier as { documents?: unknown })?.documents)
+      ? ((student.diagnosticDossier as { documents: Array<Record<string, unknown>> }).documents)
       : [];
 
     docs.forEach((doc) => {
@@ -88,15 +199,15 @@ export function calculateStorageFootprint(students = []) {
         totalFiles += 1;
         totalBytes += fileSize;
         allFiles.push({
-          id: doc.id || doc.storagePath,
-          fileName: doc.fileName || doc.name || 'קובץ ללא שם',
+          id: (doc.id || doc.storagePath) as string,
+          fileName: (doc.fileName || doc.name || 'קובץ ללא שם') as string,
           fileSize,
           formattedSize: fileSize > 1024 * 1024
             ? (fileSize / (1024 * 1024)).toFixed(1) + ' MB'
             : Math.round(fileSize / 1024) + ' KB',
           studentName,
           studentId,
-          uploadedAt: doc.uploadedAt || doc.createdAt || ''
+          uploadedAt: (doc.uploadedAt || doc.createdAt || '') as string
         });
       }
     });
@@ -121,11 +232,6 @@ export function calculateStorageFootprint(students = []) {
 
 /**
  * Proactive Anomaly & Soft Quota Warning Detector.
- * Identifies:
- * 1. AI or Email consumption >= 80% of daily quota.
- * 2. Cloud Storage footprint >= 80% of free tier (4,096 MB).
- * 3. Runaway user anomaly (single user >= 40% of daily AI queries when total >= 20).
- * 4. Volume spike anomaly (today's AI usage >= 2.5x the 7-day daily average when daily average >= 10).
  */
 export function detectAbnormalSpikes({
   aiTodayCount = 0,
@@ -133,8 +239,8 @@ export function detectAbnormalSpikes({
   storage = {},
   topActiveTeachers = [],
   last7Days = []
-} = {}) {
-  const anomalies = [];
+}: AnomalyDetectorParams = {}): AnomalyReport {
+  const anomalies: AnomalyItem[] = [];
 
   // 1. Soft Quota Warnings (>= 80%)
   if (aiTodayCount >= DAILY_AI_QUOTA_LIMIT * 0.8) {
@@ -213,7 +319,7 @@ export function aggregateTelemetryData({
   students = [],
   settings = {},
   now = new Date()
-} = {}) {
+}: AggregateTelemetryParams = {}): AggregatedTelemetryData {
   const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
   const currentDayKey = getLocalDayKey(now);
   const currentMonthKey = getLocalMonthKey(now);
@@ -224,10 +330,10 @@ export function aggregateTelemetryData({
   let emailTodayCount = 0;
   let emailMonthCount = 0;
 
-  const blockedInjections = [];
-  const rateLimitEvents = [];
-  const geminiErrors = [];
-  const userActivityMap = new Map();
+  const blockedInjections: Array<Record<string, unknown>> = [];
+  const rateLimitEvents: Array<Record<string, unknown>> = [];
+  const geminiErrors: Array<Record<string, unknown>> = [];
+  const userActivityMap = new Map<string, UserActivity>();
 
   // 1. Process AI Logs
   (Array.isArray(aiLogs) ? aiLogs : []).forEach((log) => {
@@ -244,7 +350,7 @@ export function aggregateTelemetryData({
       aiMonthCount += 1;
     }
 
-    const email = (log.email || '').toLowerCase().trim();
+    const email = String(log.email || '').toLowerCase().trim();
     if (email) {
       const existing = userActivityMap.get(email) || { email, aiCount: 0, emailCount: 0, lastActiveMs: 0 };
       existing.aiCount += 1;
@@ -293,7 +399,7 @@ export function aggregateTelemetryData({
       emailMonthCount += 1;
     }
 
-    const email = (log.userEmail || log.email || '').toLowerCase().trim();
+    const email = String(log.userEmail || log.email || '').toLowerCase().trim();
     if (email) {
       const existing = userActivityMap.get(email) || { email, aiCount: 0, emailCount: 0, lastActiveMs: 0 };
       existing.emailCount += 1;
@@ -302,8 +408,8 @@ export function aggregateTelemetryData({
     }
   });
 
-  // 3. 7-Day Sparkline / Timeline (Last 7 days including today)
-  const last7Days = [];
+  // 3. 7-Day Sparkline / Timeline
+  const last7Days: DayTimelineItem[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(nowMs - i * 24 * 60 * 60 * 1000);
     const key = getLocalDayKey(d);
@@ -322,14 +428,14 @@ export function aggregateTelemetryData({
     const logMs = toTimestampMs(log.createdAt || log.timestamp || log.createdAtMs);
     const key = getLocalDayKey(new Date(logMs));
     if (dayMap.has(key)) {
-      dayMap.get(key).aiCount += 1;
+      dayMap.get(key)!.aiCount += 1;
     }
   });
   (Array.isArray(emailLogs) ? emailLogs : []).forEach((log) => {
     const logMs = toTimestampMs(log.createdAtMs || log.createdAt || log.timestamp);
     const key = getLocalDayKey(new Date(logMs));
     if (dayMap.has(key)) {
-      dayMap.get(key).emailCount += 1;
+      dayMap.get(key)!.emailCount += 1;
     }
   });
 
@@ -346,10 +452,10 @@ export function aggregateTelemetryData({
   const estimatedAiCostIls = estimatedAiCostUsd * USD_TO_ILS_ESTIMATE;
 
   // 7. Security Anomaly & Threat Level
-  const recentInjections = blockedInjections.filter((inj) => inj.createdAtMs >= oneDayAgoMs);
-  const recentRateLimits = rateLimitEvents.filter((rl) => rl.createdAtMs >= oneDayAgoMs);
+  const recentInjections = blockedInjections.filter((inj) => (inj.createdAtMs as number) >= oneDayAgoMs);
+  const recentRateLimits = rateLimitEvents.filter((rl) => (rl.createdAtMs as number) >= oneDayAgoMs);
 
-  let threatLevel = 'safe'; // 'safe' | 'warning' | 'critical'
+  let threatLevel: 'safe' | 'warning' | 'critical' = 'safe';
   if (recentInjections.length >= 3 || recentRateLimits.length >= 5) {
     threatLevel = 'critical';
   } else if (recentInjections.length > 0 || recentRateLimits.length > 0) {
@@ -357,7 +463,7 @@ export function aggregateTelemetryData({
   }
 
   // 8. Blaze Services Breakdown
-  const blazeBreakdown = [
+  const blazeBreakdown: BlazeServiceBreakdown[] = [
     {
       service: 'Google AI Studio / Gemini API',
       freeTier: '1,500 שאילתות / יום (חינם לחלוטין)',
@@ -441,8 +547,8 @@ export function aggregateTelemetryData({
 /**
  * Generates a clean CSV string of recent telemetry events for admin export.
  */
-export function generateTelemetryCsv({ aiLogs = [], emailLogs = [] } = {}) {
-  const rows = [['Type', 'Timestamp', 'UserEmail', 'Operation', 'Status', 'Details']];
+export function generateTelemetryCsv({ aiLogs = [], emailLogs = [] }: GenerateTelemetryCsvParams = {}): string {
+  const rows: string[][] = [['Type', 'Timestamp', 'UserEmail', 'Operation', 'Status', 'Details']];
 
   (Array.isArray(aiLogs) ? aiLogs : []).forEach((log) => {
     const ms = toTimestampMs(log.createdAt || log.timestamp || log.createdAtMs);
@@ -450,10 +556,10 @@ export function generateTelemetryCsv({ aiLogs = [], emailLogs = [] } = {}) {
     rows.push([
       'AI_QUERY',
       dateStr,
-      log.email || '',
-      log.operation || '',
-      log.status || '',
-      log.model || ''
+      String(log.email || ''),
+      String(log.operation || ''),
+      String(log.status || ''),
+      String(log.model || '')
     ]);
   });
 
@@ -463,10 +569,10 @@ export function generateTelemetryCsv({ aiLogs = [], emailLogs = [] } = {}) {
     rows.push([
       'EMAIL_SENT',
       dateStr,
-      log.userEmail || '',
+      String(log.userEmail || ''),
       'send_email',
       'ok',
-      log.recipientMasked || ''
+      String(log.recipientMasked || '')
     ]);
   });
 

@@ -6,30 +6,104 @@
 export const SENDER_ROLES = {
   USER: 'user',
   ADMIN: 'admin'
-};
+} as const;
+
+export type SenderRole = (typeof SENDER_ROLES)[keyof typeof SENDER_ROLES];
 
 export const THREAD_STATUS = {
   ACTIVE: 'active',
   RESOLVED: 'resolved',
   NEEDS_ATTENTION: 'needs_attention'
-};
+} as const;
+
+export type ThreadStatus = (typeof THREAD_STATUS)[keyof typeof THREAD_STATUS];
 
 export const RESOLUTION_FEEDBACK = {
   THUMBS_UP: 'thumbs_up',
   THUMBS_DOWN: 'thumbs_down'
-};
+} as const;
+
+export type ResolutionFeedback = (typeof RESOLUTION_FEEDBACK)[keyof typeof RESOLUTION_FEEDBACK];
 
 export const MAX_THREAD_MESSAGES = 100;
 export const MAX_MESSAGE_LENGTH = 2000;
 export const MAX_IMAGE_RAW_SIZE_BYTES = 10 * 1024 * 1024; // 10MB raw max
 
-export const ALLOWED_CHAT_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
-export const ALLOWED_CHAT_IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'webp']);
+export const ALLOWED_CHAT_IMAGE_TYPES: ReadonlySet<string> = new Set(['image/png', 'image/jpeg', 'image/webp']);
+export const ALLOWED_CHAT_IMAGE_EXTS: ReadonlySet<string> = new Set(['png', 'jpg', 'jpeg', 'webp']);
+
+export interface ImageValidationResult {
+  valid: boolean;
+  reason?: string;
+  extension?: string;
+}
+
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  sizeKb: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderRole: SenderRole;
+  senderEmail: string;
+  senderName: string;
+  text: string;
+  createdAt: string;
+  timestamp: number;
+  attachment?: ChatAttachment | null;
+}
+
+export interface SupportThread {
+  id?: string;
+  userEmail?: string;
+  userName?: string;
+  topic?: string;
+  status?: ThreadStatus | string;
+  lastMessageText?: string;
+  lastMessageSender?: string;
+  lastMessageAt?: string;
+  updatedAt?: string;
+  messages?: ChatMessage[];
+  unreadByAdmin?: boolean;
+  unreadByUser?: boolean;
+  resolutionFeedback?: ResolutionFeedback | string;
+  [key: string]: unknown;
+}
+
+export interface CreateChatMessageParams {
+  senderRole?: SenderRole;
+  senderEmail?: string;
+  senderName?: string;
+  text?: string;
+  attachment?: Partial<ChatAttachment> & { dataUrl?: string } | null;
+  timestamp?: number | null;
+}
+
+export interface ChatNotificationParams {
+  teacherName?: string;
+  teacherEmail?: string;
+  topic?: string;
+  messageText?: string;
+  hasAttachment?: boolean;
+  siteUrl?: string;
+}
+
+export interface AdminContactRequest {
+  id?: string;
+  email?: string;
+  [key: string]: unknown;
+}
 
 /**
  * Validates image metadata for chat attachments according to Security-First principles.
  */
-export function validateChatImageSecurity(fileOrMeta = {}) {
+export function validateChatImageSecurity(
+  fileOrMeta?: { size?: number | string; name?: string; type?: string } | null
+): ImageValidationResult {
   if (!fileOrMeta || typeof fileOrMeta !== 'object') {
     return { valid: false, reason: 'קובץ לא תקין.' };
   }
@@ -54,7 +128,9 @@ export function validateChatImageSecurity(fileOrMeta = {}) {
   }
 
   // Detect executable/dangerous double extensions (e.g. evil.exe.png)
-  const FORBIDDEN_SUB_EXTS = new Set(['exe', 'dll', 'bat', 'cmd', 'sh', 'ps1', 'vbs', 'js', 'html', 'htm', 'php', 'py', 'jar', 'apk']);
+  const FORBIDDEN_SUB_EXTS = new Set([
+    'exe', 'dll', 'bat', 'cmd', 'sh', 'ps1', 'vbs', 'js', 'html', 'htm', 'php', 'py', 'jar', 'apk'
+  ]);
   for (let i = 0; i < parts.length - 1; i++) {
     if (FORBIDDEN_SUB_EXTS.has(parts[i])) {
       return { valid: false, reason: `זוהתה סיומת כפולה חשודה (${parts[i]}.${ext}). הקובץ נחסם מטעמי אבטחה.` };
@@ -72,7 +148,7 @@ export function validateChatImageSecurity(fileOrMeta = {}) {
 /**
  * Escapes HTML characters to prevent XSS.
  */
-export function escapeHtml(str) {
+export function escapeHtml(str?: string | null): string {
   return String(str || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -85,7 +161,7 @@ export function escapeHtml(str) {
  * Sanitizes an email into a safe Firestore document key.
  * Converts to lowercase, strips illegal characters.
  */
-export function sanitizeThreadKey(email) {
+export function sanitizeThreadKey(email?: string | null): string {
   if (!email || typeof email !== 'string') return 'guest_thread';
   const clean = email.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
   return clean || 'guest_thread';
@@ -101,14 +177,14 @@ export function createChatMessage({
   text = '',
   attachment = null,
   timestamp = null
-}) {
-  const cleanRole = senderRole === SENDER_ROLES.ADMIN ? SENDER_ROLES.ADMIN : SENDER_ROLES.USER;
+}: CreateChatMessageParams = {}): ChatMessage {
+  const cleanRole: SenderRole = senderRole === SENDER_ROLES.ADMIN ? SENDER_ROLES.ADMIN : SENDER_ROLES.USER;
   let cleanText = String(text || '').slice(0, MAX_MESSAGE_LENGTH).trim();
   const cleanEmail = String(senderEmail || '').trim().toLowerCase();
   const cleanName = String(senderName || '').trim() || (cleanRole === SENDER_ROLES.ADMIN ? 'מנהלת המערכת' : 'מורה');
   const now = typeof timestamp === 'number' && !Number.isNaN(timestamp) ? timestamp : Date.now();
 
-  let cleanAttachment = null;
+  let cleanAttachment: ChatAttachment | null = null;
   if (attachment && typeof attachment === 'object') {
     const rawUrl = String(attachment.url || attachment.dataUrl || '');
     if (rawUrl.startsWith('data:image/') || rawUrl.startsWith('https://') || rawUrl.startsWith('http://')) {
@@ -131,7 +207,7 @@ export function createChatMessage({
     timeStyle: 'short'
   });
 
-  const msg = {
+  const msg: ChatMessage = {
     id: `msg_${now}_${Math.random().toString(36).slice(2, 8)}`,
     senderRole: cleanRole,
     senderEmail: cleanEmail,
@@ -151,7 +227,7 @@ export function createChatMessage({
 /**
  * Appends a new message to a thread and updates metadata, maintaining bounds.
  */
-export function appendMessageToThread(thread, newMessage) {
+export function appendMessageToThread(thread?: SupportThread | null, newMessage?: ChatMessage | null): SupportThread {
   if (!newMessage || typeof newMessage !== 'object' || (!newMessage.text && !newMessage.attachment)) {
     return thread || {};
   }
@@ -185,7 +261,7 @@ export function appendMessageToThread(thread, newMessage) {
 /**
  * Counts unread messages in a thread for a specific viewer role.
  */
-export function countUnreadMessages(thread, viewerRole = SENDER_ROLES.USER) {
+export function countUnreadMessages(thread?: SupportThread | null, viewerRole: string = SENDER_ROLES.USER): number {
   if (!thread || !Array.isArray(thread.messages)) return 0;
   if (viewerRole === SENDER_ROLES.ADMIN) {
     return thread.unreadByAdmin ? 1 : 0;
@@ -196,7 +272,7 @@ export function countUnreadMessages(thread, viewerRole = SENDER_ROLES.USER) {
 /**
  * Marks a thread as read for a specific role.
  */
-export function markThreadAsRead(thread, viewerRole = SENDER_ROLES.USER) {
+export function markThreadAsRead(thread?: SupportThread | null, viewerRole: string = SENDER_ROLES.USER): SupportThread {
   if (!thread || typeof thread !== 'object') return thread || {};
   if (viewerRole === SENDER_ROLES.ADMIN) {
     return { ...thread, unreadByAdmin: false };
@@ -209,7 +285,7 @@ export const DEFAULT_TALA_SITE_URL = 'https://zivitreshef.github.io/TALA/';
 /**
  * Builds a direct deep-link URL for an admin to view and reply to a specific teacher's chat thread.
  */
-export function buildAdminChatDeepLink(teacherEmail = '', baseUrl = '') {
+export function buildAdminChatDeepLink(teacherEmail: string = '', baseUrl: string = ''): string {
   let base = baseUrl;
   if (!base && typeof window !== 'undefined' && window.location?.origin) {
     base = `${window.location.origin}${window.location.pathname}`;
@@ -232,7 +308,7 @@ export function formatAdminChatNotificationMessage({
   messageText = '',
   hasAttachment = false,
   siteUrl = ''
-} = {}) {
+}: ChatNotificationParams = {}): string {
   const timeStr = new Date().toLocaleString('he-IL', {
     dateStyle: 'short',
     timeStyle: 'short'
@@ -273,7 +349,7 @@ export function buildAdminChatNotificationEmailHtml({
   messageText = '',
   hasAttachment = false,
   siteUrl = ''
-} = {}) {
+}: ChatNotificationParams = {}): string {
   const safeName = escapeHtml(teacherName || 'מורה');
   const safeEmail = escapeHtml(teacherEmail || '');
   const safeTopic = escapeHtml(topic || 'פנייה לתמיכה');
@@ -320,14 +396,14 @@ export function buildAdminChatNotificationEmailHtml({
   `;
 }
 
-
 /**
  * Computes the deduplicated count of pending inquiries across chat threads and contact requests.
- * Only threads that are unreadByAdmin or marked as needs_attention, and standalone login requests, are counted.
- * Resolved threads (e.g. thumb-up closed) or read active threads do not count as pending.
  */
-export function computePendingInquiriesCount(adminRequests = [], supportThreads = []) {
-  const seenEmails = new Set();
+export function computePendingInquiriesCount(
+  adminRequests: AdminContactRequest[] = [],
+  supportThreads: SupportThread[] = []
+): number {
+  const seenEmails = new Set<string>();
   let pendingCount = 0;
 
   // 1. Live support chat threads

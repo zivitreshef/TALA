@@ -8,20 +8,59 @@ export const DISCIPLINE_LEAD_OPTIONS = [
   'תומכת למידה',
   'יועצת / פסיכולוגית',
   'פיזיותרפיה'
-];
+] as const;
+
+export type DisciplineLead = (typeof DISCIPLINE_LEAD_OPTIONS)[number];
+
+export interface GoalObservation {
+  id: string;
+  dateIso?: string;
+  note?: string;
+  [key: string]: unknown;
+}
+
+export interface SyncGoal {
+  id?: string;
+  observations?: GoalObservation[];
+  leadProfessional?: string;
+  achievementStatus?: string;
+  [key: string]: unknown;
+}
+
+export interface TeamMessage {
+  id: string;
+  text?: string;
+  createdAt?: string;
+  isDeleted?: boolean;
+  readBy?: string[];
+  [key: string]: unknown;
+}
+
+export interface StudentSnapshot {
+  id?: string;
+  name?: string;
+  sharedWith?: string[];
+  sharedReadBy?: string[];
+  goals?: SyncGoal[];
+  teamMessages?: TeamMessage[];
+  updatedAt?: string;
+  [key: string]: unknown;
+}
 
 /**
  * Merges observations arrays without duplicates, preserving order by dateIso.
  */
-export function mergeObservationsLists(localObs = [], serverObs = []) {
-  const map = new Map();
+export function mergeObservationsLists(
+  localObs: GoalObservation[] = [],
+  serverObs: GoalObservation[] = []
+): GoalObservation[] {
+  const map = new Map<string, GoalObservation>();
   [...(localObs || []), ...(serverObs || [])].forEach((item) => {
     if (item && item.id) {
       if (!map.has(item.id)) {
         map.set(item.id, item);
       } else {
-        // Prefer one with note or newer content
-        const existing = map.get(item.id);
+        const existing = map.get(item.id)!;
         map.set(item.id, { ...existing, ...item });
       }
     }
@@ -36,11 +75,15 @@ export function mergeObservationsLists(localObs = [], serverObs = []) {
 /**
  * Non-destructive merge of two goal objects when simultaneous edits occur.
  */
-export function mergeGoalObjects(localGoal = {}, serverGoal = {}, baseGoal = {}) {
+export function mergeGoalObjects<T extends SyncGoal>(
+  localGoal: T = {} as T,
+  serverGoal: T = {} as T,
+  baseGoal: T = {} as T
+): T {
   if (!serverGoal || Object.keys(serverGoal).length === 0) return localGoal;
   if (!localGoal || Object.keys(localGoal).length === 0) return serverGoal;
 
-  const merged = { ...serverGoal, ...localGoal };
+  const merged: SyncGoal = { ...serverGoal, ...localGoal };
 
   // For any field where local was NOT changed from base, but server WAS changed from base, take server's value
   Object.keys(serverGoal).forEach((key) => {
@@ -70,33 +113,37 @@ export function mergeGoalObjects(localGoal = {}, serverGoal = {}, baseGoal = {})
     merged.achievementStatus = serverGoal.achievementStatus;
   }
 
-  return merged;
+  return merged as T;
+}
+
+export interface MergeStudentSnapshotsParams<T extends StudentSnapshot> {
+  localStudent?: T | null;
+  serverStudent?: T | null;
+  baseSnapshot?: T | null;
 }
 
 /**
  * Merges two student snapshots field-by-field, preventing accidental overwrites
  * when multi-disciplinary colleagues edit simultaneously.
  */
-export function mergeStudentSnapshots({
-  localStudent = {},
-  serverStudent = {},
-  baseSnapshot = {}
-} = {}) {
-  if (!serverStudent || Object.keys(serverStudent).length === 0) return localStudent;
+export function mergeStudentSnapshots<T extends StudentSnapshot>({
+  localStudent = {} as T,
+  serverStudent = {} as T,
+  baseSnapshot = {} as T
+}: MergeStudentSnapshotsParams<T> = {}): T {
+  if (!serverStudent || Object.keys(serverStudent).length === 0) return (localStudent || {}) as T;
   if (!localStudent || Object.keys(localStudent).length === 0) return serverStudent;
 
-  const merged = { ...serverStudent, ...localStudent };
+  const merged: StudentSnapshot = { ...serverStudent, ...localStudent };
 
   // 1. SharedWith reconciliation:
-  // Local student reflects authoritative sharing actions (both adding and unsharing).
-  // If localStudent.sharedWith is an array, respect it directly so unsharing works permanently;
-  // otherwise fallback to serverStudent.sharedWith.
   merged.sharedWith = Array.isArray(localStudent.sharedWith)
     ? localStudent.sharedWith
-    : (Array.isArray(serverStudent.sharedWith) ? serverStudent.sharedWith : []);
+    : Array.isArray(serverStudent.sharedWith)
+    ? serverStudent.sharedWith
+    : [];
 
   // 1b. SharedReadBy array reconciliation:
-  // Colleague read receipts are preserved as a union, but strictly filtered to users currently in sharedWith.
   const sharedReadBySet = new Set([
     ...(Array.isArray(serverStudent.sharedReadBy) ? serverStudent.sharedReadBy : []),
     ...(Array.isArray(localStudent.sharedReadBy) ? localStudent.sharedReadBy : [])
@@ -111,18 +158,18 @@ export function mergeStudentSnapshots({
   // 2. Goal-by-goal non-destructive reconciliation
   const localGoals = Array.isArray(localStudent.goals) ? localStudent.goals : [];
   const serverGoals = Array.isArray(serverStudent.goals) ? serverStudent.goals : [];
-  const baseGoals = Array.isArray(baseSnapshot.goals) ? baseSnapshot.goals : [];
+  const baseGoals = Array.isArray(baseSnapshot?.goals) ? baseSnapshot.goals : [];
 
   const baseGoalMap = new Map(baseGoals.map((g) => [g.id, g]));
   const serverGoalMap = new Map(serverGoals.map((g) => [g.id, g]));
-  const mergedGoals = [];
-  const seenIds = new Set();
+  const mergedGoals: SyncGoal[] = [];
+  const seenIds = new Set<string | undefined>();
 
   // Process all local goals
   localGoals.forEach((lg) => {
     seenIds.add(lg.id);
-    const sg = serverGoalMap.get(lg.id);
-    const bg = baseGoalMap.get(lg.id);
+    const sg = lg.id ? serverGoalMap.get(lg.id) : undefined;
+    const bg = lg.id ? baseGoalMap.get(lg.id) : undefined;
     if (sg) {
       mergedGoals.push(mergeGoalObjects(lg, sg, bg));
     } else {
@@ -144,20 +191,23 @@ export function mergeStudentSnapshots({
 
   merged.updatedAt = new Date().toISOString();
 
-  return merged;
+  return merged as T;
 }
 
 /**
  * Merges team collaboration messages union by unique id, preserving deletions and ordering chronologically.
  */
-export function mergeTeamMessages(localMsgs = [], serverMsgs = []) {
-  const map = new Map();
+export function mergeTeamMessages(
+  localMsgs: TeamMessage[] = [],
+  serverMsgs: TeamMessage[] = []
+): TeamMessage[] {
+  const map = new Map<string, TeamMessage>();
   [...(localMsgs || []), ...(serverMsgs || [])].forEach((msg) => {
     if (msg && msg.id) {
       if (!map.has(msg.id)) {
         map.set(msg.id, msg);
       } else {
-        const existing = map.get(msg.id);
+        const existing = map.get(msg.id)!;
         const isDeleted = existing.isDeleted || msg.isDeleted;
         const existingReadBy = Array.isArray(existing.readBy) ? existing.readBy : [];
         const msgReadBy = Array.isArray(msg.readBy) ? msg.readBy : [];
