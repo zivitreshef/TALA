@@ -1,7 +1,7 @@
 // Canonical participation environments per educational stage.
 // Kept in a dependency-free module so both goalBankData.js and stageGuard.js can import it without cycles.
 
-export const KINDERGARTEN_ENVIRONMENTS = [
+export const KINDERGARTEN_ENVIRONMENTS: readonly string[] = [
   'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה',
   'מפגש בגן',
   'משחק במרחב הגן',
@@ -12,7 +12,7 @@ export const KINDERGARTEN_ENVIRONMENTS = [
   'פעילות שאינה בשגרה'
 ];
 
-export const SCHOOL_ENVIRONMENTS = [
+export const SCHOOL_ENVIRONMENTS: readonly string[] = [
   'האזנה ודיבור – כשירות תקשורתית',
   'כתיבה',
   'קריאה והפקת משמעות',
@@ -21,11 +21,14 @@ export const SCHOOL_ENVIRONMENTS = [
 
 // Additional school domains (taken from the TALA profile domains) for behavioural, social,
 // self-care and math goals that do not fit the 4 literacy environments above.
-export const SCHOOL_EXTRA_DOMAINS = [
+export const SCHOOL_EXTRA_DOMAINS: readonly string[] = [
   'ניהול עצמי',
   'תקשורת ויחסים בינאישיים',
   'ניידות וטיפול עצמי',
   'מתמטיקה'
 ];
 
-export const SCHOOL_ALLOWED_ENVIRONMENTS = [...SCHOOL_ENVIRONMENTS, ...SCHOOL_EXTRA_DOMAINS];
+export const SCHOOL_ALLOWED_ENVIRONMENTS: readonly string[] = [
+  ...SCHOOL_ENVIRONMENTS,
+  ...SCHOOL_EXTRA_DOMAINS
+];
