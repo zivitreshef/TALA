@@ -4,7 +4,7 @@ import { safeGetStorageItem, safeSetStorageItem, safeRemoveStorageItem } from '.
 import {
   KINDERGARTEN_ENVIRONMENTS,
   SCHOOL_ENVIRONMENTS
-} from './domain/stageEnvironments.js';
+} from './domain/stageEnvironments';
 import {
   normalizeStage,
   inferStagesFromEnvironment,

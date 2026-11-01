@@ -1,6 +1,34 @@
 import { canonicalizeEnvironment, KINDERGARTEN_ENVIRONMENTS } from '../goalBankData';
 
-export const buildAdminBankGoalPayload = (editingBankGoal) => {
+export interface AdminBankGoalInput {
+  title?: string;
+  stages?: string[];
+  environment?: string;
+  usageCount?: number;
+  defaultActivity?: string;
+  suggestedObjectivesText?: string;
+  defaultOpportunities?: string;
+  defaultPartners?: string;
+  defaultDuration?: string;
+  defaultEvaluation?: string;
+}
+
+export interface AdminBankGoalPayload {
+  title: string;
+  stages: string[];
+  environment: string;
+  usageCount?: number;
+  defaultActivity?: string;
+  suggestedObjectives?: string;
+  defaultOpportunities?: string;
+  defaultPartners?: string;
+  defaultDuration?: string;
+  defaultEvaluation?: string;
+}
+
+export const buildAdminBankGoalPayload = (
+  editingBankGoal?: AdminBankGoalInput | null
+): AdminBankGoalPayload => {
   const targetTitle = (editingBankGoal?.title || '').trim();
   const resolvedStages =
     Array.isArray(editingBankGoal?.stages) && editingBankGoal.stages.length > 0
