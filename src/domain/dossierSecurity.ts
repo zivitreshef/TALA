@@ -10,7 +10,7 @@
 
 export const MAX_DOSSIER_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
 
-export const ALLOWED_DOSSIER_EXTENSIONS = new Set([
+export const ALLOWED_DOSSIER_EXTENSIONS: Set<string> = new Set([
   'pdf',
   'docx',
   'doc',
@@ -22,7 +22,7 @@ export const ALLOWED_DOSSIER_EXTENSIONS = new Set([
   'webp'
 ]);
 
-export const FORBIDDEN_EXTENSIONS = new Set([
+export const FORBIDDEN_EXTENSIONS: Set<string> = new Set([
   'exe',
   'dll',
   'bat',
@@ -67,10 +67,22 @@ export const FORBIDDEN_EXTENSIONS = new Set([
   'iso'
 ]);
 
+export interface SecurityValidationResult {
+  valid: boolean;
+  reason?: string;
+  extension?: string;
+}
+
+export interface SliceableFileLike {
+  name: string;
+  size: number;
+  slice(start: number, end: number): { arrayBuffer(): Promise<ArrayBuffer> };
+}
+
 /**
  * Validates the file name against allowed extensions and detects double-extension spoofing.
  */
-export function validateFileNameSecurity(fileName = '') {
+export function validateFileNameSecurity(fileName = ''): SecurityValidationResult {
   const name = String(fileName || '').trim().toLowerCase();
   if (!name) {
     return { valid: false, reason: 'שם הקובץ ריק או לא תקין.' };
@@ -117,13 +129,16 @@ export function validateFileNameSecurity(fileName = '') {
  * Checks magic bytes / file signatures to verify actual file content matches declared type.
  * Specifically rejects Windows PE/EXE ("MZ"), Linux ELF, Mach-O, scripts ("#!"), and HTML/JS payloads.
  */
-export async function validateFileMagicBytes(fileOrBuffer, declaredExt = '') {
-  let bytes;
+export async function validateFileMagicBytes(
+  fileOrBuffer: ArrayBuffer | Blob | SliceableFileLike | unknown,
+  declaredExt = ''
+): Promise<SecurityValidationResult> {
+  let bytes: Uint8Array;
 
   if (fileOrBuffer instanceof ArrayBuffer) {
     bytes = new Uint8Array(fileOrBuffer.slice(0, 32));
-  } else if (fileOrBuffer && typeof fileOrBuffer.slice === 'function') {
-    const slice = fileOrBuffer.slice(0, 32);
+  } else if (fileOrBuffer && typeof (fileOrBuffer as SliceableFileLike).slice === 'function') {
+    const slice = (fileOrBuffer as SliceableFileLike).slice(0, 32);
     const buffer = await slice.arrayBuffer();
     bytes = new Uint8Array(buffer);
   } else {
@@ -216,7 +231,7 @@ export async function validateFileMagicBytes(fileOrBuffer, declaredExt = '') {
 /**
  * Scans text content for embedded scripts or dangerous execution vectors.
  */
-export function scanTextForMaliciousScripts(text = '') {
+export function scanTextForMaliciousScripts(text = ''): SecurityValidationResult {
   if (!text) return { valid: true };
 
   const suspiciousPatterns = [
@@ -247,7 +262,9 @@ export function scanTextForMaliciousScripts(text = '') {
 /**
  * Master file validator running all security checks before processing/uploading.
  */
-export async function validateDossierFileUpload(file) {
+export async function validateDossierFileUpload(
+  file?: File | SliceableFileLike | null
+): Promise<SecurityValidationResult> {
   if (!file) {
     return { valid: false, reason: 'לא נבחר קובץ.' };
   }

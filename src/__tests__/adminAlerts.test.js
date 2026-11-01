@@ -6,7 +6,7 @@ import {
   validateAlertChannel,
   formatAdminAlertMessage,
   buildAdminAlertEmailHtml
-} from '../domain/adminAlerts.js';
+} from '../domain/adminAlerts';
 import {
   dispatchTelegramAlert,
   dispatchWhatsAppAlert,

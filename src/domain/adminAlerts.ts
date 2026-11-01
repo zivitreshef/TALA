@@ -3,15 +3,42 @@
  * Zero UI / Firebase dependencies – completely deterministic and testable.
  */
 
-import { HEALTH_CATEGORY_LABELS_HE, HEALTH_KIND_LABELS_HE } from './healthEvents';
+import { HEALTH_CATEGORY_LABELS_HE, HEALTH_KIND_LABELS_HE, type HealthEventKind } from './healthEvents';
 
 export const ALERT_CHANNELS = {
   EMAIL: 'email',
   WHATSAPP: 'whatsapp',
   TELEGRAM: 'telegram'
-};
+} as const;
 
-export const DEFAULT_ADMIN_ALERTS = {
+export type AlertChannel = typeof ALERT_CHANNELS[keyof typeof ALERT_CHANNELS];
+
+export interface EmailAlertConfig {
+  enabled: boolean;
+  address: string;
+}
+
+export interface WhatsAppAlertConfig {
+  enabled: boolean;
+  phone: string;
+  apiKey: string;
+}
+
+export interface TelegramAlertConfig {
+  enabled: boolean;
+  chatId: string;
+  botToken: string;
+}
+
+export interface AdminAlertsPreferences {
+  notifyOnHealth: boolean;
+  notifyOnChat: boolean;
+  email: EmailAlertConfig;
+  whatsapp: WhatsAppAlertConfig;
+  telegram: TelegramAlertConfig;
+}
+
+export const DEFAULT_ADMIN_ALERTS: AdminAlertsPreferences = {
   notifyOnHealth: true,
   notifyOnChat: true,
   email: {
@@ -30,11 +57,30 @@ export const DEFAULT_ADMIN_ALERTS = {
   }
 };
 
+export interface AlertValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+export interface HealthAlertEvent {
+  kind?: string;
+  category?: string;
+  operation?: string;
+  userEmail?: string;
+  message?: string;
+  status?: number | string;
+  createdAtIso?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Normalizes and sanitizes admin alert preferences.
  * Fallback email is typically the admin's login email.
  */
-export function normalizeAdminAlerts(alerts, fallbackEmail = '') {
+export function normalizeAdminAlerts(
+  alerts?: Partial<AdminAlertsPreferences> | Record<string, unknown> | null,
+  fallbackEmail = ''
+): AdminAlertsPreferences {
   if (!alerts || typeof alerts !== 'object') {
     return {
       notifyOnHealth: true,
@@ -45,9 +91,9 @@ export function normalizeAdminAlerts(alerts, fallbackEmail = '') {
     };
   }
 
-  const emailObj = alerts.email || {};
-  const waObj = alerts.whatsapp || {};
-  const tgObj = alerts.telegram || {};
+  const emailObj = (alerts.email || {}) as Partial<EmailAlertConfig>;
+  const waObj = (alerts.whatsapp || {}) as Partial<WhatsAppAlertConfig>;
+  const tgObj = (alerts.telegram || {}) as Partial<TelegramAlertConfig>;
 
   return {
     notifyOnHealth: alerts.notifyOnHealth !== false,
@@ -72,7 +118,10 @@ export function normalizeAdminAlerts(alerts, fallbackEmail = '') {
 /**
  * Validates whether a channel has the required configuration to send alerts.
  */
-export function validateAlertChannel(channel, config) {
+export function validateAlertChannel(
+  channel: string,
+  config?: Record<string, unknown> | null
+): AlertValidationResult {
   if (!config) return { valid: false, error: 'הגדרות חסרות' };
 
   switch (channel) {
@@ -112,9 +161,14 @@ export function validateAlertChannel(channel, config) {
 /**
  * Formats a plain-text alert for messaging channels (Telegram, WhatsApp).
  */
-export function formatAdminAlertMessage(event, adminName = '') {
-  const kindLabel = HEALTH_KIND_LABELS_HE[event?.kind] || event?.kind || 'תקלת מערכת';
-  const categoryLabel = HEALTH_CATEGORY_LABELS_HE[event?.category] || event?.category || 'לא צוין';
+export function formatAdminAlertMessage(
+  event?: HealthAlertEvent | null,
+  adminName = ''
+): string {
+  const kindLabel = (event?.kind && event.kind in HEALTH_KIND_LABELS_HE)
+    ? HEALTH_KIND_LABELS_HE[event.kind as HealthEventKind]
+    : (event?.kind || 'תקלת מערכת');
+  const categoryLabel = HEALTH_CATEGORY_LABELS_HE[event?.category || ''] || event?.category || 'לא צוין';
   const operation = event?.operation || 'פעולה לא ידועה';
   const userEmail = event?.userEmail || 'לא זוהה';
   const message = event?.message || 'אין פירוט שגיאה נוסף';
@@ -140,9 +194,14 @@ export function formatAdminAlertMessage(event, adminName = '') {
 /**
  * Formats an HTML email body for email alerts.
  */
-export function buildAdminAlertEmailHtml(event, adminName = '') {
-  const kindLabel = HEALTH_KIND_LABELS_HE[event?.kind] || event?.kind || 'תקלת מערכת';
-  const categoryLabel = HEALTH_CATEGORY_LABELS_HE[event?.category] || event?.category || 'לא צוין';
+export function buildAdminAlertEmailHtml(
+  event?: HealthAlertEvent | null,
+  adminName = ''
+): string {
+  const kindLabel = (event?.kind && event.kind in HEALTH_KIND_LABELS_HE)
+    ? HEALTH_KIND_LABELS_HE[event.kind as HealthEventKind]
+    : (event?.kind || 'תקלת מערכת');
+  const categoryLabel = HEALTH_CATEGORY_LABELS_HE[event?.category || ''] || event?.category || 'לא צוין';
   const operation = event?.operation || 'פעולה לא ידועה';
   const userEmail = event?.userEmail || 'לא זוהה';
   const message = event?.message || 'אין פירוט שגיאה נוסף';
