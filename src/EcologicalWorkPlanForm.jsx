@@ -177,6 +177,7 @@ import {
   applyAiSummary,
   applyLocalSummary
 } from './domain/summaryTable';
+import { isDemoStudent } from './domain/onboardingJourney';
 
 const DURATION_TSHIRT_OPTIONS = [
   { size: 'S', label: 'חודש (קצר/ממוקד)', value: 'חודש' },
@@ -1322,12 +1323,20 @@ export default function EcologicalWorkPlanForm({
     }
     savedSnapshotRef.current = JSON.stringify(updated);
     setFormData(updated);
-    onSaveStudentPlan(updated);
+    try {
+      onSaveStudentPlan?.(updated);
+    } catch (saveErr) {
+      console.warn('[applyEngineeredPlan] onSaveStudentPlan error:', saveErr);
+    }
     setTimeout(() => {
       section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     }, 300);
     (candidateGoals || []).forEach((g) => {
-      if (g.title) recordGoalInBank(g);
+      try {
+        if (g.title) recordGoalInBank(g);
+      } catch (bankErr) {
+        console.warn('[applyEngineeredPlan] recordGoalInBank error:', bankErr);
+      }
     });
     setIsFreeTextCollapsed(true);
     const preservedNote =
@@ -1601,9 +1610,17 @@ ${rawText}
 
           savedSnapshotRef.current = JSON.stringify(updated);
           setFormData(updated);
-          onSaveStudentPlan(updated);
+          try {
+            onSaveStudentPlan?.(updated);
+          } catch (saveErr) {
+            console.warn('[handleReverseEngineerFullReport] onSaveStudentPlan error:', saveErr);
+          }
           mergedGoals.forEach((g) => {
-            if (g.title) recordGoalInBank(g);
+            try {
+              if (g.title) recordGoalInBank(g);
+            } catch (bankErr) {
+              console.warn('[handleReverseEngineerFullReport] recordGoalInBank error:', bankErr);
+            }
           });
           setIsReverseEngineering(false);
           setIsFreeTextCollapsed(true);
@@ -1656,7 +1673,7 @@ ${rawText}
         console.error('[handleReverseEngineerFullReport] Local fallback failed:', localErr);
       }
       setReverseEngineerError(
-        'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור ה-WiFi או עומס רשת). תוכלי לנסות שוב או להפיק מיידית במנוע המקומי ללא רשת.'
+        'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור הרשת או עומס רגעי). תוכלי לנסות שוב או להפיק מיידית במנוע המקומי ללא רשת.'
       );
     } finally {
       setIsReverseEngineering(false);
@@ -4804,7 +4821,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 >
                   <span style={{ fontSize: '11.5px', color: '#64748b' }}>
                     {reverseEngineerElapsedSeconds >= 25
-                      ? 'אם חיבור ה-WiFi איטי, תוכלי לעבור מיידית להפקה מקומית:'
+                      ? 'אם חיבור הרשת מתעכב, תוכלי לעבור מיידית להפקה מקומית:'
                       : 'אם את ממהרת, ניתן לעבור למנוע הפדגוגי המקומי בכל שלב:'}
                   </span>
                   <button
