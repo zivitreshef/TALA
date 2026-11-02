@@ -9,26 +9,49 @@ import {
   setDoc,
   query,
   orderBy,
-  limit
+  limit,
+  Unsubscribe
 } from 'firebase/firestore';
-import { getFirestoreDb, sanitizeForFirestore, submitAdminRequestToCloud } from '../firebaseBackend.js';
+import { getFirestoreDb, sanitizeForFirestore, submitAdminRequestToCloud } from '../firebaseBackend';
 import {
   sanitizeThreadKey,
   createChatMessage,
   appendMessageToThread,
-  markThreadAsRead,
   SENDER_ROLES,
-  THREAD_STATUS
+  THREAD_STATUS,
+  SenderRole,
+  ResolutionFeedback,
+  SupportThread,
+  ChatAttachment
 } from '../domain/supportChat';
 import { dispatchChatAlertToAdmins } from './alertDispatcher.js';
 
 export const SUPPORT_THREADS_COLLECTION = 'tala_support_threads';
 
+export type SupportThreadCallback = (thread: SupportThread | null) => void;
+export type AllSupportThreadsCallback = (threads: SupportThread[]) => void;
+
+export interface SendChatMessageParams {
+  existingThread?: SupportThread | null;
+  userEmail?: string;
+  userName?: string;
+  topic?: string;
+  text?: string;
+  attachment?: (Partial<ChatAttachment> & { dataUrl?: string }) | null;
+  senderRole?: SenderRole;
+  senderName?: string;
+  admins?: unknown[];
+  emailConfig?: unknown;
+}
+
 /**
  * Subscribes a teacher or admin to a specific support thread in real time.
  * Returns an unsubscribe function.
  */
-export function subscribeToSupportThread(userEmail, onUpdate) {
+export function subscribeToSupportThread(
+  userEmail: string,
+  onUpdate?: SupportThreadCallback
+): Unsubscribe {
   const db = getFirestoreDb();
   if (!db || !userEmail) return () => {};
 
@@ -40,7 +63,7 @@ export function subscribeToSupportThread(userEmail, onUpdate) {
       docRef,
       (snap) => {
         if (snap.exists()) {
-          onUpdate?.(snap.data());
+          onUpdate?.(snap.data() as SupportThread);
         } else {
           onUpdate?.(null);
         }
@@ -50,7 +73,7 @@ export function subscribeToSupportThread(userEmail, onUpdate) {
       }
     );
   } catch (err) {
-    console.warn(`[supportChat] Failed to subscribe to thread:`, err);
+    console.warn('[supportChat] Failed to subscribe to thread:', err);
     return () => {};
   }
 }
@@ -59,7 +82,10 @@ export function subscribeToSupportThread(userEmail, onUpdate) {
  * Subscribes the admin to all support threads in real time (Admin Control Center).
  * Returns an unsubscribe function.
  */
-export function subscribeToAllSupportThreads(onUpdate, maxThreads = 50) {
+export function subscribeToAllSupportThreads(
+  onUpdate?: AllSupportThreadsCallback,
+  maxThreads = 50
+): Unsubscribe {
   const db = getFirestoreDb();
   if (!db) return () => {};
 
@@ -73,7 +99,10 @@ export function subscribeToAllSupportThreads(onUpdate, maxThreads = 50) {
     return onSnapshot(
       q,
       (snap) => {
-        const threads = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const threads: SupportThread[] = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as SupportThread)
+        }));
         onUpdate?.(threads);
       },
       (err) => {
@@ -100,7 +129,7 @@ export async function sendChatMessageToCloud({
   senderName = '',
   admins = [],
   emailConfig = null
-}) {
+}: SendChatMessageParams): Promise<SupportThread> {
   const cleanEmail = String(userEmail || existingThread?.userEmail || '').trim().toLowerCase();
   const threadKey = existingThread?.id || sanitizeThreadKey(cleanEmail);
   const cleanName = String(userName || existingThread?.userName || '').trim();
@@ -114,7 +143,7 @@ export async function sendChatMessageToCloud({
     attachment
   });
 
-  const baseThread = existingThread || {
+  const baseThread: SupportThread = existingThread || {
     id: threadKey,
     userEmail: cleanEmail,
     userName: cleanName,
@@ -129,7 +158,7 @@ export async function sendChatMessageToCloud({
   if (db) {
     try {
       const docRef = doc(db, SUPPORT_THREADS_COLLECTION, threadKey);
-      await setDoc(docRef, sanitizeForFirestore(updatedThread), { merge: true });
+      await setDoc(docRef, sanitizeForFirestore(updatedThread as Record<string, unknown>), { merge: true });
       savedToCloud = true;
     } catch (err) {
       console.warn('[supportChat] Failed to persist thread to Firestore:', err);
@@ -150,17 +179,20 @@ export async function sendChatMessageToCloud({
 
   // If message is from teacher and cloud trigger was not reached (local/offline fallback), alert admins in background
   const hasConfiguredClientAdmins =
-    Array.isArray(admins) && admins.some((a) => a && a.adminAlerts && typeof a.adminAlerts === 'object');
+    Array.isArray(admins) &&
+    admins.some(
+      (a) => a && typeof a === 'object' && 'adminAlerts' in a && typeof (a as { adminAlerts: unknown }).adminAlerts === 'object'
+    );
   if (senderRole === SENDER_ROLES.USER && hasConfiguredClientAdmins && !savedToCloud) {
-    dispatchChatAlertToAdmins({
+    (dispatchChatAlertToAdmins as (args: Record<string, unknown>) => Promise<unknown>)({
       teacherName: cleanName,
       teacherEmail: cleanEmail,
       topic: cleanTopic,
       messageText: text || '📷 [צילום מסך מצורף]',
       hasAttachment: Boolean(attachment),
-      admins,
+      admins: admins as Record<string, unknown>[],
       emailConfig
-    }).catch((err) => {
+    }).catch((err: unknown) => {
       console.warn('[supportChat] Background alert dispatch warning:', err);
     });
   }
@@ -171,7 +203,10 @@ export async function sendChatMessageToCloud({
 /**
  * Marks a thread as read in Firestore.
  */
-export async function markThreadReadInCloud(threadKey, role = SENDER_ROLES.USER) {
+export async function markThreadReadInCloud(
+  threadKey: string,
+  role: SenderRole = SENDER_ROLES.USER
+): Promise<void> {
   const db = getFirestoreDb();
   if (!db || !threadKey) return;
 
@@ -184,11 +219,10 @@ export async function markThreadReadInCloud(threadKey, role = SENDER_ROLES.USER)
   }
 }
 
-
 /**
  * Clears/resets the support thread history for a teacher in Firestore.
  */
-export async function clearSupportThreadInCloud(userEmail) {
+export async function clearSupportThreadInCloud(userEmail: string): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db || !userEmail) return false;
 
@@ -217,7 +251,10 @@ export async function clearSupportThreadInCloud(userEmail) {
 /**
  * Resolves a support thread in Firestore with satisfaction feedback.
  */
-export async function resolveSupportThreadInCloud(userEmail, satisfaction = 'thumbs_up') {
+export async function resolveSupportThreadInCloud(
+  userEmail: string,
+  satisfaction: ResolutionFeedback | string = 'thumbs_up'
+): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db || !userEmail) return false;
 
@@ -244,7 +281,10 @@ export async function resolveSupportThreadInCloud(userEmail, satisfaction = 'thu
 /**
  * Marks a support thread as needing further attention when teacher clicks thumbs down.
  */
-export async function escalateSupportThreadInCloud(userEmail, note = '') {
+export async function escalateSupportThreadInCloud(
+  userEmail: string,
+  note = ''
+): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db || !userEmail) return false;
 
