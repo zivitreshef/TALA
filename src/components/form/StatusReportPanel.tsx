@@ -9,7 +9,27 @@ import {
   Download,
   Mail
 } from 'lucide-react';
-import { STATUS_REPORT_SECTIONS_SCHEMA } from '../../domain/statusReportGenerator';
+import {
+  STATUS_REPORT_SECTIONS_SCHEMA,
+  type StatusReportSection,
+  type StatusReportFormData
+} from '../../domain/statusReportGenerator';
+
+export interface StatusReportPanelProps {
+  statusReportSectionRef?: React.Ref<HTMLElement>;
+  formData: StatusReportFormData;
+  isGeneratingStatusReport: boolean;
+  statusReportBanner?: string | null;
+  onGenerateStatusReport: () => void;
+  onClose: () => void;
+  onRemoveStatusSection: (sectionNumber: number) => void;
+  onUpdateStatusSectionContent: (sectionNumber: number, content: string) => void;
+  onAddManualStatusSection: (sectionNumber: number) => void;
+  onTextareaAutoResize?: (e: React.FormEvent<HTMLTextAreaElement>) => void;
+  onPrintStatusReport?: () => void;
+  onDownloadWordStatusReport?: () => void;
+  onOpenEmailStatusReport?: () => void;
+}
 
 export default function StatusReportPanel({
   statusReportSectionRef,
@@ -25,11 +45,11 @@ export default function StatusReportPanel({
   onPrintStatusReport,
   onDownloadWordStatusReport,
   onOpenEmailStatusReport
-}) {
-  const currentSections = Array.isArray(formData.statusReportSections)
-    ? formData.statusReportSections
+}: StatusReportPanelProps): React.JSX.Element {
+  const currentSections: StatusReportSection[] = Array.isArray(formData.statusReportSections)
+    ? (formData.statusReportSections as StatusReportSection[])
     : [];
-  const usedNums = new Set(currentSections.map((s) => Number(s.sectionNumber)));
+  const usedNums = new Set<number>(currentSections.map((s) => Number(s.sectionNumber)));
   const availableToAdd = STATUS_REPORT_SECTIONS_SCHEMA.filter(
     (s) => !usedNums.has(s.sectionNumber)
   );

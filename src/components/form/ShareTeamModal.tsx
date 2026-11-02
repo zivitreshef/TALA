@@ -1,36 +1,63 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, X, ShieldAlert, Lock } from 'lucide-react';
-import { getShareableColleagues, getUserGroup } from '../../domain/permissions';
+import {
+  getShareableColleagues,
+  getUserGroup,
+  type UserPermissionEntity
+} from '../../domain/permissions';
 
-const QUICK_CHIPS = [
+const QUICK_CHIPS: readonly string[] = [
   'נא להוסיף מטרות טיפוליות',
   'לעיונך והערות לקראת ועדה',
   'בדיקת סטטוס והתייעצות'
 ];
 
-const LOCKED_QUICK_CHIPS = [
+const LOCKED_QUICK_CHIPS: readonly string[] = [
   'לעיון בלבד (התוכנית נעולה)',
   'לעיונך והערות לקראת ועדה',
   'בדיקת סטטוס והתייעצות'
 ];
+
+export interface ShareTeamFormData {
+  id?: string;
+  name?: string;
+  sharedWith?: string[];
+  isLocked?: boolean;
+  [key: string]: unknown;
+}
+
+export interface ShareTeamSavePayload {
+  selectedEmails: string[];
+  handoffNote: string;
+}
+
+export interface ShareTeamModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  formData?: ShareTeamFormData | null;
+  currentUser?: UserPermissionEntity | null;
+  allowedUsers?: UserPermissionEntity[];
+  onSaveShareSettings?: (payload: ShareTeamSavePayload) => void;
+  onToggleShareColleague?: (colEmail: string, handoffNote?: string) => void;
+}
 
 export default function ShareTeamModal({
   isOpen,
   onClose,
   formData,
   currentUser,
-  allowedUsers,
+  allowedUsers = [],
   onSaveShareSettings,
   onToggleShareColleague
-}) {
-  const [selectedEmails, setSelectedEmails] = React.useState(() =>
-    (formData?.sharedWith || []).map((e) => String(e || '').trim().toLowerCase())
+}: ShareTeamModalProps): React.JSX.Element | null {
+  const [selectedEmails, setSelectedEmails] = useState<string[]>(() =>
+    (formData?.sharedWith || []).map((e: string) => String(e || '').trim().toLowerCase())
   );
-  const [handoffNote, setHandoffNote] = React.useState('');
+  const [handoffNote, setHandoffNote] = useState<string>('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && formData) {
-      const current = (formData.sharedWith || []).map((e) =>
+      const current = (formData.sharedWith || []).map((e: string) =>
         String(e || '').trim().toLowerCase()
       );
       setSelectedEmails(current);
@@ -45,7 +72,7 @@ export default function ShareTeamModal({
   const myGroup = getUserGroup(currentUser, allowedUsers);
   const visibleUsers = getShareableColleagues(currentUser, allowedUsers);
 
-  const handleToggleColleague = (colEmail) => {
+  const handleToggleColleague = (colEmail: string): void => {
     setSelectedEmails((prev) =>
       prev.includes(colEmail)
         ? prev.filter((e) => e !== colEmail)
@@ -53,8 +80,8 @@ export default function ShareTeamModal({
     );
   };
 
-  const handleFinish = () => {
-    const initialShared = (formData?.sharedWith || []).map((e) =>
+  const handleFinish = (): void => {
+    const initialShared = (formData?.sharedWith || []).map((e: string) =>
       String(e || '').trim().toLowerCase()
     );
     const cleanNote = handoffNote.trim();
