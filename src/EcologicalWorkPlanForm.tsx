@@ -28,7 +28,8 @@ import {
   X,
   Lock,
   Unlock,
-    MessageSquare,
+  Paperclip,
+  MessageSquare,
   ClipboardCopy,
       FolderOpen
 } from 'lucide-react';
@@ -4436,20 +4437,20 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
-                      background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
+                      background: '#2563eb',
                       color: '#ffffff',
-                      border: 'none',
+                      border: '1px solid #1d4ed8',
                       borderRadius: '8px',
                       padding: '8px 16px',
                       fontSize: '13px',
-                      fontWeight: 700,
+                      fontWeight: 600,
                       cursor: 'pointer',
-                      boxShadow: '0 2px 6px rgba(91, 155, 213, 0.28)',
+                      boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)',
                       transition: 'opacity 0.2s'
                     }}
-                    title="העלאת מסמך אבחון וניתוח פדגוגי אוטומטי בעזרת AI"
+                    title="העלאת ועיבוד מסמכי אבחון"
                   >
-                    <Sparkles size={16} />
+                    <Paperclip size={15} />
                     <span>העלאת ועיבוד מסמכים</span>
                   </button>
                 )}

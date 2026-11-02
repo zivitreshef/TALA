@@ -182,7 +182,7 @@ describe('PedagogicalFeed Component UI Tests', () => {
     expect(html).toContain('בשיעור ספורט הצליח להמתין לתורו יפה.');
     expect(html).toContain('שמור טיוטה');
     expect(html).toContain('העלאת מסמך נוסף');
-    expect(html).toContain('ניתוח כל המקורות ב-AI ✨');
+    expect(html).toContain('ניתוח כל המקורות ב-AI');
 
     // Distinct palettes: Card 0 uses indigo (#4f46e5), Card 1 uses teal (#0d9488)
     expect(html).toContain(SNIPPET_COLOR_PALETTES[0].avatarBg);

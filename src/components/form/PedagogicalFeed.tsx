@@ -624,8 +624,9 @@ export default function PedagogicalFeed({
       {/* Card Footer: Unified AI Generation Trigger */}
       <div
         style={{
-          background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #6366f1 100%)',
-          color: '#ffffff',
+          background: 'linear-gradient(180deg, #f8faff 0%, #f1f5f9 100%)',
+          borderTop: '1px solid #e2e8f0',
+          color: '#1e293b',
           padding: '14px 18px',
           display: 'flex',
           flexDirection: 'column',
@@ -660,19 +661,21 @@ export default function PedagogicalFeed({
                 margin: 0,
                 fontSize: '0.94rem',
                 fontWeight: 700,
+                color: '#1e293b',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
               }}
             >
-              <span>✨ מוכנה להפיק מטרות ויעדים?</span>
+              <span>מוכנה להפיק מטרות ויעדים?</span>
             </h4>
             <p
               style={{
-                margin: '2px 0 0 0',
-                fontSize: '12px',
-                color: '#ede9fe',
-                maxWidth: '540px'
+                margin: '3px 0 0 0',
+                fontSize: '12.5px',
+                color: '#64748b',
+                maxWidth: '540px',
+                lineHeight: 1.5
               }}
             >
               ה-AI יסכם יחד את כל המסמכים שהעלית ואת התצפיות שלך לכדי מטרות ויעדים מותאמים.
@@ -688,28 +691,28 @@ export default function PedagogicalFeed({
               alignItems: 'center',
               justifyContent: 'center',
               gap: '6px',
-              background: '#ffffff',
-              color: '#5b21b6',
-              border: 'none',
-              borderRadius: '10px',
-              padding: '9px 20px',
+              background: '#4f46e5',
+              color: '#ffffff',
+              border: '1px solid #4338ca',
+              borderRadius: '8px',
+              padding: '8px 18px',
               fontSize: '13px',
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: isLocked || isAnalyzing || snippets.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: isLocked || isAnalyzing || snippets.length === 0 ? 0.65 : 1,
-              boxShadow: '0 3px 10px rgba(0, 0, 0, 0.12)',
-              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+              opacity: isLocked || isAnalyzing || snippets.length === 0 ? 0.6 : 1,
+              boxShadow: '0 1px 3px rgba(79, 70, 229, 0.2)',
+              transition: 'background-color 0.15s ease, box-shadow 0.15s ease'
             }}
           >
             {isAnalyzing ? (
               <>
-                <Loader2 size={16} className="tala-spin-icon" />
+                <Loader2 size={15} className="tala-spin-icon" />
                 <span>מעבד את כל המקורות ב-AI...</span>
               </>
             ) : (
               <>
-                <Sparkles size={16} />
-                <span>ניתוח כל המקורות ב-AI ✨</span>
+                <Sparkles size={15} />
+                <span>ניתוח כל המקורות ב-AI</span>
               </>
             )}
           </button>
