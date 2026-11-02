@@ -93,6 +93,7 @@ import {
 import {
   buildBankReferenceForPrompt,
   buildStageRulesBlock,
+  buildPedagogicalOpportunitiesGuidance,
   enforceGoalStage,
   getCuratedTitlesExclusiveToStage,
   getDefaultEnvironmentForStage,
@@ -1435,10 +1436,7 @@ ${buildStageRulesBlock(currentStage)}
      { "subDomain": "...", "strengthsAndFacilitators": "מוקדי כוח וגורמים מסייעים...", "areasToStrengthenAndBarriers": "מוקדים לחיזוק וגורמים מגבילים..." }
 3. עבור תח"י: "strengthsExisting" (3-4 נקודות) ו-"strengthsToEmpower" (3-4 נקודות).
 4. מטרות ויעדים (T-Shirt Size: S / M / L ומשך יחסי מתאריך ${dateInfo.entryDateFormatted}):
-   לכל מטרה כלול גם:
-   - "opportunities": אמצעי ביצוע של ${isKindergarten ? 'הגננת' : 'המחנכת'}
-   - "opportunitiesIntegration": אמצעי ביצוע של ${isKindergarten ? 'גננת השילוב' : 'מורת שילוב'}
-   - "opportunitiesTherapist": אמצעי ביצוע של מטפלת באומנויות / פרא-רפואית
+${buildPedagogicalOpportunitiesGuidance(currentStage)}
    - "learningAccommodations": התאמות ללמידה ובדרכי ההיבחנות
 ${protectedGoalsPromptBlock}${removedGoalsPromptBlock}${unprotectedGoalsPromptBlock}
 
@@ -1469,8 +1467,8 @@ ${rawText}
       "activityParticipation": "...",
       "title": "...",
       "objectives": "• ...",
-      "opportunities": "${isKindergarten ? 'אמצעי גננת...' : 'אמצעי מחנכת...'}",
-      "opportunitiesIntegration": "${isKindergarten ? 'אמצעי גננת שילוב...' : 'אמצעי מורת שילוב...'}",
+      "opportunities": "${isKindergarten ? 'אמצעי גננת מעשיים ומפורטים...' : 'אמצעי מחנכת מעשיים ומפורטים...'}",
+      "opportunitiesIntegration": "${isKindergarten ? 'אמצעי גננת שילוב מותאמים...' : 'אמצעי מורת שילוב מותאמים...'}",
       "opportunitiesTherapist": "אמצעי מטפלת באומנויות...",
       "learningAccommodations": "התאמות ללמידה...",
       "partners": "${getDefaultPartnersForStage(currentStage, isTalaMode)}",

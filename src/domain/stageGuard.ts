@@ -501,3 +501,31 @@ MANDATORY EDUCATIONAL STAGE: KINDERGARTEN child (teacher-selected). Every goal "
 export function getStageLabelHe(stage?: string | null): string {
   return normalizeStage(stage) === 'school' ? 'בית ספר' : normalizeStage(stage) === 'kindergarten' ? 'גן ילדים' : 'לא ידוע';
 }
+
+
+/**
+ * Builds pedagogical prompt guidance for generating concrete, actionable, role-specific
+ * interventions and accommodations (אמצעי ביצוע ויעדים) in student work plans.
+ * Enforces field-tested Special Education principles, avoids generic slogans,
+ * and tailors strategies to the specific role (educator, integration, therapist).
+ */
+export function buildPedagogicalOpportunitiesGuidance(stage?: string | null): string {
+  const isKindergarten = normalizeStage(stage) === 'kindergarten';
+  const roleEducator = isKindergarten ? 'הגננת' : 'המורה / המחנכת';
+  const roleIntegration = isKindergarten ? 'גננת השילוב' : 'מורת השילוב';
+  const settingName = isKindergarten ? 'הגן' : 'הכיתה';
+
+  return `הנחיה פדגוגית מחייבת לכתיבת אמצעי ביצוע ("opportunities", "opportunitiesIntegration", "opportunitiesTherapist"):
+- פירוט יישומי, מקצועי ויצירתי ממוקד שטח: כל אמצעי חייב לענות על השאלה "מה איש החינוך עושה בפועל?". היעד מתאר את ביצוע התלמיד/ה, והאמצעי מתאר את הפעולה, הטכניקה, האביזר או שגרת העבודה של איש החינוך.
+- איסור מוחלט על ניסוחים כלליים וסיסמאות:
+  * אין להסתפק ב: "המורה תציב גבולות", "המורה תתווך", "המורה תחזק התנהגות חיובית", "יינתן מענה רגשי" או "יתקיים תרגול".
+  * דוגמה ליישום גבולות: במקום "המורה תציב גבולות לילד", יש לנסח: "${roleEducator} תגדיר מראש שניים-שלושה כללים ברורים וקצרים, תציג אותם באמצעות תמונות או סמלים, תזכיר לילד את הכלל לפני מצבים מועדים לקושי ותשתמש במסר מילולי קצר ועקבי בעת חריגה ממנו, תוך מתן בחירה בין שתי חלופות מקובלות".
+  * דוגמה ליישום חיזוק: במקום "המורה תחזק התנהגות חיובית", יש לנסח: "${roleEducator} תזהה ותשקף באופן מיידי התנהגות רצויה, תוך ציון מדויק של הפעולה שביצע הילד (למשל: 'ראיתי שחיכית לתורך בזמן המשחק'), בשילוב לוח הצלחות חזותי עם חיזוק מצטבר בהתאם ליכולת הילד".
+- חלוקה מותאמת לפי תפקידים:
+  * "opportunities" (${roleEducator}): שגרות ${settingName}, ארגון הסביבה, כללים מוקדמים ותיווך מניעתי.
+  * "opportunitiesIntegration" (${roleIntegration}): הוראה מותאמת, פירוק משימות, תיווך חזותי והוראה רב-חושית.
+  * "opportunitiesTherapist" (מטפלת באומנויות / פרא-רפואית): כלים השלכתיים, ויסות חושי-רגשי, משחק ועיבוד חוויות.
+- העדפת כלים מעשיים מעולמות החינוך המיוחד, ניתוח התנהגות, למידה חווייתית ותיווך חזותי. יש לפרט את דרך הביצוע ולא רק את שם האסטרטגיה.
+- הימנעות מהמצאת פרטים: יש להישען אך ורק על המידע שנמסר על הילד/ה, ללא המצאת אבחנות, אביזרים או קשיים שלא צוינו.
+- רמת פירוט נדרשת: כל אמצעי צריך להיות ברור ומעשי כך שאיש חינוך מחליף יוכל ליישם אותו בפועל ללא צורך בהסבר נוסף.`;
+}
