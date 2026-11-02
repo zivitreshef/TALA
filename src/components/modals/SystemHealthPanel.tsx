@@ -3,6 +3,8 @@ import { Activity, CheckCircle2, AlertTriangle, RefreshCw, Trash2, Check } from 
 import {
   HEALTH_CATEGORY_LABELS_HE,
   HEALTH_KIND_LABELS_HE,
+  HealthEventKind,
+  HealthEventEntity,
   summarizeHealthEvents,
   normalizeHealthEvents,
   countUnreviewedHealthEvents
@@ -21,8 +23,30 @@ const SEVERITY_STYLE = {
   }
 };
 
-const formatTime = (ms) =>
+const formatTime = (ms: number): string =>
   new Date(ms).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'medium' });
+
+export interface PingResult {
+  key: string;
+  title: string;
+  ok: boolean;
+  latencyMs: number | null;
+  detail: string;
+}
+
+export interface CloudSyncState {
+  connected?: boolean;
+  status?: string;
+  error?: string;
+}
+
+export interface SystemHealthPanelProps {
+  healthEvents?: unknown[];
+  healthReviewedMs?: number;
+  onMarkHealthReviewed?: () => void;
+  onClearHealthEvents?: () => Promise<void> | void;
+  cloudSyncState?: CloudSyncState;
+}
 
 export default function SystemHealthPanel({
   healthEvents = [],
@@ -30,12 +54,12 @@ export default function SystemHealthPanel({
   onMarkHealthReviewed,
   onClearHealthEvents,
   cloudSyncState
-}) {
-  const [pingResults, setPingResults] = useState(null);
+}: SystemHealthPanelProps): React.JSX.Element {
+  const [pingResults, setPingResults] = useState<PingResult[] | null>(null);
   const [isPinging, setIsPinging] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
-  const events = useMemo(() => normalizeHealthEvents(healthEvents), [healthEvents]);
+  const events: HealthEventEntity[] = useMemo(() => normalizeHealthEvents(healthEvents), [healthEvents]);
   const summary = useMemo(() => summarizeHealthEvents(events), [events]);
   const unreviewed = countUnreviewedHealthEvents(events, healthReviewedMs);
   const sev = SEVERITY_STYLE[summary.severity];
@@ -61,7 +85,7 @@ export default function SystemHealthPanel({
         title: 'מסד נתונים (Firestore)',
         ok: db.ok,
         latencyMs: db.latencyMs,
-        detail: db.ok ? '' : db.message
+        detail: db.ok ? '' : (db.message || '')
       },
       {
         key: 'sync',
@@ -176,12 +200,12 @@ export default function SystemHealthPanel({
               <tbody>
                 {events.slice(0, 25).map((e) => (
                   <tr
-                    key={e.id || `${e.createdAtMs}-${e.kind}`}
+                    key={String(e.id || `${e.createdAtMs}-${e.kind}`)}
                     style={{ borderTop: '1px solid #f1f5f9', background: e.createdAtMs > healthReviewedMs ? '#fff7ed' : 'transparent' }}
                   >
                     <td style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>{formatTime(e.createdAtMs)}</td>
                     <td style={{ padding: '6px 8px' }}>{e.userEmail || '—'}</td>
-                    <td style={{ padding: '6px 8px' }}>{HEALTH_KIND_LABELS_HE[e.kind] || e.kind}</td>
+                    <td style={{ padding: '6px 8px' }}>{HEALTH_KIND_LABELS_HE[e.kind as HealthEventKind] || e.kind}</td>
                     <td style={{ padding: '6px 8px' }}>{HEALTH_CATEGORY_LABELS_HE[e.category] || e.category}</td>
                     <td style={{ padding: '6px 8px', color: '#64748b' }}>
                       {[e.status ? `HTTP ${e.status}` : '', e.stage ? `שלב: ${e.stage}` : '', e.reason || '', e.message || '']

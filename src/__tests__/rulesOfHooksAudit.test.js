@@ -93,7 +93,7 @@ function getSrcComponentFiles(dir) {
       if (!['node_modules', '.git', '__tests__', 'dist', 'build'].includes(entry.name)) {
         results = results.concat(getSrcComponentFiles(fullPath));
       }
-    } else if (entry.isFile() && entry.name.endsWith('.jsx')) {
+    } else if (entry.isFile() && (entry.name.endsWith('.jsx') || entry.name.endsWith('.tsx'))) {
       results.push(fullPath);
     }
   }
