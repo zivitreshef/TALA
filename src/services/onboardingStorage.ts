@@ -18,12 +18,43 @@ const ONBOARDING_STATE_PREFIX = 'tala_onboarding_state_v1_';
 const ONBOARDING_DEMO_PREFIX = 'tala_onboarding_demo_v1_';
 
 // In-memory memory map for fallback environments (e.g. tests or Safari private mode)
-const inMemoryStore = new Map();
+const inMemoryStore = new Map<string, unknown>();
+
+export interface OnboardingState {
+  version: number;
+  userEmail: string;
+  mode: 'demo' | 'real' | null;
+  currentStep: number;
+  completedSteps: number[];
+  isPaused: boolean;
+  isCompleted: boolean;
+  isDismissed: boolean;
+  startedAt: string;
+  lastUpdatedAt: string;
+  completedAt: string | null;
+  firstStudentAt: string | null;
+  timeToFirstStudentSec: number | null;
+  firstReportAt: string | null;
+  timeToFirstReportSec: number | null;
+  hasDispatchedStarted: boolean;
+  demoStudentId: string;
+  activeStudentId: string | null;
+  isDockCollapsed: boolean;
+  userToggledDock: boolean;
+}
+
+export interface DemoStudentOptions {
+  forceFresh?: boolean;
+  stage?: string;
+  childFirstName?: string;
+  gender?: 'boy' | 'girl' | string;
+  [key: string]: unknown;
+}
 
 /**
  * Normalizes user email to create a safe storage key.
  */
-export function normalizeEmailKey(email) {
+export function normalizeEmailKey(email?: string | null): string {
   if (!email || typeof email !== 'string') return 'anonymous';
   return email.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
 }
@@ -31,21 +62,21 @@ export function normalizeEmailKey(email) {
 /**
  * Generates the storage key for a user's onboarding state.
  */
-export function getOnboardingStateKey(email) {
+export function getOnboardingStateKey(email?: string | null): string {
   return `${ONBOARDING_STATE_PREFIX}${normalizeEmailKey(email)}`;
 }
 
 /**
  * Generates the storage key for a user's isolated demo student record.
  */
-export function getDemoStudentKey(email) {
+export function getDemoStudentKey(email?: string | null): string {
   return `${ONBOARDING_DEMO_PREFIX}${normalizeEmailKey(email)}`;
 }
 
 /**
  * Returns the default initial onboarding state for a user.
  */
-export function createDefaultOnboardingState(email = '') {
+export function createDefaultOnboardingState(email = ''): OnboardingState {
   const now = new Date().toISOString();
   return {
     version: 1,
@@ -79,7 +110,10 @@ export function createDefaultOnboardingState(email = '') {
  * - New teacher (0 students): visible / expanded by default (isDockCollapsed = false)
  * - Existing teacher (>0 students): collapsed by default (isDockCollapsed = true)
  */
-export function resolveOnboardingDockStateForUser(onboardingState, userStudentsCount = 0) {
+export function resolveOnboardingDockStateForUser(
+  onboardingState?: OnboardingState | null,
+  userStudentsCount: number | string = 0
+): OnboardingState | null {
   if (!onboardingState || typeof onboardingState !== 'object') return null;
 
   if (onboardingState.userToggledDock === true) {
@@ -97,9 +131,9 @@ export function resolveOnboardingDockStateForUser(onboardingState, userStudentsC
  * Retrieves the current onboarding state for a given user email.
  * Falls back to in-memory store if localStorage is unavailable or corrupted.
  */
-export function getOnboardingState(email) {
+export function getOnboardingState(email: string): OnboardingState {
   const key = getOnboardingStateKey(email);
-  const stored = safeGetStorageJson(key, null);
+  const stored = safeGetStorageJson<OnboardingState>(key, null as unknown as OnboardingState);
 
   if (stored && typeof stored === 'object' && stored.version === 1) {
     inMemoryStore.set(key, stored);
@@ -108,7 +142,7 @@ export function getOnboardingState(email) {
 
   // Check in-memory fallback
   if (inMemoryStore.has(key)) {
-    return inMemoryStore.get(key);
+    return inMemoryStore.get(key) as OnboardingState;
   }
 
   const defaultState = createDefaultOnboardingState(email);
@@ -118,11 +152,14 @@ export function getOnboardingState(email) {
 /**
  * Updates and persists the onboarding state for a user.
  */
-export function saveOnboardingState(email, updates = {}) {
+export function saveOnboardingState(
+  email: string,
+  updates: Partial<OnboardingState> = {}
+): OnboardingState {
   const key = getOnboardingStateKey(email);
   const current = getOnboardingState(email);
 
-  const nextState = {
+  const nextState: OnboardingState = {
     ...current,
     ...updates,
     lastUpdatedAt: new Date().toISOString()
@@ -141,7 +178,7 @@ export function saveOnboardingState(email, updates = {}) {
 /**
  * Pauses the onboarding journey without losing progress.
  */
-export function pauseOnboarding(email) {
+export function pauseOnboarding(email: string): OnboardingState {
   const current = getOnboardingState(email);
   const stepDef = getStepById(current.currentStep);
   const stepId = stepDef?.key || `step_${current.currentStep}`;
@@ -163,7 +200,7 @@ export function pauseOnboarding(email) {
 /**
  * Resumes the onboarding journey from the paused or dismissed state.
  */
-export function resumeOnboarding(email) {
+export function resumeOnboarding(email: string): OnboardingState {
   return saveOnboardingState(email, {
     isPaused: false,
     isDismissed: false,
@@ -175,7 +212,7 @@ export function resumeOnboarding(email) {
 /**
  * Closes/dismisses the onboarding dock completely until re-launched.
  */
-export function dismissOnboarding(email) {
+export function dismissOnboarding(email: string): OnboardingState {
   const current = getOnboardingState(email);
   const stepDef = getStepById(current.currentStep);
   const stepId = stepDef?.key || `step_${current.currentStep}`;
@@ -197,7 +234,10 @@ export function dismissOnboarding(email) {
 /**
  * Resets the onboarding state for a user, allowing a fresh start.
  */
-export function resetOnboardingState(email, mode = null) {
+export function resetOnboardingState(
+  email: string,
+  mode: 'demo' | 'real' | null = null
+): OnboardingState {
   const demoKey = getDemoStudentKey(email);
   safeRemoveStorageItem(demoKey);
   inMemoryStore.delete(demoKey);
@@ -223,7 +263,7 @@ export function resetOnboardingState(email, mode = null) {
  * Marks the previous step as completed.
  * If at step 10, marks the journey as completed.
  */
-export function advanceOnboardingStep(email) {
+export function advanceOnboardingStep(email: string): OnboardingState {
   const current = getOnboardingState(email);
   const stepToComplete = current.currentStep;
 
@@ -298,7 +338,7 @@ export function advanceOnboardingStep(email) {
 /**
  * Navigates directly to a specific step in the journey.
  */
-export function goToOnboardingStep(email, stepNumber) {
+export function goToOnboardingStep(email: string, stepNumber: number): OnboardingState {
   const current = getOnboardingState(email);
   const validStep = Math.max(1, Math.min(ONBOARDING_TOTAL_STEPS, Number(stepNumber) || 1));
   let hasDispatched = current.hasDispatchedStarted;
@@ -327,13 +367,13 @@ export function goToOnboardingStep(email, stepNumber) {
 /**
  * Records milestone achievements during onboarding (time-to-first-student, time-to-first-report).
  */
-export function recordOnboardingMilestone(email, milestoneName) {
+export function recordOnboardingMilestone(email: string, milestoneName: string): OnboardingState {
   const current = getOnboardingState(email);
   const now = new Date();
   const startedAt = current.startedAt ? new Date(current.startedAt) : now;
   const elapsedSec = Math.max(0, Math.round((now.getTime() - startedAt.getTime()) / 1000));
 
-  const updates = {};
+  const updates: Partial<OnboardingState> = {};
   if (milestoneName === 'first_student' && !current.firstStudentAt) {
     updates.firstStudentAt = now.toISOString();
     updates.timeToFirstStudentSec = elapsedSec;
@@ -348,18 +388,18 @@ export function recordOnboardingMilestone(email, milestoneName) {
   return current;
 }
 
-export function trackFirstStudentMilestone(email) {
+export function trackFirstStudentMilestone(email: string): OnboardingState {
   return recordOnboardingMilestone(email, 'first_student');
 }
 
-export function trackFirstReportMilestone(email) {
+export function trackFirstReportMilestone(email: string): OnboardingState {
   return recordOnboardingMilestone(email, 'first_report');
 }
 
 /**
  * Sets the collapse/expand state of the guided workspace dock.
  */
-export function setOnboardingDockCollapsed(email, isCollapsed) {
+export function setOnboardingDockCollapsed(email: string, isCollapsed: boolean): OnboardingState {
   return saveOnboardingState(email, {
     isDockCollapsed: Boolean(isCollapsed),
     userToggledDock: true
@@ -374,18 +414,21 @@ export function setOnboardingDockCollapsed(email, isCollapsed) {
 /**
  * Retrieves the local demo student record for the user, or creates a fresh one.
  */
-export function getDemoStudent(email, options = {}) {
+export function getDemoStudent(
+  email: string,
+  options: DemoStudentOptions = {}
+): Record<string, unknown> {
   const key = getDemoStudentKey(email);
 
   if (options && options.forceFresh) {
     safeRemoveStorageItem(key);
     inMemoryStore.delete(key);
-    const fresh = createFreshDemoStudent(options);
-    saveDemoStudent(email, fresh);
-    return fresh;
+    const fresh = createFreshDemoStudent({ stage: options?.stage });
+    saveDemoStudent(email, fresh as Record<string, unknown>);
+    return fresh as Record<string, unknown>;
   }
 
-  const stored = safeGetStorageJson(key, null);
+  const stored = safeGetStorageJson<Record<string, unknown>>(key, null as unknown as Record<string, unknown>);
 
   if (stored && stored.id === 'demo_yonatan_levi') {
     inMemoryStore.set(key, stored);
@@ -393,21 +436,24 @@ export function getDemoStudent(email, options = {}) {
   }
 
   if (inMemoryStore.has(key)) {
-    return inMemoryStore.get(key);
+    return inMemoryStore.get(key) as Record<string, unknown>;
   }
 
-  const fresh = createFreshDemoStudent(options);
-  saveDemoStudent(email, fresh);
-  return fresh;
+  const fresh = createFreshDemoStudent({ stage: options?.stage });
+  saveDemoStudent(email, fresh as Record<string, unknown>);
+  return fresh as Record<string, unknown>;
 }
 
 /**
  * Saves updates to the demo student in local sandbox storage.
  * NEVER writes to Firestore cloud.
  */
-export function saveDemoStudent(email, studentData) {
+export function saveDemoStudent(
+  email: string,
+  studentData: Record<string, unknown>
+): Record<string, unknown> {
   const key = getDemoStudentKey(email);
-  const safeData = {
+  const safeData: Record<string, unknown> = {
     ...studentData,
     id: 'demo_yonatan_levi',
     isDemo: true,
@@ -422,7 +468,7 @@ export function saveDemoStudent(email, studentData) {
 /**
  * Clears the local demo student record.
  */
-export function clearDemoStudent(email) {
+export function clearDemoStudent(email: string): void {
   const key = getDemoStudentKey(email);
   inMemoryStore.delete(key);
   safeRemoveStorageItem(key);
@@ -431,6 +477,6 @@ export function clearDemoStudent(email) {
 /**
  * Resets the in-memory fallback store (useful in test teardown).
  */
-export function __clearInMemoryStoreForTesting() {
+export function __clearInMemoryStoreForTesting(): void {
   inMemoryStore.clear();
 }

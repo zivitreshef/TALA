@@ -12,7 +12,9 @@ import {
 } from './storage';
 import {
   sanitizeTelemetryPayload,
-  isInternalAccount
+  isInternalAccount,
+  TelemetryEnvelope,
+  UserContext
 } from '../domain/telemetryPrivacy';
 import { isValidEventName, CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
 
@@ -26,32 +28,43 @@ export const BASE_BACKOFF_MS = 1000;
 export const MAX_BACKOFF_MS = 30000;
 export const MAX_RETRIES = 3;
 
+export type TelemetryTransport = (events: TelemetryEnvelope[]) => Promise<boolean> | boolean;
+
+export interface TrackOptions {
+  userContext?: UserContext | string;
+  [key: string]: unknown;
+}
+
 export class UsageTelemetryService {
+  private _enabled = true;
+  private _samplingRate = 1.0; // 100% capture by default
+  private _excludeInternalAccounts = false;
+  private _userContext: UserContext | null = null;
+  private _appVersion = CURRENT_APP_VERSION;
+
+  // In-memory queues
+  private _queue: TelemetryEnvelope[] = []; // pending events awaiting dispatch
+  private _ringBuffer: TelemetryEnvelope[] = []; // last 100 tracked events (history)
+
+  // Deduplication tracking: map of dedupKey -> timestampMs
+  private _dedupMap = new Map<string, number>();
+
+  // Batching & retry state
+  private _isFlushing = false;
+  private _retryCount = 0;
+  private _flushIntervalId: ReturnType<typeof setInterval> | null = null;
+  private _retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private _isOnlineOverride: boolean | null = null;
+
+  // Pluggable transport (default resolves true; can be injected by Firestore storage)
+  private _transport: TelemetryTransport | null = null;
+
+  // Bound event handlers for clean lifecycle removal
+  private _onVisibilityChange: () => void;
+  private _onBeforeUnload: () => void;
+  private _onOnline: () => void;
+
   constructor() {
-    this._enabled = true;
-    this._samplingRate = 1.0; // 100% capture by default
-    this._excludeInternalAccounts = false;
-    this._userContext = null;
-    this._appVersion = CURRENT_APP_VERSION;
-
-    // In-memory queues
-    this._queue = []; // pending events awaiting dispatch
-    this._ringBuffer = []; // last 100 tracked events (history)
-
-    // Deduplication tracking: map of dedupKey -> timestampMs
-    this._dedupMap = new Map();
-
-    // Batching & retry state
-    this._isFlushing = false;
-    this._retryCount = 0;
-    this._flushIntervalId = null;
-    this._retryTimeoutId = null;
-    this._isOnlineOverride = null;
-
-    // Pluggable transport (default resolves true; can be injected by Firestore storage)
-    this._transport = null;
-
-    // Bound event handlers for clean lifecycle removal
     this._onVisibilityChange = this._handleVisibilityChange.bind(this);
     this._onBeforeUnload = this._handleBeforeUnload.bind(this);
     this._onOnline = this._handleOnline.bind(this);
@@ -64,19 +77,19 @@ export class UsageTelemetryService {
   // Configuration & State
   // ==========================================================================
 
-  isEnabled() {
+  isEnabled(): boolean {
     return this._enabled;
   }
 
-  setEnabled(enabled) {
+  setEnabled(enabled: boolean): void {
     this._enabled = Boolean(enabled);
   }
 
-  getSamplingRate() {
+  getSamplingRate(): number {
     return this._samplingRate;
   }
 
-  setSamplingRate(rate) {
+  setSamplingRate(rate: number): void {
     if (typeof rate !== 'number' || Number.isNaN(rate)) {
       this._samplingRate = 1.0;
       return;
@@ -84,49 +97,49 @@ export class UsageTelemetryService {
     this._samplingRate = Math.max(0.0, Math.min(1.0, rate));
   }
 
-  getExcludeInternalAccounts() {
+  getExcludeInternalAccounts(): boolean {
     return this._excludeInternalAccounts;
   }
 
-  setExcludeInternalAccounts(exclude) {
+  setExcludeInternalAccounts(exclude: boolean): void {
     this._excludeInternalAccounts = Boolean(exclude);
   }
 
-  getUserContext() {
+  getUserContext(): UserContext | null {
     return this._userContext;
   }
 
-  setUserContext(context) {
+  setUserContext(context: UserContext | null): void {
     this._userContext = context ? { ...context } : null;
   }
 
-  getAppVersion() {
+  getAppVersion(): string {
     return this._appVersion;
   }
 
-  setAppVersion(version) {
+  setAppVersion(version: string): void {
     if (typeof version === 'string' && version) {
       this._appVersion = version;
     }
   }
 
-  setTransport(transportFn) {
+  setTransport(transportFn: TelemetryTransport | null): void {
     this._transport = typeof transportFn === 'function' ? transportFn : null;
   }
 
-  setIsOnline(online) {
+  setIsOnline(online: boolean | null): void {
     this._isOnlineOverride = typeof online === 'boolean' ? online : null;
   }
 
-  getBufferSize() {
+  getBufferSize(): number {
     return this._queue.length;
   }
 
-  getQueue() {
+  getQueue(): TelemetryEnvelope[] {
     return [...this._queue];
   }
 
-  getRingBuffer() {
+  getRingBuffer(): TelemetryEnvelope[] {
     return [...this._ringBuffer];
   }
 
@@ -138,12 +151,16 @@ export class UsageTelemetryService {
    * Safe, non-blocking telemetry event tracking.
    * Never throws, never interrupts calling UI code.
    *
-   * @param {string} eventName - Standardized taxonomy event name
-   * @param {object} properties - Behavioral/technical metadata (strictly zero PII)
-   * @param {object} [options] - Optional overrides (e.g. userContext)
-   * @returns {boolean} - true if enqueued/processed, false if dropped/suppressed
+   * @param eventName - Standardized taxonomy event name
+   * @param properties - Behavioral/technical metadata (strictly zero PII)
+   * @param options - Optional overrides (e.g. userContext)
+   * @returns true if enqueued/processed, false if dropped/suppressed
    */
-  track(eventName, properties = {}, options = {}) {
+  track(
+    eventName: string,
+    properties: Record<string, unknown> = {},
+    options: TrackOptions = {}
+  ): boolean {
     try {
       if (!this._enabled) {
         return false;
@@ -162,7 +179,7 @@ export class UsageTelemetryService {
       const effectiveContext = options.userContext || this._userContext;
 
       // 5-Tier Sanitization & Zero-PII Pseudonymization
-      const payload = sanitizeTelemetryPayload(eventName, properties, effectiveContext);
+      const payload = sanitizeTelemetryPayload(eventName, properties, effectiveContext as UserContext);
       if (!payload) {
         return false;
       }
@@ -183,7 +200,7 @@ export class UsageTelemetryService {
 
       // Trigger flush if batch size threshold is met
       if (this._queue.length >= BATCH_SIZE) {
-        Promise.resolve().then(() => this.flush()).catch((err) => {
+        Promise.resolve().then(() => this.flush()).catch((err: unknown) => {
           console.warn('[usageTelemetryService] Async batch flush failure:', err);
         });
       }
@@ -199,7 +216,7 @@ export class UsageTelemetryService {
   // Buffer & Deduplication
   // ==========================================================================
 
-  _isDuplicate(eventName, sanitizedProperties) {
+  private _isDuplicate(eventName: string, sanitizedProperties: Record<string, unknown>): boolean {
     const now = Date.now();
     this._pruneStaleDedupKeys(now);
 
@@ -216,7 +233,7 @@ export class UsageTelemetryService {
     return false;
   }
 
-  _pruneStaleDedupKeys(now) {
+  private _pruneStaleDedupKeys(now: number): void {
     for (const [key, timestamp] of this._dedupMap.entries()) {
       if (now - timestamp >= DEDUP_WINDOW_MS) {
         this._dedupMap.delete(key);
@@ -224,7 +241,7 @@ export class UsageTelemetryService {
     }
   }
 
-  _enqueue(payload) {
+  private _enqueue(payload: TelemetryEnvelope): void {
     // 1. Maintain in-memory dispatch queue with FIFO eviction at 100
     this._queue.push(payload);
     while (this._queue.length > RING_BUFFER_CAPACITY) {
@@ -242,7 +259,7 @@ export class UsageTelemetryService {
   // Batch Flushing & Retry Management
   // ==========================================================================
 
-  isOnline() {
+  isOnline(): boolean {
     if (typeof this._isOnlineOverride === 'boolean') {
       return this._isOnlineOverride;
     }
@@ -256,7 +273,7 @@ export class UsageTelemetryService {
    * Flushes currently queued events through the transport.
    * Safe, non-blocking execution with exponential backoff on failure.
    */
-  async flush() {
+  async flush(): Promise<boolean> {
     if (this._isFlushing) {
       return false;
     }
@@ -323,12 +340,12 @@ export class UsageTelemetryService {
     }
   }
 
-  _scheduleRetry(delayMs) {
+  private _scheduleRetry(delayMs: number): void {
     if (this._retryTimeoutId) {
       clearTimeout(this._retryTimeoutId);
     }
     this._retryTimeoutId = setTimeout(() => {
-      this.flush().catch((err) => {
+      this.flush().catch((err: unknown) => {
         console.warn('[usageTelemetryService] Retry flush error:', err);
       });
     }, delayMs);
@@ -338,9 +355,9 @@ export class UsageTelemetryService {
   // Offline Bounded Storage (Max 50 events, Safari safe)
   // ==========================================================================
 
-  _persistOffline() {
+  private _persistOffline(): void {
     try {
-      const existing = safeGetStorageJson(OFFLINE_STORAGE_KEY, []) || [];
+      const existing = safeGetStorageJson<TelemetryEnvelope[]>(OFFLINE_STORAGE_KEY, []) || [];
       const existingArr = Array.isArray(existing) ? existing : [];
       const existingIds = new Set(existingArr.map((e) => e.eventId));
       const newItems = this._queue.filter((e) => !existingIds.has(e.eventId));
@@ -348,7 +365,7 @@ export class UsageTelemetryService {
 
       // FIFO bounded eviction: keep only latest MAX_OFFLINE_EVENTS
       let bounded = merged.slice(-MAX_OFFLINE_EVENTS);
-      let success = safeSetStorageJson(OFFLINE_STORAGE_KEY, bounded);
+      const success = safeSetStorageJson(OFFLINE_STORAGE_KEY, bounded);
       if (!success && bounded.length > 10) {
         // Quota safety fallback: trim down to 20 events
         bounded = bounded.slice(-20);
@@ -359,9 +376,9 @@ export class UsageTelemetryService {
     }
   }
 
-  _drainOfflineIntoQueue() {
+  private _drainOfflineIntoQueue(): void {
     try {
-      const stored = safeGetStorageJson(OFFLINE_STORAGE_KEY, []);
+      const stored = safeGetStorageJson<TelemetryEnvelope[]>(OFFLINE_STORAGE_KEY, []);
       if (Array.isArray(stored) && stored.length > 0) {
         const existingIds = new Set(this._queue.map((e) => e.eventId));
         const newFromStorage = stored.filter((e) => !existingIds.has(e.eventId));
@@ -378,7 +395,7 @@ export class UsageTelemetryService {
     }
   }
 
-  _clearOfflineStorage() {
+  private _clearOfflineStorage(): void {
     safeRemoveStorageItem(OFFLINE_STORAGE_KEY);
   }
 
@@ -386,7 +403,7 @@ export class UsageTelemetryService {
   // Lifecycle Listeners
   // ==========================================================================
 
-  _initLifecycleListeners() {
+  private _initLifecycleListeners(): void {
     if (typeof document !== 'undefined' && document.addEventListener) {
       document.addEventListener('visibilitychange', this._onVisibilityChange);
     }
@@ -396,28 +413,28 @@ export class UsageTelemetryService {
     }
   }
 
-  _handleVisibilityChange() {
+  private _handleVisibilityChange(): void {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
       this.flush().catch(() => {});
     }
   }
 
-  _handleBeforeUnload() {
+  private _handleBeforeUnload(): void {
     if (this._queue.length > 0) {
       this._persistOffline();
     }
   }
 
-  _handleOnline() {
+  private _handleOnline(): void {
     // When returning online, flush pending queue and recovered offline items
     Promise.resolve().then(() => this.flush()).catch(() => {});
   }
 
-  _startFlushInterval() {
+  private _startFlushInterval(): void {
     if (typeof setInterval !== 'undefined') {
       this._flushIntervalId = setInterval(() => {
         if (this._queue.length > 0) {
-          this.flush().catch((err) => {
+          this.flush().catch((err: unknown) => {
             console.warn('[usageTelemetryService] Periodic flush error:', err);
           });
         }
@@ -432,7 +449,7 @@ export class UsageTelemetryService {
   /**
    * Clears in-memory buffer, history, deduplication cache, and offline storage.
    */
-  clear() {
+  clear(): void {
     this._queue = [];
     this._ringBuffer = [];
     this._dedupMap.clear();
@@ -448,7 +465,7 @@ export class UsageTelemetryService {
   /**
    * Destroys timers and event listeners for clean shutdown.
    */
-  destroy() {
+  destroy(): void {
     this.clear();
 
     if (this._flushIntervalId) {

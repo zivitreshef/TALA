@@ -1,12 +1,12 @@
-import {
-  formatAdminChatNotificationMessage,
-  buildAdminChatNotificationEmailHtml
-} from '../domain/supportChat';
 /**
  * Dispatcher service for Admin Real-Time Alerts across Email, WhatsApp, and Telegram.
  * Non-blocking, secure, and resilient.
  */
 
+import {
+  formatAdminChatNotificationMessage,
+  buildAdminChatNotificationEmailHtml
+} from '../domain/supportChat';
 import {
   ALERT_CHANNELS,
   formatAdminAlertMessage,
@@ -18,10 +18,26 @@ import { sendReportEmailInBackground, loadEmailEngineConfig } from '../emailServ
 
 export const DEFAULT_TELEGRAM_BOT_TOKEN = '7774912239:AAHOkYkO6xLqQfLd80Zg3aR90pG7yG9mK10'; // Fallback / system notification bot if user doesn't provide custom bot
 
+export interface AlertDispatchResult {
+  ok: boolean;
+  channel?: string;
+  error?: string;
+}
+
+export interface DispatchTelegramAlertParams {
+  botToken?: string;
+  chatId: string | number;
+  text: string;
+}
+
 /**
  * Sends an instant message via Telegram Bot API.
  */
-export async function dispatchTelegramAlert({ botToken, chatId, text }) {
+export async function dispatchTelegramAlert({
+  botToken,
+  chatId,
+  text
+}: DispatchTelegramAlertParams): Promise<AlertDispatchResult> {
   const token = (botToken || '').trim() || DEFAULT_TELEGRAM_BOT_TOKEN;
   const targetChatId = String(chatId || '').trim();
 
@@ -40,7 +56,7 @@ export async function dispatchTelegramAlert({ botToken, chatId, text }) {
     })
   });
 
-  let data = await response.json().catch(() => null);
+  let data = (await response.json().catch(() => null)) as { ok?: boolean; description?: string } | null;
   if ((!response.ok || !data?.ok) && data?.description && /can't parse entities/i.test(data.description)) {
     response = await fetch(url, {
       method: 'POST',
@@ -50,7 +66,7 @@ export async function dispatchTelegramAlert({ botToken, chatId, text }) {
         text: text
       })
     });
-    data = await response.json().catch(() => null);
+    data = (await response.json().catch(() => null)) as { ok?: boolean; description?: string } | null;
   }
 
   if (!response.ok || !data?.ok) {
@@ -61,10 +77,20 @@ export async function dispatchTelegramAlert({ botToken, chatId, text }) {
   return { ok: true, channel: ALERT_CHANNELS.TELEGRAM };
 }
 
+export interface DispatchWhatsAppAlertParams {
+  phone: string | number;
+  apiKey: string;
+  text: string;
+}
+
 /**
  * Sends a real-time WhatsApp message via CallMeBot API (Free personal gateway).
  */
-export async function dispatchWhatsAppAlert({ phone, apiKey, text }) {
+export async function dispatchWhatsAppAlert({
+  phone,
+  apiKey,
+  text
+}: DispatchWhatsAppAlertParams): Promise<AlertDispatchResult> {
   const cleanPhone = String(phone || '').replace(/[^\d]/g, '');
   const key = String(apiKey || '').trim();
 
@@ -86,17 +112,31 @@ export async function dispatchWhatsAppAlert({ phone, apiKey, text }) {
   return { ok: true, channel: ALERT_CHANNELS.WHATSAPP };
 }
 
+export interface DispatchEmailAlertParams {
+  toEmail: string;
+  subject?: string;
+  htmlBody?: string;
+  textBody?: string;
+  config?: unknown;
+}
+
 /**
  * Sends an email alert using TALA's configured Email Engine (Google Apps Script / EmailJS).
  */
-export async function dispatchEmailAlert({ toEmail, subject, htmlBody, textBody, config }) {
+export async function dispatchEmailAlert({
+  toEmail,
+  subject,
+  htmlBody,
+  textBody,
+  config
+}: DispatchEmailAlertParams): Promise<AlertDispatchResult> {
   const targetEmail = String(toEmail || '').trim().toLowerCase();
   if (!targetEmail) {
     throw new Error('Destination email is missing');
   }
 
   const cfg = config || loadEmailEngineConfig();
-  await sendReportEmailInBackground({
+  await (sendReportEmailInBackground as unknown as (args: Record<string, unknown>) => Promise<unknown>)({
     config: cfg,
     toEmail: targetEmail,
     subject: subject || '🚨 התרעת מערכת TALA בזמן אמת',
@@ -107,10 +147,22 @@ export async function dispatchEmailAlert({ toEmail, subject, htmlBody, textBody,
   return { ok: true, channel: ALERT_CHANNELS.EMAIL };
 }
 
+export interface SendTestAdminAlertParams {
+  channel: string;
+  config: Record<string, unknown> & { address?: string; phone?: string; apiKey?: string; botToken?: string; chatId?: string };
+  adminName?: string;
+  emailConfig?: unknown;
+}
+
 /**
  * Sends a test alert to a specific channel to verify configuration.
  */
-export async function sendTestAdminAlert({ channel, config, adminName = '', emailConfig = null }) {
+export async function sendTestAdminAlert({
+  channel,
+  config,
+  adminName = '',
+  emailConfig = null
+}: SendTestAdminAlertParams): Promise<AlertDispatchResult> {
   const validation = validateAlertChannel(channel, config);
   if (!validation.valid) {
     throw new Error(validation.error);
@@ -131,7 +183,7 @@ export async function sendTestAdminAlert({ channel, config, adminName = '', emai
     case ALERT_CHANNELS.EMAIL: {
       const emailHtml = buildAdminAlertEmailHtml(testEvent, adminName);
       return await dispatchEmailAlert({
-        toEmail: config.address,
+        toEmail: String(config.address || ''),
         subject: '🧪 בדיקת התרעות מערכת TALA – ערוץ אימייל תקין',
         htmlBody: emailHtml,
         textBody: textMessage,
@@ -141,16 +193,16 @@ export async function sendTestAdminAlert({ channel, config, adminName = '', emai
 
     case ALERT_CHANNELS.WHATSAPP: {
       return await dispatchWhatsAppAlert({
-        phone: config.phone,
-        apiKey: config.apiKey,
+        phone: String(config.phone || ''),
+        apiKey: String(config.apiKey || ''),
         text: textMessage
       });
     }
 
     case ALERT_CHANNELS.TELEGRAM: {
       return await dispatchTelegramAlert({
-        botToken: config.botToken,
-        chatId: config.chatId,
+        botToken: config.botToken ? String(config.botToken) : undefined,
+        chatId: String(config.chatId || ''),
         text: textMessage
       });
     }
@@ -160,25 +212,38 @@ export async function sendTestAdminAlert({ channel, config, adminName = '', emai
   }
 }
 
+export interface DispatchAlertsToAdminsParams {
+  event: Record<string, unknown> & { kind?: string };
+  admins?: Array<Record<string, unknown>>;
+  emailConfig?: unknown;
+}
+
 /**
  * Dispatches real-time alerts to all configured admins for a given health event.
  * Never throws (fire-and-forget).
  */
-export async function dispatchAlertsToAdmins({ event, admins = [], emailConfig = null }) {
+export async function dispatchAlertsToAdmins({
+  event,
+  admins = [],
+  emailConfig = null
+}: DispatchAlertsToAdminsParams): Promise<AlertDispatchResult[]> {
   if (!event || !Array.isArray(admins) || admins.length === 0) return [];
 
   const textMessage = formatAdminAlertMessage(event);
   const emailHtml = buildAdminAlertEmailHtml(event);
   const cfg = emailConfig || loadEmailEngineConfig();
 
-  const promises = [];
+  const promises: Array<Promise<AlertDispatchResult>> = [];
 
   for (const adminUser of admins) {
     if (!adminUser || adminUser.active === false) continue;
     const isExplicitAdmin = adminUser.role === 'admin';
     if (!isExplicitAdmin) continue;
 
-    const alerts = normalizeAdminAlerts(adminUser.adminAlerts, adminUser.email);
+    const alerts = normalizeAdminAlerts(
+      adminUser.adminAlerts as Record<string, unknown>,
+      String(adminUser.email || '')
+    );
     if (alerts.notifyOnHealth === false) continue;
 
     // 1. Email channel
@@ -190,7 +255,7 @@ export async function dispatchAlertsToAdmins({ event, admins = [], emailConfig =
           htmlBody: emailHtml,
           textBody: textMessage,
           config: cfg
-        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.EMAIL, error: err.message }))
+        }).catch((err: Error) => ({ ok: false, channel: ALERT_CHANNELS.EMAIL, error: err.message }))
       );
     }
 
@@ -201,7 +266,7 @@ export async function dispatchAlertsToAdmins({ event, admins = [], emailConfig =
           phone: alerts.whatsapp.phone,
           apiKey: alerts.whatsapp.apiKey,
           text: textMessage
-        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.WHATSAPP, error: err.message }))
+        }).catch((err: Error) => ({ ok: false, channel: ALERT_CHANNELS.WHATSAPP, error: err.message }))
       );
     }
 
@@ -212,13 +277,26 @@ export async function dispatchAlertsToAdmins({ event, admins = [], emailConfig =
           botToken: alerts.telegram.botToken,
           chatId: alerts.telegram.chatId,
           text: textMessage
-        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.TELEGRAM, error: err.message }))
+        }).catch((err: Error) => ({ ok: false, channel: ALERT_CHANNELS.TELEGRAM, error: err.message }))
       );
     }
   }
 
   const results = await Promise.allSettled(promises);
-  return results.map((r) => (r.status === 'fulfilled' ? r.value : { ok: false, error: r.reason }));
+  return results.map((r) =>
+    r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) }
+  );
+}
+
+export interface DispatchChatAlertToAdminsParams {
+  teacherName?: string;
+  teacherEmail?: string;
+  topic?: string;
+  messageText?: string;
+  hasAttachment?: boolean;
+  admins?: Array<Record<string, unknown>>;
+  emailConfig?: unknown;
+  siteUrl?: string;
 }
 
 /**
@@ -234,7 +312,7 @@ export async function dispatchChatAlertToAdmins({
   admins = [],
   emailConfig = null,
   siteUrl = ''
-}) {
+}: DispatchChatAlertToAdminsParams): Promise<AlertDispatchResult[]> {
   if (!Array.isArray(admins) || admins.length === 0 || (!messageText && !hasAttachment)) return [];
 
   const textMessage = formatAdminChatNotificationMessage({
@@ -255,14 +333,17 @@ export async function dispatchChatAlertToAdmins({
   });
   const cfg = emailConfig || loadEmailEngineConfig();
 
-  const promises = [];
+  const promises: Array<Promise<AlertDispatchResult>> = [];
 
   for (const adminUser of admins) {
     if (!adminUser || adminUser.active === false) continue;
     const isExplicitAdmin = adminUser.role === 'admin';
     if (!isExplicitAdmin) continue;
 
-    const alerts = normalizeAdminAlerts(adminUser.adminAlerts, adminUser.email);
+    const alerts = normalizeAdminAlerts(
+      adminUser.adminAlerts as Record<string, unknown>,
+      String(adminUser.email || '')
+    );
     if (alerts.notifyOnChat === false) continue;
 
     // 1. WhatsApp channel (immediate phone notification)
@@ -272,7 +353,7 @@ export async function dispatchChatAlertToAdmins({
           phone: alerts.whatsapp.phone,
           apiKey: alerts.whatsapp.apiKey,
           text: textMessage
-        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.WHATSAPP, error: err.message }))
+        }).catch((err: Error) => ({ ok: false, channel: ALERT_CHANNELS.WHATSAPP, error: err.message }))
       );
     }
 
@@ -283,7 +364,7 @@ export async function dispatchChatAlertToAdmins({
           botToken: alerts.telegram.botToken,
           chatId: alerts.telegram.chatId,
           text: textMessage
-        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.TELEGRAM, error: err.message }))
+        }).catch((err: Error) => ({ ok: false, channel: ALERT_CHANNELS.TELEGRAM, error: err.message }))
       );
     }
 
@@ -296,19 +377,33 @@ export async function dispatchChatAlertToAdmins({
           htmlBody: emailHtml,
           textBody: textMessage,
           config: cfg
-        }).catch((err) => ({ ok: false, channel: ALERT_CHANNELS.EMAIL, error: err.message }))
+        }).catch((err: Error) => ({ ok: false, channel: ALERT_CHANNELS.EMAIL, error: err.message }))
       );
     }
   }
 
   const results = await Promise.allSettled(promises);
-  return results.map((r) => (r.status === 'fulfilled' ? r.value : { ok: false, error: r.reason }));
+  return results.map((r) =>
+    r.status === 'fulfilled' ? r.value : { ok: false, error: String(r.reason) }
+  );
+}
+
+export interface DispatchServerInquiryAlertsParams {
+  request?: Record<string, unknown> & { email?: string; name?: string; topic?: string; notes?: string };
+  admins?: Array<Record<string, unknown>>;
+  emailConfig?: unknown;
+  siteUrl?: string;
 }
 
 /**
  * Dispatches real-time inquiry alerts for standalone contact/support requests (e.g. from the login page).
  */
-export async function dispatchServerInquiryAlerts({ request = {}, admins = [], emailConfig = null, siteUrl = '' }) {
+export async function dispatchServerInquiryAlerts({
+  request = {},
+  admins = [],
+  emailConfig = null,
+  siteUrl = ''
+}: DispatchServerInquiryAlertsParams): Promise<AlertDispatchResult[]> {
   if (!request || (!request.email && !request.name)) return [];
   return dispatchChatAlertToAdmins({
     teacherName: request.name || 'משתמש/ת',

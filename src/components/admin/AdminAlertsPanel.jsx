@@ -18,7 +18,7 @@ import {
   normalizeAdminAlerts,
   validateAlertChannel
 } from '../../domain/adminAlerts';
-import { sendTestAdminAlert } from '../../services/alertDispatcher.js';
+import { sendTestAdminAlert } from '../../services/alertDispatcher';
 
 export default function AdminAlertsPanel({
   allowedUsers = [],

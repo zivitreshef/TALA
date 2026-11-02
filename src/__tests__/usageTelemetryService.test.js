@@ -8,7 +8,7 @@ import {
   DEDUP_WINDOW_MS,
   MAX_RETRIES,
   MAX_BACKOFF_MS
-} from '../services/usageTelemetryService.js';
+} from '../services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import { safeGetStorageJson, safeSetStorageJson, safeRemoveStorageItem } from '../services/storage';
 

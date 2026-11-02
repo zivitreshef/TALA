@@ -10,7 +10,7 @@ import {
   resetOnboardingState,
   getOnboardingState,
   saveOnboardingState
-} from '../services/onboardingStorage.js';
+} from '../services/onboardingStorage';
 
 describe('Onboarding User Journey Experience & Minimal Demo Student Fix', () => {
   let mockStore = {};

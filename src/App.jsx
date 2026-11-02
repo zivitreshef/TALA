@@ -112,7 +112,7 @@ import {
   clearHealthEventsInCloud
 } from './firebaseBackend';
 import { countUnreviewedHealthEvents } from './domain/healthEvents';
-import { dispatchServerInquiryAlerts } from './services/alertDispatcher.js';
+import { dispatchServerInquiryAlerts } from './services/alertDispatcher';
 import {
   shouldSendPedagogicalDigest,
   getObservationGaps,
