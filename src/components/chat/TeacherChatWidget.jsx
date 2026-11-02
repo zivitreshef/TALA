@@ -30,7 +30,7 @@ import {
   RESOLUTION_FEEDBACK,
   countUnreadMessages
 } from '../../domain/supportChat';
-import { processChatImageFile } from '../../services/chatImageHelper.js';
+import { processChatImageFile } from '../../services/chatImageHelper';
 
 export default function TeacherChatWidget({
   currentUser = null,

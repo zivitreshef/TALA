@@ -18,7 +18,7 @@ import {
   isProhibitedKey,
   scrubPiiFromString
 } from '../domain/telemetryPrivacy';
-import { safeGetStorageJson, safeRemoveStorageItem } from '../services/storage.js';
+import { safeGetStorageJson, safeRemoveStorageItem } from '../services/storage';
 
 describe('Comprehensive Telemetry E2E Test Suite (Tiers 1-4 for F1-F18)', () => {
   let service;
