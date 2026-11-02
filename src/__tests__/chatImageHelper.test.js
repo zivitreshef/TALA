@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { processChatImageFile } from '../services/chatImageHelper.js';
+import { processChatImageFile } from '../services/chatImageHelper';
 
 describe('chatImageHelper - Secure Client-Side Image Processing', () => {
   it('returns failure when file is null or undefined', async () => {

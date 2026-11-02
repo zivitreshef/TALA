@@ -10,7 +10,7 @@ import {
   MAX_BACKOFF_MS
 } from '../services/usageTelemetryService.js';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
-import { safeGetStorageJson, safeSetStorageJson, safeRemoveStorageItem } from '../services/storage.js';
+import { safeGetStorageJson, safeSetStorageJson, safeRemoveStorageItem } from '../services/storage';
 
 describe('Centralized Usage Telemetry Service (F1, F5, F6)', () => {
   let service;

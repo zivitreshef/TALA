@@ -4,7 +4,7 @@
  * professional profile, Besad header, and signature.
  */
 
-import { safeGetStorageItem, safeSetStorageItem } from '../services/storage.js';
+import { safeGetStorageItem, safeSetStorageItem } from '../services/storage';
 import { DEFAULT_PLAN_TYPE, TACHI_PLAN_TYPE } from './yearReport';
 
 export type ReportTypePreference = 'tala' | 'tachi';

@@ -29,7 +29,7 @@ import {
   pruneStaleFirestoreKeys,
   hasLocalStorageQuotaHeadroom,
   isSafariOrIos
-} from './services/storage.js';
+} from './services/storage';
 
 const PRIMARY_ADMIN_EMAIL = 'zivit.reshef@gmail.com';
 // Must match emailKey() in functions/index.js

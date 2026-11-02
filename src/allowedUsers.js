@@ -1,4 +1,4 @@
-import { safeGetStorageItem, safeSetStorageItem } from './services/storage.js';
+import { safeGetStorageItem, safeSetStorageItem } from './services/storage';
 // ============================================================================
 // Salted Cryptographic Password Hashing (SHA-256 + Per-User Random Salt)
 // Ensures plaintext passwords (`accessCode`) are never stored in Firestore or localStorage.

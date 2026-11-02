@@ -8,7 +8,7 @@ import {
   buildHealthEvent
 } from '../domain/healthEvents';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
-import { reportHealthEvent } from '../services/healthTelemetry.js';
+import { reportHealthEvent } from '../services/healthTelemetry';
 import { usageTelemetryService } from '../services/usageTelemetryService.js';
 import * as firebaseBackend from '../firebaseBackend.js';
 import { reverseEngineerRawTextLocally } from '../goalBankData.js';

@@ -1,4 +1,4 @@
-import { safeGetStorageItem, safeSetStorageItem, safeRemoveStorageItem } from './services/storage.js';
+import { safeGetStorageItem, safeSetStorageItem, safeRemoveStorageItem } from './services/storage';
 // מאגר מטרות ויעדים דינמי (מבוסס על סביבות ההשתתפות בגן)
 
 import {

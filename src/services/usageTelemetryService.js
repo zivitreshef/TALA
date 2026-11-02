@@ -9,7 +9,7 @@ import {
   safeGetStorageJson,
   safeSetStorageJson,
   safeRemoveStorageItem
-} from './storage.js';
+} from './storage';
 import {
   sanitizeTelemetryPayload,
   isInternalAccount

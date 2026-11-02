@@ -6,7 +6,23 @@
 
 import { validateChatImageSecurity } from '../domain/supportChat';
 
-export async function processChatImageFile(file) {
+export interface ChatImageAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  sizeKb: number;
+}
+
+export interface ProcessChatImageResult {
+  success: boolean;
+  attachment?: ChatImageAttachment;
+  error?: string;
+}
+
+export async function processChatImageFile(
+  file?: { name?: string; type?: string; size?: number } | File | null
+): Promise<ProcessChatImageResult> {
   if (!file) {
     return { success: false, error: 'לא נבחר קובץ.' };
   }
@@ -123,6 +139,6 @@ export async function processChatImageFile(file) {
       img.src = dataUrl;
     };
 
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(file as Blob);
   });
 }
