@@ -35,16 +35,23 @@ For ANY feature, enhancement, or modification in TALA, you MUST proactively desi
 
 # Mandatory Upgrade & Deployment Protocol (TALA)
 
-For ANY enhancement or bug fix, ALWAYS strictly follow this 6-step lifecycle:
+For ANY enhancement or bug fix, ALWAYS strictly follow this 7-step lifecycle:
 1. **Red Banner (2 min)**: Trigger the live red warning banner in Firestore so active teachers know to save their work: `npm run upgrade:start`. Wait 2 minutes (or ensure banner is live) before deploying.
 2. **Branch & Mandatory Test Authorship**:
    - Develop on a dedicated feature/bugfix branch.
    - **Zero Uncovered Code**: Every new feature MUST include new unit tests covering its behavior and edge cases in `src/__tests__/`; every bug fix MUST include a regression test reproducing the issue and proving the fix.
-3. **Verification & Build**: Run all unit tests (`npx vitest run`) and verify the production build (`npm run build`). All tests must pass with 100% success before proceeding.
-4. **PR & Merge (Zero Bypass Policy)**:
+3. **Mandatory Version Bump (Zero Exceptions)**:
+   - For EVERY single PR (enhancement, bugfix, or chore), you MUST bump the application version (e.g. patch increment `2.6` -> `2.6.1`).
+   - Synchronize the new version across ALL required points:
+     - `package.json` (`"version": "..."`)
+     - `src/domain/telemetryTaxonomy.ts` (`export const CURRENT_APP_VERSION = '...'`)
+     - Version verification test suites (`src/__tests__/appVersionSynchronization.test.js`, `src/__tests__/typescriptPhase2Batch7.test.ts`, `src/__tests__/typescriptStep2.test.tsx`).
+   - The header watermark (`ver. {siteVersion}`) MUST visibly update with every deployment so teachers and admins immediately see that the latest version is live.
+4. **Verification & Build**: Run all unit tests (`npx vitest run`) and verify the production build (`npm run build`). All tests must pass with 100% success before proceeding.
+5. **PR & Merge (Zero Bypass Policy)**:
    - Push your feature/fix branch to `origin <branch>`.
    - Open a PR using `gh pr create` or the repository helper `node scripts/github-pr.js create --branch <branch> --title "..." --body "..."`.
    - Squash and merge via `gh pr merge --squash` or `node scripts/github-pr.js merge --pr <number> --squash`.
    - **STRICT PROHIBITION**: NEVER push directly to `main` (`git push origin main` is blocked by `.git/hooks/pre-push`). If a PR cannot be opened or merged, the task is BLOCKED — stop immediately, report the failure, and do NOT bypass the gate.
-5. **Deploy Web**: Confirm that the GitHub Actions deployment workflow to GitHub Pages starts and finishes successfully.
-6. **Disable Banner**: Once the deployment is live, turn off the red warning banner: `npm run upgrade:end`.
+6. **Deploy Web**: Confirm that the GitHub Actions deployment workflow to GitHub Pages starts and finishes successfully.
+7. **Disable Banner**: Once the deployment is live, turn off the red warning banner: `npm run upgrade:end`.
