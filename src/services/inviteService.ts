@@ -8,7 +8,9 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where
+  where,
+  type Unsubscribe,
+  type DocumentData
 } from 'firebase/firestore';
 import { ensureFirebaseAuthSession, getFirebaseAuth, getFirestoreDb } from '../firebaseBackend';
 import {
@@ -18,28 +20,62 @@ import {
   generateInviteToken,
   getInviteState,
   isValidInviteToken,
-  sanitizeResponses
+  sanitizeResponses,
+  type InviteDoc
 } from '../domain/parentInvite';
 
+export interface CreateInviteParams {
+  ownerEmail: string;
+  studentId: string;
+  childFirstName: string;
+  gender?: string;
+  customQuestions?: string[];
+  overrideDefaults?: boolean;
+}
+
+export interface CreateInviteResult {
+  token: string;
+  url: string;
+}
+
+export interface FetchInviteResult {
+  state: string;
+  invite: InviteDoc | DocumentData | null;
+}
+
 /** Teacher side: make sure Firestore rules see this teacher (no-op when already signed in). */
-export async function ensureTeacherSession(email) {
+export async function ensureTeacherSession(email?: string): Promise<void> {
   const clean = String(email || '').trim().toLowerCase();
   if (getFirebaseAuth()?.currentUser?.email?.toLowerCase() === clean) return;
-  await ensureFirebaseAuthSession(clean);
+  await ensureFirebaseAuthSession();
 }
 
 /** Teacher side: creates a pending invite and returns its public URL. */
-export async function createInvite({ ownerEmail, studentId, childFirstName, gender, customQuestions = [], overrideDefaults = false }) {
+export async function createInvite({
+  ownerEmail,
+  studentId,
+  childFirstName,
+  gender = 'boy',
+  customQuestions = [],
+  overrideDefaults = false
+}: CreateInviteParams): Promise<CreateInviteResult> {
   const db = getFirestoreDb();
   if (!db) throw new Error('Cloud backend is not configured');
   const token = generateInviteToken();
-  const inviteDoc = buildInviteDoc({ ownerEmail, studentId, childFirstName, gender, customQuestions, overrideDefaults });
+  const inviteDoc = buildInviteDoc({
+    ownerEmail,
+    studentId,
+    childFirstName,
+    gender,
+    customQuestions,
+    overrideDefaults
+  });
   await setDoc(doc(db, INVITE_COLLECTION, token), inviteDoc);
-  return { token, url: buildInviteUrl(window.location.href, token) };
+  return { token, url: buildInviteUrl(typeof window !== 'undefined' ? window.location.href : '', token) };
 }
 
 /** Public side: reads a single invite by token (rules deny listing). */
-export async function fetchInviteForRespondent(token) {
+export async function fetchInviteForRespondent(token: string): Promise<FetchInviteResult> {
   if (!isValidInviteToken(token)) return { state: 'missing', invite: null };
   const db = getFirestoreDb();
   if (!db) throw new Error('Cloud backend is not configured');
@@ -50,7 +86,10 @@ export async function fetchInviteForRespondent(token) {
 }
 
 /** Public side: one-shot submit. Firestore rules enforce pending + not expired + allowed fields. */
-export async function submitInviteResponses(token, rawResponses) {
+export async function submitInviteResponses(
+  token: string,
+  rawResponses?: Record<string, unknown>
+): Promise<void> {
   const responses = sanitizeResponses(rawResponses);
   if (Object.keys(responses).length === 0) throw new Error('Empty response');
   const db = getFirestoreDb();
@@ -63,7 +102,12 @@ export async function submitInviteResponses(token, rawResponses) {
 }
 
 /** Teacher side: live list of this teacher's invites for one student. */
-export function subscribeToStudentInvites(ownerEmail, studentId, onChange, onError) {
+export function subscribeToStudentInvites(
+  ownerEmail: string,
+  studentId: string,
+  onChange: (invites: Array<DocumentData & { token: string }>) => void,
+  onError?: (err: Error) => void
+): Unsubscribe {
   const db = getFirestoreDb();
   const owner = String(ownerEmail || '').trim().toLowerCase();
   if (!db || !owner || !studentId) return () => {};
@@ -80,7 +124,7 @@ export function subscribeToStudentInvites(ownerEmail, studentId, onChange, onErr
 }
 
 /** Teacher side: record that the answers were merged into the plan or archived. */
-export async function markInviteReviewed(token, action) {
+export async function markInviteReviewed(token: string, action: string): Promise<void> {
   const db = getFirestoreDb();
   if (!db) throw new Error('Cloud backend is not configured');
   await updateDoc(doc(db, INVITE_COLLECTION, token), {
@@ -90,9 +134,8 @@ export async function markInviteReviewed(token, action) {
 }
 
 /** Teacher side: cancel a still-pending link. */
-export async function deleteInvite(token) {
+export async function deleteInvite(token: string): Promise<void> {
   const db = getFirestoreDb();
   if (!db) throw new Error('Cloud backend is not configured');
   await deleteDoc(doc(db, INVITE_COLLECTION, token));
 }
-

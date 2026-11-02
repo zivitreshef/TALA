@@ -9,7 +9,7 @@ import {
   getTimeRangeStartMs,
   setupUsageTelemetryTransport,
   TELEMETRY_EVENTS_COLLECTION
-} from '../services/telemetryStorage.js';
+} from '../services/telemetryStorage';
 import {
   calculatePercentile,
   computeActiveUsers,

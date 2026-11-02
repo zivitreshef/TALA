@@ -27,7 +27,7 @@ import {
 import {
   fetchTelemetrySnapshot,
   setEmergencyAiFreeze
-} from '../../services/telemetryService.js';
+} from '../../services/telemetryService';
 
 export default function AdminUsageAndSecurityDashboard({
   students = [],

@@ -7,18 +7,18 @@ import { UsageTelemetryService } from '../services/usageTelemetryService.js';
 describe('App Version Synchronization & Deployment Gate Compliance', () => {
   it('synchronizes package.json version with CURRENT_APP_VERSION', () => {
     expect(packageJson.version).toBe(CURRENT_APP_VERSION);
-    expect(CURRENT_APP_VERSION).toBe('2.5.11');
+    expect(CURRENT_APP_VERSION).toBe('2.5.12');
   });
 
   it('guarantees telemetry envelope privacy engine attaches CURRENT_APP_VERSION', () => {
     const payload = sanitizeTelemetryPayload('session_start', { test: true }, 'teacher');
     expect(payload.appVersion).toBe(CURRENT_APP_VERSION);
-    expect(payload.appVersion).toBe('2.5.11');
+    expect(payload.appVersion).toBe('2.5.12');
   });
 
   it('guarantees UsageTelemetryService initializes with CURRENT_APP_VERSION', () => {
     const telemetry = new UsageTelemetryService();
     expect(telemetry._appVersion).toBe(CURRENT_APP_VERSION);
-    expect(telemetry._appVersion).toBe('2.5.11');
+    expect(telemetry._appVersion).toBe('2.5.12');
   });
 });

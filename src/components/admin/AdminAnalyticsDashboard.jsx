@@ -30,7 +30,7 @@ import {
   FileText,
   ChevronDown
 } from 'lucide-react';
-import { fetchTelemetryEvents } from '../../services/telemetryStorage.js';
+import { fetchTelemetryEvents } from '../../services/telemetryStorage';
 import { computeTelemetryAnalytics } from '../../domain/telemetryAggregator';
 
 export function isUserAdmin(user) {

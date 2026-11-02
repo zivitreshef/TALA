@@ -15,7 +15,7 @@ import {
   recordEmailAuditLogToCloud,
   fetchTelemetrySnapshot,
   setEmergencyAiFreeze
-} from '../services/telemetryService.js';
+} from '../services/telemetryService';
 import * as firebaseBackend from '../firebaseBackend';
 import * as firestore from 'firebase/firestore';
 
