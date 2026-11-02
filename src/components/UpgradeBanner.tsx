@@ -6,7 +6,24 @@ export const DEFAULT_UPGRADE_BANNER_MESSAGE =
 
 export const MAX_UPGRADE_BANNER_TTL_MS = 15 * 60 * 1000; // 15 minutes max safety TTL
 
-export function isUpgradeBannerExpired(bannerData, nowMs = Date.now()) {
+export interface UpgradeBannerData {
+  active?: boolean;
+  startedAt?: string;
+  updatedAt?: string;
+  message?: string;
+  [key: string]: unknown;
+}
+
+export interface UpgradeBannerProps {
+  bannerData?: UpgradeBannerData | null;
+  onSaveCurrentWork?: () => void;
+  isDirty?: boolean;
+}
+
+export function isUpgradeBannerExpired(
+  bannerData?: UpgradeBannerData | null,
+  nowMs: number = Date.now()
+): boolean {
   if (!bannerData?.active) return true;
   const tsStr = bannerData.startedAt || bannerData.updatedAt;
   if (!tsStr) return false;
@@ -19,7 +36,7 @@ export default function UpgradeBanner({
   bannerData,
   onSaveCurrentWork,
   isDirty = false
-}) {
+}: UpgradeBannerProps): React.JSX.Element | null {
   const [dismissed, setDismissed] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
 
@@ -30,7 +47,7 @@ export default function UpgradeBanner({
 
   const message = (bannerData.message && bannerData.message.trim()) || DEFAULT_UPGRADE_BANNER_MESSAGE;
 
-  const handleSave = () => {
+  const handleSave = (): void => {
     if (onSaveCurrentWork) {
       onSaveCurrentWork();
     }
@@ -40,7 +57,7 @@ export default function UpgradeBanner({
     }, 4500);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = (): void => {
     try {
       localStorage.removeItem('tala_upgrade_banner_v1');
     } catch (_) {}

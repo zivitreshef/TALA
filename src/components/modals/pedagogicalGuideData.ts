@@ -6,7 +6,26 @@
  * strictly adhering to verified codebase capabilities.
  */
 
-export const GUIDE_CATEGORIES = [
+export interface GuideCategory {
+  id: string;
+  label: string;
+}
+
+export interface GuideChapterContent {
+  heading: string;
+  text: string;
+}
+
+export interface GuideChapter {
+  id: number;
+  category: string;
+  title: string;
+  subtitle: string;
+  badge: string;
+  content: GuideChapterContent[];
+}
+
+export const GUIDE_CATEGORIES: GuideCategory[] = [
   { id: 'all', label: 'כל הפרקים (1-15)' },
   { id: 'getting_started', label: 'מבוא והתחלה' },
   { id: 'programs_goals', label: 'תוכניות עבודה ויעדים' },
@@ -16,7 +35,7 @@ export const GUIDE_CATEGORIES = [
   { id: 'settings_tools', label: 'הגדרות וקיצורים' }
 ];
 
-export const PEDAGOGICAL_GUIDE_CHAPTERS = [
+export const PEDAGOGICAL_GUIDE_CHAPTERS: GuideChapter[] = [
   {
     id: 1,
     category: 'getting_started',

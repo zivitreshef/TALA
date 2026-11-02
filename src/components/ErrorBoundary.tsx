@@ -4,17 +4,28 @@ import { pruneStaleFirestoreKeys } from '../services/storage';
 import { usageTelemetryService } from '../services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 
-export default class ErrorBoundary extends React.Component {
-  constructor(props) {
+export interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  componentName?: string;
+  onReset?: () => void;
+}
+
+export interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export default class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     console.error('[ErrorBoundary] Caught runtime error:', error, errorInfo);
     try {
       const errName = error?.name || 'ComponentError';
@@ -28,21 +39,21 @@ export default class ErrorBoundary extends React.Component {
     } catch (_) {}
   }
 
-  handleReset = () => {
+  handleReset = (): void => {
     this.setState({ hasError: false, error: null });
     if (typeof this.props.onReset === 'function') {
       this.props.onReset();
     }
   };
 
-  handleClearCacheAndReload = () => {
+  handleClearCacheAndReload = (): void => {
     pruneStaleFirestoreKeys();
     if (typeof window !== 'undefined') {
       window.location.reload();
     }
   };
 
-  render() {
+  render(): React.ReactNode {
     if (this.state.hasError) {
       const errorMessage = this.state.error?.message || '';
       const isStorageQuotaError = /quota|exceeded|b815|setItem/i.test(errorMessage);
