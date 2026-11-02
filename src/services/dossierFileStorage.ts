@@ -4,13 +4,27 @@
  */
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFirebaseStorage } from '../firebaseBackend';
+import type { DiagnosticDocumentRecord } from '../domain/types';
 
 export const MAX_DOSSIER_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
 
 const DB_NAME = 'tala_dossier_files_v1';
 const STORE_NAME = 'files';
 
-function openDb() {
+export interface CloudUploadResult {
+  storagePath: string;
+  storageUrl: string;
+}
+
+export interface StoredDossierFileEntry {
+  docId: string;
+  fileName?: string;
+  fileType?: string;
+  blob?: Blob | File;
+  savedAt?: string;
+}
+
+function openDb(): Promise<IDBDatabase | null> {
   if (typeof window === 'undefined' || !window.indexedDB) {
     return Promise.resolve(null);
   }
@@ -18,12 +32,16 @@ function openDb() {
     try {
       const request = window.indexedDB.open(DB_NAME, 1);
       request.onupgradeneeded = (e) => {
-        const db = e.target.result;
+        const target = e.target as IDBOpenDBRequest;
+        const db = target.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME, { keyPath: 'docId' });
         }
       };
-      request.onsuccess = (e) => resolve(e.target.result);
+      request.onsuccess = (e) => {
+        const target = e.target as IDBOpenDBRequest;
+        resolve(target.result);
+      };
       request.onerror = () => resolve(null);
     } catch (_) {
       resolve(null);
@@ -31,7 +49,7 @@ function openDb() {
   });
 }
 
-export async function saveDossierFileBlob(docId, file) {
+export async function saveDossierFileBlob(docId: string, file: File | Blob & { name?: string; type?: string }): Promise<boolean> {
   if (!docId || !file) return false;
   const db = await openDb();
   if (!db) return false;
@@ -39,10 +57,11 @@ export async function saveDossierFileBlob(docId, file) {
     try {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
+      const name = file.name || 'document';
       store.put({
         docId,
-        fileName: file.name,
-        fileType: file.type || file.name.split('.').pop() || '',
+        fileName: name,
+        fileType: file.type || name.split('.').pop() || '',
         blob: file,
         savedAt: new Date().toISOString()
       });
@@ -54,7 +73,7 @@ export async function saveDossierFileBlob(docId, file) {
   });
 }
 
-export async function getDossierFileBlob(docId) {
+export async function getDossierFileBlob(docId: string): Promise<Blob | null> {
   if (!docId) return null;
   const db = await openDb();
   if (!db) return null;
@@ -63,7 +82,7 @@ export async function getDossierFileBlob(docId) {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const req = store.get(docId);
-      req.onsuccess = () => resolve(req.result?.blob || null);
+      req.onsuccess = () => resolve((req.result as StoredDossierFileEntry)?.blob || null);
       req.onerror = () => resolve(null);
     } catch (_) {
       resolve(null);
@@ -71,7 +90,7 @@ export async function getDossierFileBlob(docId) {
   });
 }
 
-export async function deleteDossierFileBlob(docId) {
+export async function deleteDossierFileBlob(docId: string): Promise<boolean> {
   if (!docId) return false;
   const db = await openDb();
   if (!db) return false;
@@ -92,23 +111,27 @@ export async function deleteDossierFileBlob(docId) {
  * Uploads original assessment file to Firebase Storage so colleagues can access it.
  * Resolves to { storagePath, storageUrl } or null if unavailable.
  */
-export async function uploadDossierFileToCloud(docId, file, studentId = 'general') {
+export async function uploadDossierFileToCloud(
+  docId: string,
+  file: File | Blob & { name?: string; type?: string },
+  studentId = 'general'
+): Promise<CloudUploadResult | null> {
   if (!docId || !file) return null;
   const storage = getFirebaseStorage();
   if (!storage) return null;
 
   try {
-    const cleanFileName = (file.name || 'document')
-      .replace(/[^a-zA-Z0-9._\-\u0590-\u05FF]/g, '_');
+    const rawFileName = file.name || 'document';
+    const cleanFileName = rawFileName.replace(/[^a-zA-Z0-9._\-\u0590-\u05FF]/g, '_');
     const safeStudentId = String(studentId || 'general').replace(/[^a-zA-Z0-9._\-]/g, '_');
     const storagePath = `dossier_files/${safeStudentId}/${docId}_${cleanFileName}`;
     const storageRef = ref(storage, storagePath);
 
-    await uploadBytes(storageRef, file, {
+    await uploadBytes(storageRef, file as Blob, {
       contentType: file.type || 'application/octet-stream',
       customMetadata: {
         docId,
-        originalName: file.name
+        originalName: rawFileName
       }
     });
 
@@ -123,7 +146,7 @@ export async function uploadDossierFileToCloud(docId, file, studentId = 'general
 /**
  * Removes file from Firebase Storage when teacher deletes the document.
  */
-export async function deleteDossierFileFromCloud(storagePath) {
+export async function deleteDossierFileFromCloud(storagePath: string): Promise<boolean> {
   if (!storagePath) return false;
   const storage = getFirebaseStorage();
   if (!storage) return false;
@@ -144,8 +167,10 @@ export async function deleteDossierFileFromCloud(storagePath) {
  * 2. If missing (e.g. colleague's device), fetches from Firebase Storage URL and caches locally.
  * 3. Falls back to extracted text if original binary is not available.
  */
-export async function triggerDossierDownload(docRecord) {
-  if (!docRecord) return;
+export async function triggerDossierDownload(
+  docRecord?: Partial<DiagnosticDocumentRecord> | null
+): Promise<void> {
+  if (!docRecord || !docRecord.id) return;
   const docId = docRecord.id;
   const fileName = docRecord.fileName || 'מסמך_אבחון';
 
@@ -212,15 +237,19 @@ export async function triggerDossierDownload(docRecord) {
     return;
   }
 
-  alert('הקובץ המקורי אינו זמין להורדה.');
+  if (typeof alert === 'function') {
+    alert('הקובץ המקורי אינו זמין להורדה.');
+  }
 }
 
 /**
  * Opens document for viewing. For PDF with blob/storageUrl: opens in a new tab.
  * For text: returns false so caller opens the text reader modal.
  */
-export async function openDossierFilePreview(docRecord) {
-  if (!docRecord) return false;
+export async function openDossierFilePreview(
+  docRecord?: Partial<DiagnosticDocumentRecord> | null
+): Promise<boolean> {
+  if (!docRecord || !docRecord.id) return false;
   const isPdf =
     (docRecord.fileType || '').toLowerCase() === 'pdf' ||
     (docRecord.fileName || '').toLowerCase().endsWith('.pdf');
@@ -234,13 +263,17 @@ export async function openDossierFilePreview(docRecord) {
       const mime = isPdf ? 'application/pdf' : blob.type || 'image/jpeg';
       const fileBlob = new Blob([blob], { type: mime });
       const url = URL.createObjectURL(fileBlob);
-      window.open(url, '_blank');
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank');
+      }
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       return true;
     }
 
     if (docRecord.storageUrl) {
-      window.open(docRecord.storageUrl, '_blank');
+      if (typeof window !== 'undefined') {
+        window.open(docRecord.storageUrl, '_blank');
+      }
       return true;
     }
   }

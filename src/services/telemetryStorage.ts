@@ -18,7 +18,7 @@ import {
 import {
   getFirestoreDb,
   sanitizeForFirestore
-} from '../firebaseBackend.js';
+} from '../firebaseBackend';
 import {
   generateUuidV4,
   isInternalAccount
@@ -28,15 +28,43 @@ import { CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
 export const TELEMETRY_EVENTS_COLLECTION = 'tala_telemetry_events';
 export const FIRESTORE_BATCH_LIMIT = 450; // Under Firestore max 500 write operations per batch
 
+export type SupportedTimeRange = '24h' | '7d' | '30d' | '90d' | 'custom' | 'all';
+
+export interface TelemetryEventRecord {
+  eventId?: string;
+  eventName?: string;
+  category?: string;
+  anonUserId?: string;
+  sessionId?: string;
+  accountType?: string;
+  appVersion?: string;
+  properties?: Record<string, unknown>;
+  timestampMs?: number;
+  [key: string]: unknown;
+}
+
+export interface FetchTelemetryEventsOptions {
+  timeRange?: SupportedTimeRange | string;
+  category?: string | null;
+  excludeInternal?: boolean;
+  startTimeMs?: number | null;
+  endTimeMs?: number | null;
+  limitCount?: number;
+}
+
+export interface UsageTelemetryServiceWithTransport {
+  setTransport: (transport: (events: TelemetryEventRecord[]) => Promise<boolean>) => void;
+  [key: string]: unknown;
+}
+
 /**
  * Calculates start timestamp in milliseconds based on a predefined or custom time range.
- *
- * @param {string} timeRange - '24h' | '7d' | '30d' | '90d' | 'custom' | 'all'
- * @param {number} [startTimeMs] - Optional start timestamp for 'custom'
- * @param {number} [nowMs] - Current time in ms (default Date.now())
- * @returns {number}
  */
-export function getTimeRangeStartMs(timeRange = '30d', startTimeMs = null, nowMs = Date.now()) {
+export function getTimeRangeStartMs(
+  timeRange: SupportedTimeRange | string = '30d',
+  startTimeMs: number | null = null,
+  nowMs: number = Date.now()
+): number {
   switch (timeRange) {
     case '24h':
       return nowMs - 24 * 60 * 60 * 1000;
@@ -58,11 +86,8 @@ export function getTimeRangeStartMs(timeRange = '30d', startTimeMs = null, nowMs
 /**
  * Persists a batch of telemetry events into Firestore using writeBatch().
  * Safe and non-blocking: never throws uncaught exceptions.
- *
- * @param {Array<object>} events - Array of sanitized telemetry event payloads
- * @returns {Promise<boolean>} - Resolves to true on success, false on error
  */
-export async function saveTelemetryBatch(events = []) {
+export async function saveTelemetryBatch(events: TelemetryEventRecord[] = []): Promise<boolean> {
   if (!Array.isArray(events) || events.length === 0) {
     return true;
   }
@@ -84,7 +109,7 @@ export async function saveTelemetryBatch(events = []) {
         const docId = event.eventId || generateUuidV4();
         const docRef = doc(db, TELEMETRY_EVENTS_COLLECTION, docId);
 
-        const safePayload = {
+        const safePayload: TelemetryEventRecord = {
           eventId: docId,
           eventName: event.eventName || 'unknown',
           category: event.category || 'general',
@@ -112,15 +137,6 @@ export async function saveTelemetryBatch(events = []) {
 /**
  * Fetches telemetry events from Firestore within the specified timeframe.
  * Filters out internal/admin/test accounts when requested.
- *
- * @param {object} options
- * @param {string} [options.timeRange='30d'] - '24h' | '7d' | '30d' | '90d' | 'custom' | 'all'
- * @param {string} [options.category] - Optional category filter
- * @param {boolean} [options.excludeInternal=false] - Whether to exclude internal test accounts and admins
- * @param {number} [options.startTimeMs] - Optional start time for custom range
- * @param {number} [options.endTimeMs] - Optional end time for custom range
- * @param {number} [options.limitCount=5000] - Max events to retrieve
- * @returns {Promise<Array<object>>} - List of retrieved events sorted newest first
  */
 export async function fetchTelemetryEvents({
   timeRange = '30d',
@@ -129,7 +145,7 @@ export async function fetchTelemetryEvents({
   startTimeMs = null,
   endTimeMs = null,
   limitCount = 5000
-} = {}) {
+}: FetchTelemetryEventsOptions = {}): Promise<TelemetryEventRecord[]> {
   try {
     const db = getFirestoreDb();
     if (!db) {
@@ -161,7 +177,7 @@ export async function fetchTelemetryEvents({
     }
 
     const snapshot = await getDocs(q);
-    const rawEvents = [];
+    const rawEvents: TelemetryEventRecord[] = [];
 
     snapshot.forEach((docSnap) => {
       const data = docSnap.data();
@@ -172,12 +188,12 @@ export async function fetchTelemetryEvents({
     });
 
     // In-memory post-filtering for composite conditions
-    let filtered = rawEvents.filter((ev) => {
+    const filtered = rawEvents.filter((ev) => {
       const ts = ev.timestampMs || 0;
       if (startMs > 0 && ts < startMs) return false;
       if (endTimeMs && ts > endTimeMs) return false;
       if (category && ev.category !== category) return false;
-      if (excludeInternal && isInternalAccount(ev.accountType)) return false;
+      if (excludeInternal && isInternalAccount(String(ev.accountType || ''))) return false;
       return true;
     });
 
@@ -193,11 +209,10 @@ export async function fetchTelemetryEvents({
 
 /**
  * Plugs Firestore batch persistence into a UsageTelemetryService instance.
- *
- * @param {object} usageTelemetryServiceInstance
- * @returns {object} The configured usageTelemetryService
  */
-export function setupUsageTelemetryTransport(usageTelemetryServiceInstance) {
+export function setupUsageTelemetryTransport<T extends UsageTelemetryServiceWithTransport>(
+  usageTelemetryServiceInstance: T
+): T {
   if (
     usageTelemetryServiceInstance &&
     typeof usageTelemetryServiceInstance.setTransport === 'function'

@@ -22,10 +22,28 @@ import {
 export const AI_AUDIT_LOGS_COLLECTION = 'ai_audit_logs';
 export const EMAIL_AUDIT_LOGS_COLLECTION = 'tala_email_audit_logs';
 
+export interface EmailAuditLogEntry {
+  id: string;
+  createdAtMs: number;
+  userEmail: string;
+  recipientMasked: string;
+}
+
+export interface TelemetrySnapshotOptions {
+  maxAiLogs?: number;
+  maxEmailLogs?: number;
+}
+
+export interface TelemetrySnapshotResult {
+  aiLogs: Array<Record<string, unknown>>;
+  emailLogs: Array<Record<string, unknown>>;
+  isOnline: boolean;
+}
+
 /**
  * Mask an email for audit/privacy logging (e.g. "teacher@school.org" -> "t***r@school.org")
  */
-export function maskEmailForPrivacy(email = '') {
+export function maskEmailForPrivacy(email = ''): string {
   if (!email || typeof email !== 'string') return '';
   const clean = email.trim().toLowerCase();
   const parts = clean.split('@');
@@ -40,7 +58,9 @@ export function maskEmailForPrivacy(email = '') {
  * Records an email sending event in Firestore.
  * Fire-and-forget; never throws and never interferes with email delivery.
  */
-export async function recordEmailAuditLogToCloud({ recipientEmail = '' } = {}) {
+export async function recordEmailAuditLogToCloud({
+  recipientEmail = ''
+}: { recipientEmail?: string } = {}): Promise<boolean> {
   try {
     const db = getFirestoreDb();
     if (!db) return false;
@@ -53,7 +73,7 @@ export async function recordEmailAuditLogToCloud({ recipientEmail = '' } = {}) {
     const id = `email_${now}_${Math.random().toString(36).slice(2, 7)}`;
     const maskedRecipient = maskEmailForPrivacy(recipientEmail);
 
-    const logEntry = {
+    const logEntry: EmailAuditLogEntry = {
       id,
       createdAtMs: now,
       userEmail,
@@ -73,14 +93,17 @@ export async function recordEmailAuditLogToCloud({ recipientEmail = '' } = {}) {
  * Fetches recent AI and Email audit logs from Firestore for the Admin Dashboard.
  * Admin only (enforced by Firestore Security Rules).
  */
-export async function fetchTelemetrySnapshot({ maxAiLogs = 300, maxEmailLogs = 300 } = {}) {
+export async function fetchTelemetrySnapshot({
+  maxAiLogs = 300,
+  maxEmailLogs = 300
+}: TelemetrySnapshotOptions = {}): Promise<TelemetrySnapshotResult> {
   const db = getFirestoreDb();
   if (!db) {
     return { aiLogs: [], emailLogs: [], isOnline: false };
   }
 
-  let aiLogs = [];
-  let emailLogs = [];
+  let aiLogs: Array<Record<string, unknown>> = [];
+  let emailLogs: Array<Record<string, unknown>> = [];
 
   try {
     // 1. Fetch AI audit logs
@@ -119,6 +142,6 @@ export async function fetchTelemetrySnapshot({ maxAiLogs = 300, maxEmailLogs = 3
 /**
  * Toggles the emergency AI Freeze circuit breaker.
  */
-export async function setEmergencyAiFreeze(enabled) {
-  return saveSettingsToCloud({ aiFreeze: Boolean(enabled) });
+export async function setEmergencyAiFreeze(enabled: boolean): Promise<boolean> {
+  return Boolean(await saveSettingsToCloud({ aiFreeze: Boolean(enabled) }));
 }
