@@ -74,7 +74,7 @@ import {
   markThreadReadInCloud,
   resolveSupportThreadInCloud,
   escalateSupportThreadInCloud
-} from '../../services/supportChatService.js';
+} from '../../services/supportChatService';
 import { SENDER_ROLES, sanitizeThreadKey, THREAD_STATUS } from '../../domain/supportChat';
 
 function PasswordPolicyChecklist({ password }) {

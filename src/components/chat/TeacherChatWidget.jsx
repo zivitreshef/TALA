@@ -23,7 +23,7 @@ import {
   clearSupportThreadInCloud,
   resolveSupportThreadInCloud,
   escalateSupportThreadInCloud
-} from '../../services/supportChatService.js';
+} from '../../services/supportChatService';
 import {
   SENDER_ROLES,
   THREAD_STATUS,
