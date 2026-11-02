@@ -19,9 +19,7 @@ import {
   UserCheck,
   ClipboardList,
   Check,
-  ExternalLink,
-  Mic,
-  MicOff
+  ExternalLink
 } from 'lucide-react';
 import {
   getObservationGaps,
@@ -443,7 +441,6 @@ export default function DailyPedagogicalTracker({
   const [saveToast, setSaveToast] = useState('');
 
   // Daily Tracking Telemetry State & Refs
-  const [isVoice, setIsVoice] = useState(false);
   const entryStartTimeRef = React.useRef<number | null>(null);
   const hasDispatchedStartedRef = React.useRef(false);
   const currentEntryModeRef = React.useRef('text');
@@ -460,7 +457,7 @@ export default function DailyPedagogicalTracker({
     }
   }, [selectedGoal]);
 
-  const startObservationEntry = (mode = isVoice ? 'voice' : 'text', isEdit = false) => {
+  const startObservationEntry = (mode = 'text', isEdit = false) => {
     if (!hasDispatchedStartedRef.current) {
       entryStartTimeRef.current = Date.now();
       hasDispatchedStartedRef.current = true;
@@ -476,11 +473,11 @@ export default function DailyPedagogicalTracker({
   };
 
   const checkAndDispatchAbandonment = () => {
-    if (hasDispatchedStartedRef.current && (aiNoteText.trim() || manualNote.trim() || isVoice)) {
+    if (hasDispatchedStartedRef.current && (aiNoteText.trim() || manualNote.trim())) {
       const timeSpentSec = entryStartTimeRef.current
         ? Math.max(1, Math.round((Date.now() - entryStartTimeRef.current) / 1000))
         : 5;
-      const mode = currentEntryModeRef.current || (isVoice ? 'voice' : 'text');
+      const mode = currentEntryModeRef.current || 'text';
       try {
         usageTelemetryService.track(
           TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_ABANDONED,
@@ -500,7 +497,7 @@ export default function DailyPedagogicalTracker({
     return () => {
       checkAndDispatchAbandonment();
     };
-  }, [aiNoteText, manualNote, isVoice]);
+  }, [aiNoteText, manualNote]);
 
   // Handle AI Analysis Execution
   const handleRunAiAnalysis = async () => {
@@ -593,7 +590,7 @@ export default function DailyPedagogicalTracker({
       ? Math.max(1, Math.round((Date.now() - entryStartTimeRef.current) / 1000))
       : 10;
     const streakDays = calculateCurrentStreak(students, todayStr);
-    const mode = currentEntryModeRef.current || (isVoice ? 'voice' : 'text');
+    const mode = currentEntryModeRef.current || 'text';
 
     try {
       usageTelemetryService.track(
@@ -1397,39 +1394,15 @@ export default function DailyPedagogicalTracker({
                       <strong className="ai-note-title">תיעוד חופשי • ניתוח ושיוך אוטומטי ליעד</strong>
                       <span className="ai-note-sub" style={{ display: 'block' }}>כתבי מה קרה במפגש, ה-AI ידאג לשאר</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextVoice = !isVoice;
-                        setIsVoice(nextVoice);
-                        startObservationEntry(nextVoice ? 'voice' : 'text', false);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '4px 10px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${isVoice ? '#f87171' : '#cbd5e1'}`,
-                        background: isVoice ? '#fef2f2' : '#ffffff',
-                        color: isVoice ? '#dc2626' : '#475569',
-                        fontSize: '11.5px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                      title={isVoice ? 'מעבר לתיעוד טקסט' : 'הפעלת תיעוד קולי'}
-                    >
-                      {isVoice ? <Mic size={14} color="#dc2626" /> : <MicOff size={14} />}
-                      <span>{isVoice ? 'קולי מופעל' : 'תיעוד קולי'}</span>
-                    </button>
+                    
                   </div>
 
                   <textarea
                     rows={3}
                     value={aiNoteText}
-                    onFocus={() => startObservationEntry(isVoice ? 'voice' : 'text', false)}
+                    onFocus={() => startObservationEntry('text', false)}
                     onChange={(e: any) => {
-                      startObservationEntry(isVoice ? 'voice' : 'text', false);
+                      startObservationEntry('text', false);
                       setAiNoteText(e.target.value);
                     }}
                     placeholder="למשל: היום בחצר איתי ניגש מיוזמתו לשחק בכדור עם שני חברים, והמתין לתורו ללא התפרצות..."

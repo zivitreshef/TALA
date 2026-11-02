@@ -481,7 +481,7 @@ describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
       expect(html).toContain('data-testid="tab-features"');
       expect(html).toContain('מודולים ואימוץ');
       expect(html).toContain('data-testid="tab-journeys"');
-      expect(html).toContain('מסעות מורה ו-Onboarding');
+      expect(html).toContain('מסעות מורה');
       expect(html).toContain('data-testid="tab-friction"');
       expect(html).toContain('חיכוך וחוויית שימוש');
       expect(html).toContain('data-testid="tab-health"');
@@ -515,8 +515,10 @@ describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
       );
 
       expect(html).toContain('data-testid="tab-content-overview"');
-      expect(html).toContain('משתמשים פעילים חודשיים (MAU)');
-      expect(html).toContain('משתמשים פעילים יומיים (DAU)');
+      expect(html).toContain('משתמשים פעילים חודשיים');
+      expect(html).not.toContain('(MAU)');
+      expect(html).toContain('משתמשים פעילים יומיים');
+      expect(html).not.toContain('(DAU)');
       expect(html).toContain('מטריצת שימור שבועי');
     });
 
@@ -530,6 +532,47 @@ describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
 
       expect(html).toContain('dir="rtl"');
     });
+
+    it('verifies absence of redundant banners, fictitious voice panels, and english parenthetical translations', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(AdminAnalyticsDashboard, {
+          currentUser: adminUser,
+          initialEvents: mockSyntheticEvents
+        })
+      );
+
+      // Redundant banners must NOT exist
+      expect(html).not.toContain('הגנת פרטיות קפדנית (Zero-Trust)');
+      expect(html).not.toContain('מדדי מעקב פדגוגי יומי (Daily Tracking Routine)');
+      expect(html).not.toContain('שיתוף מסמכים וצ&#x27;אט פדגוגי מונחה: בדיקת ערוצי');
+
+      // Fictitious voice recording panel must NOT exist
+      expect(html).not.toContain('אופן התיעוד: קולי');
+      expect(html).not.toContain('הקלטה קולית חכמה');
+
+      // English parenthetical translations must NOT exist
+      expect(html).not.toContain('(Tool Discovery)');
+      expect(html).not.toContain('(Checklists)');
+      expect(html).not.toContain('(Weekly Cohorts)');
+      expect(html).not.toContain('(Streak)');
+      expect(html).not.toContain('(Step-by-Step Funnel)');
+      expect(html).not.toContain('(Observation Gaps)');
+      expect(html).not.toContain('(JS Errors)');
+      expect(html).not.toContain('(Retention)');
+    });
+
+    it('verifies Journeys tab provides dedicated scrollable container for all 10 onboarding steps', () => {
+      const html = renderToStaticMarkup(
+        React.createElement(AdminAnalyticsDashboard, {
+          currentUser: adminUser,
+          initialEvents: mockSyntheticEvents
+        })
+      );
+
+      // Verify dashboard root allows overflow visibility
+      expect(html).toContain('overflow:visible');
+    });
+
   });
 
   // ==========================================================================

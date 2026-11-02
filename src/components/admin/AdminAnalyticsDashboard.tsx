@@ -1,9 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, CSSProperties } from 'react';
 import {
   RefreshCw,
-  Download,
-  Mic,
-  FileText
+  Download
 } from 'lucide-react';
 import { fetchTelemetryEvents } from '../../services/telemetryStorage';
 import { computeTelemetryAnalytics } from '../../domain/telemetryAggregator';
@@ -77,17 +75,6 @@ const panelTitleStyle: CSSProperties = {
   marginBottom: '14px'
 };
 
-const calloutBoxStyle: CSSProperties = {
-  background: '#fdfbf7',
-  border: '1px solid #fde68a',
-  borderRadius: '10px',
-  padding: '14px 18px',
-  display: 'flex',
-  gap: '12px',
-  alignItems: 'center',
-  fontSize: '13px',
-  color: '#92400e'
-};
 
 const tableStyle: CSSProperties = {
   width: '100%',
@@ -251,7 +238,7 @@ export default function AdminAnalyticsDashboard({
         borderRadius: '16px',
         border: '1px solid var(--border, #d3dff0)',
         boxShadow: '0 4px 16px rgba(36, 52, 77, 0.08)',
-        overflow: 'hidden',
+        overflow: 'visible',
         margin: '0 auto',
         width: '100%',
         maxWidth: '1320px'
@@ -261,6 +248,8 @@ export default function AdminAnalyticsDashboard({
       <header
         style={{
           background: 'var(--stained-glass-gradient, linear-gradient(135deg, #4a88c7 0%, #6879d0 50%, #8b6fc0 100%))',
+          borderTopLeftRadius: '16px',
+          borderTopRightRadius: '16px',
           color: '#ffffff',
           padding: '22px 28px',
           display: 'flex',
@@ -430,7 +419,7 @@ export default function AdminAnalyticsDashboard({
               onChange={(e) => setSamplingMode(e.target.checked)}
               style={{ width: '16px', height: '16px', accentColor: '#2db39b', cursor: 'pointer' }}
             />
-            <span>דגימת אירועים (חסכון במכסות)</span>
+            <span>דגימת אירועים לחיסכון במכסות</span>
           </label>
 
           <button
@@ -475,7 +464,7 @@ export default function AdminAnalyticsDashboard({
           { id: 'staff', label: '👥 מוכנות לישיבות צוות', badge: 'מודגש' },
           { id: 'sharing', label: '📤 שיתוף וצ\'אט', badge: 'מודגש' },
           { id: 'features', label: '🧩 מודולים ואימוץ' },
-          { id: 'journeys', label: '🗺️ מסעות מורה ו-Onboarding' },
+          { id: 'journeys', label: '🗺️ מסעות מורה' },
           { id: 'friction', label: '⚠️ חיכוך וחוויית שימוש' },
           { id: 'health', label: '🛠️ בריאות טכנית והגדרות' }
         ].map((tab) => (
@@ -522,28 +511,7 @@ export default function AdminAnalyticsDashboard({
 
       {/* Main Tab Content */}
       <div style={{ padding: '24px 28px' }}>
-        {/* Zero-Trust Privacy Banner */}
-        <div
-          style={{
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: '10px',
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '20px',
-            fontSize: '13px',
-            color: '#1e40af'
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>🛡️</span>
-          <div>
-            <strong>הגנת פרטיות קפדנית (Zero-Trust):</strong> כל הנתונים המוצגים להלן הינם מזהים אנונימיים
-            לחלוטין (Pseudonymous IDs) ואינם כוללים שמות תלמידים, תעודות זהות, אבחונים, הערכות קליניות או תוכן
-            הודעות חופשי של המורים.
-          </div>
-        </div>
+        
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
@@ -552,7 +520,7 @@ export default function AdminAnalyticsDashboard({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
               <div style={cardStyle}>
                 <div style={cardHeaderStyle}>
-                  <span style={cardTitleStyle}>משתמשים פעילים חודשיים (MAU)</span>
+                  <span style={cardTitleStyle}>משתמשים פעילים חודשיים</span>
                   <span style={{ ...cardIconStyle, background: '#eef5fc', color: '#4a88c7' }}>👥</span>
                 </div>
                 <div style={cardValueStyle}>{overview.mau} מורים</div>
@@ -563,18 +531,18 @@ export default function AdminAnalyticsDashboard({
 
               <div style={cardStyle}>
                 <div style={cardHeaderStyle}>
-                  <span style={cardTitleStyle}>משתמשים פעילים יומיים (DAU)</span>
+                  <span style={cardTitleStyle}>משתמשים פעילים יומיים</span>
                   <span style={{ ...cardIconStyle, background: '#eefbf7', color: '#2db39b' }}>⚡</span>
                 </div>
                 <div style={cardValueStyle}>{overview.dau} מורים</div>
                 <div style={{ fontSize: '12px', color: '#0369a1', fontWeight: 600 }}>
-                  יחס DAU/MAU בריא של {overview.dauMauRatio}%
+                  יחס פעילות בריא של {overview.dauMauRatio}%
                 </div>
               </div>
 
               <div style={cardStyle}>
                 <div style={cardHeaderStyle}>
-                  <span style={cardTitleStyle}>שיעור השלמת Onboarding</span>
+                  <span style={cardTitleStyle}>שיעור השלמת תהליך קליטה</span>
                   <span style={{ ...cardIconStyle, background: '#fbf5ee', color: '#f59e0b' }}>🎓</span>
                 </div>
                 <div style={cardValueStyle}>{userJourneys.completionRate}%</div>
@@ -599,7 +567,7 @@ export default function AdminAnalyticsDashboard({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '16px' }}>
               {/* Cohort Matrix */}
               <div style={panelStyle}>
-                <h3 style={panelTitleStyle}>📅 מטריצת שימור שבועי (Weekly Cohorts):</h3>
+                <h3 style={panelTitleStyle}>📅 מטריצת שימור שבועי:</h3>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={tableStyle}>
                     <thead>
@@ -659,13 +627,7 @@ export default function AdminAnalyticsDashboard({
         {/* TAB 2: DAILY PEDAGOGICAL TRACKING */}
         {activeTab === 'daily' && (
           <div data-testid="tab-content-daily" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={calloutBoxStyle}>
-              <span>💡</span>
-              <div>
-                <strong>מדדי מעקב פדגוגי יומי (Daily Tracking Routine):</strong> מורים העושים שימוש קבוע במעקב
-                יומי מדווחים על פחות שחיקה לקראת ישיבות הצוות. להלן ניתוח עומק של העקביות, אופן התיעוד ושיעורי הנטישה.
-              </div>
-            </div>
+            
 
             {/* Daily KPI Strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
@@ -682,7 +644,7 @@ export default function AdminAnalyticsDashboard({
 
               <div style={cardStyle}>
                 <div style={cardHeaderStyle}>
-                  <span style={cardTitleStyle}>רצף מקסימלי (Streak)</span>
+                  <span style={cardTitleStyle}>רצף מקסימלי</span>
                   <span style={{ ...cardIconStyle, background: '#fef3c7', color: '#b45309' }}>🔥</span>
                 </div>
                 <div style={cardValueStyle}>{dailyTracking.maxStreak} ימים</div>
@@ -716,35 +678,9 @@ export default function AdminAnalyticsDashboard({
 
             {/* Breakdown Panels */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
-              {/* Voice vs Text Logging */}
-              <div style={panelStyle}>
-                <h3 style={panelTitleStyle}>🎙️ אופן התיעוד: קולי (Voice) לעומת טקסטואלי:</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Mic size={15} color="#8b6fc0" /> הקלטה קולית חכמה:
-                    </span>
-                    <strong>{dailyTracking.voiceCount} ({dailyTracking.voicePct}%)</strong>
-                  </div>
-                  <div style={{ height: '8px', background: '#e9f0f8', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${dailyTracking.voicePct}%`, background: '#8b6fc0', borderRadius: '4px' }} />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px', marginTop: '6px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <FileText size={15} color="#4a88c7" /> הקלדת טקסט:
-                    </span>
-                    <strong>{dailyTracking.textCount} ({dailyTracking.textPct}%)</strong>
-                  </div>
-                  <div style={{ height: '8px', background: '#e9f0f8', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${dailyTracking.textPct}%`, background: '#4a88c7', borderRadius: '4px' }} />
-                  </div>
-                </div>
-              </div>
-
               {/* Consistency Streaks Distribution */}
               <div style={panelStyle}>
-                <h3 style={panelTitleStyle}>📈 התפלגות רצפי עקביות (Streaks):</h3>
+                <h3 style={panelTitleStyle}>📈 התפלגות רצפי עקביות:</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
                   {dailyTracking.streakDistribution.map((s, idx) => (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -766,13 +702,7 @@ export default function AdminAnalyticsDashboard({
         {/* TAB 3: STAFF READINESS & SUMMARIES */}
         {activeTab === 'staff' && (
           <div data-testid="tab-content-staff" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={calloutBoxStyle}>
-              <span>👥</span>
-              <div>
-                <strong>מוכנות לישיבות צוות וסיכומים פדגוגיים:</strong> מעקב אחר אימוץ כלי הסיכום האוטומטי
-                ושימוש ברשימות התיוג של הצוות הרב-מקצועי.
-              </div>
-            </div>
+            
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
               <div style={cardStyle}>
@@ -799,7 +729,7 @@ export default function AdminAnalyticsDashboard({
 
               <div style={cardStyle}>
                 <div style={cardHeaderStyle}>
-                  <span style={cardTitleStyle}>בדיקות מוכנות (Checklists)</span>
+                  <span style={cardTitleStyle}>בדיקות מוכנות</span>
                   <span style={{ ...cardIconStyle, background: '#eefbf7', color: '#2db39b' }}>✔️</span>
                 </div>
                 <div style={cardValueStyle}>{staffReadiness.readinessChecksCount}</div>
@@ -846,13 +776,7 @@ export default function AdminAnalyticsDashboard({
         {/* TAB 4: SHARING AND CHAT */}
         {activeTab === 'sharing' && (
           <div data-testid="tab-content-sharing" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={calloutBoxStyle}>
-              <span>💬</span>
-              <div>
-                <strong>שיתוף מסמכים וצ'אט פדגוגי מונחה:</strong> בדיקת ערוצי שיתוף התל"א (PDF, Word, WhatsApp)
-                ותדירות השימוש בצ'אט הפדגוגי — תוך שמירה מלאה על פרטיות (אפס תוכן הודעות נשמר).
-              </div>
-            </div>
+            
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
               <div style={cardStyle}>
@@ -899,7 +823,7 @@ export default function AdminAnalyticsDashboard({
                     <strong>{sharingAndChat.formats.pdf}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                    <span>קובץ Word (DOCX):</span>
+                    <span>קובץ Word:</span>
                     <strong>{sharingAndChat.formats.docx}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
@@ -910,7 +834,7 @@ export default function AdminAnalyticsDashboard({
               </div>
 
               <div style={panelStyle}>
-                <h3 style={panelTitleStyle}>🔍 גילוי כלי עזר בצ'אט (Tool Discovery):</h3>
+                <h3 style={panelTitleStyle}>🔍 גילוי כלי עזר בצ'אט:</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
                   {Object.entries(sharingAndChat.toolDiscoveryCounts).length === 0 ? (
                     <div style={{ fontSize: '13px', color: '#8a9bb3' }}>טרם תועדו כלי עזר בצ'אט בטווח זה</div>
@@ -961,8 +885,26 @@ export default function AdminAnalyticsDashboard({
         {activeTab === 'journeys' && (
           <div data-testid="tab-content-journeys" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={panelStyle}>
-              <h3 style={panelTitleStyle}>🗺️ משפך Onboarding ב-10 שלבים (Step-by-Step Funnel):</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                <h3 style={{ ...panelTitleStyle, margin: 0 }}>🗺️ משפך קליטה ב-10 שלבים:</h3>
+                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                  גלילה לכל השלבים (1 עד 10)
+                </span>
+              </div>
+              <div
+                data-testid="journeys-steps-container"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  marginTop: '10px',
+                  maxHeight: '480px',
+                  overflowY: 'auto',
+                  paddingLeft: '6px',
+                  paddingRight: '2px',
+                  scrollbarWidth: 'thin'
+                }}
+              >
                 {userJourneys.steps.map((st) => (
                   <div
                     key={st.stepNumber}
@@ -1046,7 +988,7 @@ export default function AdminAnalyticsDashboard({
 
               <div style={cardStyle}>
                 <div style={cardHeaderStyle}>
-                  <span style={cardTitleStyle}>פערי תצפית (Observation Gaps)</span>
+                  <span style={cardTitleStyle}>פערי תצפית</span>
                   <span style={{ ...cardIconStyle, background: '#e0f2fe', color: '#0369a1' }}>📅</span>
                 </div>
                 <div style={cardValueStyle}>{uxFriction.observationGaps}</div>
@@ -1094,12 +1036,12 @@ export default function AdminAnalyticsDashboard({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
               <div style={cardStyle}>
                 <div style={cardHeaderStyle}>
-                  <span style={cardTitleStyle}>שגיאות לקוח (JS Errors)</span>
+                  <span style={cardTitleStyle}>שגיאות לקוח</span>
                   <span style={{ ...cardIconStyle, background: '#fee2e2', color: '#b91c1c' }}>🐞</span>
                 </div>
                 <div style={cardValueStyle}>{technicalHealth.jsErrorsCount}</div>
                 <div style={{ fontSize: '12px', color: '#991b1b', fontWeight: 500 }}>
-                  שגיאות דפדפן שנתפסו ב-ErrorBoundary
+                  שגיאות דפדפן שנתפסו במערכת
                 </div>
               </div>
 
@@ -1121,7 +1063,7 @@ export default function AdminAnalyticsDashboard({
                 </div>
                 <div style={cardValueStyle}>{technicalHealth.avgPageLoadMs}ms</div>
                 <div style={{ fontSize: '12px', color: '#075985', fontWeight: 500 }}>
-                  זמן טעינה ממוצע של ה-SPA
+                  זמן טעינה ממוצע של המערכת
                 </div>
               </div>
             </div>
@@ -1148,7 +1090,7 @@ export default function AdminAnalyticsDashboard({
 
               {/* Administrative Retention Controls */}
               <div style={panelStyle}>
-                <h3 style={panelTitleStyle}>⚙️ הגדרות שמירת נתונים ומחיקה (Retention):</h3>
+                <h3 style={panelTitleStyle}>⚙️ הגדרות שמירת נתונים ומחיקה:</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
                   <div>
                     <label style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>
@@ -1166,10 +1108,10 @@ export default function AdminAnalyticsDashboard({
                         fontSize: '13px'
                       }}
                     >
-                      <option value="30">30 יום (מומלץ לחיסכון במכסה)</option>
-                      <option value="90">90 יום (רבעון מלא)</option>
-                      <option value="180">180 יום (חצי שנה)</option>
-                      <option value="365">365 יום (שנה מלאה)</option>
+                      <option value="30">30 יום - מומלץ לחיסכון במכסה</option>
+                      <option value="90">90 יום - רבעון מלא</option>
+                      <option value="180">180 יום - חצי שנה</option>
+                      <option value="365">365 יום - שנה מלאה</option>
                     </select>
                   </div>
 
