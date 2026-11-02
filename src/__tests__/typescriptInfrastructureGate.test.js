@@ -7,12 +7,12 @@ describe('TypeScript Migration Infrastructure Gate (Phase 1)', () => {
   const tsconfigPath = path.join(rootDir, 'tsconfig.json');
   const packageJsonPath = path.join(rootDir, 'package.json');
 
-  it('provides a valid tsconfig.json with hybrid JavaScript/TypeScript compilation options', () => {
+  it('provides a valid tsconfig.json with strict pure TypeScript compilation options (allowJs: false)', () => {
     expect(fs.existsSync(tsconfigPath)).toBe(true);
     const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf8'));
 
     expect(tsconfig.compilerOptions).toBeDefined();
-    expect(tsconfig.compilerOptions.allowJs).toBe(true);
+    expect(tsconfig.compilerOptions.allowJs).toBe(false);
     expect(tsconfig.compilerOptions.checkJs).toBe(false);
     expect(tsconfig.compilerOptions.noEmit).toBe(true);
     expect(tsconfig.compilerOptions.jsx).toBe('react-jsx');
