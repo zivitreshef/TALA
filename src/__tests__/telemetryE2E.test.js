@@ -3,7 +3,7 @@ import {
   UsageTelemetryService,
   OFFLINE_STORAGE_KEY,
   BATCH_SIZE
-} from '../services/usageTelemetryService.js';
+} from '../services/usageTelemetryService';
 import {
   TELEMETRY_EVENTS,
   TELEMETRY_CATEGORIES,

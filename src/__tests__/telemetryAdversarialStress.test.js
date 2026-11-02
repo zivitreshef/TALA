@@ -5,7 +5,7 @@ import {
   RING_BUFFER_CAPACITY,
   MAX_OFFLINE_EVENTS,
   DEDUP_WINDOW_MS
-} from '../services/usageTelemetryService.js';
+} from '../services/usageTelemetryService';
 import {
   isProhibitedKey,
   scrubPiiFromString,

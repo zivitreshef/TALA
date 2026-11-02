@@ -14,7 +14,7 @@ import {
   sendTestAdminAlert,
   dispatchAlertsToAdmins,
   dispatchChatAlertToAdmins
-} from '../services/alertDispatcher.js';
+} from '../services/alertDispatcher';
 import * as emailService from '../emailService.js';
 
 describe('Admin Real-Time Alerts Domain & Dispatcher', () => {
@@ -393,7 +393,7 @@ describe('Admin Real-Time Alerts Domain & Dispatcher', () => {
     });
 
     it('dispatchChatAlertToAdmins dispatches alerts to all active admins when an unauthenticated login inquiry arrives via server', async () => {
-      const { dispatchServerInquiryAlerts } = await import('../services/alertDispatcher.js');
+      const { dispatchServerInquiryAlerts } = await import('../services/alertDispatcher');
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
