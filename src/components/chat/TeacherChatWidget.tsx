@@ -28,9 +28,32 @@ import {
   SENDER_ROLES,
   THREAD_STATUS,
   RESOLUTION_FEEDBACK,
-  countUnreadMessages
+  countUnreadMessages,
+  type SupportThread,
+  type ChatAttachment
 } from '../../domain/supportChat';
 import { processChatImageFile } from '../../services/chatImageHelper';
+import type { UserPermissionEntity } from '../../domain/permissions';
+
+export interface TeacherChatWidgetUser {
+  email?: string | null;
+  name?: string | null;
+  [key: string]: unknown;
+}
+
+export interface TeacherChatWidgetProps {
+  currentUser?: TeacherChatWidgetUser | null;
+  initialUserEmail?: string;
+  initialUserName?: string;
+  initialThread?: SupportThread | null;
+  allowedUsers?: UserPermissionEntity[];
+  emailEngineConfig?: Record<string, unknown> | null;
+  defaultOpen?: boolean;
+  isOpenControlled?: boolean | null;
+  onToggleOpen?: ((isOpen: boolean) => void) | null;
+  onCloseCustom?: (() => void) | null;
+  onboardingDockMode?: 'hidden' | 'collapsed' | 'expanded';
+}
 
 export default function TeacherChatWidget({
   currentUser = null,
@@ -44,30 +67,30 @@ export default function TeacherChatWidget({
   onToggleOpen = null,
   onCloseCustom = null,
   onboardingDockMode = 'hidden'
-}) {
-  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+}: TeacherChatWidgetProps): React.JSX.Element | null {
+  const [internalOpen, setInternalOpen] = useState<boolean>(defaultOpen);
   const isOpen = typeof isOpenControlled === 'boolean' ? isOpenControlled : internalOpen;
 
-  const [thread, setThread] = useState(initialThread);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [isButtonHovered, setIsButtonHovered] = useState(false);
-  const [attachment, setAttachment] = useState(null);
-  const [isProcessingImg, setIsProcessingImg] = useState(false);
-  const [imgError, setImgError] = useState('');
-  const [previewImgUrl, setPreviewImgUrl] = useState(null);
-  const [showResolveConfirm, setShowResolveConfirm] = useState(false);
-  const [showEscalatePrompt, setShowEscalatePrompt] = useState(false);
-  const [isResolving, setIsResolving] = useState(false);
+  const [thread, setThread] = useState<SupportThread | null>(initialThread);
+  const [inputMessage, setInputMessage] = useState<string>('');
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [isButtonHovered, setIsButtonHovered] = useState<boolean>(false);
+  const [attachment, setAttachment] = useState<ChatAttachment | null>(null);
+  const [isProcessingImg, setIsProcessingImg] = useState<boolean>(false);
+  const [imgError, setImgError] = useState<string>('');
+  const [previewImgUrl, setPreviewImgUrl] = useState<string | null>(null);
+  const [showResolveConfirm, setShowResolveConfirm] = useState<boolean>(false);
+  const [showEscalatePrompt, setShowEscalatePrompt] = useState<boolean>(false);
+  const [isResolving, setIsResolving] = useState<boolean>(false);
 
-  const fileInputRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const effectiveEmail = String(currentUser?.email || initialUserEmail || '').trim().toLowerCase();
   const effectiveName = String(currentUser?.name || initialUserName || 'מורה').trim();
 
   // Scroll to bottom whenever messages update
-  const scrollToBottom = () => {
+  const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -81,10 +104,10 @@ export default function TeacherChatWidget({
   useEffect(() => {
     if (!effectiveEmail) return;
 
-    const unsubscribe = subscribeToSupportThread(effectiveEmail, (cloudThread) => {
+    const unsubscribe = subscribeToSupportThread(effectiveEmail, (cloudThread: SupportThread | null) => {
       setThread(cloudThread);
       if (isOpen && cloudThread?.unreadByUser) {
-        markThreadReadInCloud(cloudThread.id || effectiveEmail, SENDER_ROLES.USER);
+        void markThreadReadInCloud(cloudThread.id || effectiveEmail, SENDER_ROLES.USER);
       }
     });
 
@@ -94,7 +117,7 @@ export default function TeacherChatWidget({
   }, [effectiveEmail, isOpen]);
 
   // Handle opening/closing chat and clearing unread badge
-  const handleToggle = () => {
+  const handleToggle = (): void => {
     const nextState = !isOpen;
     if (typeof onToggleOpen === 'function') {
       onToggleOpen(nextState);
@@ -103,7 +126,7 @@ export default function TeacherChatWidget({
     }
 
     if (nextState && thread?.unreadByUser) {
-      markThreadReadInCloud(thread.id || effectiveEmail, SENDER_ROLES.USER);
+      void markThreadReadInCloud(thread.id || effectiveEmail, SENDER_ROLES.USER);
     }
     if (!nextState && typeof onCloseCustom === 'function') {
       onCloseCustom();
@@ -111,9 +134,9 @@ export default function TeacherChatWidget({
   };
 
   // Clear chat history
-  const handleClearHistory = async () => {
+  const handleClearHistory = async (): Promise<void> => {
     if (!thread?.messages || thread.messages.length === 0) return;
-    const confirmed = window.confirm('האם לסיים את הפנייה ולנקות את היסטוריית השיחה בצ\'אט?');
+    const confirmed = typeof window !== 'undefined' ? window.confirm('האם לסיים את הפנייה ולנקות את היסטוריית השיחה בצ\'אט?') : true;
     if (!confirmed) return;
 
     try {
@@ -125,7 +148,7 @@ export default function TeacherChatWidget({
   };
 
   // Handle teacher confirming resolution (Thumbs Up)
-  const handleConfirmResolve = async () => {
+  const handleConfirmResolve = async (): Promise<void> => {
     if (!effectiveEmail || isResolving) return;
     setIsResolving(true);
     try {
@@ -149,7 +172,7 @@ export default function TeacherChatWidget({
   };
 
   // Handle teacher escalating / asking for more help (Thumbs Down)
-  const handleEscalate = async (note = 'המורה ציינה שדרוש מענה נוסף') => {
+  const handleEscalate = async (note = 'המורה ציינה שדרוש מענה נוסף'): Promise<void> => {
     if (!effectiveEmail || isResolving) return;
     setIsResolving(true);
     try {
@@ -173,7 +196,7 @@ export default function TeacherChatWidget({
   };
 
   // Handle clipboard paste (Ctrl+V) for screenshots
-  const handlePaste = async (e) => {
+  const handlePaste = async (e: React.ClipboardEvent<HTMLFormElement>): Promise<void> => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
@@ -203,7 +226,7 @@ export default function TeacherChatWidget({
   };
 
   // Handle file picker selection
-  const handleFileSelected = async (e) => {
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -224,7 +247,7 @@ export default function TeacherChatWidget({
   };
 
   // Send message
-  const handleSendMessage = async (e) => {
+  const handleSendMessage = async (e?: React.FormEvent): Promise<void> => {
     if (e) e.preventDefault();
     const cleanText = inputMessage.trim();
     if ((!cleanText && !attachment) || isSending || isProcessingImg || !effectiveEmail) return;
@@ -242,7 +265,7 @@ export default function TeacherChatWidget({
         attachment,
         senderRole: SENDER_ROLES.USER,
         senderName: effectiveName,
-        admins,
+        admins: admins as Array<{ email: string; name?: string; [key: string]: unknown }>,
         emailConfig: emailEngineConfig
       });
 
@@ -419,7 +442,7 @@ export default function TeacherChatWidget({
               {thread?.messages && thread.messages.length > 0 && (
                 <button
                   type="button"
-                  onClick={handleClearHistory}
+                  onClick={() => void handleClearHistory()}
                   style={{
                     background: 'rgba(255, 255, 255, 0.2)',
                     border: 'none',
@@ -560,12 +583,12 @@ export default function TeacherChatWidget({
                       <div>{msg.text}</div>
                     )}
 
-                    {hasAttachment && (
+                    {hasAttachment && msg.attachment && (
                       <div style={{ marginTop: msg.text && msg.text !== '📷 [צילום מסך מצורף]' ? '6px' : '0' }}>
                         <img
                           src={msg.attachment.url}
                           alt={msg.attachment.name || 'צילום מסך'}
-                          onClick={() => setPreviewImgUrl(msg.attachment.url)}
+                          onClick={() => setPreviewImgUrl(msg.attachment?.url || null)}
                           style={{
                             maxWidth: '100%',
                             maxHeight: '170px',
@@ -615,7 +638,7 @@ export default function TeacherChatWidget({
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleEscalate('נפתח מחדש ע"י המורה')}
+                      onClick={() => void handleEscalate('נפתח מחדש ע"י המורה')}
                       style={{
                         background: 'none',
                         border: 'none',
@@ -689,7 +712,7 @@ export default function TeacherChatWidget({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <button
                         type="button"
-                        onClick={handleConfirmResolve}
+                        onClick={() => void handleConfirmResolve()}
                         disabled={isResolving}
                         style={{
                           background: '#059669',
@@ -746,7 +769,7 @@ export default function TeacherChatWidget({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <button
                         type="button"
-                        onClick={() => handleEscalate('המורה ציינה שדרוש מענה נוסף')}
+                        onClick={() => void handleEscalate('המורה ציינה שדרוש מענה נוסף')}
                         disabled={isResolving}
                         style={{
                           background: '#d97706',
@@ -915,8 +938,8 @@ export default function TeacherChatWidget({
 
           {/* Input Footer with Attachment & Paste Support */}
           <form
-            onSubmit={handleSendMessage}
-            onPaste={handlePaste}
+            onSubmit={(e) => void handleSendMessage(e)}
+            onPaste={(e) => void handlePaste(e)}
             style={{
               padding: '10px 12px',
               background: '#ffffff',
@@ -955,7 +978,7 @@ export default function TeacherChatWidget({
               type="file"
               accept="image/png,image/jpeg,image/webp"
               style={{ display: 'none' }}
-              onChange={handleFileSelected}
+              onChange={(e) => void handleFileSelected(e)}
             />
 
             <input

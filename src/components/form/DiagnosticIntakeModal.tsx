@@ -4,7 +4,6 @@ import {
   Sparkles,
   Check,
   CheckCircle2,
-  ChevronRight,
   Loader2,
   X,
   AlertCircle,
@@ -29,9 +28,35 @@ import {
 } from '../../domain/dossierSecurity';
 import {
   saveDossierFileBlob,
-  uploadDossierFileToCloud,
-  MAX_DOSSIER_FILE_SIZE_BYTES
+  uploadDossierFileToCloud
 } from '../../services/dossierFileStorage';
+import type {
+  DiagnosticDocumentRecord,
+  SanitizedDiagnosticIntake
+} from '../../domain/types';
+
+export interface DiagnosticIntakeStudentData {
+  id?: string;
+  name?: string;
+  gender?: 'boy' | 'girl' | string;
+  planType?: string;
+  goals?: unknown[];
+  studentGeneralBackground?: string;
+  studentSupportReceived?: string;
+  studentMainGoal?: string;
+  strengthsExisting?: string;
+  strengthsToEmpower?: string;
+  diagnosticDocuments?: DiagnosticDocumentRecord[];
+  [key: string]: unknown;
+}
+
+export interface DiagnosticIntakeModalProps {
+  formData: DiagnosticIntakeStudentData;
+  onApplyIntake?: (updatedStudent: DiagnosticIntakeStudentData) => void;
+  onClose?: () => void;
+  initialText?: string;
+  initialDocName?: string;
+}
 
 export default function DiagnosticIntakeModal({
   formData,
@@ -39,18 +64,18 @@ export default function DiagnosticIntakeModal({
   onClose,
   initialText = '',
   initialDocName = ''
-}) {
-  const [step, setStep] = useState('input'); // 'input' | 'review'
-  const [uploadedFileName, setUploadedFileName] = useState(initialDocName || '');
-  const [uploadedDocRecord, setUploadedDocRecord] = useState(null);
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [parsedResult, setParsedResult] = useState(null);
-  const [selectedGoalIds, setSelectedGoalIds] = useState([]);
+}: DiagnosticIntakeModalProps): React.JSX.Element {
+  const [step, setStep] = useState<'input' | 'review'>('input');
+  const [uploadedFileName, setUploadedFileName] = useState<string>(initialDocName || '');
+  const [uploadedDocRecord, setUploadedDocRecord] = useState<DiagnosticDocumentRecord | null>(null);
+  const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [parsedResult, setParsedResult] = useState<SanitizedDiagnosticIntake | null>(null);
+  const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
 
   // Highlighter and text selection states
-  const initialLines = useMemo(() => {
+  const initialLines = useMemo<string[]>(() => {
     if (!initialText) return [];
     return initialText
       .split(/\r?\n/)
@@ -58,18 +83,20 @@ export default function DiagnosticIntakeModal({
       .filter((l) => l.length > 0);
   }, [initialText]);
 
-  const [extractedLines, setExtractedLines] = useState(initialLines);
-  const [selectedLineIndices, setSelectedLineIndices] = useState(
+  const [extractedLines, setExtractedLines] = useState<string[]>(initialLines);
+  const [selectedLineIndices, setSelectedLineIndices] = useState<Set<number>>(
     () => new Set(initialLines.map((_, i) => i))
   );
-  const [viewMode, setViewMode] = useState(initialLines.length > 0 ? 'highlighter' : 'freeText');
-  const [inputText, setInputText] = useState(initialText || '');
-  const [manualNotes, setManualNotes] = useState('');
-  const [extractionStatus, setExtractionStatus] = useState(
+  const [viewMode, setViewMode] = useState<'highlighter' | 'freeText'>(
+    initialLines.length > 0 ? 'highlighter' : 'freeText'
+  );
+  const [inputText, setInputText] = useState<string>(initialText || '');
+  const [manualNotes, setManualNotes] = useState<string>('');
+  const [extractionStatus, setExtractionStatus] = useState<'idle' | 'success' | 'scanned_image'>(
     initialLines.length > 0 ? 'success' : 'idle'
   );
 
-  const handleFileUpload = async (e) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -77,7 +104,7 @@ export default function DiagnosticIntakeModal({
     const securityCheck = await validateDossierFileUpload(file);
     if (!securityCheck.valid) {
       setErrorMessage(securityCheck.reason || 'הקובץ נחסם מטעמי אבטחה.');
-      const inputEl = document.getElementById('diagnostic-file-input');
+      const inputEl = document.getElementById('diagnostic-file-input') as HTMLInputElement | null;
       if (inputEl) inputEl.value = '';
       return;
     }
@@ -91,12 +118,12 @@ export default function DiagnosticIntakeModal({
       // Scan extracted content for malicious scripts/code injection
       const textScan = scanTextForMaliciousScripts(cleanExtracted);
       if (!textScan.valid) {
-        setErrorMessage(textScan.reason);
-        const inputEl = document.getElementById('diagnostic-file-input');
+        setErrorMessage(textScan.reason || 'זוהה תוכן לא תקין בקובץ.');
+        const inputEl = document.getElementById('diagnostic-file-input') as HTMLInputElement | null;
         if (inputEl) inputEl.value = '';
         return;
       }
-      const ext = (file.name || '').split('.').pop().toLowerCase() || 'pdf';
+      const ext = (file.name || '').split('.').pop()?.toLowerCase() || 'pdf';
       const sizeFormatted = file.size ? `${Math.round(file.size / 1024)} KB` : '';
 
       // Always create and preserve document record
@@ -115,11 +142,11 @@ export default function DiagnosticIntakeModal({
 
       // Upload original file to Firebase Storage for cross-teacher access
       try {
-        const studentId = formData?.id || 'general';
+        const studentId = String(formData?.id || 'general');
         const cloudResult = await uploadDossierFileToCloud(docRecord.id, file, studentId);
         if (cloudResult?.storageUrl) {
           docRecord.storageUrl = cloudResult.storageUrl;
-          docRecord.storagePath = cloudResult.storagePath;
+          docRecord.storagePath = cloudResult.storagePath || '';
         }
       } catch (cloudErr) {
         console.warn('Failed to upload file to Firebase Cloud Storage:', cloudErr);
@@ -153,7 +180,7 @@ export default function DiagnosticIntakeModal({
     }
   };
 
-  const toggleLine = (idx) => {
+  const toggleLine = (idx: number): void => {
     setSelectedLineIndices((prev) => {
       const next = new Set(prev);
       if (next.has(idx)) {
@@ -165,22 +192,25 @@ export default function DiagnosticIntakeModal({
     });
   };
 
-  const selectAllLines = () => {
+  const selectAllLines = (): void => {
     setSelectedLineIndices(new Set(extractedLines.map((_, i) => i)));
   };
 
-  const clearAllLines = () => {
+  const clearAllLines = (): void => {
     setSelectedLineIndices(new Set());
   };
 
-  const handleSaveDocOnly = () => {
+  const handleSaveDocOnly = (): void => {
     if (!uploadedDocRecord) return;
-    const updated = addDiagnosticDocumentToStudent(formData, uploadedDocRecord);
+    const updated = addDiagnosticDocumentToStudent(
+      formData as Record<string, unknown>,
+      uploadedDocRecord
+    ) as DiagnosticIntakeStudentData;
     onApplyIntake?.(updated);
     onClose?.();
   };
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (): Promise<void> => {
     let textToAnalyze = '';
     if (viewMode === 'highlighter' && extractedLines.length > 0) {
       const chosenLines = extractedLines.filter((_, i) => selectedLineIndices.has(i));
@@ -200,9 +230,9 @@ export default function DiagnosticIntakeModal({
     try {
       const prompt = buildDiagnosticPrompt({
         diagnosticText: textToAnalyze,
-        gender: formData.gender || 'boy',
-        studentName: formData.name || '',
-        planType: formData.planType || 'תל"א'
+        gender: (formData.gender as 'boy' | 'girl') || 'boy',
+        studentName: String(formData.name || ''),
+        planType: String(formData.planType || 'תל"א')
       });
 
       const rawResponse = await callAiProxyEndpoint({
@@ -214,7 +244,10 @@ export default function DiagnosticIntakeModal({
         }
       });
 
-      const sanitized = sanitizeDiagnosticIntakeResult(rawResponse, formData.gender || 'boy');
+      const sanitized = sanitizeDiagnosticIntakeResult(
+        rawResponse as Record<string, unknown>,
+        (formData.gender as 'boy' | 'girl') || 'boy'
+      );
       setParsedResult(sanitized);
       setSelectedGoalIds(sanitized.suggestedGoals.map((g) => g.id));
       setStep('review');
@@ -226,19 +259,19 @@ export default function DiagnosticIntakeModal({
     }
   };
 
-  const handleConfirmApply = () => {
+  const handleConfirmApply = (): void => {
     if (!parsedResult) return;
     const updated = applyDiagnosticIntakeToStudent(
-      formData,
+      formData as Record<string, unknown>,
       parsedResult,
       selectedGoalIds,
       uploadedDocRecord
-    );
+    ) as DiagnosticIntakeStudentData;
     onApplyIntake?.(updated);
     onClose?.();
   };
 
-  const toggleGoalSelection = (goalId) => {
+  const toggleGoalSelection = (goalId: string): void => {
     setSelectedGoalIds((prev) =>
       prev.includes(goalId) ? prev.filter((id) => id !== goalId) : [...prev, goalId]
     );
@@ -332,7 +365,7 @@ export default function DiagnosticIntakeModal({
                     id="diagnostic-file-input"
                     type="file"
                     accept=".docx,.pdf,.txt,.csv,.png,.jpg,.jpeg,.webp"
-                    onChange={handleFileUpload}
+                    onChange={(e) => void handleFileUpload(e)}
                     disabled={isExtracting}
                     style={{ display: 'none' }}
                   />
@@ -607,7 +640,7 @@ export default function DiagnosticIntakeModal({
                 </div>
               </div>
 
-              {/* Busy Indicator 2: Active AI Generation Card */}
+              {/* Active AI Generation Card */}
               {isLoading && (
                 <div
                   style={{
@@ -668,7 +701,7 @@ export default function DiagnosticIntakeModal({
                   <button
                     type="button"
                     className="btn-submit-email"
-                    onClick={handleAnalyze}
+                    onClick={() => void handleAnalyze()}
                     disabled={isLoading || isExtracting}
                     style={{ padding: '8px 18px' }}
                   >
