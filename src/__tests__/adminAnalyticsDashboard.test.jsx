@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import AdminAnalyticsDashboard, { isUserAdmin } from '../components/admin/AdminAnalyticsDashboard.jsx';
+import AdminAnalyticsDashboard, { isUserAdmin } from '../components/admin/AdminAnalyticsDashboard';
 import {
   saveTelemetryBatch,
   fetchTelemetryEvents,
@@ -27,7 +27,7 @@ import {
   TELEMETRY_CATEGORIES,
   TELEMETRY_EVENTS
 } from '../domain/telemetryTaxonomy';
-import AdminAllowlistModal from '../components/modals/AdminAllowlistModal.jsx';
+import AdminAllowlistModal from '../components/modals/AdminAllowlistModal';
 
 describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
   const adminUser = {

@@ -4,7 +4,7 @@ import path from 'path';
 
 describe('App Root Hook Ordering & Rules of Hooks (Regression Tests for Error #310)', () => {
   it('ensures userStudents is declared before any hook references it in App.jsx', () => {
-    const appPath = path.resolve(__dirname, '../App.jsx');
+    const appPath = (fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx'));
     const appSource = fs.readFileSync(appPath, 'utf8');
 
     const lines = appSource.split(/\r?\n/);
@@ -29,7 +29,7 @@ describe('App Root Hook Ordering & Rules of Hooks (Regression Tests for Error #3
   });
 
   it('ensures NO React hooks are called after any top-level early return in App.jsx (prevents React Error #310)', () => {
-    const appPath = path.resolve(__dirname, '../App.jsx');
+    const appPath = (fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx'));
     const appSource = fs.readFileSync(appPath, 'utf8');
     const lines = appSource.split(/\r?\n/);
 
@@ -55,7 +55,7 @@ describe('App Root Hook Ordering & Rules of Hooks (Regression Tests for Error #3
   });
 
   it('verifies that all hooks in App.jsx are grouped strictly in the initialization preamble', () => {
-    const appPath = path.resolve(__dirname, '../App.jsx');
+    const appPath = (fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx'));
     const appSource = fs.readFileSync(appPath, 'utf8');
     const lines = appSource.split(/\r?\n/);
 

@@ -10,20 +10,14 @@ import {
   TrendingUp,
   UserCheck,
   Sparkles,
-  FileSpreadsheet,
-  Edit2,
-  Check,
-  X,
+        X,
   ChevronDown,
   ChevronLeft,
   AlertTriangle,
-  Save,
-  Archive,
+    Archive,
   RotateCcw,
-  Printer,
-  KeyRound,
-  MessageSquareHeart,
-  Lock,
+    KeyRound,
+    Lock,
   Unlock,
   GraduationCap,
   UserPlus,
@@ -32,8 +26,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Calendar,
-  Home,
-  ClipboardList
+    ClipboardList
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -74,26 +67,15 @@ import {
 import { startAiProxyKeepAlive } from './services/aiProxyClient';
 import {
   INITIAL_STUDENTS_DATA,
-  ENVIRONMENTS_LIST,
   loadGoalBank,
   saveGoalBank,
   recordGoalUsageOrAdd,
-  getSortedGoalBank,
-  addGoalByAdmin,
+    addGoalByAdmin,
   updateGoalByAdmin,
   deleteGoalByAdmin,
   getNextSchoolYear,
   buildRolloverStudentForNextYear,
-  adaptTextToGender,
-  resolveStudentAgeAndDateInfo,
-  normalizeAndSizeGoalDuration,
-  isGoalEmpty,
-  deduplicateAndNormalizeGoalBank,
-  getCanonicalEnvironmentsForStage,
-  canonicalizeEnvironment,
-  KINDERGARTEN_ENVIRONMENTS,
-  SCHOOL_ENVIRONMENTS
-} from './goalBankData';
+          deduplicateAndNormalizeGoalBank} from './goalBankData';
 import {
   subscribeToTalaBackend,
   saveAllowedUsersToCloud,
@@ -127,23 +109,16 @@ import {
   sendPedagogicalReminderEmailInBackground
 } from './emailService';
 import {
-  detectStudentStage,
-  getEffectiveStudentStage,
-  isGoalRelevantForStage
-} from './studentStage.js';
-import {
   PRIMARY_ADMIN_EMAIL,
   isStudentOwnedByUser,
   getStudentsForUser,
   getArchivedStudentsForUser,
   getUnreadSharedReportsForUser,
-  getUnreadTeamMessagesCountForUser,
-  markTeamMessagesAsRead,
+    markTeamMessagesAsRead,
   markSharedReportAsRead
 } from './domain/permissions';
 import {
-  safeGetStorageItem,
-  safeSetStorageItem,
+    safeSetStorageItem,
   safeRemoveStorageItem,
   safeGetStorageJson,
   safeSetStorageJson
@@ -167,8 +142,7 @@ import {
   filterStudentsBySearch,
   sortStudentsByName,
   sortStudentsByFramework,
-  groupStudentsByFramework,
-  resolveBankTargetStudent
+  groupStudentsByFramework
 } from './domain/studentListView';
 import {
   isSurveyEligible,
@@ -177,7 +151,6 @@ import {
   patchUserByEmail,
   buildSurveySummaryNotes
 } from './domain/userEngagement';
-import { buildAdminBankGoalPayload } from './domain/goalBankAdmin';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
 import GoalBankPage from './components/GoalBankPage';
 import OnboardingNavigatorModal from './components/onboarding/OnboardingNavigatorModal';
@@ -195,8 +168,7 @@ import {
   resolveOnboardingDockStateForUser,
   getDemoStudent,
   saveDemoStudent,
-  clearDemoStudent,
-  recordOnboardingMilestone
+    recordOnboardingMilestone
 } from './services/onboardingStorage';
 import { isDemoStudent, getStepById, ONBOARDING_TOTAL_STEPS } from './domain/onboardingJourney';
 import { usageTelemetryService } from './services/usageTelemetryService';
@@ -215,7 +187,7 @@ export const SHOW_NEW_USER_JOURNEY = true;
 /**
  * Workflow & Document Telemetry Instrumentation Helpers
  */
-export function trackPedagogicalSummaryGenerated({ summaryType = 'staff_meeting', studentCount = 1, email } = {}) {
+export function trackPedagogicalSummaryGenerated({ summaryType = 'staff_meeting', studentCount = 1, email }: any = {}) {
   const studentCountBand = studentCount <= 5 ? '1-5' : studentCount <= 15 ? '6-15' : '16+';
   return usageTelemetryService.track(
     TELEMETRY_EVENTS.PEDAGOGICAL_SUMMARY_GENERATED,
@@ -227,7 +199,7 @@ export function trackPedagogicalSummaryGenerated({ summaryType = 'staff_meeting'
   );
 }
 
-export function trackStaffMeetingReadinessChecked({ itemsCompletedCount = 0, isFullyReady = false, email } = {}) {
+export function trackStaffMeetingReadinessChecked({ itemsCompletedCount = 0, isFullyReady = false, email }: any = {}) {
   return usageTelemetryService.track(
     TELEMETRY_EVENTS.STAFF_MEETING_READINESS_CHECKED,
     {
@@ -238,7 +210,7 @@ export function trackStaffMeetingReadinessChecked({ itemsCompletedCount = 0, isF
   );
 }
 
-export function trackDocumentShared({ format = 'pdf', channel = 'download', email } = {}) {
+export function trackDocumentShared({ format = 'pdf', channel = 'download', email }: any = {}) {
   return usageTelemetryService.track(
     TELEMETRY_EVENTS.DOCUMENT_SHARED,
     {
@@ -249,7 +221,7 @@ export function trackDocumentShared({ format = 'pdf', channel = 'download', emai
   );
 }
 
-export function trackPedagogicalChatSessionStarted({ triggerSource = 'floating_dock', email } = {}) {
+export function trackPedagogicalChatSessionStarted({ triggerSource = 'floating_dock', email }: any = {}) {
   return usageTelemetryService.track(
     TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_STARTED,
     {
@@ -259,7 +231,7 @@ export function trackPedagogicalChatSessionStarted({ triggerSource = 'floating_d
   );
 }
 
-export function trackPedagogicalChatToolDiscovered({ toolType = 'goal_suggester', email } = {}) {
+export function trackPedagogicalChatToolDiscovered({ toolType = 'goal_suggester', email }: any = {}) {
   return usageTelemetryService.track(
     TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_TOOL_DISCOVERED,
     {
@@ -269,7 +241,7 @@ export function trackPedagogicalChatToolDiscovered({ toolType = 'goal_suggester'
   );
 }
 
-export function trackPedagogicalChatSessionEnded({ durationSec = 0, turnsCount = 0, email } = {}) {
+export function trackPedagogicalChatSessionEnded({ durationSec = 0, turnsCount = 0, email }: any = {}) {
   return usageTelemetryService.track(
     TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_ENDED,
     {
@@ -280,7 +252,7 @@ export function trackPedagogicalChatSessionEnded({ durationSec = 0, turnsCount =
   );
 }
 
-export function trackReportGenerated({ reportType = 'tala', email } = {}) {
+export function trackReportGenerated({ reportType = 'tala', email }: any = {}) {
   if (email) {
     try {
       recordOnboardingMilestone(email, 'first_report');
@@ -297,10 +269,10 @@ export function trackReportGenerated({ reportType = 'tala', email } = {}) {
 
 export default function App() {
   // Allowed users list
-  const [allowedUsers, setAllowedUsers] = useState(() => loadAllowedUsers());
+  const [allowedUsers, setAllowedUsers] = useState<any[]>(() => loadAllowedUsers());
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [adminModalInitialTab, setAdminModalInitialTab] = useState('users');
-  const [adminModalInitialActiveChatReqId, setAdminModalInitialActiveChatReqId] = useState(null);
+  const [adminModalInitialActiveChatReqId, setAdminModalInitialActiveChatReqId] = useState<any>(null);
   const [showSelfPasswordModal, setShowSelfPasswordModal] = useState(false);
   const [showFeedbackSurveyModal, setShowFeedbackSurveyModal] = useState(false);
   const [showTrialUpgradeModal, setShowTrialUpgradeModal] = useState(false);
@@ -339,7 +311,7 @@ export default function App() {
     }
   });
 
-  const handleChangeGeminiApiKey = (newKey) => {
+  const handleChangeGeminiApiKey = (newKey: any) => {
     const trimmed = (newKey || '').trim();
     setGeminiApiKey(trimmed);
     try {
@@ -362,7 +334,7 @@ export default function App() {
     return null;
   });
 
-  const handleUpdateUpgradeBanner = (nextBanner) => {
+  const handleUpdateUpgradeBanner = (nextBanner: any) => {
     setUpgradeBanner(nextBanner);
     if (nextBanner?.active) {
       safeSetStorageJson(UPGRADE_BANNER_STORAGE_KEY, nextBanner);
@@ -372,13 +344,13 @@ export default function App() {
     saveSettingsToCloud({ upgradeBanner: nextBanner });
   };
 
-  const handleUpdateEmailEngineConfig = (nextCfg) => {
+  const handleUpdateEmailEngineConfig = (nextCfg: any) => {
     const saved = saveEmailEngineConfig(nextCfg);
     setEmailEngineConfig(saved);
     saveSettingsToCloud({ emailEngineConfig: saved });
   };
 
-  const handleChangeEnforcePasswordPolicy = (enabled) => {
+  const handleChangeEnforcePasswordPolicy = (enabled: any) => {
     const nextVal = Boolean(enabled);
     setEnforcePasswordPolicy(nextVal);
     safeSetStorageItem(PASSWORD_POLICY_STORAGE_KEY, String(nextVal));
@@ -386,14 +358,14 @@ export default function App() {
   };
 
   const [aiFreeze, setAiFreeze] = useState(false);
-  const handleUpdateAiFreeze = (nextVal) => {
+  const handleUpdateAiFreeze = (nextVal: any) => {
     const val = Boolean(nextVal);
     setAiFreeze(val);
     saveSettingsToCloud({ aiFreeze: val });
   };
 
-  const handleSubmitAdminRequest = (newReq) => {
-    setAdminRequests((prev) => {
+  const handleSubmitAdminRequest = (newReq: any) => {
+    setAdminRequests((prev: any) => {
       const next = [newReq, ...prev];
       safeSetStorageJson(ADMIN_REQUESTS_STORAGE_KEY, next);
       return next;
@@ -410,9 +382,9 @@ export default function App() {
     });
   };
 
-  const handleDismissAdminRequest = (reqId) => {
-    setAdminRequests((prev) => {
-      const next = prev.filter((r) => r.id !== reqId);
+  const handleDismissAdminRequest = (reqId: any) => {
+    setAdminRequests((prev: any) => {
+      const next = prev.filter((r: any) => r.id !== reqId);
       safeSetStorageJson(ADMIN_REQUESTS_STORAGE_KEY, next);
       saveAdminRequestsToCloud(next);
       return next;
@@ -420,7 +392,7 @@ export default function App() {
   };
 
   // Current logged-in user (must be in Allowed Users List and logged in today)
-  const [currentUser, setCurrentUser] = useState(() => {
+  const [currentUser, setCurrentUser] = useState<any>(() => {
     try {
       const saved = localStorage.getItem(SESSION_USER_KEY);
       if (saved) {
@@ -449,7 +421,7 @@ export default function App() {
   });
 
   // Eviction modal state when account is logged into from another host/IP
-  const [evictionModalInfo, setEvictionModalInfo] = useState(null);
+  const [evictionModalInfo, setEvictionModalInfo] = useState<any>(null);
 
   // Teacher Personal Preferences & Defaults (stored per user email)
   const [userPreferences, setUserPreferences] = useState(() => {
@@ -486,7 +458,7 @@ export default function App() {
     };
   }, [currentUser?.email]);
 
-  const handleSaveUserPreferences = (updatedPrefs) => {
+  const handleSaveUserPreferences = (updatedPrefs: any) => {
     if (!currentUser?.email) return;
     const normalized = normalizeUserPreferences(updatedPrefs);
     setUserPreferences(normalized);
@@ -508,7 +480,7 @@ export default function App() {
   }, [currentUser, userPreferences?.fullName, userPreferences?.professionalTitle]);
 
   // All students across users (each student is strictly scoped by ownerEmail)
-  const [students, setStudents] = useState(() => {
+  const [students, setStudents] = useState<any[]>(() => {
     try {
       localStorage.removeItem('tala_students_plans_v1');
       localStorage.removeItem('tala_students_plans_v2');
@@ -525,7 +497,7 @@ export default function App() {
     } catch (e) {
       console.warn(e);
     }
-    return INITIAL_STUDENTS_DATA.map((s) => ({
+    return INITIAL_STUDENTS_DATA.map((s: any) => ({
       ...s,
       ownerEmail: (s.ownerEmail || PRIMARY_ADMIN_EMAIL).toLowerCase()
     }));
@@ -542,12 +514,12 @@ export default function App() {
   );
 
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
-  const [selectedStudentId, setSelectedStudentId] = useState(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<any>(null);
   const [showDailyTracker, setShowDailyTracker] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
-  const [insideLandingSearch, setInsideLandingSearch] = useState('');
-  // Clustered by educationalFramework — collapsed by default
-  const [expandedFrameworks, setExpandedFrameworks] = useState({});
+  const [_insideLandingSearch, setInsideLandingSearch] = useState('');
+    // Clustered by educationalFramework — collapsed by default
+  const [expandedFrameworks, setExpandedFrameworks] = useState<any>({});
   // Sort mode for student roster: 'framework' (by educationalFramework) | 'name' (alphabetical by student name)
   const [studentSortBy, setStudentSortBy] = useState(() => {
     try {
@@ -557,7 +529,7 @@ export default function App() {
       return 'framework';
     }
   });
-  const handleChangeStudentSortBy = (mode) => {
+  const handleChangeStudentSortBy = (mode: any) => {
     setStudentSortBy(mode);
     try {
       localStorage.setItem('tala_student_sort_by', mode);
@@ -567,7 +539,7 @@ export default function App() {
   };
 
   // Pedagogical Chat Session Telemetry Tracking
-  const chatSessionStartRef = React.useRef(null);
+  const chatSessionStartRef = React.useRef<any>(null);
   useEffect(() => {
     if (isSupportChatOpen) {
       chatSessionStartRef.current = Date.now();
@@ -591,15 +563,15 @@ export default function App() {
     }
   }, [isSupportChatOpen, selectedStudentId, currentUser?.email]);
   // Student deletion & archive confirmation modal states
-  const [studentToDelete, setStudentToDelete] = useState(null);
-  const [studentToArchive, setStudentToArchive] = useState(null);
+  const [studentToDelete, setStudentToDelete] = useState<any>(null);
+  const [studentToArchive, setStudentToArchive] = useState<any>(null);
   // Archive viewer modal states
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [archiveSearch, setArchiveSearch] = useState('');
-  const [selectedArchivedStudentId, setSelectedArchivedStudentId] = useState(null);
-  const [selectedArchiveYear, setSelectedArchiveYear] = useState(null);
+  const [selectedArchivedStudentId, setSelectedArchivedStudentId] = useState<any>(null);
+  const [selectedArchiveYear, setSelectedArchiveYear] = useState<any>(null);
   // Unsaved data tracking for logout confirmation modal
-  const [unsavedDraftState, setUnsavedDraftState] = useState({
+  const [unsavedDraftState, setUnsavedDraftState] = useState<{ isDirty: boolean; draftData: any }>({
     isDirty: false,
     draftData: null
   });
@@ -680,8 +652,8 @@ export default function App() {
   );
   const [onboardingSpotlightTick, setOnboardingSpotlightTick] = useState(0);
 
-  const toggleFrameworkCluster = (frameworkKey) => {
-    setExpandedFrameworks((prev) => ({
+  const toggleFrameworkCluster = (frameworkKey: any) => {
+    setExpandedFrameworks((prev: any) => ({
       ...prev,
       [frameworkKey]: !prev[frameworkKey]
     }));
@@ -690,14 +662,8 @@ export default function App() {
   // Dynamic Goal Bank (shared across all users; only Admin can delete/edit)
   const [goalBank, setGoalBank] = useState(() => loadGoalBank());
   const [showGoalBankOverview, setShowGoalBankOverview] = useState(false);
-  const [goalBankSearch, setGoalBankSearch] = useState('');
-  const [goalBankEnvFilter, setGoalBankEnvFilter] = useState('הכל');
-  const [goalBankStageFilter, setGoalBankStageFilter] = useState(null); // null = auto based on selected student stage
-  const [selectedHlDomain, setSelectedHlDomain] = useState(null); // null = show HL domains grid; string = domain drilled into
-  const [targetBankStudentId, setTargetBankStudentId] = useState('');
-  const [bankAddToast, setBankAddToast] = useState('');
-  const [externalGoalsRevision, setExternalGoalsRevision] = useState(0);
-  const [editingBankGoal, setEditingBankGoal] = useState(null); // null | { mode: 'add' | 'edit', ...fields }
+        const [targetBankStudentId, setTargetBankStudentId] = useState('');
+    const [externalGoalsRevision, setExternalGoalsRevision] = useState(0);
 
 
 
@@ -713,11 +679,11 @@ export default function App() {
     const meKey = currentUser.email.trim().toLowerCase();
     const isAdminUser = currentUser.role === 'admin' || meKey === 'zivit.reshef@gmail.com';
     // Non-admins get a public directory + their own profile (never the password hashes).
-    let directoryUsers = [];
-    let myProfile = null;
+    let directoryUsers: any[] = [];
+    let myProfile: any = null;
     const mergeDirectoryAndProfile = () => {
       if (!myProfile) return;
-      const sameUser = (u) => (u.email || '').trim().toLowerCase() === meKey;
+      const sameUser = (u: any) => (u.email || '').trim().toLowerCase() === meKey;
       const list = directoryUsers.map((d) => (sameUser(d) ? { ...d, ...myProfile } : d));
       if (!list.some(sameUser)) list.push(myProfile);
       setAllowedUsers(list);
@@ -854,7 +820,7 @@ export default function App() {
 
   // System-health events (AI failures / local-engine fallbacks) – admin only
   const HEALTH_REVIEWED_STORAGE_KEY = 'tala_health_reviewed_ms';
-  const [healthEvents, setHealthEvents] = useState([]);
+  const [healthEvents, setHealthEvents] = useState<any[]>([]);
   const [healthReviewedMs, setHealthReviewedMs] = useState(() => {
     const stored = Number(localStorage.getItem(HEALTH_REVIEWED_STORAGE_KEY));
     return Number.isFinite(stored) ? stored : 0;
@@ -867,7 +833,7 @@ export default function App() {
     return subscribeToHealthEvents((events) => setHealthEvents(events));
   }, [currentUser?.email, currentUser?.role]);
 
-  const [adminSupportThreads, setAdminSupportThreads] = useState([]);
+  const [adminSupportThreads, setAdminSupportThreads] = useState<any[]>([]);
   useEffect(() => {
     if (currentUser?.role !== 'admin') {
       setAdminSupportThreads([]);
@@ -894,8 +860,8 @@ export default function App() {
     });
 
     if (hasStaleReq) {
-      setAdminRequests((prev) => {
-        const next = prev.filter((r) => {
+      setAdminRequests((prev: any) => {
+        const next = prev.filter((r: any) => {
           const email = (r.email || '').trim().toLowerCase();
           return !email || !resolvedEmails.has(email);
         });
@@ -960,11 +926,11 @@ export default function App() {
   const [dismissedSharedByEmail, setDismissedSharedByEmail] = useState(() =>
     safeGetStorageJson(DISMISSED_SHARED_REPORTS_KEY, {})
   );
-  const [autoShownSharedAlertIds, setAutoShownSharedAlertIds] = useState([]);
+  const [autoShownSharedAlertIds, setAutoShownSharedAlertIds] = useState<any[]>([]);
 
   const currentUserEmailLower = (currentUser?.email || '').trim().toLowerCase();
   const localDismissedForCurrentUser = currentUserEmailLower
-    ? dismissedSharedByEmail[currentUserEmailLower] || []
+    ? (dismissedSharedByEmail as Record<string, any>)?.[currentUserEmailLower] || []
     : [];
   const unreadSharedReports = getUnreadSharedReportsForUser(
     students,
@@ -1072,17 +1038,17 @@ export default function App() {
     }
   }, [currentUser?.email, students.length, selectedStudentId]);
 
-  const handleUpdateAllowedUsers = (updatedList, editMeta = null) => {
+  const handleUpdateAllowedUsers = (updatedList: any, editMeta: any = null) => {
     const { users: hashedList } = ensureUsersListPasswordsHashed(updatedList);
     setAllowedUsers(hashedList);
-    saveAllowedUsers(hashedList);
-    saveAllowedUsersToCloud(hashedList);
+    saveAllowedUsers(hashedList as any);
+    saveAllowedUsersToCloud(hashedList as any);
 
     // Sync currentUser session if the currently active user was modified
     if (currentUser?.email) {
       const activeEmailLower = currentUser.email.trim().toLowerCase();
       const myUpdated = hashedList.find(
-        (u) => (u.email || '').toLowerCase() === activeEmailLower
+        (u: any) => ((u.email as string) || '').toLowerCase() === activeEmailLower
       );
       if (myUpdated) {
         const syncedCurrent = { ...currentUser, ...myUpdated };
@@ -1109,10 +1075,10 @@ export default function App() {
           }
           if (Array.isArray(nextSt.sharedWith)) {
             const hasInShared = nextSt.sharedWith.some(
-              (em) => (em || '').trim().toLowerCase() === oldEmailLower
+              (em: any) => (em || '').trim().toLowerCase() === oldEmailLower
             );
             if (hasInShared) {
-              nextSt.sharedWith = nextSt.sharedWith.map((em) =>
+              nextSt.sharedWith = nextSt.sharedWith.map((em: any) =>
                 (em || '').trim().toLowerCase() === oldEmailLower ? newEmailLower : em
               );
               changed = true;
@@ -1127,7 +1093,7 @@ export default function App() {
     }
   };
 
-  const handleOpenSharedReportNotification = (studentObj) => {
+  const handleOpenSharedReportNotification = (studentObj: any) => {
     if (!studentObj?.id || !currentUser?.email) return;
     const emailLower = currentUser.email.trim().toLowerCase();
 
@@ -1140,7 +1106,7 @@ export default function App() {
     saveStudentToCloud(updatedStudent);
 
     // 2. Record in localStorage dismissed map for immediate disappearance
-    setDismissedSharedByEmail((prev) => {
+    setDismissedSharedByEmail((prev: any) => {
       const prevList = Array.isArray(prev[emailLower]) ? prev[emailLower] : [];
       const nextList = prevList.includes(studentObj.id)
         ? prevList
@@ -1175,12 +1141,12 @@ export default function App() {
 
     // 4. Open the shared student report and close the notification modal
     const fwKey = getFrameworkKey(studentObj);
-    setExpandedFrameworks((prev) => ({ ...prev, [fwKey]: true }));
+    setExpandedFrameworks((prev: any) => ({ ...prev, [fwKey]: true }));
     setSelectedStudentId(studentObj.id);
     setShowSelfPasswordModal(false);
   };
 
-  const handleDismissSharedReportNotification = (studentObj) => {
+  const handleDismissSharedReportNotification = (studentObj: any) => {
     if (!studentObj?.id || !currentUser?.email) return;
     const emailLower = currentUser.email.trim().toLowerCase();
 
@@ -1193,7 +1159,7 @@ export default function App() {
     saveStudentToCloud(updatedStudent);
 
     // 2. Record in localStorage dismissed map for immediate disappearance
-    setDismissedSharedByEmail((prev) => {
+    setDismissedSharedByEmail((prev: any) => {
       const prevList = Array.isArray(prev[emailLower]) ? prev[emailLower] : [];
       const nextList = prevList.includes(studentObj.id)
         ? prevList
@@ -1244,7 +1210,7 @@ export default function App() {
     );
 
     // 2. Add all to localStorage dismissed map
-    setDismissedSharedByEmail((prev) => {
+    setDismissedSharedByEmail((prev: any) => {
       const prevList = Array.isArray(prev[emailLower]) ? prev[emailLower] : [];
       const nextList = Array.from(new Set([...prevList, ...idsToDismiss]));
       const nextMap = { ...prev, [emailLower]: nextList };
@@ -1274,7 +1240,7 @@ export default function App() {
     }
   };
 
-  const handleToggleNotifySharedReport = (enabled) => {
+  const handleToggleNotifySharedReport = (enabled: any) => {
     if (!currentUser) return;
     const nextVal = Boolean(enabled);
     const updatedCurrent = {
@@ -1292,12 +1258,12 @@ export default function App() {
     handleUpdateAllowedUsers(updatedList);
   };
 
-  const handleNotifySharedColleague = (studentId, colleagueEmail, isNewlyShared) => {
+  const handleNotifySharedColleague = (studentId: any, colleagueEmail: any, isNewlyShared: any) => {
     if (!studentId || !colleagueEmail || !isNewlyShared) return;
     const cleanColleague = colleagueEmail.trim().toLowerCase();
 
     // Clear from local dismissed cache if testing on same browser
-    setDismissedSharedByEmail((prev) => {
+    setDismissedSharedByEmail((prev: any) => {
       const existing = Array.isArray(prev[cleanColleague]) ? prev[cleanColleague] : [];
       if (!existing.includes(studentId)) return prev;
       const nextMap = {
@@ -1322,7 +1288,7 @@ export default function App() {
           ? {
               ...u,
               dismissedSharedReportIds: (u.dismissedSharedReportIds || []).filter(
-                (id) => id !== studentId
+                (id: any) => id !== studentId
               )
             }
           : u
@@ -1337,7 +1303,7 @@ export default function App() {
     }
   }, [currentUser?.email]);
 
-  const handleChangeOwnPassword = (newAccessCode) => {
+  const handleChangeOwnPassword = (newAccessCode: any) => {
     if (!currentUser) return;
     const creds = createPasswordCredentials(newAccessCode);
     const updatedList = allowedUsers.map((u) => {
@@ -1356,7 +1322,7 @@ export default function App() {
     safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
   };
 
-  const handleCompleteTrialNda = async (ndaPayload) => {
+  const handleCompleteTrialNda = async (ndaPayload: any) => {
     if (!currentUser) return;
     const signedAtStr = new Date().toLocaleString('he-IL');
     const resolvedSignedDate =
@@ -1411,7 +1377,7 @@ export default function App() {
     });
   };
 
-  const handleSubmitUserSurvey = (surveyPayload) => {
+  const handleSubmitUserSurvey = (surveyPayload: any) => {
     if (!currentUser) return;
     setShowFeedbackSurveyModal(false);
     setSurveySnoozedInSession(true);
@@ -1487,13 +1453,13 @@ export default function App() {
 
     const checkAndAdvanceUsage = () => {
       if (document.visibilityState !== 'visible') return;
-      const allUsage = safeGetStorageJson(USER_USAGE_TRACKER_KEY, {}) || {};
+      const allUsage: Record<string, any> = safeGetStorageJson(USER_USAGE_TRACKER_KEY, {}) || {};
       const nextEntry = advanceUsageEntry(allUsage[emailKey]);
       allUsage[emailKey] = nextEntry;
       safeSetStorageJson(USER_USAGE_TRACKER_KEY, allUsage);
 
       // Trigger optional survey after ~8 minutes of active usage, or after ~3 minutes if the user already created/worked on a student card
-      if (shouldPromptSurvey(nextEntry.activeSeconds, ownedCount)) {
+      if (shouldPromptSurvey(nextEntry.activeSeconds || 0, ownedCount)) {
         setShowFeedbackSurveyModal(true);
       }
     };
@@ -1558,13 +1524,13 @@ export default function App() {
         const storageKey = `tala_pedagogical_digest_last_sent_${currentUser.email.toLowerCase()}`;
         const lastSent = localStorage.getItem(storageKey);
         const now = new Date();
-        if (shouldSendPedagogicalDigest(userPreferences, lastSent, now)) {
+        if (shouldSendPedagogicalDigest(userPreferences as any, lastSent, now)) {
           const gaps = getObservationGaps(userStudents || [], 45, now);
           const accomplishments = getPedagogicalAccomplishmentsSummary(userStudents || [], 30, now);
           await sendPedagogicalReminderEmailInBackground({
             toEmail: currentUser.email,
             teacherName: userPreferences?.fullName || currentUser.name || 'צוות חינוכי',
-            gaps,
+            gaps: gaps as any,
             accomplishments,
             totalStudents: (userStudents || []).length,
             privacyMode: userPreferences?.defaultPrivacyMode || 'full_name'
@@ -1646,7 +1612,7 @@ export default function App() {
     };
   }, [currentUser?.email, currentUser?.sessionId]);
 
-  const handleLoginSuccess = (user) => {
+  const handleLoginSuccess = (user: any) => {
     const stampedUser = stampSessionUserWithDate(user);
     setCurrentUser(stampedUser);
     safeSetStorageJson(SESSION_USER_KEY, stampedUser);
@@ -1701,7 +1667,7 @@ export default function App() {
         updatedStudents
       );
       saveStudentToCloud(updated);
-      (updated.goals || []).forEach((g) => {
+      (updated.goals || []).forEach((g: any) => {
         if (g.title && g.title.trim()) {
           handleUseOrAddGoalToBank(g);
         }
@@ -1746,8 +1712,7 @@ export default function App() {
     if (!currentUser) return;
     const newId = 'st_' + Date.now();
     const todayStr = new Date().toLocaleDateString('he-IL');
-    const stageInfo = detectStudentStage({ educationalFramework: '', teacherFreeText: '', birthDate: '' }, todayStr);
-    const isTachiPref = userPreferences?.defaultReportType === 'tachi';
+        const isTachiPref = userPreferences?.defaultReportType === 'tachi';
     const chosenPlanType = isTachiPref
       ? TACHI_PLAN_TYPE
       : DEFAULT_PLAN_TYPE;
@@ -1783,7 +1748,7 @@ export default function App() {
     setStudents((prev) => [newStudentPlan, ...prev]);
     saveStudentToCloud(newStudentPlan);
     setSelectedStudentId(newId);
-    setExpandedFrameworks((prev) => ({
+    setExpandedFrameworks((prev: any) => ({
       ...prev,
       'ללא מסגרת חינוכית מוגדרת': true
     }));
@@ -1800,23 +1765,20 @@ export default function App() {
   };
 
   // Load a rich sample student plan for quick onboarding exploration (isolated in sandbox)
-  const handleLoadSampleStudent = () => {
-    if (!currentUser) return;
-    handleStartOnboarding({ mode: 'demo', restart: false });
-  };
-
-  const handleDeleteStudent = (studentObj, e) => {
+  
+  const handleDeleteStudent = (studentObj: any, e: any) => {
     if (e) e.stopPropagation();
     if (!isStudentOwnedByUser(studentObj, currentUser)) return;
     setStudentToDelete(studentObj);
   };
 
-  const confirmDeleteStudent = () => {
-    if (!studentToDelete || !isStudentOwnedByUser(studentToDelete, currentUser)) {
+  const confirmDeleteStudent = (overrideStudent: any = null) => {
+    const target = overrideStudent || studentToDelete;
+    if (!target || !isStudentOwnedByUser(studentToDelete, currentUser)) {
       setStudentToDelete(null);
       return;
     }
-    const id = studentToDelete.id;
+    const id = target.id;
     const remainingAll = students.filter((s) => s.id !== id);
     setStudents(remainingAll);
     deleteStudentFromCloud(id);
@@ -1830,13 +1792,13 @@ export default function App() {
     setStudentToDelete(null);
   };
 
-  const handleRequestArchiveStudent = (studentObj, e) => {
+  const handleRequestArchiveStudent = (studentObj: any, e: any) => {
     if (e) e.stopPropagation();
     if (!isStudentOwnedByUser(studentObj, currentUser)) return;
     setStudentToArchive(studentObj);
   };
 
-  const confirmArchiveStudent = (overrideStudent = null) => {
+  const confirmArchiveStudent = (overrideStudent: any = null) => {
     const target = overrideStudent || studentToArchive;
     if (!target || !isStudentOwnedByUser(target, currentUser)) {
       setStudentToArchive(null);
@@ -1882,8 +1844,8 @@ export default function App() {
     } catch (_) {}
   };
 
-  const handleRestoreFromArchive = (studentId) => {
-    const targetStudent = students.find((s) => s.id === studentId);
+  const handleRestoreFromArchive = (studentId: any) => {
+    const targetStudent = students.find((s) => (s as any).id === studentId);
     if (!targetStudent || !isStudentOwnedByUser(targetStudent, currentUser)) return;
     let restoredDoc = null;
     const updatedAll = students.map((s) => {
@@ -1900,14 +1862,14 @@ export default function App() {
       const fwKey =
         (restoredStudent.educationalFramework || '').trim() ||
         'ללא מסגרת חינוכית מוגדרת';
-      setExpandedFrameworks((prev) => ({ ...prev, [fwKey]: true }));
+      setExpandedFrameworks((prev: any) => ({ ...prev, [fwKey]: true }));
       setSelectedStudentId(studentId);
     }
     const remainingArchived = getArchivedStudentsForUser(updatedAll, currentUser);
     setSelectedArchivedStudentId(remainingArchived[0]?.id || null);
   };
 
-  const handleRolloverArchivedStudentToNewYear = (studentObj, sourceYear) => {
+  const handleRolloverArchivedStudentToNewYear = (studentObj: any, sourceYear: any) => {
     if (!studentObj || !isStudentOwnedByUser(studentObj, currentUser)) return;
     const nextYr = getNextSchoolYear(sourceYear || studentObj.schoolYear);
     if (
@@ -1918,17 +1880,18 @@ export default function App() {
       return;
     }
     const rolledDoc = buildRolloverStudentForNextYear(studentObj, sourceYear, nextYr);
+    if (!rolledDoc) return;
     const updatedAll = students.map((s) => (s.id === studentObj.id ? rolledDoc : s));
     setStudents(updatedAll);
     saveStudentToCloud(rolledDoc);
     const fwKey =
       (rolledDoc.educationalFramework || '').trim() || 'ללא מסגרת חינוכית מוגדרת';
-    setExpandedFrameworks((prev) => ({ ...prev, [fwKey]: true }));
+    setExpandedFrameworks((prev: any) => ({ ...prev, [fwKey]: true }));
     setSelectedStudentId(rolledDoc.id);
     setShowArchiveModal(false);
   };
 
-  const handleSaveStudentPlan = (updatedStudent) => {
+  const handleSaveStudentPlan = (updatedStudent: any) => {
     if (!updatedStudent) return;
     if (isDemoStudent(updatedStudent) || updatedStudent.id === 'demo_yonatan_levi') {
       const saved = saveDemoStudent(currentUser?.email, updatedStudent);
@@ -1969,7 +1932,7 @@ export default function App() {
     }
   };
 
-  const handleSelectOnboardingMode = (chosenMode) => {
+  const handleSelectOnboardingMode = (chosenMode: any) => {
     if (!currentUser?.email) return;
 
     if (chosenMode === 'demo') {
@@ -1983,7 +1946,7 @@ export default function App() {
         mode: 'demo',
         currentStep: 2,
         completedSteps: [1],
-        activeStudentId: demo.id,
+        activeStudentId: (demo as any).id,
         isPaused: false,
         isDismissed: false,
         isDockCollapsed: false,
@@ -2031,16 +1994,16 @@ export default function App() {
 
       targets.forEach((el) => {
         el.classList.remove('tour-spotlight-burst');
-        void el.offsetWidth;
+        void (el as HTMLElement).offsetWidth;
         el.classList.add('tour-spotlight-burst');
       });
 
       const firstInteractive = document.querySelector(
         '.tour-highlight-input, .tour-highlight-btn'
       );
-      if (firstInteractive && typeof firstInteractive.focus === 'function') {
+      if (firstInteractive && typeof (firstInteractive as HTMLElement).focus === 'function') {
         try {
-          firstInteractive.focus({ preventScroll: true });
+          (firstInteractive as HTMLElement).focus({ preventScroll: true });
         } catch (_) {}
       }
 
@@ -2050,7 +2013,7 @@ export default function App() {
     }, 140);
   };
 
-  const handleExecuteOnboardingAction = (step, options = {}) => {
+  const handleExecuteOnboardingAction = (step: any, options: any = {}) => {
     if (!step) return;
     const fromSpotlightBtn = Boolean(options?.fromSpotlightBtn);
 
@@ -2110,8 +2073,6 @@ export default function App() {
     if (currentStepId >= ONBOARDING_TOTAL_STEPS) {
       const nextState = advanceOnboardingStep(currentUser.email);
       setOnboardingState(nextState);
-      setBankAddToast('🎉 כל הכבוד! השלמת בהצלחה את כל 10 שלבי מסע ההדרכה ב-TALA!');
-      setTimeout(() => setBankAddToast(''), 4500);
       handleCloseOnboarding();
       return;
     }
@@ -2134,7 +2095,7 @@ export default function App() {
     }
   };
 
-  const handleGoToOnboardingStep = (stepNumber) => {
+  const handleGoToOnboardingStep = (stepNumber: any) => {
     if (!currentUser?.email) return;
     const nextState = goToOnboardingStep(currentUser.email, stepNumber);
     setOnboardingState(nextState);
@@ -2169,7 +2130,7 @@ export default function App() {
 
   function handleCloseOnboarding() {
     if (!currentUser?.email) return;
-    setOnboardingState((prev) => (prev ? { ...prev, isClosing: true } : prev));
+    setOnboardingState((prev: any) => (prev ? { ...prev, isClosing: true } : prev));
     setTimeout(() => {
       const nextState = dismissOnboarding(currentUser.email);
       setOnboardingState(nextState);
@@ -2184,7 +2145,7 @@ export default function App() {
     setSelectedStudentId(null);
   };
 
-  function handleUseOrAddGoalToBank(goalData) {
+  function handleUseOrAddGoalToBank(goalData: any) {
     const nextBank = recordGoalUsageOrAdd(goalData, goalBank);
     setGoalBank(nextBank);
     saveGoalBank(nextBank);
@@ -2204,7 +2165,7 @@ export default function App() {
         prev.map((s) => (s.id === updated.id ? updated : s))
       );
       saveStudentToCloud(updated);
-      (updated.goals || []).forEach((g) => {
+      (updated.goals || []).forEach((g: any) => {
         if (g.title && g.title.trim()) {
           handleUseOrAddGoalToBank(g);
         }
@@ -2213,7 +2174,7 @@ export default function App() {
     }
   };
 
-  const handleAddBankGoalToStudent = (bankItem, targetStudentObj) => {
+  const handleAddBankGoalToStudent = (bankItem: any, targetStudentObj: any) => {
     if (!bankItem || !targetStudentObj) return;
     const baseStudent =
       unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === targetStudentObj.id
@@ -2221,8 +2182,6 @@ export default function App() {
         : targetStudentObj;
 
     if (baseStudent.isLocked) {
-      setBankAddToast('הדו"ח של התלמיד/ה נעול לעריכה – יש לפתוח את הנעילה כדי להוסיף מטרות.');
-      setTimeout(() => setBankAddToast(''), 3500);
       return;
     }
 
@@ -2247,100 +2206,21 @@ export default function App() {
     setExternalGoalsRevision((r) => r + 1);
     setUnsavedDraftState({ isDirty: false, draftData: updatedStudent });
 
-    const studentDisplayName = baseStudent.name?.trim() || 'התלמיד/ה';
-    setBankAddToast(
-      `✅ המטרה "${res.goalTitle}" נוספה לתכנית של ${studentDisplayName} ומשקלה במאגר עלה ב-+1!`
-    );
-    setTimeout(() => setBankAddToast(''), 3500);
-  };
+      };
 
   // === Admin Goal Bank CRUD Handlers ===
-  const handleStartAddGoalToBank = () => {
-    setEditingBankGoal({
-      mode: 'add',
-      id: '',
-      title: '',
-      stages: ['kindergarten'],
-      environment: ENVIRONMENTS_LIST[0],
-      usageCount: 0,
-      defaultActivity: '',
-      suggestedObjectivesText: '',
-      defaultOpportunities: '',
-      defaultPartners: 'צוות חינוכי, הורים',
-      defaultDuration: 'עד סוף השנה',
-      defaultEvaluation: ''
-    });
-  };
-
-  const handleStartEditBankGoal = (goalItem) => {
-    setEditingBankGoal({
-      mode: 'edit',
-      id: goalItem.id,
-      title: goalItem.title || '',
-      stages: Array.isArray(goalItem.stages) && goalItem.stages.length > 0
-        ? goalItem.stages
-        : (goalItem.stage ? [goalItem.stage] : ['kindergarten']),
-      environment: goalItem.environment || ENVIRONMENTS_LIST[0],
-      usageCount: goalItem.usageCount ?? 0,
-      defaultActivity: goalItem.defaultActivity || '',
-      suggestedObjectivesText: (goalItem.suggestedObjectives || []).join('\n'),
-      defaultOpportunities: goalItem.defaultOpportunities || '',
-      defaultPartners: goalItem.defaultPartners || 'צוות חינוכי, הורים',
-      defaultDuration: goalItem.defaultDuration || 'עד סוף השנה',
-      defaultEvaluation: goalItem.defaultEvaluation || ''
-    });
-  };
-
   const handleResetAllGoalWeights = () => {
     if (!window.confirm('האם לאפס את מונה השכיחות של כל המטרות במאגר ל-0?')) return;
-    setGoalBank((prev) => {
-      const zeroed = prev.map((g) => ({ ...g, usageCount: 0 }));
+    setGoalBank((prev: any) => {
+      const zeroed = prev.map((g: any) => ({ ...g, usageCount: 0 }));
       saveGoalBank(zeroed);
       saveGoalBankToCloud(zeroed);
       return zeroed;
     });
   };
 
-  const handleSaveAdminBankGoal = (e) => {
-    e.preventDefault();
-    if (!editingBankGoal || !editingBankGoal.title.trim()) {
-      window.alert('נא להזין כותרת למטרה.');
-      return;
-    }
 
-    const payload = buildAdminBankGoalPayload(editingBankGoal);
-    const targetTitle = payload.title;
-    const targetEnv = payload.environment;
-    const resolvedStages = payload.stages;
-
-    let nextBank;
-    if (editingBankGoal.mode === 'add') {
-      nextBank = addGoalByAdmin(payload, goalBank);
-      setBankAddToast(`✅ המטרה "${targetTitle}" נוספה בהצלחה למאגר!`);
-    } else {
-      nextBank = updateGoalByAdmin(editingBankGoal.id, payload, goalBank);
-      setBankAddToast(`✅ השינויים במטרה "${targetTitle}" נשמרו בהצלחה!`);
-    }
-
-    setGoalBank(nextBank);
-    saveGoalBank(nextBank);
-    saveGoalBankToCloud(nextBank).catch(() => {});
-
-    // Navigate user directly to the domain and search for the goal so they see it immediately
-    setSelectedHlDomain(targetEnv);
-    setGoalBankEnvFilter(targetEnv);
-    if (goalBankStageFilter !== 'all' && goalBankStageFilter !== null) {
-      const isVisibleInCurrentStage = resolvedStages.includes(goalBankStageFilter);
-      if (!isVisibleInCurrentStage) {
-        setGoalBankStageFilter('all');
-      }
-    }
-    setGoalBankSearch(targetTitle);
-    setEditingBankGoal(null);
-    setTimeout(() => setBankAddToast(''), 4500);
-  };
-
-  const handleDeleteAdminBankGoal = (goalItem) => {
+  const handleDeleteAdminBankGoal = (goalItem: any) => {
     if (!window.confirm(`האם למחוק את המטרה "${goalItem.title}" ממאגר המטרות הדינמי?`)) {
       return;
     }
@@ -2348,11 +2228,6 @@ export default function App() {
     setGoalBank(nextBank);
     saveGoalBank(nextBank);
     saveGoalBankToCloud(nextBank).catch(() => {});
-    setBankAddToast(`🗑️ המטרה "${goalItem.title}" נמחקה מהמאגר.`);
-    setTimeout(() => setBankAddToast(''), 3500);
-    if (editingBankGoal?.id === goalItem.id) {
-      setEditingBankGoal(null);
-    }
   };
 
   // Gate the entire app if user is not authenticated in the Allowed Users List
@@ -2395,6 +2270,7 @@ export default function App() {
         }}
       >
         <TrialUpgradeModal
+          onClose={() => {}}
           isOpen={true}
           isExpired={true}
           currentUser={currentUser}
@@ -2454,15 +2330,6 @@ export default function App() {
   const sortedStudentsByName = sortStudentsByName(filteredStudents);
   const sortedStudentsByFramework = sortStudentsByFramework(filteredStudents);
   const frameworkClusters = groupStudentsByFramework(filteredStudents);
-  const sortedBank = getSortedGoalBank(goalBank);
-  const activeBankTargetStudent = resolveBankTargetStudent(
-    baseStudentsForView,
-    targetBankStudentId,
-    selectedStudentId
-  );
-  const activeGoalBankStudentStage = activeBankTargetStudent ? getEffectiveStudentStage(activeBankTargetStudent) : 'all';
-  const currentModalStage = goalBankStageFilter !== null ? goalBankStageFilter : activeGoalBankStudentStage;
-  const goalBankEnvironments = getCanonicalEnvironmentsForStage(currentModalStage);
 
   const filteredArchivedStudents = filterStudentsBySearch(archivedUserStudents, archiveSearch);
   const activeArchivedStudent =
@@ -2938,7 +2805,7 @@ export default function App() {
 
           <div className="sidebar-students-list">
             {studentSortBy === 'name' ? (
-              sortedStudentsByName.map((st) => {
+              sortedStudentsByName.map((st: any) => {
                 const isStLocked = Boolean(
                   unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === st.id
                     ? unsavedDraftState.draftData.isLocked
@@ -2972,7 +2839,7 @@ export default function App() {
                       <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
                       <div className="st-card-meta">
                         <span className="st-goals-badge">
-                          {(st.goals || []).filter((g) => g.title).length} מטרות
+                          {(st.goals || []).filter((g: any) => g.title).length} מטרות
                         </span>
                         {(st.ownerEmail || '').toLowerCase() !==
                         currentUser.email.toLowerCase() ? (
@@ -3074,7 +2941,7 @@ export default function App() {
 
                     {isExpanded && (
                       <div className="sidebar-framework-students">
-                        {clusterStudents.map((st) => {
+                        {clusterStudents.map((st: any) => {
                           const isStLocked = Boolean(
                             unsavedDraftState.isDirty && unsavedDraftState.draftData?.id === st.id
                               ? unsavedDraftState.draftData.isLocked
@@ -3108,7 +2975,7 @@ export default function App() {
                               <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
                               <div className="st-card-meta">
                                 <span className="st-goals-badge">
-                                  {(st.goals || []).filter((g) => g.title).length} מטרות
+                                  {(st.goals || []).filter((g: any) => g.title).length} מטרות
                                 </span>
                                 {(st.ownerEmail || '').toLowerCase() !==
                                 currentUser.email.toLowerCase() ? (
@@ -3236,10 +3103,10 @@ export default function App() {
                 onSaveStudentPlan={handleSaveStudentPlan}
                 onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
                 onDraftStateChange={setUnsavedDraftState}
-                emailEngineConfig={emailEngineConfig}
+                emailEngineConfig={emailEngineConfig as any}
                 onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
                 onNotifySharedColleague={handleNotifySharedColleague}
-                activeOnboardingStep={activeOnboardingStep}
+                activeOnboardingStep={activeOnboardingStep as any}
                 onboardingSpotlightTick={onboardingSpotlightTick}
                 onGoHome={() => setSelectedStudentId(null)}
               />
@@ -3614,7 +3481,7 @@ export default function App() {
                               </span>
                             )}
                             <span className="st-goals-badge">
-                              {(st.goals || []).filter((g) => g.title).length} מטרות
+                              {(st.goals || []).filter((g: any) => g.title).length} מטרות
                             </span>
                             <ChevronLeft size={16} className="inside-st-arrow" />
                           </div>
@@ -3749,7 +3616,7 @@ export default function App() {
           adminRequests={adminRequests}
           onDismissAdminRequest={handleDismissAdminRequest}
           cloudSyncState={cloudSyncState}
-          emailEngineConfig={emailEngineConfig}
+          emailEngineConfig={emailEngineConfig as any}
           students={students}
           upgradeBanner={upgradeBanner}
           onUpdateUpgradeBanner={handleUpdateUpgradeBanner}
@@ -3873,7 +3740,7 @@ export default function App() {
                               <small>{st.educationalFramework || 'ללא מסגרת מוגדרת'}</small>
                               <div className="st-card-meta">
                                 <span className="st-goals-badge">
-                                  {(st.goals || []).filter((g) => g.title).length} מטרות
+                                  {(st.goals || []).filter((g: any) => g.title).length} מטרות
                                 </span>
                                 {st.archivedAt && (
                                   <span className="st-saved-time">
@@ -4209,7 +4076,7 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody>
-                              {(activeArchiveReport.goals || []).map((g, idx) => (
+                              {(activeArchiveReport.goals || []).map((g: any, idx: any) => (
                                 <tr key={g.id || idx}>
                                   <td style={{ fontWeight: 700, color: '#2b4c73' }}>
                                     {g.environment || '—'}
@@ -4375,7 +4242,7 @@ export default function App() {
         <TeacherChatWidget
           currentUser={currentUser}
           allowedUsers={allowedUsers}
-          emailEngineConfig={emailEngineConfig}
+          emailEngineConfig={emailEngineConfig as any}
           isOpenControlled={isSupportChatOpen}
           onToggleOpen={setIsSupportChatOpen}
           onboardingDockMode={onboardingDockMode}

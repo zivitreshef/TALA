@@ -7,7 +7,7 @@ import {
   formatPromptWithStudentContext,
   getEffectiveStudentStage,
   isGoalRelevantForStage
-} from '../utils/studentStage.js';
+} from '../studentStage';
 import { getAdditionalMetadataItems } from '../export/wordAndPrintBuilders.js';
 
 describe('studentStage detection logic', () => {

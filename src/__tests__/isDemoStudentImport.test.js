@@ -5,7 +5,7 @@ import { isDemoStudent } from '../domain/onboardingJourney';
 
 describe('EcologicalWorkPlanForm Reverse Engineering & Demo Resilience', () => {
   const formSource = fs.readFileSync(
-    path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'),
+    (fs.existsSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx')) ? path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx') : path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx')),
     'utf8'
   );
 

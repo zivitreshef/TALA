@@ -28,18 +28,14 @@ import {
   X,
   Lock,
   Unlock,
-  MessageCircle,
-  MessageSquare,
+    MessageSquare,
   ClipboardCopy,
-  Home,
-  Info,
-  FolderOpen
+      FolderOpen
 } from 'lucide-react';
 import {
   ENVIRONMENTS_LIST,
   SCHOOL_YEARS_LIST,
-  TALA_PROFILE_DOMAINS,
-  TALA_FOCUS_DOMAINS,
+    TALA_FOCUS_DOMAINS,
   buildDefaultTalaProfileRows,
   isTalaPlanType,
   getSortedGoalBank,
@@ -55,19 +51,15 @@ import {
   attachAiBaselineToGoal,
   isGoalProtectedFromAiOverwrite,
   mergeReanalyzedGoals,
-  toHebrewAcronym,
-  maskSensitiveValue,
-  redactStudentNameInText,
-  maskPromptForAi,
+    maskSensitiveValue,
+    maskPromptForAi,
   getNextSchoolYear,
   buildRolloverStudentForNextYear,
-  STATUS_REPORT_SECTIONS_SCHEMA,
-  sanitizeStatusReportSections,
+    sanitizeStatusReportSections,
   generateStatusReportLocally
 } from './goalBankData';
 import {
-  GOOGLE_APPS_SCRIPT_TEMPLATE,
-  loadEmailEngineConfig,
+    loadEmailEngineConfig,
   isDirectEmailEngineConfigured,
   generatePdfBlobFromHtml,
   sendReportEmailInBackground
@@ -81,12 +73,10 @@ import {
   getDisplayMaskedField as buildDisplayMaskedField,
   getRedactedText as buildRedactedText,
   getSafeReportFilename as buildSafeReportFilename,
-  getActiveStatusReportSections as buildActiveStatusReportSections,
   getAdditionalMetadataItems,
   getEffectiveStudentProfileForTala,
   getEffectiveTalaProfileRows,
-  hasPopulatedTalaProfile,
-  openHtmlPrintWindow,
+    openHtmlPrintWindow,
   buildWorkPlanPrintHtml,
   buildEvalReportPrintHtml,
   buildStatusReportPrintHtml,
@@ -95,8 +85,7 @@ import {
   buildStatusReportWordDocumentHtml as renderStatusReportWordDocumentHtml
 } from './export/wordAndPrintBuilders';
 import {
-  detectStudentStage,
-  formatPromptWithStudentContext,
+    formatPromptWithStudentContext,
   getEffectiveStudentStage,
   isGoalRelevantForStage
 } from './studentStage.js';
@@ -113,7 +102,7 @@ import {
   adaptTextToSchoolStage
 } from './domain/stageGuard';
 import { INITIAL_GOAL_BANK } from './goalBankData';
-import { canLockReport, isStudentSharedWithUser, isStudentPlanShared } from './domain/permissions';
+import { canLockReport, isStudentPlanShared } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 import TeamChatDrawer from './components/form/TeamChatDrawer';
@@ -138,14 +127,10 @@ import { reportHealthEvent } from './services/healthTelemetry';
 import { HEALTH_EVENT_KINDS } from './domain/healthEvents';
 
 // NEW: Firebase Functions imports
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import {
-  DEFAULT_SCHOOL_YEAR,
-  DEFAULT_PLAN_TYPE,
+    DEFAULT_PLAN_TYPE,
   TACHI_PLAN_TYPE,
-  getPlanTypeStorageKey,
-  buildFreshReportForPlanType,
-  extractYearReportFromFormData,
+      extractYearReportFromFormData,
   isRawFreeTextAlreadyAnalyzed,
   hasContentInYearReport,
   normalizeStudentForForm,
@@ -172,13 +157,7 @@ import {
   addManualStatusSection
 } from './domain/workPlanEdits';
 import { personalizeBankItem, fillGoalRowFromBank } from './domain/bankGoalApplication';
-import { formatDateWithPreferences } from './domain/userPreferences';
 import { callAiJson } from './services/aiJsonClient';
-import {
-  buildSummaryTablePrompt,
-  applyAiSummary,
-  applyLocalSummary
-} from './domain/summaryTable';
 import { isDemoStudent } from './domain/onboardingJourney';
 import { advanceOnboardingStep } from './services/onboardingStorage';
 
@@ -193,16 +172,40 @@ const DURATION_TSHIRT_OPTIONS = [
 
 
 
+export interface EcologicalWorkPlanFormProps {
+  student?: any;
+  allStudents?: any[];
+  externalRevision?: number;
+  goalBank?: any;
+  geminiApiKey?: string;
+  isAdmin?: boolean;
+  currentUser?: any;
+  allowedUsers?: any[];
+  onOpenGoalBankManager?: () => void;
+  onSaveStudentPlan?: any;
+  onUseOrAddGoalToBank?: any;
+  onDraftStateChange?: any;
+  onNotifySharedColleague?: any;
+  emailEngineConfig?: any;
+  onUpdateEmailEngineConfig?: any;
+  activeOnboardingStep?: number;
+  onboardingSpotlightTick?: number;
+  onGoHome?: any;
+  userPreferences?: any;
+  privateGoals?: any[];
+  [key: string]: any;
+}
+
 export default function EcologicalWorkPlanForm({
   student,
   allStudents = [],
   externalRevision = 0,
   goalBank,
   geminiApiKey,
-  isAdmin,
+  isAdmin: _isAdmin,
   currentUser,
   allowedUsers = [],
-  onOpenGoalBankManager,
+  onOpenGoalBankManager: _onOpenGoalBankManager,
   onSaveStudentPlan,
   onUseOrAddGoalToBank,
   onDraftStateChange,
@@ -214,15 +217,14 @@ export default function EcologicalWorkPlanForm({
   onGoHome,
   userPreferences = {},
   privateGoals = []
-}) {
-  const containerRef = useRef(null);
-  const section1Ref = useRef(null);
-  const section2Ref = useRef(null);
-  const section3Ref = useRef(null);
-  const section4Ref = useRef(null);
-  const saveProgressRef = useRef(null);
-  const evalReportSectionRef = useRef(null);
-  const statusReportSectionRef = useRef(null);
+}: EcologicalWorkPlanFormProps) {
+  const containerRef = useRef<any>(null);
+  const section1Ref = useRef<any>(null);
+  const section2Ref = useRef<any>(null);
+  const section3Ref = useRef<any>(null);
+  const section4Ref = useRef<any>(null);
+    const evalReportSectionRef = useRef<any>(null);
+  const statusReportSectionRef = useRef<any>(null);
 
 
 
@@ -237,14 +239,13 @@ export default function EcologicalWorkPlanForm({
     setHideStudentDetailsOnPrint(userPreferences?.defaultPrivacyMode === 'acronym');
   }, [userPreferences?.defaultPrivacyMode, student?.id]);
   const [showMinistryCopyModal, setShowMinistryCopyModal] = useState(false);
-  const [observationModalGoalId, setObservationModalGoalId] = useState(null);
+  const [observationModalGoalId, setObservationModalGoalId] = useState<any>(null);
   const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState(false);
-  const [selectedIntakeDoc, setSelectedIntakeDoc] = useState(null);
-  const [viewingDocText, setViewingDocText] = useState(null);
+  const [selectedIntakeDoc, setSelectedIntakeDoc] = useState<any>(null);
+  const [viewingDocText, setViewingDocText] = useState<any>(null);
   const [saveBanner, setSaveBanner] = useState(false);
   const [autoSavedTime, setAutoSavedTime] = useState('');
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [isReverseEngineering, setIsReverseEngineering] = useState(false);
+    const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerStepIdx, setReverseEngineerStepIdx] = useState(0);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
   const [reverseEngineerError, setReverseEngineerError] = useState('');
@@ -259,7 +260,7 @@ export default function EcologicalWorkPlanForm({
 
   const attachedDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
 
-  const handleRemoveDiagnosticDoc = async (docId, fileName, storagePath) => {
+  const handleRemoveDiagnosticDoc = async (docId: any, fileName: any, storagePath: any) => {
     if (window.confirm(`האם את בטוחה שברצונך להסיר את המסמך "${fileName}" מתיק התלמיד/ה?`)) {
       try {
         await deleteDossierFileBlob(docId);
@@ -311,8 +312,8 @@ export default function EcologicalWorkPlanForm({
 
   // State for Separate Mid-Year / End-of-Year Evaluation Report & AI Processing
   const [showEvalReportSection, setShowEvalReportSection] = useState(false);
-  const [loadingEvalAiKey, setLoadingEvalAiKey] = useState(null);
-  const [evalAiSuccessKey, setEvalAiSuccessKey] = useState(null);
+  const [loadingEvalAiKey, setLoadingEvalAiKey] = useState<any>(null);
+  const [evalAiSuccessKey, setEvalAiSuccessKey] = useState<any>(null);
   const [isProcessingFullEvalAi, setIsProcessingFullEvalAi] = useState(false);
   const [evalReportAiBanner, setEvalReportAiBanner] = useState('');
   const [emailReportMode, setEmailReportMode] = useState('tala'); // 'tala' | 'eval' | 'status'
@@ -320,10 +321,8 @@ export default function EcologicalWorkPlanForm({
   // State for Separate Status Report ("דו"ח מצב")
   const [showStatusReportSection, setShowStatusReportSection] = useState(false);
   const [isGeneratingStatusReport, setIsGeneratingStatusReport] = useState(false);
-  const [statusReportStepIdx, setStatusReportStepIdx] = useState(0);
-  const [statusReportBanner, setStatusReportBanner] = useState('');
-  const [selectedNewStatusSectionNum, setSelectedNewStatusSectionNum] = useState('');
-
+    const [statusReportBanner, setStatusReportBanner] = useState('');
+  
   // Auto-scroll smooth effect when onboarding tour step advances or "הראה לי במסך" is pressed
   useEffect(() => {
     if (activeOnboardingStep) {
@@ -354,37 +353,22 @@ export default function EcologicalWorkPlanForm({
     }
   }, [activeOnboardingStep, onboardingSpotlightTick]);
 
-  const STATUS_REPORT_BUSY_STEPS = [
-    'שלב 1/3: אוסף ומצליב נתונים מכרטיס התלמיד/ה, המטרות והערכת מחצית / סוף שנה...',
-    'שלב 2/3: מסנן סעיפים ללא מידע כדי למנוע השערות ומארגן את תמונת התפקוד העדכנית...',
-    'שלב 3/3: מנסח דו"ח מצב חינוכי-תפקודי מקצועי, מכבד וקוהרנטי...'
-  ];
-
-  useEffect(() => {
-    if (!isGeneratingStatusReport) {
-      setStatusReportStepIdx(0);
-      return;
-    }
-    const stepTimer = setInterval(() => {
-      setStatusReportStepIdx((prev) => (prev + 1) % 3);
-    }, 1800);
-    return () => clearInterval(stepTimer);
-  }, [isGeneratingStatusReport]);
-
+  
+  
   // State for lightweight Team Sharing modal (Option C)
   const [showShareModal, setShowShareModal] = useState(false);
   const [showTeamChatDrawer, setShowTeamChatDrawer] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
-  const exportDropdownRef = useRef(null);
+  const exportDropdownRef = useRef<any>(null);
 
   useEffect(() => {
     if (!showExportDropdown) return;
-    const handleClickOutside = (e) => {
+    const handleClickOutside = (e: any) => {
       if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) {
         setShowExportDropdown(false);
       }
     };
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: any) => {
       if (e.key === 'Escape') {
         setShowExportDropdown(false);
       }
@@ -398,7 +382,7 @@ export default function EcologicalWorkPlanForm({
   }, [showExportDropdown]);
 
   // State for Collapsible Mid-Year / End-of-Year Evaluation per goal card (Option A)
-  const [expandedEvalMap, setExpandedEvalMap] = useState({});
+  const [expandedEvalMap, setExpandedEvalMap] = useState<any>({});
 
   // State for "Send to Email" (שלח למייל) modal
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -407,24 +391,22 @@ export default function EcologicalWorkPlanForm({
   const [emailStatusMsg, setEmailStatusMsg] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [showEngineSetupInModal, setShowEngineSetupInModal] = useState(false);
-  const [localEngineDraft, setLocalEngineDraft] = useState(() =>
+    const [localEngineDraft, setLocalEngineDraft] = useState(() =>
     emailEngineConfig || loadEmailEngineConfig()
   );
-  const [copiedAppsScript, setCopiedAppsScript] = useState(false);
-
+  
   // State for Goal Picker / Autocomplete per goal card
-  const [openPickerGoalId, setOpenPickerGoalId] = useState(null);
+  const [openPickerGoalId, setOpenPickerGoalId] = useState<any>(null);
   const [pickerEnvFilter, setPickerEnvFilter] = useState('הכל');
-  const [pickerStageFilter, setPickerStageFilter] = useState(null); // null = auto based on student stage
+  const [pickerStageFilter, setPickerStageFilter] = useState<any>(null); // null = auto based on student stage
   const [pickerSearch, setPickerSearch] = useState('');
-  const [expandedQuickObjMap, setExpandedQuickObjMap] = useState({});
+  const [expandedQuickObjMap, setExpandedQuickObjMap] = useState<any>({});
 
   // State for AI Facilitating Questions per goal card
-  const [activeAiGoalId, setActiveAiGoalId] = useState(null);
-  const [aiQuestionsMap, setAiQuestionsMap] = useState({});
-  const [aiAnswersMap, setAiAnswersMap] = useState({});
-  const [loadingAiForGoalId, setLoadingAiForGoalId] = useState(null);
+  const [activeAiGoalId, setActiveAiGoalId] = useState<any>(null);
+  const [aiQuestionsMap, setAiQuestionsMap] = useState<any>({});
+  const [aiAnswersMap, setAiAnswersMap] = useState<any>({});
+  const [loadingAiForGoalId, setLoadingAiForGoalId] = useState<any>(null);
 
   // Sync when switching selected student from the sidebar list
   useEffect(() => {
@@ -445,7 +427,7 @@ export default function EcologicalWorkPlanForm({
   // Sync background collaboration metadata (teamMessages, sharedReadBy, sharedWith) when student prop updates in real-time
   useEffect(() => {
     if (!student || !student.id) return;
-    setFormData((prev) => {
+    setFormData((prev: any) => {
       if (!prev || prev.id !== student.id) return prev;
       const prevMsgs = prev.teamMessages || [];
       const newMsgs = student.teamMessages || [];
@@ -535,7 +517,7 @@ export default function EcologicalWorkPlanForm({
     const resizeAllTextareas = () => {
       if (!containerRef.current) return;
       const allTextareas = containerRef.current.querySelectorAll('textarea');
-      allTextareas.forEach((ta) => {
+      allTextareas.forEach((ta: any) => {
         ta.style.overflowY = 'hidden';
         ta.style.height = 'auto';
         const isGoalTableCell = Boolean(ta.closest('.ecological-6col-table'));
@@ -579,22 +561,22 @@ export default function EcologicalWorkPlanForm({
 
   // === Stage guard helpers (the student's stage is chosen explicitly by the teacher) ===
   // Every write to the shared goal bank carries the stage the goal actually belongs to.
-  const recordGoalInBank = (goal) => {
+  const recordGoalInBank = (goal: any) => {
     if (!goal) return;
     onUseOrAddGoalToBank({ ...goal, stage: resolveGoalStageForBank(goal, currentStage) });
   };
 
   // Validates AI / local generated goals against the student's stage. Teacher-protected goals are
   // returned untouched; corrected goals are re-baselined so they are not mistaken for teacher edits.
-  const enforceStageOnGeneratedGoals = (goals) => {
+  const enforceStageOnGeneratedGoals = (goals: any) => {
     const curatedOtherStageTitles = getCuratedTitlesExclusiveToStage(
       INITIAL_GOAL_BANK,
       currentStage === 'school' ? 'kindergarten' : 'school'
     );
     let droppedCount = 0;
     let correctedCount = 0;
-    const kept = [];
-    (goals || []).forEach((g) => {
+    const kept: any[] = [];
+    (goals || []).forEach((g: any) => {
       if (isGoalProtectedFromAiOverwrite(g)) {
         kept.push(g);
         return;
@@ -652,7 +634,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Automatically unlock report when teacher accesses evaluation or quick observation on a locked report
-  const handleAutoUnlockReport = (triggerReason = '') => {
+  const handleAutoUnlockReport = (_triggerReason = '') => {
     if (!formData.isLocked) return formData;
     const nowTime = new Date().toLocaleTimeString('he-IL', {
       hour: '2-digit',
@@ -692,6 +674,7 @@ export default function EcologicalWorkPlanForm({
     }
     const syncedCurrent = syncActiveReportSnapshot(formData);
     const rolled = buildRolloverStudentForNextYear(syncedCurrent, currentYear, nextYear);
+    if (!rolled) return;
     savedSnapshotRef.current = JSON.stringify(rolled);
     setFormData(rolled);
     setShowFullDocPreview(Boolean(rolled.isLocked));
@@ -701,7 +684,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Save all sharing settings and deliver handoff note atomically
-  const handleSaveShareSettings = ({ selectedEmails, handoffNote }) => {
+  const handleSaveShareSettings = ({ selectedEmails, handoffNote }: any) => {
     const nowStamp = new Date().toLocaleString('he-IL', {
       dateStyle: 'short',
       timeStyle: 'short'
@@ -726,7 +709,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Toggle sharing this student with a colleague email (Option C)
-  const handleToggleShareColleague = (colleagueEmail, messageText = '') => {
+  const handleToggleShareColleague = (colleagueEmail: any, messageText = '') => {
     const nowStamp = new Date().toLocaleString('he-IL', {
       dateStyle: 'short',
       timeStyle: 'short'
@@ -754,7 +737,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Send a message in the Team Collaboration Thread
-  const handleSendTeamMessage = (text) => {
+  const handleSendTeamMessage = (text: any) => {
     const authorName = userPreferences?.fullName || currentUser?.name || currentUser?.email || 'צוות חינוכי';
     const authorRole = [userPreferences?.professionalTitle || currentUser?.title, userPreferences?.institutionalAffiliation || currentUser?.group]
       .filter(Boolean)
@@ -795,7 +778,7 @@ export default function EcologicalWorkPlanForm({
       const currentMsgCount = (formData.teamMessages || []).length;
       const incomingMsgCount = student.teamMessages.length;
       if (incomingMsgCount !== currentMsgCount || student.lastTeamMessageAt !== formData.lastTeamMessageAt) {
-        setFormData((prev) => ({
+        setFormData((prev: any) => ({
           ...prev,
           teamMessages: student.teamMessages,
           lastTeamMessageAt: student.lastTeamMessageAt,
@@ -806,7 +789,7 @@ export default function EcologicalWorkPlanForm({
   }, [student?.teamMessages, student?.lastTeamMessageAt]);
 
   // Retract author's own message in the Team Collaboration Thread
-  const handleRetractTeamMessage = (messageId) => {
+  const handleRetractTeamMessage = (messageId: any) => {
     const next = retractTeamMessage(formData, messageId, currentUser?.email || '');
     if (next === formData) return;
     savedSnapshotRef.current = JSON.stringify(next);
@@ -815,7 +798,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Switch between תל"א and תח"י: keep each plan type completely separate (empty form if the target plan type hasn't been created yet)
-  const handlePlanTypeChange = (newPlanType) => {
+  const handlePlanTypeChange = (newPlanType: any) => {
     if (formData.isLocked) return;
     const next = switchPlanType(formData, newPlanType);
     if (next === formData) return;
@@ -830,7 +813,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Switch school year: snapshot current year's report and load (or create) the selected year's report
-  const handleSchoolYearChange = (newYear) => {
+  const handleSchoolYearChange = (newYear: any) => {
     const next = switchSchoolYear(formData, newYear);
     if (next === formData) return;
     setFormData(next);
@@ -841,13 +824,13 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Update personal or top-level field (when report is locked, only Evaluation Report fields may be updated)
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = (field: any, value: any) => {
     if (formData.isLocked && !LOCKED_EDITABLE_FIELDS.has(field)) return;
-    setFormData((prev) => applyFieldChange(prev, field, value));
+    setFormData((prev: any) => applyFieldChange(prev, field, value));
   };
 
   // Append parent / student answers to the teacher free text, then surface that section
-  const handleMergeParentVoice = (block) => {
+  const handleMergeParentVoice = (block: any) => {
     if (formData.isLocked || !block) return;
     handleFieldChange('teacherFreeText', appendToFreeText(formData.teacherFreeText, block));
     setIsFreeTextCollapsed(false);
@@ -855,29 +838,29 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Update a row in the 8-row functional profile table (for תל"א)
-  const handleTalaProfileRowChange = (rowIdOrDomain, field, value) => {
+  const handleTalaProfileRowChange = (rowIdOrDomain: any, field: any, value: any) => {
     if (formData.isLocked) return;
-    setFormData((prev) => updateTalaProfileRow(prev, rowIdOrDomain, field, value));
+    setFormData((prev: any) => updateTalaProfileRow(prev, rowIdOrDomain, field, value));
   };
 
   // Toggle selection of a focus domain for the תל"א work plan
-  const handleToggleTalaFocusDomain = (domain) => {
+  const handleToggleTalaFocusDomain = (domain: any) => {
     if (formData.isLocked) return;
-    setFormData((prev) => toggleFocusDomain(prev, domain));
+    setFormData((prev: any) => toggleFocusDomain(prev, domain));
   };
 
   // Update student gender ('boy' = בן / זכר, 'girl' = בת / נקבה) and automatically inflect all goals & objectives
-  const handleGenderChange = (newGender) => {
+  const handleGenderChange = (newGender: any) => {
     if (formData.isLocked) return;
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       gender: newGender,
-      goals: (prev.goals || []).map((g) => adaptGoalToGender(g, newGender))
+      goals: (prev.goals || []).map((g: any) => adaptGoalToGender(g, newGender))
     }));
   };
 
   // Update specific goal row (when report is locked, only Mid-Year / End-of-Year Evaluation fields can be updated!)
-  const handleGoalChange = (goalId, field, value) => {
+  const handleGoalChange = (goalId: any, field: any, value: any) => {
     const isEvalField = EVAL_GOAL_FIELDS.has(field);
     if (formData.isLocked) {
       if (isEvalField) {
@@ -886,13 +869,13 @@ export default function EcologicalWorkPlanForm({
         return;
       }
     }
-    setFormData((prev) => applyGoalChange(prev, goalId, field, value));
+    setFormData((prev: any) => applyGoalChange(prev, goalId, field, value));
   };
 
   // Toggle whether a specific goal is locked against AI re-analysis
-  const handleToggleGoalLock = (goalId) => {
+  const handleToggleGoalLock = (goalId: any) => {
     if (formData.isLocked) return;
-    setFormData((prev) => toggleGoalAiLock(prev, goalId));
+    setFormData((prev: any) => toggleGoalAiLock(prev, goalId));
   };
 
   // Add a new empty goal block and open the smart Goal Picker immediately
@@ -907,7 +890,7 @@ export default function EcologicalWorkPlanForm({
       isKindergarten,
       plus3Months: dateInfo.plus3Months
     });
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       goals: [...(prev.goals || []), newGoalObj]
     }));
@@ -933,20 +916,20 @@ export default function EcologicalWorkPlanForm({
 
   };
 
-  const handleDeleteGoalRow = (goalId) => {
+  const handleDeleteGoalRow = (goalId: any) => {
     if (formData.isLocked) return;
     if ((formData.goals || []).length <= 1) {
       if (!window.confirm('זוהי המטרה היחידה בתכנית. האם למחוק אותה?')) return;
     }
-    setFormData((prev) => removeGoalRow(prev, goalId));
+    setFormData((prev: any) => removeGoalRow(prev, goalId));
   };
 
   // Select a goal from the Dynamic Goal Bank (automatically adjusted to student's gender!)
-  const handleSelectGoalFromBank = (goalRowId, bankItem, fillTemplate = true) => {
+  const handleSelectGoalFromBank = (goalRowId: any, bankItem: any, fillTemplate = true) => {
     if (formData.isLocked) return;
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
-      goals: (prev.goals || []).map((g) =>
+      goals: (prev.goals || []).map((g: any) =>
         g.id === goalRowId
           ? fillGoalRowFromBank(g, bankItem, prev, { fillTemplate, isTalaMode })
           : g
@@ -967,7 +950,7 @@ export default function EcologicalWorkPlanForm({
         ? bankItem.facilitatingQuestions.slice(0, 3)
         : generateDefaultQuestionsForCustomGoal(genderTitle, bankItem.environment, formData);
 
-    setAiQuestionsMap((prev) => ({
+    setAiQuestionsMap((prev: any) => ({
       ...prev,
       [goalRowId]: questions
     }));
@@ -976,13 +959,13 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Define a brand new custom Goal and trigger AI Facilitating Questions
-  const handleConfirmCustomGoal = async (goalRow) => {
+  const handleConfirmCustomGoal = async (goalRow: any) => {
     if (formData.isLocked) return;
     if (!goalRow.title || !goalRow.title.trim()) return;
 
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
-      goals: (prev.goals || []).map((g) =>
+      goals: (prev.goals || []).map((g: any) =>
         g.id === goalRow.id ? { ...g, isTeacherModified: true } : g
       )
     }));
@@ -997,7 +980,7 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Generate up to 3 Facilitating Questions via Gemini AI (or smart fallback)
-  async function handleGenerateAiQuestionsForGoal(goalRow) {
+  async function handleGenerateAiQuestionsForGoal(goalRow: any) {
     if (formData.isLocked) return;
     const goalTitle = (goalRow.title || '').trim();
     if (!goalTitle) return;
@@ -1016,7 +999,7 @@ export default function EcologicalWorkPlanForm({
       generateDefaultQuestionsForCustomGoal(goalTitle, goalRow.environment, formData);
 
     if (!geminiApiKey) {
-      setAiQuestionsMap((prev) => ({
+      setAiQuestionsMap((prev: any) => ({
         ...prev,
         [goalRow.id]: fallbackQuestions
       }));
@@ -1049,19 +1032,19 @@ export default function EcologicalWorkPlanForm({
       });
 
       if (Array.isArray(parsed) && parsed.length > 0) {
-        setAiQuestionsMap((prev) => ({
+        setAiQuestionsMap((prev: any) => ({
           ...prev,
           [goalRow.id]: parsed.slice(0, 3)
         }));
         setLoadingAiForGoalId(null);
         return;
       }
-      setAiQuestionsMap((prev) => ({
+      setAiQuestionsMap((prev: any) => ({
         ...prev,
         [goalRow.id]: fallbackQuestions
       }));
-    } catch (e) {
-      setAiQuestionsMap((prev) => ({
+    } catch (e: any) {
+      setAiQuestionsMap((prev: any) => ({
         ...prev,
         [goalRow.id]: fallbackQuestions
       }));
@@ -1071,18 +1054,14 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Apply teacher's answers to the 3 Facilitating Questions to auto-fill/enrich the goal columns!
-  const handleApplyFacilitatingAnswers = async (goalRow) => {
+  const handleApplyFacilitatingAnswers = async (goalRow: any) => {
     if (formData.isLocked) return;
     const answers = aiAnswersMap[goalRow.id] || {};
     const ans1 = (answers[0] || '').trim();
     const ans2 = (answers[1] || '').trim();
     const ans3 = (answers[2] || '').trim();
     const genderToUse = formData.gender || 'boy';
-    const genderLabel =
-      genderToUse === 'girl'
-        ? 'בת (לשון נקבה בלבד – למשל: תשתתף, תמתין, תבחר)'
-        : 'בן (לשון זכר בלבד – למשל: ישתתף, ימתין, יבחר)';
-    const childLabel = genderToUse === 'girl' ? 'הילדה' : 'הילד';
+        const childLabel = genderToUse === 'girl' ? 'הילדה' : 'הילד';
     const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
 
     setLoadingAiForGoalId(goalRow.id);
@@ -1099,7 +1078,7 @@ export default function EcologicalWorkPlanForm({
           educationalFramework: formData.educationalFramework
         };
 
-        const enriched = await callAiProxyEndpoint({
+        const enriched: any = await callAiProxyEndpoint({
           operation: 'applyAnswers',
           payload: {
             goalRow,
@@ -1112,9 +1091,9 @@ export default function EcologicalWorkPlanForm({
         });
 
         if (enriched) {
-          setFormData((prev) => ({
+          setFormData((prev: any) => ({
             ...prev,
-            goals: (prev.goals || []).map((g) => {
+            goals: (prev.goals || []).map((g: any) => {
               if (g.id !== goalRow.id) return g;
               const mergedGoal = {
                 ...g,
@@ -1146,15 +1125,15 @@ export default function EcologicalWorkPlanForm({
           setLoadingAiForGoalId(null);
           return;
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn('Fallback to local synthesis for facilitating answers', err);
       }
     }
 
     // Smart deterministic synthesis from the 3 answers
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
-      goals: (prev.goals || []).map((g) => {
+      goals: (prev.goals || []).map((g: any) => {
         if (g.id !== goalRow.id) return g;
         const draftGoal = {
           ...g,
@@ -1193,14 +1172,14 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Add an operative objective chip from the Goal Bank (automatically adjusted to student's gender!)
-  const handleAddSuggestedObjective = (goalRowId, objText) => {
+  const handleAddSuggestedObjective = (goalRowId: any, objText: any) => {
     if (formData.isLocked) return;
     const genderToUse = formData.gender || 'boy';
     const genderAdjustedObj = adaptTextToGender(objText, genderToUse);
 
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
-      goals: (prev.goals || []).map((g) => {
+      goals: (prev.goals || []).map((g: any) => {
         if (g.id !== goalRowId) return g;
         const current = (g.objectives || '').trim();
         if (current.includes(genderAdjustedObj)) return g;
@@ -1213,83 +1192,19 @@ export default function EcologicalWorkPlanForm({
   };
 
   // Helper to call Gemini API via secure backend proxy
-  const callGeminiJson = (promptText) =>
+  const callGeminiJson = (promptText: any) =>
     callAiJson(promptText, {
       ...formData,
       privacyMode: userPreferences?.defaultPrivacyMode || formData.privacyMode || 'full_name'
     });
 
-  // === SUBMIT BUTTON: Generate Top Summary Table (and Goals if empty) from Teacher's Free Text + All Goals ===
-  const handleSubmitGenerateSummaryTable = async () => {
-    if (formData.isLocked) return;
-    const freeText = (formData.teacherFreeText || '').trim();
-    const goalsList = (formData.goals || []).filter((g) => g.title && g.title.trim());
-
-    // If the teacher pasted raw text and hasn't defined any goals yet, run full reverse engineering so Goals + Summary are both generated!
-    if (freeText && goalsList.length === 0) {
-      await handleReverseEngineerFullReport();
-      return;
-    }
-
-    setIsGeneratingSummary(true);
-    try {
-      if (freeText) {
-        const prompt = buildSummaryTablePrompt({
-          freeText,
-          goals: goalsList,
-          isKindergarten
-        });
-
-        const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
-        if (parsed) {
-          const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-          const updated = applyAiSummary(formData, parsed, nowTime);
-          setFormData(updated);
-          onSaveStudentPlan(updated);
-          setIsFreeTextCollapsed(true);
-          setSaveBanner(true);
-          setTimeout(() => setSaveBanner(false), 3000);
-          return;
-        }
-      }
-
-      // Use the coherent Hebrew Semantic & Executive Summary Interpreter
-      const engineered = reverseEngineerRawTextLocally(freeText, formData, goalBank);
-      const nowTime = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-      const updated = applyLocalSummary(formData, engineered, nowTime);
-
-      setFormData(updated);
-      onSaveStudentPlan(updated);
-      setIsFreeTextCollapsed(true);
-      setSaveBanner(true);
-      setTimeout(() => setSaveBanner(false), 3000);
-    } catch (err) {
-      console.warn('Failed to generate summary table:', err);
-      reportHealthEvent({
-        kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
-        operation: 'generateSummaryTable',
-        error: err,
-        extra: {
-          errorMessage: err?.message || String(err)
-        }
-      });
-      try {
-        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
-          errorType: err?.name || 'Error',
-          operation: 'generateSummaryTable'
-        });
-      } catch (_) {}
-    } finally {
-      setIsGeneratingSummary(false);
-    }
-  };
-
+  
   // === AI Reverse Engineering from Raw Data Text to Full Formal Report ===
   // Helper to apply local reverse engineered plan to student state
-  const applyEngineeredPlan = (engineered, isLocal = false) => {
+  const applyEngineeredPlan = (engineered: any, _isLocal = false) => {
     if (!engineered) return;
     const existingGoals = formData.goals || [];
-    const protectedGoals = existingGoals.filter((g) => isGoalProtectedFromAiOverwrite(g));
+    const protectedGoals = existingGoals.filter((g: any) => isGoalProtectedFromAiOverwrite(g));
     const stageCheck = enforceStageOnGeneratedGoals(engineered.goals || []);
     const candidateGoals = stageCheck.goals;
     const updatedBase = {
@@ -1388,9 +1303,9 @@ export default function EcologicalWorkPlanForm({
 
     const dateInfo = resolveStudentAgeAndDateInfo(formData, rawText);
     const existingGoals = formData.goals || [];
-    const protectedGoals = existingGoals.filter((g) => isGoalProtectedFromAiOverwrite(g));
+    const protectedGoals = existingGoals.filter((g: any) => isGoalProtectedFromAiOverwrite(g));
     const unprotectedGoals = existingGoals.filter(
-      (g) => !isGoalEmpty(g) && !isGoalProtectedFromAiOverwrite(g)
+      (g: any) => !isGoalEmpty(g) && !isGoalProtectedFromAiOverwrite(g)
     );
     const removedGoals = Array.isArray(formData.removedAiGoals) ? formData.removedAiGoals : [];
 
@@ -1403,7 +1318,7 @@ export default function EcologicalWorkPlanForm({
           ? `\nהנחיה קריטית – מטרות שנערכו או נוספו על ידי המורה (נעולות לשינוי!):
 המורה ערכה או הוסיפה ידנית את ${protectedGoals.length} המטרות הבאות לאחר ניתוח קודם:
 ${protectedGoals
-  .map((pg, idx) => {
+  .map((pg: any, idx: any) => {
     const origNote =
       pg.aiSnapshot?.title && pg.aiSnapshot.title !== pg.title
         ? ` (עודכן מתוך מטרת ה-AI המקורית: "${pg.aiSnapshot.title}")`
@@ -1420,7 +1335,7 @@ ${protectedGoals
           ? `\nהנחיה קריטית – מטרות שהוסרו על ידי המורה:
 המורה מחקה מהתוכנית את המטרות הבאות:
 ${removedGoals
-  .map((rg, idx) => `  * הוסרה #${idx + 1}: סביבה="${rg.environment}" | מטרה="${rg.title}"`)
+  .map((rg: any, idx: any) => `  * הוסרה #${idx + 1}: סביבה="${rg.environment}" | מטרה="${rg.title}"`)
   .join('\n')}
 - **אל תחזיר ואל תיצור מחדש מטרות אלו במערך "goals"!**\n`
           : '';
@@ -1429,11 +1344,11 @@ ${removedGoals
         unprotectedGoals.length > 0 && (protectedGoals.length > 0 || removedGoals.length > 0)
           ? `\nמטרות קיימות שטרם נערכו ידנית על ידי המורה (אליהן ולמטרות חדשות מהטקסט עליך להתייחס במערך "goals"):
 ${unprotectedGoals
-  .map((ug, idx) => `  * מטרה קיימת #${idx + 1}: סביבה="${ug.environment}" | מטרה="${ug.title}"`)
+  .map((ug: any, idx: any) => `  * מטרה קיימת #${idx + 1}: סביבה="${ug.environment}" | מטרה="${ug.title}"`)
   .join('\n')}\n`
           : '';
 
-      const buildPrompt = (bankReference) => `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
+      const buildPrompt = (bankReference: any) => `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
 המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות.
 מין הילד/ה שהוגדר בטופס: ${genderInstruction}
 גיל הילד/ה: ${dateInfo.ageDescription}
@@ -1516,10 +1431,10 @@ ${rawText}
       });
       const prompt = buildPrompt(bankReference);
 
-      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
+      const parsed: any = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       aiParsedResult = parsed;
       if (parsed && Array.isArray(parsed.goals)) {
-        const rawCandidateGoals = parsed.goals.map((g, i) => {
+        const rawCandidateGoals = parsed.goals.map((g: any, i: any) => {
           const rawCandidate = {
             id: 'g_airev_' + Date.now() + '_' + i,
             environment: g.environment || getDefaultEnvironmentForStage(currentStage),
@@ -1571,9 +1486,7 @@ ${rawText}
 
           const nextExisting = parsed.strengthsExisting || formData.strengthsExisting;
           const nextEmpower = parsed.strengthsToEmpower || formData.strengthsToEmpower;
-          const activeYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
-          const activePlanKey = getPlanTypeStorageKey(activeYear, formData.planType);
-
+                    
           const updatedBase = {
             ...formData,
             freeTextAnalyzed: true,
@@ -1671,7 +1584,7 @@ ${rawText}
       applyEngineeredPlan(engineered, true);
       return;
     }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[handleReverseEngineerFullReport] AI processing encountered error, attempting graceful local fallback:', err);
       reportHealthEvent({
         kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
@@ -1724,7 +1637,7 @@ ${rawText}
       onDraftStateChange({ isDirty: false, draftData: updated });
     }
     // Also record usage for all defined goals
-    (updated.goals || []).forEach((g) => {
+    (updated.goals || []).forEach((g: any) => {
       if (g.title && g.title.trim()) {
         recordGoalInBank(g);
       }
@@ -1734,7 +1647,7 @@ ${rawText}
   };
 
   // === Local Pedagogical Evaluation Refiner & AI Processing for הערכת מחצית / סוף שנה ===
-  const refineGoalEvaluationLocally = (rawEvalText, goalRow, gender, fieldName) => {
+  const refineGoalEvaluationLocally = (rawEvalText: any, goalRow: any, gender: any, fieldName: any) => {
     const cleaned = (rawEvalText || '')
       .replace(/\s+/g, ' ')
       .replace(/\.{2,}/g, '.')
@@ -1775,7 +1688,7 @@ ${rawText}
     };
   };
 
-  const handleProcessSingleGoalEvalAi = async (goalRow, fieldName) => {
+  const handleProcessSingleGoalEvalAi = async (goalRow: any, fieldName: any) => {
     const rawText = (goalRow[fieldName] || '').trim();
     if (!rawText) {
       window.alert('נא להזין טקסט בתיבת ההערכה לפני הפעלת עיבוד מידע ב-AI.');
@@ -1811,16 +1724,16 @@ ${rawText}
   "achievementStatus": "הושגה חלקית"
 }`;
 
-      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
+      const parsed: any = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed && parsed.formattedEvaluation) {
         const validStatuses = ['הושגה במלואה', 'הושגה חלקית', 'בתהליך', 'טרם הושגה'];
         const nextStatus = validStatuses.includes(parsed.achievementStatus)
           ? parsed.achievementStatus
           : goalRow.achievementStatus || 'בתהליך';
 
-        setFormData((prev) => ({
+        setFormData((prev: any) => ({
           ...prev,
-          goals: (prev.goals || []).map((g) =>
+          goals: (prev.goals || []).map((g: any) =>
             g.id === goalRow.id
               ? {
                   ...g,
@@ -1840,9 +1753,9 @@ ${rawText}
     await new Promise((resolve) => setTimeout(resolve, 900));
 
     const localResult = refineGoalEvaluationLocally(rawText, goalRow, genderToUse, fieldName);
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
-      goals: (prev.goals || []).map((g) =>
+      goals: (prev.goals || []).map((g: any) =>
         g.id === goalRow.id
           ? {
               ...g,
@@ -1873,7 +1786,7 @@ ${rawText}
     if (rawText) {
       const goalsContext = goalsList
         .map(
-          (g, idx) =>
+          (g: any, idx: any) =>
             `מטרה #${idx + 1} (id: "${g.id}"): סביבה="${g.environment}" | מטרה="${g.title}" | יעדים="${g.objectives}"`
         )
         .join('\n');
@@ -1911,14 +1824,14 @@ ${goalsContext}
 
       await new Promise((resolve) => setTimeout(resolve, 60));
 
-      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
+      const parsed: any = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed && parsed.evalReportSummary) {
-        const evalById = {};
-        (parsed.goalsEvaluations || []).forEach((item) => {
+        const evalById: Record<string, any> = {};
+        (parsed.goalsEvaluations || []).forEach((item: any) => {
           if (item && item.id) evalById[item.id] = item;
         });
 
-        const updatedGoals = goalsList.map((g) => {
+        const updatedGoals = goalsList.map((g: any) => {
           const matched = evalById[g.id];
           if (!matched) return g;
           return {
@@ -1955,7 +1868,7 @@ ${goalsContext}
       ? `במהלך תקופת ההערכה ניכרת מעורבות והתקדמות בתפקודה של התלמידה בסביבות הפעילות בגן: ${cleanGeneral}. הצוות החינוכי ממשיך בליווי מותאם, הטרמה וחיזוק העצמאות והיוזמה האישית והחברתית.`
       : `במהלך תקופת ההערכה ניכרת מעורבות והתקדמות בתפקודו של התלמיד בסביבות הפעילות בגן: ${cleanGeneral}. הצוות החינוכי ממשיך בליווי מותאם, הטרמה וחיזוק העצמאות והיוזמה האישית והחברתית.`;
 
-    const updatedGoals = goalsList.map((g) => {
+    const updatedGoals = goalsList.map((g: any) => {
       const localEval = refineGoalEvaluationLocally(rawText, g, genderToUse, 'midYearEvaluation');
       return {
         ...g,
@@ -1973,7 +1886,7 @@ ${goalsContext}
     onSaveStudentPlan(updated);
     setIsProcessingFullEvalAi(false);
     setEvalReportAiBanner('✨ דוח הערכת מחצית / סוף שנה עובד ונוסח בהצלחה עבור מטרות התלמיד/ה!');
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[handleProcessFullEvalReportAi] AI processing error:', err);
       reportHealthEvent({
         kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
@@ -2003,14 +1916,14 @@ ${goalsContext}
 
     const genderToUse = formData.gender || 'boy';
     const isGirl = genderToUse === 'girl';
-    const validGoals = (formData.goals || []).filter((g) => !isGoalEmpty(g));
+    const validGoals = (formData.goals || []).filter((g: any) => !isGoalEmpty(g));
     const dateInfo = resolveStudentAgeAndDateInfo(formData, formData.teacherFreeText || '');
 
     const hasEvalData = Boolean(
       (formData.evalReportFreeText || '').trim() ||
         (formData.evalReportSummary || '').trim() ||
         validGoals.some(
-          (g) =>
+          (g: any) =>
             (g.achievementStatus && g.achievementStatus.trim()) ||
             (g.midYearEvaluation && g.midYearEvaluation.trim()) ||
             (g.endYearEvaluation && g.endYearEvaluation.trim())
@@ -2031,7 +1944,7 @@ ${goalsContext}
         strengthsExisting: formData.strengthsExisting || '',
         strengthsToEmpower: formData.strengthsToEmpower || '',
         recommendations: formData.recommendations || '',
-        goals: validGoals.map((g, idx) => ({
+        goals: validGoals.map((g: any, idx: any) => ({
           goalNumber: idx + 1,
           environment: g.environment || '',
           activityParticipation: g.activityParticipation || '',
@@ -2118,7 +2031,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 }`;
 
       await new Promise((resolve) => setTimeout(resolve, 60));
-      const parsed = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
+      const parsed: any = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       if (parsed && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
         const sanitized = sanitizeStatusReportSections(parsed.sections, genderToUse);
         if (sanitized.length > 0) {
@@ -2157,7 +2070,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     setFormData(updated);
     onSaveStudentPlan(updated);
     setIsGeneratingStatusReport(false);
-} catch (err) {
+} catch (err: any) {
       console.warn('[handleGenerateStatusReport] AI processing error:', err);
       reportHealthEvent({
         kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
@@ -2181,29 +2094,27 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     );
   };
 
-  const handleUpdateStatusSectionContent = (sectionNumber, newContent) => {
-    setFormData((prev) => updateStatusSection(prev, sectionNumber, newContent));
+  const handleUpdateStatusSectionContent = (sectionNumber: any, newContent: any) => {
+    setFormData((prev: any) => updateStatusSection(prev, sectionNumber, newContent));
   };
 
-  const handleRemoveStatusSection = (sectionNumber) => {
-    setFormData((prev) => removeStatusSection(prev, sectionNumber));
+  const handleRemoveStatusSection = (sectionNumber: any) => {
+    setFormData((prev: any) => removeStatusSection(prev, sectionNumber));
   };
 
-  const handleAddManualStatusSection = (sectionNumber) => {
-    setFormData((prev) => addManualStatusSection(prev, sectionNumber));
-    setSelectedNewStatusSectionNum('');
-  };
+  const handleAddManualStatusSection = (sectionNumber: any) => {
+    setFormData((prev: any) => addManualStatusSection(prev, sectionNumber));
+      };
 
   // === Build Official Document HTML (with or without Privacy Redaction) ===
   const getFullDocTitle = () => buildFullDocTitle(formData);
   const getEvalReportTitle = () => buildEvalReportTitle();
   const getStatusReportTitle = () => buildStatusReportTitle();
   const getDisplayStudentName = () => buildDisplayStudentName(formData, hideStudentDetailsOnPrint);
-  const getDisplayMaskedField = (val) => buildDisplayMaskedField(val, hideStudentDetailsOnPrint);
-  const getRedactedText = (text) => buildRedactedText(text, formData, hideStudentDetailsOnPrint);
+  const getDisplayMaskedField = (val: any) => buildDisplayMaskedField(val, hideStudentDetailsOnPrint);
+  const getRedactedText = (text: any) => buildRedactedText(text, formData, hideStudentDetailsOnPrint);
   const getSafeReportFilename = (ext = 'doc', mode = 'tala') => buildSafeReportFilename(formData, hideStudentDetailsOnPrint, ext, mode);
-  const getActiveStatusReportSections = () => buildActiveStatusReportSections(formData);
-
+  
   const getExportPayload = (baseData = formData) => ({
     ...baseData,
     showBesad: userPreferences?.showBesad,
@@ -2297,30 +2208,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     setEmailStatusMsg('');
     const currentCfg = emailEngineConfig || loadEmailEngineConfig();
     setLocalEngineDraft(currentCfg);
-    setShowEngineSetupInModal(!isDirectEmailEngineConfigured(currentCfg));
-    setShowEmailModal(true);
+        setShowEmailModal(true);
   };
 
-  const handleSaveEngineConfigInModal = () => {
-    setEmailError('');
-    if (onUpdateEmailEngineConfig) {
-      onUpdateEmailEngineConfig(localEngineDraft);
-    }
-    if (isDirectEmailEngineConfigured(localEngineDraft)) {
-      setShowEngineSetupInModal(false);
-      setEmailStatusMsg('מנוע שליחת המייל הישיר הוגדר ונשמר בענן בהצלחה! כעת ניתן לשלוח דוחות בלחיצת כפתור.');
-    } else {
-      setEmailError('נא להזין כתובת Web App URL תקינה של Google Apps Script (המתחילה ב-https://script.google.com/) או פרטי EmailJS מלאים.');
-    }
-  };
-
-  const handleCopyAppsScriptCode = () => {
-    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_TEMPLATE);
-    setCopiedAppsScript(true);
-    setTimeout(() => setCopiedAppsScript(false), 2500);
-  };
-
-  const handleSendReportByEmail = async (e) => {
+  
+  
+  const handleSendReportByEmail = async (e: any) => {
     e.preventDefault();
     setEmailError('');
     setEmailStatusMsg('');
@@ -2336,8 +2229,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       : emailEngineConfig || loadEmailEngineConfig();
 
     if (!isDirectEmailEngineConfigured(activeEngineCfg)) {
-      setShowEngineSetupInModal(true);
-      setEmailError(
+            setEmailError(
         'כדי לשלוח את המייל והקובץ המצורף ישירות ברקע (ללא פתיחת תוכנת מייל במחשב), יש להשלים הגדרה חד-פעמית קצרה של מנוע השליחה למטה.'
       );
       return;
@@ -2424,7 +2316,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       setEmailStatusMsg(
         `✅ המייל נשלח בהצלחה ברקע אל ${trimmedEmail} יחד עם הקובץ המצורף (${attachmentInfo.filename})!`
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error('Direct background email send error:', err);
       setEmailError(
         `שגיאה בשליחת המייל ברקע: ${err?.message || 'בדוק את חיבור האינטרנט או את הגדרת מנוע המייל.'}`
@@ -2434,7 +2326,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     }
   };
 
-  const handleTextareaAutoResize = (e) => {
+  const handleTextareaAutoResize = (e: any) => {
     const ta = e.currentTarget;
     ta.style.overflowY = 'hidden';
     ta.style.height = 'auto';
@@ -2574,9 +2466,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             >
               <MessageSquare size={16} style={{ color: '#2563eb' }} />
               <span>שיח צוות</span>
-              {Array.isArray(formData.teamMessages) && formData.teamMessages.filter(m => !m.isDeleted).length > 0 && (
+              {Array.isArray(formData.teamMessages) && formData.teamMessages.filter((m: any) => !m.isDeleted).length > 0 && (
                 <span className="team-chat-badge">
-                  {formData.teamMessages.filter(m => !m.isDeleted).length}
+                  {formData.teamMessages.filter((m: any) => !m.isDeleted).length}
                 </span>
               )}
             </button>
@@ -2718,7 +2610,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           className="section-nav-pill"
           onClick={() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
         >
-          3. מטרות ({(formData.goals || []).filter((g) => g.title).length})
+          3. מטרות ({(formData.goals || []).filter((g: any) => g.title).length})
         </button>
         <button
           type="button"
@@ -2791,7 +2683,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             {getNextSchoolYear(formData.schoolYear || 'תשפ"ו (2025-2026)') && (
               <button
                 type="button"
-                onClick={handleRolloverToNextYear}
+                onClick={() => handleRolloverToNextYear()}
                 title="העתק מוקדי כוח ומטרות מתוכנית זו לשנת הלימודים הבאה"
                 style={{
                   display: 'inline-flex',
@@ -2965,7 +2857,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   }}
                 >
                   <strong style={{ color: '#4c1d95' }}>מידע נוסף ושותפים חינוכיים:</strong>
-                  {previewAdditionalItems.map((it, idx) => (
+                  {previewAdditionalItems.map((it: any, idx: number) => (
                     <span key={idx}>
                       <strong>{it.label}:</strong> {it.value}
                     </span>
@@ -3087,7 +2979,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {attachedDocs.map((doc) => (
+                      {attachedDocs.map((doc: any) => (
                         <div
                           key={doc.id}
                           style={{
@@ -3398,7 +3290,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                           </tr>
                         </thead>
                         <tbody>
-                          {(formData.goals || []).map((g) => {
+                          {(formData.goals || []).map((g: any) => {
                             const objectivesWithDuration = [
                               getRedactedText(g.objectives),
                               (g.duration || '').trim()
@@ -3423,7 +3315,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                       type="button"
                                       onClick={() => {
                                         handleAutoUnlockReport('evalToggle');
-                                        setExpandedEvalMap((prev) => ({
+                                        setExpandedEvalMap((prev: any) => ({
                                           ...prev,
                                           [g.id]: true
                                         }));
@@ -3519,7 +3411,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   </tbody>
                 </table>
 
-                {(formData.goals || []).map((g) => (
+                {(formData.goals || []).map((g: any) => (
                   <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
                     <tbody>
                       <tr style={{ background: '#eef3fb' }}>
@@ -3543,7 +3435,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                               type="button"
                               onClick={() => {
                                 handleAutoUnlockReport('evalToggle');
-                                setExpandedEvalMap((prev) => ({
+                                setExpandedEvalMap((prev: any) => ({
                                   ...prev,
                                   [g.id]: true
                                 }));
@@ -3719,7 +3611,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 setShowStatusReportSection(next);
                 if (next) {
                   const currentSections = Array.isArray(formData.statusReportSections)
-                    ? formData.statusReportSections.filter((s) => (s.content || '').trim())
+                    ? formData.statusReportSections.filter((s: any) => (s.content || '').trim())
                     : [];
                   if (currentSections.length === 0 && !isGeneratingStatusReport) {
                     handleGenerateStatusReport();
@@ -4108,7 +4000,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       const sourceStudent = allStudents.find((s) => s.id === sourceId);
                       if (!sourceStudent) return;
                       const teamData = extractTeamDataFromStudent(sourceStudent);
-                      setFormData((prev) => ({
+                      setFormData((prev: any) => ({
                         ...prev,
                         ...teamData
                       }));
@@ -4515,7 +4407,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {attachedDocs.map((doc) => (
+                  {attachedDocs.map((doc: any) => (
                     <div
                       key={doc.id}
                       style={{
@@ -5343,7 +5235,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         )}
 
         <div className="goals-blocks-list">
-          {(formData.goals || []).map((goalRow, index) => {
+          {(formData.goals || []).map((goalRow: any, index: any) => {
             const isPickerOpen = openPickerGoalId === goalRow.id;
             const isAiOpen = activeAiGoalId === goalRow.id;
             const matchedBankItem =
@@ -5786,14 +5678,14 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       </div>
 
                       <div className="ai-questions-grid">
-                        {currentQuestions.slice(0, 3).map((qObj, qIdx) => {
+                        {currentQuestions.slice(0, 3).map((qObj: any, qIdx: any) => {
                           const currentVal = (aiAnswersMap[goalRow.id] || {})[qIdx] || '';
                           return (
                             <div key={qIdx} className="ai-question-box">
                               <label className="ai-q-text">{qObj.q}</label>
                               {qObj.suggestions && qObj.suggestions.length > 0 && (
                                 <div className="ai-suggestion-chips">
-                                  {qObj.suggestions.map((sug, sIdx) => {
+                                  {qObj.suggestions.map((sug: any, sIdx: any) => {
                                     const inflectedSug = adaptTextToGender(sug, currentGender);
                                     return (
                                       <button
@@ -5912,12 +5804,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                               }
                               placeholder="• יעד אופרטיבי 1&#10;• יעד אופרטיבי 2..."
                             />
-                            {!isReportLocked && matchedBankItem?.suggestedObjectives?.length > 0 && (
+                            {!isReportLocked && (matchedBankItem?.suggestedObjectives?.length || 0) > 0 && (
                               <div className="quick-objectives-bank">
                                 <div
                                   className="quick-objectives-toggle-header"
                                   onClick={() =>
-                                    setExpandedQuickObjMap((prev) => ({
+                                    setExpandedQuickObjMap((prev: any) => ({
                                       ...prev,
                                       [goalRow.id]: !prev[goalRow.id]
                                     }))
@@ -5940,7 +5832,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                 </div>
                                 {expandedQuickObjMap[goalRow.id] && (
                                   <div className="quick-obj-chips">
-                                    {matchedBankItem.suggestedObjectives.map((obj, oIdx) => {
+                                    {matchedBankItem?.suggestedObjectives?.map((obj, oIdx) => {
                                       const inflectedObj = adaptTextToGender(obj, currentGender);
                                       return (
                                         <button
@@ -6150,12 +6042,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                               }
                               placeholder="• יעד אופרטיבי 1&#10;• יעד אופרטיבי 2..."
                             />
-                            {!isReportLocked && matchedBankItem?.suggestedObjectives?.length > 0 && (
+                            {!isReportLocked && (matchedBankItem?.suggestedObjectives?.length || 0) > 0 && (
                               <div className="quick-objectives-bank">
                                 <div
                                   className="quick-objectives-toggle-header"
                                   onClick={() =>
-                                    setExpandedQuickObjMap((prev) => ({
+                                    setExpandedQuickObjMap((prev: any) => ({
                                       ...prev,
                                       [goalRow.id]: !prev[goalRow.id]
                                     }))
@@ -6178,7 +6070,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                                 </div>
                                 {expandedQuickObjMap[goalRow.id] && (
                                   <div className="quick-obj-chips">
-                                    {matchedBankItem.suggestedObjectives.map((obj, oIdx) => {
+                                    {matchedBankItem?.suggestedObjectives?.map((obj, oIdx) => {
                                       const inflectedObj = adaptTextToGender(obj, currentGender);
                                       return (
                                         <button
@@ -6262,7 +6154,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                           if (formData.isLocked) {
                             handleAutoUnlockReport('evalToggle');
                           }
-                          setExpandedEvalMap((prev) => ({
+                          setExpandedEvalMap((prev: any) => ({
                             ...prev,
                             [goalRow.id]: !prev[goalRow.id]
                           }));
@@ -6607,7 +6499,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               setShowStatusReportSection(next);
               if (next) {
                 const currentSections = Array.isArray(formData.statusReportSections)
-                  ? formData.statusReportSections.filter((s) => (s.content || '').trim())
+                  ? formData.statusReportSections.filter((s: any) => (s.content || '').trim())
                   : [];
                 if (currentSections.length === 0 && !isGeneratingStatusReport) {
                   handleGenerateStatusReport();
@@ -6748,7 +6640,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
           {/* Goals Evaluation Cards inside the Separate Report */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {(formData.goals || []).map((goalRow, idx) => (
+            {(formData.goals || []).map((goalRow: any, idx: any) => (
               <div
                 key={goalRow.id}
                 style={{
@@ -7153,7 +7045,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       )}
       {observationModalGoalId &&
         (() => {
-          const targetGoal = (formData.goals || []).find((g) => g.id === observationModalGoalId);
+          const targetGoal = (formData.goals || []).find((g: any) => g.id === observationModalGoalId);
           if (!targetGoal) return null;
           return (
             <QuickObservationModal
@@ -7161,7 +7053,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               authorName={currentUser?.name || currentUser?.email || ''}
               onAddObservation={(obsInput) => {
                 const { updatedGoal } = addObservationToGoal(targetGoal, obsInput);
-                const nextGoals = (formData.goals || []).map((g) =>
+                const nextGoals = (formData.goals || []).map((g: any) =>
                   g.id === targetGoal.id ? updatedGoal : g
                 );
                 const nextData = {
@@ -7179,11 +7071,11 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 }
               }}
               onDeleteObservation={(obsId) => {
-                const nextGoals = (formData.goals || []).map((g) =>
+                const nextGoals = (formData.goals || []).map((g: any) =>
                   g.id === targetGoal.id
                     ? {
                         ...g,
-                        observations: (g.observations || []).filter((o) => o.id !== obsId)
+                        observations: (g.observations || []).filter((o: any) => o.id !== obsId)
                       }
                     : g
                 );

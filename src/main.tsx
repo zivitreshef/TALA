@@ -8,11 +8,11 @@ import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy';
 import './index.css';
 
 // Initialize usage telemetry transport
-setupUsageTelemetryTransport(usageTelemetryService);
+setupUsageTelemetryTransport(usageTelemetryService as any);
 
 // Global error fallback to guard against blank white screens on iOS / iPadOS
 if (typeof window !== 'undefined') {
-  window.addEventListener('error', (event) => {
+  window.addEventListener('error', (event: ErrorEvent) => {
     console.error('[GlobalWindowError]', event.error || event.message);
     try {
       const errName = event.error?.name || 'WindowError';
@@ -38,7 +38,7 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  window.addEventListener('unhandledrejection', (event) => {
+  window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
     try {
       const reason = event?.reason;
       const errName = reason?.name || 'UnhandledRejection';
@@ -77,13 +77,18 @@ async function boot() {
   const Page = inviteToken
     ? (await import('./components/public/ParentStudentInputView')).default
     : (await import('./App')).default;
-  ReactDOM.createRoot(document.getElementById('root')).render(
+  const rootEl = document.getElementById('root');
+  if (rootEl) {
+    const Component = Page as React.ComponentType<any>;
+    ReactDOM.createRoot(rootEl).render(
     <React.StrictMode>
       <ErrorBoundary onReset={() => window.location.reload()}>
-        <Page token={inviteToken} />
+        <Component token={inviteToken} />
       </ErrorBoundary>
     </React.StrictMode>
   );
+}
+
 }
 
 boot();

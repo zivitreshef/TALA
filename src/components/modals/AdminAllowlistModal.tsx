@@ -127,6 +127,7 @@ export interface AdminAllowlistModalProps {
   onDismissAdminRequest?: (id: string) => void;
   cloudSyncState?: any;
   emailEngineConfig?: any;
+  onUpdateEmailEngineConfig?: (config: any) => void;
   students?: any[];
   upgradeBanner?: any;
   onUpdateUpgradeBanner?: (banner: any) => void;
