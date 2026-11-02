@@ -2,7 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import AdminAnalyticsDashboard, { isUserAdmin } from '../components/admin/AdminAnalyticsDashboard';
+import AdminAnalyticsDashboard, { isUserAdmin, TELEMETRY_SETTINGS_KEY } from '../components/admin/AdminAnalyticsDashboard';
+import { safeSetStorageJson, safeGetStorageJson } from '../services/storage';
+
+const memoryStore = new Map();
+const localStorageMock = {
+  getItem: (k) => memoryStore.get(k) ?? null,
+  setItem: (k, v) => memoryStore.set(k, String(v)),
+  removeItem: (k) => memoryStore.delete(k),
+  clear: () => memoryStore.clear()
+};
+if (typeof globalThis.localStorage === 'undefined' || !globalThis.localStorage?.getItem) {
+  globalThis.localStorage = localStorageMock;
+}
+
 import {
   saveTelemetryBatch,
   fetchTelemetryEvents,
@@ -500,7 +513,8 @@ describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
       expect(html).toContain('data-testid="time-btn-7d"');
       expect(html).toContain('data-testid="time-btn-30d"');
       expect(html).toContain('data-testid="time-btn-90d"');
-      expect(html).toContain('data-testid="time-btn-custom"');
+      expect(html).not.toContain('data-testid="time-btn-custom"');
+      expect(html).not.toContain('מותאם אישית');
       expect(html).toContain('data-testid="toggle-exclude-internal"');
       expect(html).toContain('סנן חשבונות בדיקה ומנהלים');
       expect(html).toContain('data-testid="btn-export-csv"');
@@ -572,6 +586,31 @@ describe('Admin Analytics Dashboard & Storage Hub Test Suite (M3 & M4)', () => {
       // Verify dashboard root allows overflow visibility
       expect(html).toContain('overflow:visible');
     });
+
+    it('initializes and persists telemetry settings (excludeInternal, samplingMode, retentionPeriod)', () => {
+      // Test storage persistence
+
+      safeSetStorageJson(TELEMETRY_SETTINGS_KEY, {
+        excludeInternal: false,
+        samplingMode: true,
+        retentionPeriod: '180'
+      });
+
+      const html = renderToStaticMarkup(
+        React.createElement(AdminAnalyticsDashboard, {
+          currentUser: adminUser,
+          initialEvents: mockSyntheticEvents
+        })
+      );
+
+      // Verify stored settings reflect in rendered controls bar and storage
+      expect(html).toContain('data-testid="toggle-exclude-internal"');
+      const saved = safeGetStorageJson(TELEMETRY_SETTINGS_KEY);
+      expect(saved.excludeInternal).toBe(false);
+      expect(saved.samplingMode).toBe(true);
+      expect(saved.retentionPeriod).toBe('180');
+    });
+
 
   });
 

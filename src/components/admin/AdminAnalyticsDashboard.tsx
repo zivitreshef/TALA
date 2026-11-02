@@ -5,6 +5,24 @@ import {
 } from 'lucide-react';
 import { fetchTelemetryEvents } from '../../services/telemetryStorage';
 import { computeTelemetryAnalytics } from '../../domain/telemetryAggregator';
+import { safeGetStorageJson, safeSetStorageJson } from '../../services/storage';
+import { usageTelemetryService } from '../../services/usageTelemetryService';
+import { saveSettingsToCloud } from '../../firebaseBackend';
+
+
+export const TELEMETRY_SETTINGS_KEY = 'tala_telemetry_settings';
+
+export interface TelemetryDashboardSettings {
+  excludeInternal: boolean;
+  samplingMode: boolean;
+  retentionPeriod: string;
+}
+
+export const DEFAULT_TELEMETRY_SETTINGS: TelemetryDashboardSettings = {
+  excludeInternal: true,
+  samplingMode: false,
+  retentionPeriod: '90'
+};
 
 export function isUserAdmin(user: any): boolean {
   if (!user) return false;
@@ -109,35 +127,84 @@ export default function AdminAnalyticsDashboard({
 }: AdminAnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState(initialTimeRange);
   const [activeTab, setActiveTab] = useState('overview');
-  const [excludeInternal, setExcludeInternal] = useState(true);
-  const [samplingMode, setSamplingMode] = useState(false);
+  const [settings, setSettings] = useState<TelemetryDashboardSettings>(() => {
+    try {
+      const saved = safeGetStorageJson<Partial<TelemetryDashboardSettings>>(TELEMETRY_SETTINGS_KEY, null);
+      return {
+        excludeInternal: saved?.excludeInternal ?? true,
+        samplingMode: saved?.samplingMode ?? false,
+        retentionPeriod: saved?.retentionPeriod ?? '90'
+      };
+    } catch {
+      return DEFAULT_TELEMETRY_SETTINGS;
+    }
+  });
   const [events, setEvents] = useState<any[]>(initialEvents || []);
   const [isLoading, setIsLoading] = useState(!initialEvents);
-  const [retentionPeriod, setRetentionPeriod] = useState('90');
+  const [retentionSaveToast, setRetentionSaveToast] = useState<string>('');
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<string>('');
+
+  const updateSetting = useCallback(async <K extends keyof TelemetryDashboardSettings>(
+    key: K,
+    value: TelemetryDashboardSettings[K]
+  ) => {
+    setSettings((prev) => {
+      const updated = { ...prev, [key]: value };
+      safeSetStorageJson(TELEMETRY_SETTINGS_KEY, updated);
+      return updated;
+    });
+
+    try {
+      await saveSettingsToCloud({
+        telemetrySettings: {
+          ...settings,
+          [key]: value
+        }
+      });
+    } catch (err) {
+      console.warn('[AdminAnalyticsDashboard] Failed to persist telemetry setting to cloud:', err);
+    }
+  }, [settings]);
 
   const isAdmin = useMemo(() => isUserAdmin(currentUser), [currentUser]);
 
   const loadEvents = useCallback(async () => {
-    if (initialEvents && initialEvents.length > 0) {
-      setEvents(initialEvents);
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
+    const minDelayPromise = new Promise((resolve) => setTimeout(resolve, 400));
     try {
+      // 1. Flush any pending telemetry in queue
+      try {
+        await usageTelemetryService.flush();
+      } catch (_) {}
+
+      // 2. Fetch latest telemetry events from Firestore
       const fetched = await fetchTelemetryEvents({
         timeRange,
-        excludeInternal
+        excludeInternal: settings.excludeInternal
       });
-      setEvents(fetched || []);
+
+      if ((!fetched || fetched.length === 0) && initialEvents && initialEvents.length > 0) {
+        setEvents(initialEvents);
+      } else {
+        setEvents(fetched || []);
+      }
+
+      const now = new Date();
+      setLastRefreshedAt(
+        now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      );
     } catch (err) {
       console.warn('[AdminAnalyticsDashboard] Error loading telemetry events:', err);
-      setEvents([]);
+      if (initialEvents && initialEvents.length > 0) {
+        setEvents(initialEvents);
+      } else {
+        setEvents([]);
+      }
     } finally {
+      await minDelayPromise;
       setIsLoading(false);
     }
-  }, [timeRange, excludeInternal, initialEvents]);
+  }, [timeRange, settings.excludeInternal, initialEvents]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -301,27 +368,34 @@ export default function AdminAnalyticsDashboard({
           >
             🔒 מנהל מאומת
           </div>
-          <button
-            type="button"
-            data-testid="btn-refresh-telemetry"
-            onClick={loadEvents}
-            title="רענן נתוני טלמטריה"
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 255, 255, 0.4)',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'background 0.2s'
-            }}
-          >
-            <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {lastRefreshedAt && (
+              <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.9)', background: 'rgba(255, 255, 255, 0.15)', padding: '2px 8px', borderRadius: '12px' }}>
+                עודכן: {lastRefreshedAt}
+              </span>
+            )}
+            <button
+              type="button"
+              data-testid="btn-refresh-telemetry"
+              onClick={loadEvents}
+              title="רענן נתוני טלמטריה"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.4)',
+                background: 'rgba(255, 255, 255, 0.2)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+            >
+              <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -352,8 +426,7 @@ export default function AdminAnalyticsDashboard({
             { id: '24h', label: '24 שעות' },
             { id: '7d', label: '7 ימים' },
             { id: '30d', label: '30 יום' },
-            { id: '90d', label: '90 יום' },
-            { id: 'custom', label: 'מותאם אישית' }
+            { id: '90d', label: '90 יום' }
           ].map((t) => (
             <button
               key={t.id}
@@ -394,8 +467,8 @@ export default function AdminAnalyticsDashboard({
             <input
               type="checkbox"
               data-testid="toggle-exclude-internal"
-              checked={excludeInternal}
-              onChange={(e) => setExcludeInternal(e.target.checked)}
+              checked={settings.excludeInternal}
+              onChange={(e) => updateSetting('excludeInternal', e.target.checked)}
               style={{ width: '16px', height: '16px', accentColor: 'var(--primary, #4a88c7)', cursor: 'pointer' }}
             />
             <span>סנן חשבונות בדיקה ומנהלים</span>
@@ -415,8 +488,8 @@ export default function AdminAnalyticsDashboard({
             <input
               type="checkbox"
               data-testid="toggle-sampling-mode"
-              checked={samplingMode}
-              onChange={(e) => setSamplingMode(e.target.checked)}
+              checked={settings.samplingMode}
+              onChange={(e) => updateSetting('samplingMode', e.target.checked)}
               style={{ width: '16px', height: '16px', accentColor: '#2db39b', cursor: 'pointer' }}
             />
             <span>דגימת אירועים לחיסכון במכסות</span>
@@ -1097,8 +1170,8 @@ export default function AdminAnalyticsDashboard({
                       תקופת שמירת אירועי טלמטריה בענן:
                     </label>
                     <select
-                      value={retentionPeriod}
-                      onChange={(e) => setRetentionPeriod(e.target.value)}
+                      value={settings.retentionPeriod}
+                      onChange={(e) => updateSetting('retentionPeriod', e.target.value)}
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -1115,23 +1188,35 @@ export default function AdminAnalyticsDashboard({
                     </select>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => alert(`הגדרת שמירת הנתונים נשמרה: ${retentionPeriod} יום.`)}
-                    style={{
-                      background: 'var(--primary, #4a88c7)',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '8px 14px',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      alignSelf: 'flex-start'
-                    }}
-                  >
-                    שמור הגדרות שמירה
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      data-testid="btn-save-retention"
+                      onClick={async () => {
+                        await updateSetting('retentionPeriod', settings.retentionPeriod);
+                        setRetentionSaveToast(`✅ הגדרת שמירת הנתונים נשמרה: ${settings.retentionPeriod} יום`);
+                        setTimeout(() => setRetentionSaveToast(''), 3000);
+                      }}
+                      style={{
+                        background: 'var(--primary, #4a88c7)',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        alignSelf: 'flex-start'
+                      }}
+                    >
+                      שמור הגדרות שמירה
+                    </button>
+                    {retentionSaveToast && (
+                      <span style={{ fontSize: '12.5px', color: '#166534', fontWeight: 600, background: '#dcfce7', padding: '4px 10px', borderRadius: '6px' }}>
+                        {retentionSaveToast}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
