@@ -4610,40 +4610,90 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           )}
         </div>
 
-        <div className="free-text-area-box" style={{ background: 'transparent', border: 'none', padding: 0 }}>
+        <div
+          className="free-text-area-box pedagogical-feed-collapsible-card"
+          style={{
+            background: !isFreeTextCollapsed
+              ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)'
+              : '#f8fafc',
+            border: !isFreeTextCollapsed ? '1.5px solid #cbd5e1' : '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: !isFreeTextCollapsed ? '14px 18px' : '10px 16px',
+            marginBottom: '18px',
+            boxShadow: !isFreeTextCollapsed ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        >
           <div
+            onClick={() => setIsFreeTextCollapsed((prev) => !prev)}
             style={{
               display: 'flex',
-              justifyContent: 'space-between',
               alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              userSelect: 'none',
               flexWrap: 'wrap',
-              gap: '8px',
-              marginBottom: isFreeTextCollapsed ? 0 : '8px'
+              gap: '10px'
             }}
           >
-            <label className="bold-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>✍️ ציר תובנות פדגוגי ומסמכי רקע:</span>
-              {isRawFreeTextAlreadyAnalyzed(formData) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '7px',
+                  background: !isFreeTextCollapsed || activeSnippets.length > 0 ? '#ede9fe' : '#f1f5f9',
+                  color: !isFreeTextCollapsed || activeSnippets.length > 0 ? '#6d28d9' : '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Sparkles size={16} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
+                  ציר תובנות פדגוגי ומסמכי רקע
+                </span>
                 <span
                   style={{
-                    fontSize: '12px',
+                    fontSize: '11px',
                     fontWeight: 600,
-                    color: '#5b21b6',
-                    background: '#f3eefc',
-                    border: '1px solid #d8b4fe',
+                    color: activeSnippets.length > 0 ? '#047857' : '#64748b',
+                    background: activeSnippets.length > 0 ? '#ecfdf5' : '#e2e8f0',
+                    border: activeSnippets.length > 0 ? '1px solid #a7f3d0' : '1px solid #cbd5e1',
                     borderRadius: '999px',
-                    padding: '2px 10px'
+                    padding: '1px 8px'
                   }}
                 >
-                  ✓ עובד ב-AI
+                  {activeSnippets.length > 0 ? `${activeSnippets.length} מקורות פעילים` : '0 מקורות'}
                 </span>
-              )}
-            </label>
+                {isRawFreeTextAlreadyAnalyzed(formData) && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#5b21b6',
+                      background: '#f3eefc',
+                      border: '1px solid #d8b4fe',
+                      borderRadius: '999px',
+                      padding: '1px 8px'
+                    }}
+                  >
+                    ✓ עובד ב-AI
+                  </span>
+                )}
+              </div>
+            </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
                 type="button"
-                onClick={() => setIsFreeTextCollapsed((prev) => !prev)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsFreeTextCollapsed((prev) => !prev);
+                }}
                 title={isFreeTextCollapsed ? 'פתיחת ציר תובנות' : 'סגירת ציר תובנות'}
                 aria-label={isFreeTextCollapsed ? 'פתיחת ציר תובנות' : 'סגירת ציר תובנות'}
                 style={{
@@ -4651,9 +4701,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   height: '32px',
                   minWidth: '32px',
                   borderRadius: '8px',
-                  background: isFreeTextCollapsed ? '#f4f7fc' : '#ede9fe',
-                  border: isFreeTextCollapsed ? '1px solid #d3dff0' : '1px solid #c4b5fd',
-                  color: isFreeTextCollapsed ? '#2b4c73' : '#5b21b6',
+                  background: !isFreeTextCollapsed ? '#ede9fe' : '#f4f7fc',
+                  border: !isFreeTextCollapsed ? '1px solid #c4b5fd' : '1px solid #d3dff0',
+                  color: !isFreeTextCollapsed ? '#5b21b6' : '#2b4c73',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -4668,21 +4718,23 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           {!isFreeTextCollapsed && (
-            <PedagogicalFeed
-              snippets={activeSnippets}
-              onAddSnippet={handleAddSnippet}
-              onRemoveSnippet={handleRemoveSnippet}
-              onOpenUploadModal={() => {
-                setSelectedIntakeDoc(null);
-                setShowDiagnosticIntakeModal(true);
-              }}
-              onSaveDraft={handleSaveDraft}
-              onTriggerAiAnalysis={() => handleReverseEngineerFullReport()}
-              isAnalyzing={isReverseEngineering}
-              isLocked={isReportLocked}
-              currentUserName={userPreferences?.fullName || currentUser?.name || ''}
-              onboardingStep={activeOnboardingStep}
-            />
+            <div style={{ marginTop: '14px' }}>
+              <PedagogicalFeed
+                snippets={activeSnippets}
+                onAddSnippet={handleAddSnippet}
+                onRemoveSnippet={handleRemoveSnippet}
+                onOpenUploadModal={() => {
+                  setSelectedIntakeDoc(null);
+                  setShowDiagnosticIntakeModal(true);
+                }}
+                onSaveDraft={handleSaveDraft}
+                onTriggerAiAnalysis={() => handleReverseEngineerFullReport()}
+                isAnalyzing={isReverseEngineering}
+                isLocked={isReportLocked}
+                currentUserName={userPreferences?.fullName || currentUser?.name || ''}
+                onboardingStep={activeOnboardingStep}
+              />
+            </div>
           )}
 
           {isReverseEngineering && (
