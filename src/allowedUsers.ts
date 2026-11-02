@@ -1,4 +1,5 @@
 import { safeGetStorageItem, safeSetStorageItem } from './services/storage';
+
 // ============================================================================
 // Salted Cryptographic Password Hashing (SHA-256 + Per-User Random Salt)
 // Ensures plaintext passwords (`accessCode`) are never stored in Firestore or localStorage.
@@ -15,14 +16,14 @@ const SHA256_K = new Uint32Array([
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 ]);
 
-function rotr32(x, n) {
+function rotr32(x: number, n: number): number {
   return (x >>> n) | (x << (32 - n));
 }
 
 /**
  * Synchronous FIPS 180-4 SHA-256 digest over UTF-8 input string, returning 64-char lowercase hex.
  */
-export function sha256Hex(message) {
+export function sha256Hex(message?: unknown): string {
   const bytes = new TextEncoder().encode(String(message ?? ''));
   const bitLen = bytes.length * 8;
   const totalBytes = (((bytes.length + 8) >> 6) + 1) << 6;
@@ -100,7 +101,7 @@ export function sha256Hex(message) {
 /**
  * Generates a cryptographically random per-user salt (32 hex chars / 128 bits).
  */
-export function generatePasswordSalt(byteLength = 16) {
+export function generatePasswordSalt(byteLength: number = 16): string {
   const bytes = new Uint8Array(byteLength);
   if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
     globalThis.crypto.getRandomValues(bytes);
@@ -115,7 +116,7 @@ export function generatePasswordSalt(byteLength = 16) {
 /**
  * Computes a stretched, salted SHA-256 password hash (256 rounds with domain separation).
  */
-export function hashPasswordWithSalt(password, salt) {
+export function hashPasswordWithSalt(password?: unknown, salt?: unknown): string {
   const cleanPassword = String(password ?? '').trim();
   const cleanSalt = String(salt ?? '').trim();
   let digest = sha256Hex(`TALA_PBKDF_V1:${cleanSalt}:${cleanPassword}`);
@@ -125,19 +126,31 @@ export function hashPasswordWithSalt(password, salt) {
   return digest;
 }
 
+export interface PasswordCredentials {
+  passwordSalt: string;
+  passwordHash: string;
+}
+
 /**
  * Creates `{ passwordSalt, passwordHash }` credentials for a plaintext password.
  */
-export function createPasswordCredentials(password, existingSalt = null) {
+export function createPasswordCredentials(password: string, existingSalt: string | null = null): PasswordCredentials {
   const passwordSalt = existingSalt || generatePasswordSalt();
   const passwordHash = hashPasswordWithSalt(password, passwordSalt);
   return { passwordSalt, passwordHash };
 }
 
+export interface UserPasswordRecord {
+  passwordHash?: string;
+  passwordSalt?: string;
+  accessCode?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Verifies whether a candidate password matches a user's stored salted hash (or legacy accessCode).
  */
-export function verifyUserPassword(user, candidatePassword) {
+export function verifyUserPassword(user?: UserPasswordRecord | null, candidatePassword?: unknown): boolean {
   if (!user || typeof user !== 'object') return false;
   const cleanCode = String(candidatePassword ?? '').trim();
 
@@ -166,10 +179,15 @@ export function verifyUserPassword(user, candidatePassword) {
   return true;
 }
 
+export interface EnsurePasswordHashedResult<T> {
+  user: T;
+  migrated: boolean;
+}
+
 /**
  * Ensures a single user object has `{ passwordSalt, passwordHash }` and strips plaintext `accessCode`.
  */
-export function ensureUserPasswordHashed(user) {
+export function ensureUserPasswordHashed<T extends Record<string, unknown>>(user: T): EnsurePasswordHashedResult<T> {
   if (!user || typeof user !== 'object') {
     return { user, migrated: false };
   }
@@ -177,19 +195,19 @@ export function ensureUserPasswordHashed(user) {
   if (user.passwordHash && user.passwordSalt) {
     if ('accessCode' in user) {
       const { accessCode: _removed, ...rest } = user;
-      return { user: rest, migrated: true };
+      return { user: rest as unknown as T, migrated: true };
     }
     return { user, migrated: false };
   }
 
-  if (typeof user.accessCode === 'string' && user.accessCode.trim()) {
+  if (typeof user.accessCode === 'string' && (user.accessCode as string).trim()) {
     const { accessCode, ...rest } = user;
-    const creds = createPasswordCredentials(accessCode.trim());
+    const creds = createPasswordCredentials((accessCode as string).trim());
     return {
       user: {
         ...rest,
         ...creds
-      },
+      } as unknown as T,
       migrated: true
     };
   }
@@ -200,7 +218,7 @@ export function ensureUserPasswordHashed(user) {
 /**
  * Ensures all users in an array have hashed + salted passwords and no plaintext `accessCode`.
  */
-export function ensureUsersListPasswordsHashed(usersList) {
+export function ensureUsersListPasswordsHashed<T extends Record<string, unknown>>(usersList?: T[] | null): { users: T[]; migrated: boolean } {
   if (!Array.isArray(usersList)) {
     return { users: [], migrated: false };
   }
@@ -213,13 +231,41 @@ export function ensureUsersListPasswordsHashed(usersList) {
   return { users, migrated: anyMigrated };
 }
 
+export interface AllowedUserRecord {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'teacher';
+  title?: string;
+  group?: string;
+  passwordSalt: string;
+  passwordHash: string;
+  active: boolean;
+  isTrialUser?: boolean;
+  trialDays?: number | null;
+  trialExpiresAt?: string | null;
+  trialExtendedAt?: string | null;
+  subscriptionType?: 'annual_paid' | string;
+  paidExpiresAt?: string | null;
+  upgradedToPaidAt?: string | null;
+  lockedOut?: boolean;
+  lockedOutAt?: string;
+  failedLoginAttempts?: number;
+  aiUsageCount?: number;
+  lastAiUsedAt?: string;
+  notifyOnSharedReport?: boolean;
+  sessionDate?: string;
+  loginAt?: number;
+  [key: string]: unknown;
+}
+
 // רשימת המשתמשים המורשים (Allowlist) לגישה למערכת TALA
-export const DEFAULT_ALLOWED_USERS = [
+export const DEFAULT_ALLOWED_USERS: AllowedUserRecord[] = [
   {
     id: 'u_admin_1',
     email: 'zivit.reshef@gmail.com',
     name: 'זיוית רשף',
-    role: 'admin', // 'admin' | 'teacher'
+    role: 'admin',
     title: 'מנהלת מערכת',
     group: 'מתי"א מרכז',
     ...createPasswordCredentials('TALA2026', 'a1f0e8c49b2d471683a5c7e901234567'),
@@ -259,13 +305,13 @@ export const DEFAULT_ALLOWED_USERS = [
 
 const STORAGE_KEY = 'tala_allowed_users_v1';
 
-export function loadAllowedUsers() {
+export function loadAllowedUsers(): AllowedUserRecord[] {
   try {
     const saved = safeGetStorageItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const titleMigrated = parsed.map((u) =>
+        const titleMigrated = parsed.map((u: AllowedUserRecord) =>
           (u.email?.toLowerCase() === 'zivit.reshef@gmail.com' || u.id === 'u_admin_1') &&
           u.title === 'מנהלת מערכת ומדריכה פדגוגית'
             ? { ...u, title: 'מנהלת מערכת' }
@@ -282,21 +328,37 @@ export function loadAllowedUsers() {
   return DEFAULT_ALLOWED_USERS;
 }
 
-export function saveAllowedUsers(users) {
+export function saveAllowedUsers(users: AllowedUserRecord[]): void {
   const { users: hashedUsers } = ensureUsersListPasswordsHashed(users);
   safeSetStorageItem(STORAGE_KEY, JSON.stringify(hashedUsers));
 }
 
 export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 
-export function verifyAllowedUser(email, accessCode, usersList) {
+export interface VerifyAllowedUserResult {
+  allowed: boolean;
+  reason?: string;
+  isLockedOut?: boolean;
+  isDisabled?: boolean;
+  failedAttempts?: number;
+  remainingAttempts?: number;
+  user?: AllowedUserRecord;
+  isTrialExpired?: boolean;
+  updatedUsersList?: AllowedUserRecord[] | null;
+}
+
+export function verifyAllowedUser(
+  email?: string,
+  accessCode?: string,
+  usersList?: AllowedUserRecord[]
+): VerifyAllowedUserResult {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanCode = (accessCode || '').trim();
   const rawList = usersList || loadAllowedUsers();
   const { users: list, migrated: listMigrated } = ensureUsersListPasswordsHashed(rawList);
 
   const found = list.find(
-    (u) => u.email.trim().toLowerCase() === cleanEmail
+    (u) => (u.email || '').trim().toLowerCase() === cleanEmail
   );
 
   if (!found) {
@@ -306,7 +368,7 @@ export function verifyAllowedUser(email, accessCode, usersList) {
     };
   }
 
-  const isMainAdmin = found.email.trim().toLowerCase() === 'zivit.reshef@gmail.com';
+  const isMainAdmin = (found.email || '').trim().toLowerCase() === 'zivit.reshef@gmail.com';
 
   if (!found.active) {
     if (found.lockedOut) {
@@ -341,7 +403,6 @@ export function verifyAllowedUser(email, accessCode, usersList) {
           failedLoginAttempts: nextAttempts,
           lockedOut: true,
           lockedOutAt: nowFormatted,
-          // Disable the user automatically (keep primary admin able to log in with real password so system is never bricked)
           active: isMainAdmin ? true : false
         };
       });
@@ -371,7 +432,7 @@ export function verifyAllowedUser(email, accessCode, usersList) {
   }
 
   // Successful login: reset failed attempts counter and persist any migrated password hashes
-  let updatedUsersList = listMigrated ? list : null;
+  let updatedUsersList: AllowedUserRecord[] | null = listMigrated ? list : null;
   if ((found.failedLoginAttempts || 0) > 0) {
     updatedUsersList = list.map((u) =>
       u.id === found.id ? { ...u, failedLoginAttempts: 0, lockedOut: false } : u
@@ -386,6 +447,19 @@ export function verifyAllowedUser(email, accessCode, usersList) {
   };
 }
 
+export interface PasswordPolicyCheck {
+  id: string;
+  label: string;
+  passed: boolean;
+}
+
+export interface PasswordPolicyResult {
+  valid: boolean;
+  checks: PasswordPolicyCheck[];
+  missing: string[];
+  errorMessage: string;
+}
+
 /**
  * Industry-standard password policy validation (no password history/retention).
  * Rules:
@@ -395,9 +469,9 @@ export function verifyAllowedUser(email, accessCode, usersList) {
  * 4. At least 1 digit (0-9)
  * 5. At least 1 special character (!@#$%^&*...)
  */
-export function validatePasswordPolicy(password) {
+export function validatePasswordPolicy(password?: unknown): PasswordPolicyResult {
   const pwd = String(password || '');
-  const checks = [
+  const checks: PasswordPolicyCheck[] = [
     {
       id: 'length',
       label: 'לפחות 8 תווים',
@@ -440,7 +514,7 @@ export function validatePasswordPolicy(password) {
 /**
  * Returns the local calendar date string 'YYYY-MM-DD' for daily session reset.
  */
-export function getCurrentLocalDayKey(date = new Date()) {
+export function getCurrentLocalDayKey(date: Date | string | number = new Date()): string {
   const d = date instanceof Date ? date : new Date(date);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -452,7 +526,7 @@ export function getCurrentLocalDayKey(date = new Date()) {
  * Stamps a logged-in user object with the current calendar day key and timestamp
  * so the session automatically resets every new day.
  */
-export function stampSessionUserWithDate(user, date = new Date()) {
+export function stampSessionUserWithDate<T extends Record<string, unknown>>(user: T | null, date: Date | string | number = new Date()): (T & { sessionDate: string; loginAt: number }) | null {
   if (!user || typeof user !== 'object') return null;
   const d = date instanceof Date ? date : new Date(date);
   return {
@@ -466,7 +540,7 @@ export function stampSessionUserWithDate(user, date = new Date()) {
  * Checks whether a persisted session user object is still valid for the current calendar day.
  * Sessions from a previous calendar day (or legacy sessions without sessionDate) expire automatically.
  */
-export function isSessionUserValidForToday(sessionUser, now = new Date()) {
+export function isSessionUserValidForToday(sessionUser?: Record<string, unknown> | null, now: Date | string | number = new Date()): boolean {
   if (!sessionUser || typeof sessionUser !== 'object' || !sessionUser.email) {
     return false;
   }
@@ -481,7 +555,7 @@ export const DEFAULT_TRIAL_DAYS = 7;
 /**
  * Computes an ISO expiration timestamp for a trial user given a number of days.
  */
-export function computeTrialExpirationIso(days = DEFAULT_TRIAL_DAYS, fromDate = new Date()) {
+export function computeTrialExpirationIso(days: number = DEFAULT_TRIAL_DAYS, fromDate: Date | string | number = new Date()): string {
   const validDays = Math.max(1, Number(days) || DEFAULT_TRIAL_DAYS);
   const baseMs = (fromDate instanceof Date ? fromDate : new Date(fromDate)).getTime();
   return new Date(baseMs + validDays * 24 * 60 * 60 * 1000).toISOString();
@@ -490,7 +564,7 @@ export function computeTrialExpirationIso(days = DEFAULT_TRIAL_DAYS, fromDate = 
 /**
  * Returns true if the user is a trial user and their trial period has expired.
  */
-export function isTrialUserExpired(user, now = new Date()) {
+export function isTrialUserExpired(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): boolean {
   if (!user || !user.isTrialUser || !user.trialExpiresAt) return false;
   const expMs = new Date(user.trialExpiresAt).getTime();
   if (Number.isNaN(expMs)) return false;
@@ -501,7 +575,7 @@ export function isTrialUserExpired(user, now = new Date()) {
 /**
  * Returns the remaining days (rounded up) for a trial user, or null if not a trial user.
  */
-export function getTrialRemainingDays(user, now = new Date()) {
+export function getTrialRemainingDays(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): number | null {
   if (!user || !user.isTrialUser || !user.trialExpiresAt) return null;
   const expMs = new Date(user.trialExpiresAt).getTime();
   if (Number.isNaN(expMs)) return null;
@@ -516,8 +590,8 @@ export function getTrialRemainingDays(user, now = new Date()) {
  * If the trial is already expired, extends from the current date.
  * If the trial is still active, adds days to the existing expiration date.
  */
-export function extendUserTrial(user, additionalDays = 7, now = new Date()) {
-  if (!user || typeof user !== 'object') return user;
+export function extendUserTrial<T extends Partial<AllowedUserRecord>>(user: T, additionalDays: number = 7, now: Date | string | number = new Date()): T & { isTrialUser: true; trialDays: number; trialExpiresAt: string; trialExtendedAt: string } {
+  if (!user || typeof user !== 'object') return user as unknown as T & { isTrialUser: true; trialDays: number; trialExpiresAt: string; trialExtendedAt: string };
   const daysToAdd = Math.max(1, Number(additionalDays) || 7);
   const nowDate = now instanceof Date ? now : new Date(now);
   
@@ -544,8 +618,8 @@ export function extendUserTrial(user, additionalDays = 7, now = new Date()) {
 /**
  * Upgrades a user to a full annual paid subscription (365 days from now).
  */
-export function upgradeUserToAnnualPaid(user, now = new Date()) {
-  if (!user || typeof user !== 'object') return user;
+export function upgradeUserToAnnualPaid<T extends Partial<AllowedUserRecord>>(user: T, now: Date | string | number = new Date()): T & { isTrialUser: false; subscriptionType: 'annual_paid'; paidExpiresAt: string; upgradedToPaidAt: string; trialExpiresAt: null; trialDays: null } {
+  if (!user || typeof user !== 'object') return user as unknown as T & { isTrialUser: false; subscriptionType: 'annual_paid'; paidExpiresAt: string; upgradedToPaidAt: string; trialExpiresAt: null; trialDays: null };
   const nowDate = now instanceof Date ? now : new Date(now);
   const nextYearIso = new Date(nowDate.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -563,7 +637,7 @@ export function upgradeUserToAnnualPaid(user, now = new Date()) {
 /**
  * Checks if a paid user's annual subscription has expired.
  */
-export function isPaidUserExpired(user, now = new Date()) {
+export function isPaidUserExpired(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): boolean {
   if (!user || user.subscriptionType !== 'annual_paid' || !user.paidExpiresAt) return false;
   const expMs = new Date(user.paidExpiresAt).getTime();
   if (Number.isNaN(expMs)) return false;
@@ -576,7 +650,7 @@ export function isPaidUserExpired(user, now = new Date()) {
  * or null if the user is null or a trial user.
  * For admin accounts, returns Infinity.
  */
-export function getPaidRemainingDays(user, now = new Date()) {
+export function getPaidRemainingDays(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): number | null {
   if (!user || user.isTrialUser) return null;
   if (user.role === 'admin' || user.email?.toLowerCase() === 'zivit.reshef@gmail.com') {
     return Infinity;
@@ -607,10 +681,20 @@ export function getPaidRemainingDays(user, now = new Date()) {
   return null;
 }
 
+export type UserSubscriptionStatus =
+  | 'unknown'
+  | 'admin'
+  | 'locked_out'
+  | 'disabled'
+  | 'trial_expired'
+  | 'trial_active'
+  | 'paid_expired'
+  | 'paid_active';
+
 /**
  * Computes a standardized subscription lifecycle status for display and filtering.
  */
-export function getUserSubscriptionStatus(user, now = new Date()) {
+export function getUserSubscriptionStatus(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): UserSubscriptionStatus {
   if (!user) return 'unknown';
   if (user.email?.toLowerCase() === 'zivit.reshef@gmail.com' || user.role === 'admin') {
     return 'admin';
@@ -632,7 +716,7 @@ export function getUserSubscriptionStatus(user, now = new Date()) {
 /**
  * Renames a group / Matya across an entire list of users (bulk rename).
  */
-export function renameUserGroupInList(usersList, oldGroupName, newGroupName) {
+export function renameUserGroupInList<T extends Partial<AllowedUserRecord>>(usersList?: T[] | null, oldGroupName?: unknown, newGroupName?: unknown): T[] {
   if (!Array.isArray(usersList)) return [];
   const cleanOld = String(oldGroupName ?? '').trim().toLowerCase();
   const cleanNew = String(newGroupName ?? '').trim();
@@ -647,11 +731,23 @@ export function renameUserGroupInList(usersList, oldGroupName, newGroupName) {
   });
 }
 
+export interface GroupStat {
+  name: string;
+  teachersCount: number;
+  studentsCount: number;
+  aiUsageTotal: number;
+  payingCount: number;
+  trialCount: number;
+}
+
 /**
  * Aggregates group / Matya statistics (teachers count, students count, AI usage).
  */
-export function computeGroupStats(usersList = [], studentsList = []) {
-  const groupsMap = new Map();
+export function computeGroupStats(
+  usersList: Partial<AllowedUserRecord>[] = [],
+  studentsList: Array<{ ownerEmail?: string; [key: string]: unknown }> = []
+): GroupStat[] {
+  const groupsMap = new Map<string, GroupStat>();
 
   for (const user of usersList) {
     const groupName = (user.group || '').trim() || 'ללא שיוך צוות / מתי"א';
@@ -665,7 +761,7 @@ export function computeGroupStats(usersList = [], studentsList = []) {
         trialCount: 0
       });
     }
-    const stat = groupsMap.get(groupName);
+    const stat = groupsMap.get(groupName)!;
     stat.teachersCount += 1;
     stat.aiUsageTotal += Number(user.aiUsageCount) || 0;
     if (user.isTrialUser) {
@@ -680,7 +776,7 @@ export function computeGroupStats(usersList = [], studentsList = []) {
     const owner = usersList.find((u) => (u.email || '').trim().toLowerCase() === ownerEmail);
     const groupName = (owner?.group || '').trim() || 'ללא שיוך צוות / מתי"א';
     if (groupsMap.has(groupName)) {
-      groupsMap.get(groupName).studentsCount += 1;
+      groupsMap.get(groupName)!.studentsCount += 1;
     }
   }
 
@@ -694,22 +790,22 @@ export function computeGroupStats(usersList = [], studentsList = []) {
 export const DAILY_AI_QUOTA_LIMIT = 1500;
 export const DAILY_EMAIL_QUOTA_LIMIT = 100;
 
-export function getDailyQuotaStorageKey(serviceName, date = new Date()) {
+export function getDailyQuotaStorageKey(serviceName: string, date: Date | string | number = new Date()): string {
   const dayKey = getCurrentLocalDayKey(date);
   return `tala_quota_${serviceName}_${dayKey}`;
 }
 
-export function getDailyQuotaCount(serviceName, date = new Date()) {
+export function getDailyQuotaCount(serviceName: string, date: Date | string | number = new Date()): number {
   try {
     if (typeof localStorage === 'undefined') return 0;
     const key = getDailyQuotaStorageKey(serviceName, date);
     return parseInt(safeGetStorageItem(key) || '0', 10) || 0;
-  } catch (_) {
+  } catch {
     return 0;
   }
 }
 
-export function incrementDailyQuotaCount(serviceName, amount = 1, date = new Date()) {
+export function incrementDailyQuotaCount(serviceName: string, amount: number = 1, date: Date | string | number = new Date()): number {
   try {
     if (typeof localStorage === 'undefined') return 0;
     const key = getDailyQuotaStorageKey(serviceName, date);
@@ -717,12 +813,12 @@ export function incrementDailyQuotaCount(serviceName, amount = 1, date = new Dat
     const next = current + Math.max(1, amount);
     safeSetStorageItem(key, String(next));
     return next;
-  } catch (_) {
+  } catch {
     return 0;
   }
 }
 
-export function recordAiTelemetryForUser(userEmail, usersList) {
+export function recordAiTelemetryForUser<T extends Partial<AllowedUserRecord>>(userEmail?: string, usersList?: T[]): T[] | undefined {
   incrementDailyQuotaCount('ai');
   if (!Array.isArray(usersList) || !userEmail) return usersList;
 
@@ -741,6 +837,8 @@ export function recordAiTelemetryForUser(userEmail, usersList) {
   });
 }
 
+export type AdministrativeUserGroup = 'admins' | 'paying' | 'trials' | 'expired_disabled';
+
 /**
  * Classifies a user into one of four administrative groups:
  * - 'admins': system administrators
@@ -748,7 +846,7 @@ export function recordAiTelemetryForUser(userEmail, usersList) {
  * - 'trials': active trial users
  * - 'expired_disabled': expired trials, expired subscriptions, disabled, or locked out users
  */
-export function classifyUserGroup(user, now = new Date()) {
+export function classifyUserGroup(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): AdministrativeUserGroup {
   const status = getUserSubscriptionStatus(user, now);
   if (status === 'admin') return 'admins';
   if (status === 'paid_active') return 'paying';
@@ -759,7 +857,7 @@ export function classifyUserGroup(user, now = new Date()) {
 /**
  * Helper to compute an epoch / priority weight for subscription status sorting.
  */
-function getSubscriptionSortWeight(user, now = new Date()) {
+function getSubscriptionSortWeight(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): number {
   const status = getUserSubscriptionStatus(user, now);
   if (status === 'admin') return 9999999999999;
   if (status === 'paid_active') {
@@ -774,11 +872,20 @@ function getSubscriptionSortWeight(user, now = new Date()) {
   return 0;
 }
 
+export type SortField = 'name' | 'email' | 'group' | 'capacity' | 'status' | string | null;
+export type SortDirection = 'asc' | 'desc';
+
 /**
  * Sorts a list of users by specified column and direction.
  * Supports Hebrew locale sorting for text, and numeric sorting for capacity and subscription expiration.
  */
-export function sortUsersList(users = [], sortField = null, sortDirection = 'asc', studentCountByEmail = new Map(), now = new Date()) {
+export function sortUsersList<T extends Partial<AllowedUserRecord>>(
+  users: T[] = [],
+  sortField: SortField = null,
+  sortDirection: SortDirection = 'asc',
+  studentCountByEmail: Map<string, number> = new Map(),
+  now: Date | string | number = new Date()
+): T[] {
   if (!Array.isArray(users)) return [];
   if (!sortField || !sortDirection || (sortDirection !== 'asc' && sortDirection !== 'desc')) {
     return [...users];

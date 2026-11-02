@@ -1,6 +1,6 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { getAuth, signInWithCustomToken, signOut, Auth, User } from 'firebase/auth';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 import {
   getFirestore,
   initializeFirestore,
@@ -21,9 +21,11 @@ import {
   limit,
   updateDoc,
   deleteField,
-  runTransaction
+  runTransaction,
+  Firestore,
+  Unsubscribe
 } from 'firebase/firestore';
-import { ensureUsersListPasswordsHashed } from './allowedUsers.js';
+import { ensureUsersListPasswordsHashed } from './allowedUsers';
 import { mergeStudentSnapshots } from './domain/studentSyncMerge';
 import {
   pruneStaleFirestoreKeys,
@@ -33,7 +35,7 @@ import {
 
 const PRIMARY_ADMIN_EMAIL = 'zivit.reshef@gmail.com';
 // Must match emailKey() in functions/index.js
-const profileDocId = (email) =>
+const profileDocId = (email?: string): string =>
   String(email || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
 
 const FIREBASE_CONFIG_STORAGE_KEY = 'tala_firebase_config_v1';
@@ -44,25 +46,71 @@ const DEFAULT_FB_KEY_CODES = [
   69, 115, 77, 87, 100, 76, 107
 ];
 
+export interface FirebaseConfig {
+  apiKey: string;
+  authDomain?: string;
+  projectId: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+}
+
+export interface LoginResult {
+  allowed: boolean;
+  user?: any;
+  clientIp?: string;
+  sessionCheck?: { takeoverRequired: boolean; clientIp?: string };
+  reason?: string;
+  isLockedOut?: boolean;
+  isDisabled?: boolean;
+  token?: string;
+}
+
+export interface BackendSubscriptionParams {
+  email?: string;
+  isAdmin?: boolean;
+  getInitialGoalBank?: () => any[];
+  getInitialStudents?: () => any[];
+  onAllowedUsersChange?: (users: any[]) => void;
+  onDirectoryChange?: (users: any[]) => void;
+  onProfileChange?: (profile: any) => void;
+  onGoalBankChange?: (goals: any[]) => void;
+  onStudentsChange?: (students: any[]) => void;
+  onSettingsChange?: (settings: any) => void;
+  onSyncStatusChange?: (status: { connected: boolean; status: string; error?: string }) => void;
+}
+
+export interface UserPresenceRecord {
+  email: string;
+  name: string;
+  lastActiveIso: string;
+}
+
+export interface HealthEvent {
+  id?: string;
+  createdAtMs?: number;
+  [key: string]: any;
+}
+
 // Default Firebase configuration for project: tala-d9aaa
-export const DEFAULT_FIREBASE_CONFIG = {
+export const DEFAULT_FIREBASE_CONFIG: FirebaseConfig = {
   apiKey:
-    import.meta.env?.VITE_FIREBASE_API_KEY ||
+    (import.meta as any).env?.VITE_FIREBASE_API_KEY ||
     String.fromCharCode(...DEFAULT_FB_KEY_CODES),
   authDomain:
-    import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || 'tala-d9aaa.firebaseapp.com',
-  projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || 'tala-d9aaa',
+    (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || 'tala-d9aaa.firebaseapp.com',
+  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || 'tala-d9aaa',
   storageBucket:
-    import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET ||
+    (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET ||
     'tala-d9aaa.firebasestorage.app',
   messagingSenderId:
-    import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '205311517565',
+    (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || '205311517565',
   appId:
-    import.meta.env?.VITE_FIREBASE_APP_ID ||
+    (import.meta as any).env?.VITE_FIREBASE_APP_ID ||
     '1:205311517565:web:ddc13ed67786971540a214'
 };
 
-export function getActiveFirebaseConfig() {
+export function getActiveFirebaseConfig(): FirebaseConfig | null {
   if (DEFAULT_FIREBASE_CONFIG.apiKey && DEFAULT_FIREBASE_CONFIG.projectId) {
     return DEFAULT_FIREBASE_CONFIG;
   }
@@ -80,7 +128,7 @@ export function getActiveFirebaseConfig() {
   return null;
 }
 
-export function saveCustomFirebaseConfig(configObj) {
+export function saveCustomFirebaseConfig(configObj: FirebaseConfig | null): void {
   if (!configObj) {
     localStorage.removeItem(FIREBASE_CONFIG_STORAGE_KEY);
     return;
@@ -88,14 +136,14 @@ export function saveCustomFirebaseConfig(configObj) {
   localStorage.setItem(FIREBASE_CONFIG_STORAGE_KEY, JSON.stringify(configObj));
 }
 
-export function parseFirebaseConfigInput(rawText) {
+export function parseFirebaseConfigInput(rawText?: string): FirebaseConfig | null {
   if (!rawText || !rawText.trim()) return null;
   const text = rawText.trim();
   try {
     return JSON.parse(text);
   } catch (_) {
     // Parse JS object snippet from Firebase Console (e.g. const firebaseConfig = { apiKey: "...", ... };)
-    const extract = (key) => {
+    const extract = (key: string): string => {
       const rx = new RegExp(`${key}\\s*:\\s*["']([^"']+)["']`);
       const m = text.match(rx);
       return m ? m[1].trim() : '';
@@ -114,11 +162,11 @@ export function parseFirebaseConfigInput(rawText) {
   }
 }
 
-let dbInstance = null;
-let authInstance = null;
-let storageInstance = null;
+let dbInstance: Firestore | null = null;
+let authInstance: Auth | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
-function getFirebaseAppInstance() {
+function getFirebaseAppInstance(): FirebaseApp | null {
   const config = getActiveFirebaseConfig();
   if (!config || !config.apiKey || !config.projectId) {
     return null;
@@ -127,11 +175,11 @@ function getFirebaseAppInstance() {
   return existingApps.length > 0 ? existingApps[0] : initializeApp(config);
 }
 
-export function _resetFirestoreInstanceForTesting() {
+export function _resetFirestoreInstanceForTesting(): void {
   dbInstance = null;
 }
 
-export function getFirestoreDb() {
+export function getFirestoreDb(): Firestore | null {
   if (dbInstance) return dbInstance;
   try {
     const app = getFirebaseAppInstance();
@@ -170,7 +218,7 @@ export function getFirestoreDb() {
   }
 }
 
-export function getFirebaseStorage() {
+export function getFirebaseStorage(): FirebaseStorage | null {
   if (storageInstance) return storageInstance;
   try {
     const app = getFirebaseAppInstance();
@@ -183,7 +231,7 @@ export function getFirebaseStorage() {
   }
 }
 
-export function getFirebaseAuth() {
+export function getFirebaseAuth(): Auth | null {
   if (authInstance) return authInstance;
   try {
     const app = getFirebaseAppInstance();
@@ -199,19 +247,18 @@ export function getFirebaseAuth() {
 /**
  * Server-verified login: the `talaLogin` Cloud Function checks the password
  * (and lockout), then returns a Firebase custom token + the user record.
- * Resolves to `{ allowed, user?, reason?, isLockedOut?, isDisabled? }`.
  */
-export async function loginWithTala(email, accessCode) {
+export async function loginWithTala(email: string, accessCode: string): Promise<LoginResult> {
   const auth = getFirebaseAuth();
   if (!auth) return { allowed: false, reason: 'שרת ההתחברות אינו זמין. נסו שוב מאוחר יותר.' };
   const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
   const primaryUrl =
-    import.meta.env?.VITE_TALA_LOGIN_URL ||
+    (import.meta as any).env?.VITE_TALA_LOGIN_URL ||
     'https://talalogin-cwk53dsota-uc.a.run.app';
   const fallbackUrl =
-    import.meta.env?.VITE_TALA_LOGIN_URL ? null :
+    (import.meta as any).env?.VITE_TALA_LOGIN_URL ? null :
     `https://us-central1-${projectId}.cloudfunctions.net/talaLogin`;
-  let data;
+  let data: any;
   try {
     const res = await fetch(primaryUrl, {
       method: 'POST',
@@ -247,23 +294,22 @@ export async function loginWithTala(email, accessCode) {
 
 let lastLoginPrewarmMs = 0;
 
-export function _resetLoginPrewarmThrottleForTesting() {
+export function _resetLoginPrewarmThrottleForTesting(): void {
   lastLoginPrewarmMs = 0;
 }
 const LOGIN_PREWARM_THROTTLE_MS = 60 * 1000;
 
 /**
  * Pre-warms the `talaLogin` Cloud Function in the background while the teacher
- * views or interacts with the login page. Completely eliminates cold-start delay.
+ * views or interacts with the login page.
  */
-export async function prewarmTalaLogin() {
+export async function prewarmTalaLogin(): Promise<void> {
   const now = Date.now();
   if (now - lastLoginPrewarmMs < LOGIN_PREWARM_THROTTLE_MS) return;
   lastLoginPrewarmMs = now;
 
-  const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
   const url =
-    import.meta.env?.VITE_TALA_LOGIN_URL ||
+    (import.meta as any).env?.VITE_TALA_LOGIN_URL ||
     'https://talalogin-cwk53dsota-uc.a.run.app';
 
   try {
@@ -281,12 +327,11 @@ export async function prewarmTalaLogin() {
 
 /**
  * Returns the already-signed-in Firebase user (Firebase persists the session).
- * Sign-in itself only happens via loginWithTala.
  */
-export async function ensureFirebaseAuthSession() {
+export async function ensureFirebaseAuthSession(_emailHint?: string): Promise<User | null> {
   const auth = getFirebaseAuth();
   if (!auth) return null;
-  await auth.authStateReady?.();
+  await (auth as any).authStateReady?.();
   if (auth.currentUser) {
     try {
       await auth.currentUser.getIdToken(true);
@@ -295,7 +340,7 @@ export async function ensureFirebaseAuthSession() {
   return auth.currentUser;
 }
 
-export async function signOutFirebaseAuthSession() {
+export async function signOutFirebaseAuthSession(): Promise<void> {
   const auth = getFirebaseAuth();
   if (!auth) return;
   try {
@@ -305,18 +350,14 @@ export async function signOutFirebaseAuthSession() {
   }
 }
 
-export function isCloudBackendConfigured() {
+export function isCloudBackendConfigured(): boolean {
   return Boolean(getFirestoreDb());
 }
 
 // === Cloud Sync & Persistence Helpers ===
 
 /**
- * Subscribe to cloud data in real time. Must be called after login: it waits for the
- * Firebase Auth session, then attaches only the listeners that role is allowed to read.
- *   admin   : allowed_users, admin_requests
- *   teacher : directory (colleague picker) + own profile
- *   all     : goal_bank, settings, students (own + shared; primary admin sees all)
+ * Subscribe to cloud data in real time. Must be called after login.
  */
 export function subscribeToTalaBackend({
   email,
@@ -330,7 +371,7 @@ export function subscribeToTalaBackend({
   onStudentsChange,
   onSettingsChange,
   onSyncStatusChange
-}) {
+}: BackendSubscriptionParams): () => void {
   const db = getFirestoreDb();
   const auth = getFirebaseAuth();
   if (!db || !auth) {
@@ -341,9 +382,9 @@ export function subscribeToTalaBackend({
   const me = String(email || '').trim().toLowerCase();
   const PRIMARY_ADMIN_EMAILS = [PRIMARY_ADMIN_EMAIL, 'moti_reshef@bmc.com'];
   const sawAll = Boolean(isAdmin) || PRIMARY_ADMIN_EMAILS.includes(me);
-  const unsubscribers = [];
+  const unsubscribers: Unsubscribe[] = [];
   let cancelled = false;
-  const listenError = (label, report) => (err) => {
+  const listenError = (label: string, report?: boolean) => (err: Error) => {
     console.error(`Firestore ${label} listener error:`, err);
     if (report) {
       onSyncStatusChange?.({ connected: false, status: 'error', error: `[${label}] ${err.message}` });
@@ -351,7 +392,7 @@ export function subscribeToTalaBackend({
   };
 
   const start = async () => {
-    await auth.authStateReady?.();
+    await (auth as any).authStateReady?.();
     if (cancelled) return;
     if (!auth.currentUser && me) {
       try {
@@ -450,7 +491,6 @@ export function subscribeToTalaBackend({
           const data = snap.exists() ? snap.data() : null;
           if (!data) return;
           if ('geminiApiKey' in data && isAdmin) {
-            // One-time cleanup of a key that was previously synced to the shared doc.
             updateDoc(settingsDocRef, { geminiApiKey: deleteField() }).catch(() => {});
           }
           const { geminiApiKey: _secret, ...publicSettings } = data;
@@ -462,8 +502,8 @@ export function subscribeToTalaBackend({
 
     // 4. Students & reports (tala_students/{studentId})
     const studentsColRef = collection(db, 'tala_students');
-    const emit = (docs) => {
-      const cloudStudents = [];
+    const emit = (docs: any[]) => {
+      const cloudStudents: any[] = [];
       docs.forEach((d) => {
         if (d && d.id) cloudStudents.push(d);
       });
@@ -478,7 +518,6 @@ export function subscribeToTalaBackend({
           studentsColRef,
           async (querySnap) => {
             if (querySnap.empty) {
-              // Seed local students once, from the primary admin only
               try {
                 const metaSnap = await getDoc(migrationMetaRef);
                 if (!metaSnap.exists()) {
@@ -511,21 +550,20 @@ export function subscribeToTalaBackend({
         )
       );
     } else {
-      // Rules only allow queries provably limited to the caller's own / shared students.
-      const owned = new Map();
-      const shared = new Map();
+      const owned = new Map<string, any>();
+      const shared = new Map<string, any>();
       let readyCount = 0;
-      const mark = (map, snap, first) => {
+      const mark = (map: Map<string, any>, snap: any, first: { done?: boolean }) => {
         map.clear();
-        snap.forEach((d) => map.set(d.id, d.data()));
+        snap.forEach((d: any) => map.set(d.id, d.data()));
         if (first.done !== true) {
           first.done = true;
           readyCount += 1;
         }
         if (readyCount === 2) emit([...new Map([...shared, ...owned]).values()]);
       };
-      const ownedFirst = {};
-      const sharedFirst = {};
+      const ownedFirst: { done?: boolean } = {};
+      const sharedFirst: { done?: boolean } = {};
       unsubscribers.push(
         onSnapshot(
           query(studentsColRef, where('ownerEmail', '==', me)),
@@ -557,10 +595,9 @@ export function subscribeToTalaBackend({
 
 /**
  * Recursively strips `undefined` properties before writing to Firestore
- * (Firestore throws `Unsupported field value: undefined` if any object contains `undefined`).
  */
-export function sanitizeForFirestore(value) {
-  if (value === undefined) return null;
+export function sanitizeForFirestore<T = any>(value: T): T {
+  if (value === undefined) return null as unknown as T;
   try {
     return JSON.parse(JSON.stringify(value));
   } catch (_) {
@@ -568,7 +605,7 @@ export function sanitizeForFirestore(value) {
   }
 }
 
-export async function fetchAllowedUsersFromCloud() {
+export async function fetchAllowedUsersFromCloud(): Promise<any[] | null> {
   const db = getFirestoreDb();
   if (!db) return null;
   try {
@@ -591,13 +628,13 @@ export async function fetchAllowedUsersFromCloud() {
 }
 
 // Writes to tala_config/allowed_users and admin_requests are server-authorised.
-async function postConfigWrite(payload) {
+async function postConfigWrite(payload: any): Promise<boolean> {
   try {
     const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
     const url =
-      import.meta.env?.VITE_TALA_CONFIG_WRITE_URL ||
+      (import.meta as any).env?.VITE_TALA_CONFIG_WRITE_URL ||
       `https://us-central1-${projectId}.cloudfunctions.net/talaConfigWrite`;
-    const headers = { 'Content-Type': 'application/json' };
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const idToken = await getFirebaseAuth()?.currentUser?.getIdToken();
     if (idToken) headers.Authorization = `Bearer ${idToken}`;
     const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
@@ -609,13 +646,13 @@ async function postConfigWrite(payload) {
   }
 }
 
-export async function saveAllowedUsersToCloud(usersList) {
+export async function saveAllowedUsersToCloud(usersList: any[]): Promise<boolean> {
   const { users: hashedUsers } = ensureUsersListPasswordsHashed(usersList || []);
   return postConfigWrite({ kind: 'users', users: sanitizeForFirestore(hashedUsers) });
 }
 
 /** Admin only: replace the whole list (used for dismissing requests). */
-export async function saveAdminRequestsToCloud(requestsList) {
+export async function saveAdminRequestsToCloud(requestsList: any[]): Promise<boolean> {
   return postConfigWrite({
     kind: 'adminRequests',
     requests: sanitizeForFirestore(requestsList || [])
@@ -623,11 +660,11 @@ export async function saveAdminRequestsToCloud(requestsList) {
 }
 
 /** Anyone (incl. logged-out login-page visitors): append one contact/NDA/survey request. */
-export async function submitAdminRequestToCloud(request) {
+export async function submitAdminRequestToCloud(request: any): Promise<boolean> {
   return postConfigWrite({ kind: 'submitRequest', request: sanitizeForFirestore(request) });
 }
 
-export async function saveGoalBankToCloud(goalsList) {
+export async function saveGoalBankToCloud(goalsList: any[]): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
@@ -643,11 +680,10 @@ export async function saveGoalBankToCloud(goalsList) {
   }
 }
 
-export async function saveSettingsToCloud(settingsObj) {
+export async function saveSettingsToCloud(settingsObj: any): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
-    // The Gemini key is a secret: it stays in this browser only, never in shared settings.
     const { geminiApiKey: _secret, ...shareable } = settingsObj || {};
     const cleanSettings = sanitizeForFirestore(shareable);
     await setDoc(
@@ -665,7 +701,7 @@ export async function saveSettingsToCloud(settingsObj) {
   }
 }
 
-export async function saveUserPreferencesToCloud(email, prefs) {
+export async function saveUserPreferencesToCloud(email: string, prefs: any): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db || !email) return false;
   const key = String(email).trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
@@ -687,7 +723,7 @@ export async function saveUserPreferencesToCloud(email, prefs) {
   }
 }
 
-export async function fetchUserPreferencesFromCloud(email) {
+export async function fetchUserPreferencesFromCloud(email: string): Promise<any | null> {
   const db = getFirestoreDb();
   if (!db || !email) return null;
   const key = String(email).trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
@@ -703,7 +739,7 @@ export async function fetchUserPreferencesFromCloud(email) {
   }
 }
 
-export function subscribeToUserPreferences(email, onUpdate) {
+export function subscribeToUserPreferences(email: string, onUpdate: (data: any) => void): () => void {
   const db = getFirestoreDb();
   if (!db || !email || typeof onUpdate !== 'function') return () => {};
   const key = String(email).trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
@@ -723,8 +759,7 @@ export function subscribeToUserPreferences(email, onUpdate) {
   }
 }
 
-export async function saveStudentToCloud(studentObj) {
-  // Zero-Trust Demo Sandbox Isolation: Demo students must NEVER be written to Firestore
+export async function saveStudentToCloud(studentObj: any): Promise<boolean> {
   if (!studentObj || studentObj.isDemo === true || studentObj.id === 'demo_yonatan_levi') {
     return false;
   }
@@ -734,7 +769,6 @@ export async function saveStudentToCloud(studentObj) {
   const cleanStudent = sanitizeForFirestore(studentObj);
 
   try {
-    // Non-destructive concurrent reconciliation if document already exists
     await runTransaction(db, async (transaction) => {
       const serverSnap = await transaction.get(docRef);
       let payload = {
@@ -757,7 +791,6 @@ export async function saveStudentToCloud(studentObj) {
     });
     return true;
   } catch (err) {
-    // Fallback for offline, network partitions, or environments without active transactions
     try {
       await setDoc(
         docRef,
@@ -775,8 +808,7 @@ export async function saveStudentToCloud(studentObj) {
   }
 }
 
-export async function deleteStudentFromCloud(studentId) {
-  // Demo students only exist in local sandbox
+export async function deleteStudentFromCloud(studentId: string): Promise<boolean> {
   if (!studentId || studentId === 'demo_yonatan_levi') return false;
   const db = getFirestoreDb();
   if (!db || !studentId) return false;
@@ -789,13 +821,13 @@ export async function deleteStudentFromCloud(studentId) {
   }
 }
 
-export async function recordUserPresence(currentUser) {
+export async function recordUserPresence(currentUser: { email?: string; name?: string; sessionId?: string; [key: string]: any }): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db || !currentUser || !currentUser.email) return false;
   const auth = getFirebaseAuth();
-  if (auth?.authStateReady) {
+  if ((auth as any)?.authStateReady) {
     try {
-      await auth.authStateReady();
+      await (auth as any).authStateReady();
     } catch (_) {}
   }
   const userKey = currentUser.email.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
@@ -820,17 +852,17 @@ export async function recordUserPresence(currentUser) {
   }
 }
 
-export function subscribeToUserPresence(onPresenceChange) {
+export function subscribeToUserPresence(onPresenceChange: (activeUsers: Record<string, UserPresenceRecord>) => void): () => void {
   const db = getFirestoreDb();
   const auth = getFirebaseAuth();
   if (!db) return () => {};
   let cancelled = false;
-  let unsub = null;
+  let unsub: Unsubscribe | null = null;
 
   const start = async () => {
-    if (auth?.authStateReady) {
+    if ((auth as any)?.authStateReady) {
       try {
-        await auth.authStateReady();
+        await (auth as any).authStateReady();
       } catch (_) {}
     }
     if (cancelled) return;
@@ -869,7 +901,7 @@ export function subscribeToUserPresence(onPresenceChange) {
 const HEALTH_EVENTS_COLLECTION = 'tala_health_events';
 
 /** Best-effort write; never throws (telemetry must never break the teacher's workflow). */
-export async function reportHealthEventToCloud(event) {
+export async function reportHealthEventToCloud(event: any): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db || !event) return false;
   try {
@@ -882,7 +914,7 @@ export async function reportHealthEventToCloud(event) {
 }
 
 /** Admin only (enforced by Firestore rules). Delivers the newest events, capped at `maxEvents`. */
-export function subscribeToHealthEvents(onEvents, maxEvents = 100) {
+export function subscribeToHealthEvents(onEvents: (events: HealthEvent[]) => void, maxEvents = 100): () => void {
   const db = getFirestoreDb();
   if (!db) return () => {};
   try {
@@ -903,7 +935,7 @@ export function subscribeToHealthEvents(onEvents, maxEvents = 100) {
 }
 
 /** Admin only. Deletes every event currently in the collection. */
-export async function clearHealthEventsInCloud() {
+export async function clearHealthEventsInCloud(): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db) return false;
   try {
@@ -919,7 +951,7 @@ export async function clearHealthEventsInCloud() {
 }
 
 /** Live probe: one small Firestore read; resolves { ok, latencyMs, message }. */
-export async function pingFirestore() {
+export async function pingFirestore(): Promise<{ ok: boolean; latencyMs: number; message: string }> {
   const db = getFirestoreDb();
   const started = Date.now();
   if (!db) return { ok: false, latencyMs: 0, message: 'Firestore לא מאותחל' };
@@ -927,8 +959,6 @@ export async function pingFirestore() {
     await getDoc(doc(db, 'tala_config', 'settings'));
     return { ok: true, latencyMs: Date.now() - started, message: '' };
   } catch (err) {
-    return { ok: false, latencyMs: Date.now() - started, message: String(err?.message || err).slice(0, 200) };
+    return { ok: false, latencyMs: Date.now() - started, message: String((err as any)?.message || err).slice(0, 200) };
   }
 }
-
-

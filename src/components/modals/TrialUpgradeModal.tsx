@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Sparkles,
   X,
@@ -20,12 +20,29 @@ import {
   FileText,
   Check,
   ShieldAlert,
-  Share2,
-  Search,
-  ExternalLink
+  Search
 } from 'lucide-react';
 import { getPaidRemainingDays } from '../../allowedUsers';
 import { PEDAGOGICAL_GUIDE_CHAPTERS, GUIDE_CATEGORIES } from './pedagogicalGuideData';
+
+export interface TrialUpgradeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser?: any;
+  onOpenSurvey?: ((...args: any[]) => void) | null;
+  onOpenIntroVideo?: ((...args: any[]) => void) | null;
+  onSubmitSupportMessage?: ((msg: any) => void) | null;
+  onOpenChat?: (() => void) | null;
+  remainingDays?: number | null;
+  paidRemainingDays?: number | null;
+  isExpired?: boolean;
+  onLogout?: (() => void) | null;
+  initialTab?: string | null;
+  defaultTab?: string | null;
+  onStartOnboarding?: ((...args: any[]) => void) | null;
+  onRestartOnboarding?: ((...args: any[]) => void) | null;
+  showOnboardingControls?: boolean;
+}
 
 export default function TrialUpgradeModal({
   isOpen,
@@ -44,7 +61,7 @@ export default function TrialUpgradeModal({
   onStartOnboarding = null,
   onRestartOnboarding = null,
   showOnboardingControls = true
-}) {
+}: TrialUpgradeModalProps) {
   const isNonTrialUser = Boolean(currentUser && !currentUser.isTrialUser);
   const [supportMessage, setSupportMessage] = useState('');
   const [messageSent, setMessageSent] = useState(false);
@@ -62,9 +79,9 @@ export default function TrialUpgradeModal({
   // Guide interactivity states
   const [guideSearchQuery, setGuideSearchQuery] = useState('');
   const [guideSelectedCategory, setGuideSelectedCategory] = useState('all');
-  const [expandedChapters, setExpandedChapters] = useState({ 1: true, 15: true });
+  const [expandedChapters, setExpandedChapters] = useState<any>({ 1: true, 15: true });
 
-  const modalBodyRef = useRef(null);
+  const modalBodyRef = useRef<any>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -107,7 +124,7 @@ export default function TrialUpgradeModal({
       );
   const whatsappUrl = `https://wa.me/${whatsappPhone}?text=${defaultWhatsappText}`;
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = (e: any) => {
     e.preventDefault();
     if (!supportMessage.trim()) return;
 
@@ -132,7 +149,7 @@ export default function TrialUpgradeModal({
     }, 400);
   };
 
-  const handleSubmitRfe = (e) => {
+  const handleSubmitRfe = (e: any) => {
     e.preventDefault();
     if (!rfeMessage.trim()) return;
 
@@ -154,15 +171,15 @@ export default function TrialUpgradeModal({
     }, 400);
   };
 
-  const toggleChapter = (id) => {
-    setExpandedChapters((prev) => ({
+  const toggleChapter = (id: any) => {
+    setExpandedChapters((prev: any) => ({
       ...prev,
       [id]: !prev[id]
     }));
   };
 
   const expandAllChapters = () => {
-    const all = {};
+    const all: Record<string | number, boolean> = {};
     PEDAGOGICAL_GUIDE_CHAPTERS.forEach((ch) => {
       all[ch.id] = true;
     });

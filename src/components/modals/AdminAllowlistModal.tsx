@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ShieldCheck,
   X,
@@ -7,35 +7,23 @@ import {
   BarChart3,
   Bell,
   Sparkles,
-  Lock,
   Unlock,
-  KeyRound,
   Eye,
   EyeOff,
   Plus,
   Trash2,
   Edit2,
-  Mail,
   Send,
   Check,
   Clock,
   CheckCircle2,
   Ban,
   Search,
-  Filter,
-  RefreshCw,
-  FileSignature,
   Settings,
-  MessageSquareHeart,
   MessageCircle,
-  ChevronDown,
-  ChevronUp,
-  Calendar,
   AlertTriangle,
-  Award,
   Activity,
   ThumbsUp,
-  ThumbsDown,
   ArrowUpDown,
   ArrowUp,
   ArrowDown
@@ -45,7 +33,6 @@ import {
   validatePasswordPolicy,
   DEFAULT_TRIAL_DAYS,
   computeTrialExpirationIso,
-  isTrialUserExpired,
   getTrialRemainingDays,
   extendUserTrial,
   upgradeUserToAnnualPaid,
@@ -54,7 +41,6 @@ import {
   computeGroupStats,
   getDailyQuotaCount,
   DAILY_AI_QUOTA_LIMIT,
-  DAILY_EMAIL_QUOTA_LIMIT,
   classifyUserGroup,
   sortUsersList
 } from '../../allowedUsers';
@@ -75,9 +61,9 @@ import {
   resolveSupportThreadInCloud,
   escalateSupportThreadInCloud
 } from '../../services/supportChatService';
-import { SENDER_ROLES, sanitizeThreadKey, THREAD_STATUS } from '../../domain/supportChat';
+import { SENDER_ROLES, sanitizeThreadKey } from '../../domain/supportChat';
 
-function PasswordPolicyChecklist({ password }) {
+export function PasswordPolicyChecklist({ password }: { password?: string }) {
   const { checks } = validatePasswordPolicy(password);
   return (
     <div
@@ -120,9 +106,37 @@ const generateRandomTempPassword = () => {
   const lower = 'abcdefghijkmnopqrstuvwxyz';
   const digits = '23456789';
   const specials = '!@#$*';
-  const pick = (str) => str[Math.floor(Math.random() * str.length)];
+  const pick = (str: string) => str[Math.floor(Math.random() * str.length)];
   return `Tala${pick(upper)}${pick(lower)}${pick(digits)}${pick(digits)}${pick(specials)}`;
 };
+
+export interface AdminAllowlistModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser?: any;
+  initialTab?: string;
+  allowedUsers?: any[];
+  onUpdateAllowedUsers?: (users: any[], meta?: any) => void;
+  enforcePasswordPolicy?: boolean;
+  onChangeEnforcePasswordPolicy?: (val: boolean) => void;
+  geminiApiKey?: string;
+  onChangeGeminiApiKey?: (key: string) => void;
+  adminRequests?: any[];
+  initialSupportThreads?: any[];
+  initialActiveChatReqId?: string | null;
+  onDismissAdminRequest?: (id: string) => void;
+  cloudSyncState?: any;
+  emailEngineConfig?: any;
+  students?: any[];
+  upgradeBanner?: any;
+  onUpdateUpgradeBanner?: (banner: any) => void;
+  healthEvents?: any[];
+  healthReviewedMs?: number;
+  onMarkHealthReviewed?: () => void;
+  onClearHealthEvents?: () => void;
+  aiFreeze?: boolean;
+  onUpdateAiFreeze?: (val: boolean) => void;
+}
 
 export default function AdminAllowlistModal({
   isOpen,
@@ -150,14 +164,14 @@ export default function AdminAllowlistModal({
   onClearHealthEvents,
   aiFreeze = false,
   onUpdateAiFreeze
-}) {
+}: AdminAllowlistModalProps) {
   const [activeTab, setActiveTab] = useState(initialTab || 'users'); // 'users' | 'groups' | 'analytics' | 'requests' | 'health' | 'settings'
-  const [supportThreads, setSupportThreads] = useState(initialSupportThreads || []);
-  const [activeChatReqId, setActiveChatReqId] = useState(initialActiveChatReqId);
+  const [supportThreads, setSupportThreads] = useState<any[]>(initialSupportThreads || []);
+  const [activeChatReqId, setActiveChatReqId] = useState<string | null>(initialActiveChatReqId);
   const [adminReplyText, setAdminReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [replySuccessMsg, setReplySuccessMsg] = useState('');
-  const [adminPreviewImgUrl, setAdminPreviewImgUrl] = useState(null);
+  const [adminPreviewImgUrl, setAdminPreviewImgUrl] = useState<string | null>(null);
 
   // Sync initial threads if updated from parent
   useEffect(() => {
@@ -179,8 +193,8 @@ export default function AdminAllowlistModal({
 
   // Unify real-time support chat threads and legacy contact requests
   const unifiedInquiries = useMemo(() => {
-    const list = [];
-    const seenEmails = new Set();
+    const list: any[] = [];
+    const seenEmails = new Set<string>();
 
     // 1. All live support chat threads
     (supportThreads || []).forEach((thread) => {
@@ -327,7 +341,7 @@ export default function AdminAllowlistModal({
 
   const unreadInquiriesCount = countPending;
 
-  const handleSendAdminReply = async (inquiry) => {
+  const handleSendAdminReply = async (inquiry: any) => {
     const cleanText = adminReplyText.trim();
     if (!cleanText || isSendingReply || !inquiry?.email) return;
 
@@ -358,16 +372,16 @@ export default function AdminAllowlistModal({
       setAdminReplyText('');
       setReplySuccessMsg(`✓ התגובה נשלחה בהצלחה למורה (${inquiry.name})!`);
       setTimeout(() => setReplySuccessMsg(''), 3500);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Failed to send admin reply:', err);
     } finally {
       setIsSendingReply(false);
     }
   };
 
-  const handleDismissInquiry = async (inquiry) => {
+  const handleDismissInquiry = async (inquiry: any) => {
     if (inquiry.adminRequestId && onDismissAdminRequest) {
-      onDismissAdminRequest(inquiry.adminRequestId);
+      onDismissAdminRequest?.(inquiry.adminRequestId);
     }
     if (inquiry.email) {
       await resolveSupportThreadInCloud(inquiry.email, 'admin_resolved').catch(() => {});
@@ -376,7 +390,7 @@ export default function AdminAllowlistModal({
     }
   };
 
-  const handleReopenInquiry = async (inquiry) => {
+  const handleReopenInquiry = async (inquiry: any) => {
     if (inquiry.email) {
       await escalateSupportThreadInCloud(inquiry.email, 'נפתח מחדש ע"י מנהלת').catch(() => {});
     }
@@ -389,8 +403,8 @@ export default function AdminAllowlistModal({
   }, [isOpen, initialTab]);
   const [userGroupTab, setUserGroupTab] = useState('all'); // 'all' | 'admins' | 'paying' | 'trials' | 'expired_disabled'
     const [sortField, setSortField] = useState('name'); // 'name' | 'email' | 'group' | 'status' | 'capacity'
-    const [sortDirection, setSortDirection] = useState('asc');
-    const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'paid' | 'trial_active' | 'trial_expired' | 'disabled'
+    const [sortDirection, setSortDirection] = useState<any>('asc');
+     // 'all' | 'paid' | 'trial_active' | 'trial_expired' | 'disabled'
   const [groupFilter, setGroupFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddUserForm, setShowAddUserForm] = useState(false);
@@ -415,9 +429,10 @@ export default function AdminAllowlistModal({
 
   const [editingPasswordUserId, setEditingPasswordUserId] = useState(null);
   const [newPasswordValue, setNewPasswordValue] = useState('');
-  const [showEditingPassword, setShowEditingPassword] = useState(false);
-  const [rowPasswordError, setRowPasswordError] = useState('');
-  const [passwordSavedToastId, setPasswordSavedToastId] = useState(null);
+  const [showEditingPassword, setShowEditingPassword] = useState(false); void setShowEditingPassword;
+  const [rowPasswordError, setRowPasswordError] = useState(''); void rowPasswordError; void setRowPasswordError;
+  const [passwordSavedToastId, setPasswordSavedToastId] = useState<string | null>(null); void passwordSavedToastId;
+  const [editUserError, setEditUserError] = useState(''); void editUserError;
 
   const [editingDetailsUserId, setEditingDetailsUserId] = useState(null);
   const [editUserForm, setEditUserForm] = useState({
@@ -429,22 +444,22 @@ export default function AdminAllowlistModal({
     isTrialUser: false,
     trialDays: DEFAULT_TRIAL_DAYS
   });
-  const [editUserError, setEditUserError] = useState('');
+  
   const [detailsSavedToastId, setDetailsSavedToastId] = useState(null);
-  const [userPresenceMap, setUserPresenceMap] = useState({});
+  const [userPresenceMap, setUserPresenceMap] = useState<Record<string, any>>({});
 
   // Group bulk rename state
-  const [renamingGroup, setRenamingGroup] = useState(null);
+  const [renamingGroup, setRenamingGroup] = useState<string | null>(null);
   const [newGroupNameInput, setNewGroupNameInput] = useState('');
 
   // Live Daily Quota Stats
   const dailyAiCount = useMemo(() => getDailyQuotaCount('ai'), []);
-  const dailyEmailCount = useMemo(() => getDailyQuotaCount('email'), []);
-  const [cloudTelemetry, setCloudTelemetry] = useState(null);
+  // dailyEmailCount removed as unused
+  const [cloudTelemetry, setCloudTelemetry] = useState<any | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
-    fetchTelemetrySnapshot().then((snap) => {
+    fetchTelemetrySnapshot().then((snap: any) => {
       if (snap && (snap.aiLogs?.length || snap.emailLogs?.length)) {
         const agg = aggregateTelemetryData({
           aiLogs: snap.aiLogs,
@@ -459,7 +474,7 @@ export default function AdminAllowlistModal({
   }, [isOpen, students, aiFreeze]);
 
   const effectiveAiCount = cloudTelemetry ? cloudTelemetry.aiTodayCount : dailyAiCount;
-  const effectiveEmailCount = cloudTelemetry ? cloudTelemetry.emailTodayCount : dailyEmailCount;
+  
 
   useEffect(() => {
     if (!isOpen) return;
@@ -539,12 +554,12 @@ export default function AdminAllowlistModal({
 
   const filteredUsers = sortUsersList(filteredUsersList, sortField, sortDirection, studentCountByEmail, now);
 
-  const handleSortToggle = (field) => {
+  const handleSortToggle = (field: any) => {
     if (sortField === field) {
       if (sortDirection === 'asc') setSortDirection('desc');
       else if (sortDirection === 'desc') {
-        setSortField(null);
-        setSortDirection(null);
+        setSortField(null as any);
+        setSortDirection(null as any);
       }
     } else {
       setSortField(field);
@@ -552,7 +567,7 @@ export default function AdminAllowlistModal({
     }
   };
 
-  const renderSortIndicator = (field) => {
+  const renderSortIndicator = (field: any) => {
     if (sortField !== field || !sortDirection) {
       return <ArrowUpDown size={12} style={{ color: '#94a3b8', opacity: 0.5, marginRight: '4px' }} />;
     }
@@ -563,7 +578,7 @@ export default function AdminAllowlistModal({
     );
   };
 
-  const getUserPresenceBadge = (userEmail) => {
+  const getUserPresenceBadge = (userEmail: string) => {
     if (!userEmail) return null;
     const isSelf = Boolean(
       currentUser?.email &&
@@ -693,9 +708,9 @@ export default function AdminAllowlistModal({
   };
 
   // Quick Action Handlers
-  const handleExtendTrialDays = (userObj, daysToAdd) => {
+  const handleExtendTrialDays = (userObj: any, daysToAdd: number) => {
     const updatedUser = extendUserTrial(userObj, daysToAdd);
-    onUpdateAllowedUsers(
+    onUpdateAllowedUsers?.(
       allowedUsers.map((u) => {
         const isMatch = (u.id && userObj.id && u.id === userObj.id) ||
           ((u.email || '').toLowerCase() === (userObj.email || '').toLowerCase());
@@ -706,9 +721,9 @@ export default function AdminAllowlistModal({
     setTimeout(() => setInviteStatusBanner(''), 4000);
   };
 
-  const handleUpgradeToPaid = (userObj) => {
+  const handleUpgradeToPaid = (userObj: any) => {
     const updatedUser = upgradeUserToAnnualPaid(userObj);
-    onUpdateAllowedUsers(
+    onUpdateAllowedUsers?.(
       allowedUsers.map((u) => {
         const isMatch = (u.id && userObj.id && u.id === userObj.id) ||
           ((u.email || '').toLowerCase() === (userObj.email || '').toLowerCase());
@@ -719,11 +734,11 @@ export default function AdminAllowlistModal({
     setTimeout(() => setInviteStatusBanner(''), 4000);
   };
 
-  const handleQuickResetPasswordAndEmail = async (userObj) => {
+  const handleQuickResetPasswordAndEmail = async (userObj: any) => {
     const freshTempPassword = generateRandomTempPassword();
     const creds = createPasswordCredentials(freshTempPassword);
 
-    onUpdateAllowedUsers(
+    onUpdateAllowedUsers?.(
       allowedUsers.map((u) => {
         if (u.id !== userObj.id) return u;
         const { accessCode: _removed, ...rest } = u;
@@ -753,7 +768,7 @@ export default function AdminAllowlistModal({
         `📨 סיסמה זמנית חדשה (${freshTempPassword}) הונפקה ונשלחה במייל אל ${userObj.name} (${userObj.email})!`
       );
       setTimeout(() => setPasswordSavedToastId(null), 3500);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to send reset email:', err);
       alert(`הסיסמה אופסה ל-"${freshTempPassword}", אך חלה שגיאה בשליחת המייל: ${err.message}`);
     } finally {
@@ -764,7 +779,7 @@ export default function AdminAllowlistModal({
   const handleSaveBulkGroupRename = () => {
     if (!renamingGroup || !newGroupNameInput.trim()) return;
     const nextList = renameUserGroupInList(allowedUsers, renamingGroup, newGroupNameInput.trim());
-    onUpdateAllowedUsers(nextList);
+    onUpdateAllowedUsers?.(nextList);
     setInviteStatusBanner(
       `✅ שם הצוות/מתי"א "${renamingGroup}" עודכן בהצלחה ל-"${newGroupNameInput.trim()}" בכל המשתמשים!`
     );
@@ -773,8 +788,8 @@ export default function AdminAllowlistModal({
     setTimeout(() => setInviteStatusBanner(''), 4000);
   };
 
-  const handleUnlockUser = (userId) => {
-    onUpdateAllowedUsers(
+  const handleUnlockUser = (userId: any) => {
+    onUpdateAllowedUsers?.(
       allowedUsers.map((u) =>
         u.id === userId
           ? {
@@ -788,12 +803,12 @@ export default function AdminAllowlistModal({
     );
   };
 
-  const handleToggleActive = (userObj) => {
+  const handleToggleActive = (userObj: any) => {
     if (userObj.email?.toLowerCase() === 'zivit.reshef@gmail.com' && userObj.active && !userObj.lockedOut) {
       alert('לא ניתן להשבית את מנהל/ת המערכת הראשי/ת.');
       return;
     }
-    onUpdateAllowedUsers(
+    onUpdateAllowedUsers?.(
       allowedUsers.map((u) => {
         if (u.id !== userObj.id) return u;
         const nextActive = !u.active;
@@ -807,17 +822,17 @@ export default function AdminAllowlistModal({
     );
   };
 
-  const handleDeleteUser = (id, emailStr) => {
+  const handleDeleteUser = (id: any, emailStr: any) => {
     if (emailStr === 'zivit.reshef@gmail.com') {
       alert('לא ניתן למחוק את מנהל/ת המערכת הראשי/ת.');
       return;
     }
     if (window.confirm('האם להסיר משתמש זה לצמיתות מרשימת המורשים? (ניתן גם להשבית זמנית במקום למחוק)')) {
-      onUpdateAllowedUsers(allowedUsers.filter((u) => u.id !== id));
+      onUpdateAllowedUsers?.(allowedUsers.filter((u) => u.id !== id));
     }
   };
 
-  const handleStartEditUserDetails = (userObj) => {
+  const handleStartEditUserDetails = (userObj: any) => {
     setEditUserError('');
     setEditingDetailsUserId(userObj.id);
     setEditUserForm({
@@ -831,7 +846,7 @@ export default function AdminAllowlistModal({
     });
   };
 
-  const handleSaveEditUserDetails = (userObj) => {
+  const handleSaveEditUserDetails = (userObj: any) => {
     setEditUserError('');
     const isMainAdmin = userObj.email?.toLowerCase() === 'zivit.reshef@gmail.com';
     const cleanName = (editUserForm.name || '').trim();
@@ -858,7 +873,7 @@ export default function AdminAllowlistModal({
     const isTrial = isMainAdmin ? false : Boolean(editUserForm.isTrialUser);
     const parsedTrialDays = Math.max(
       1,
-      Math.min(365, parseInt(editUserForm.trialDays, 10) || DEFAULT_TRIAL_DAYS)
+      Math.min(365, parseInt(String(editUserForm.trialDays), 10) || DEFAULT_TRIAL_DAYS)
     );
 
     let updatedUserRef = null;
@@ -890,7 +905,7 @@ export default function AdminAllowlistModal({
       return nextUser;
     });
 
-    onUpdateAllowedUsers(updatedList, {
+    onUpdateAllowedUsers?.(updatedList, {
       oldEmail: (userObj.email || '').trim().toLowerCase(),
       newEmail: cleanEmail,
       updatedUser: updatedUserRef
@@ -902,7 +917,7 @@ export default function AdminAllowlistModal({
     setTimeout(() => setDetailsSavedToastId(null), 3000);
   };
 
-  const handleAddUser = async (e) => {
+  const handleAddUser = async (e: any) => {
     e.preventDefault();
     setAddUserError('');
     setInviteStatusBanner('');
@@ -927,7 +942,7 @@ export default function AdminAllowlistModal({
     const tempPassword = newUser.accessCode.trim();
     const creds = createPasswordCredentials(tempPassword);
     const isTrial = Boolean(newUser.isTrialUser);
-    const normalizedTrialDays = Math.max(1, Math.min(365, parseInt(newUser.trialDays, 10) || DEFAULT_TRIAL_DAYS));
+    const normalizedTrialDays = Math.max(1, Math.min(365, parseInt(String(newUser.trialDays), 10) || DEFAULT_TRIAL_DAYS));
     const created = {
       id: 'u_' + Date.now(),
       name: newUser.name.trim(),
@@ -948,7 +963,7 @@ export default function AdminAllowlistModal({
       ndaSigned: false
     };
 
-    onUpdateAllowedUsers([...allowedUsers, created]);
+    onUpdateAllowedUsers?.([...allowedUsers, created]);
     setNewUser({
       name: '',
       email: '',
@@ -976,7 +991,7 @@ export default function AdminAllowlistModal({
         setInviteStatusBanner(
           `✅ המשתמש/ת "${created.name}" נוסף/ה בהצלחה ונשלח מייל הזמנה עם סיסמה זמנית!`
         );
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to send onboarding invite email:', err);
         setAddUserError(`המשתמש נוסף למערכת, אך שליחת מייל ההזמנה נכשלה: ${err.message || ''}`);
       } finally {
@@ -1400,7 +1415,7 @@ export default function AdminAllowlistModal({
                       type="text"
                       placeholder="חיפוש מורה לפי שם, אימייל או תפקיד..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e: any) => setSearchQuery(e.target.value)}
                       style={{
                         padding: '6px 30px 6px 12px',
                         borderRadius: '8px',
@@ -1413,7 +1428,7 @@ export default function AdminAllowlistModal({
 
                   <select
                     value={groupFilter}
-                    onChange={(e) => setGroupFilter(e.target.value)}
+                    onChange={(e: any) => setGroupFilter(e.target.value)}
                     style={{
                       padding: '6px 10px',
                       borderRadius: '8px',
@@ -1467,7 +1482,7 @@ export default function AdminAllowlistModal({
                       type="text"
                       placeholder="שם מלא *"
                       value={newUser.name}
-                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                      onChange={(e: any) => setNewUser({ ...newUser, name: e.target.value })}
                       required
                       style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
                     />
@@ -1476,7 +1491,7 @@ export default function AdminAllowlistModal({
                       dir="ltr"
                       placeholder="אימייל (teacher@gmail.com) *"
                       value={newUser.email}
-                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      onChange={(e: any) => setNewUser({ ...newUser, email: e.target.value })}
                       required
                       style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
                     />
@@ -1484,7 +1499,7 @@ export default function AdminAllowlistModal({
                       type="text"
                       placeholder="תפקיד (גננת שילוב / מורת מתי״א)"
                       value={newUser.title}
-                      onChange={(e) => setNewUser({ ...newUser, title: e.target.value })}
+                      onChange={(e: any) => setNewUser({ ...newUser, title: e.target.value })}
                       style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
                     />
                     <input
@@ -1492,7 +1507,7 @@ export default function AdminAllowlistModal({
                       list="admin-groups-datalist"
                       placeholder="צוות / מתי״א (למשל: מתי״א מרכז)"
                       value={newUser.group}
-                      onChange={(e) => setNewUser({ ...newUser, group: e.target.value })}
+                      onChange={(e: any) => setNewUser({ ...newUser, group: e.target.value })}
                       style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
                     />
                   </div>
@@ -1503,7 +1518,7 @@ export default function AdminAllowlistModal({
                         type={showNewUserPassword ? 'text' : 'password'}
                         placeholder="סיסמה זמנית *"
                         value={newUser.accessCode}
-                        onChange={(e) => setNewUser({ ...newUser, accessCode: e.target.value })}
+                        onChange={(e: any) => setNewUser({ ...newUser, accessCode: e.target.value })}
                         required
                         style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', width: '150px' }}
                       />
@@ -1540,7 +1555,7 @@ export default function AdminAllowlistModal({
                       <input
                         type="checkbox"
                         checked={newUser.isTrialUser}
-                        onChange={(e) => setNewUser({ ...newUser, isTrialUser: e.target.checked })}
+                        onChange={(e: any) => setNewUser({ ...newUser, isTrialUser: e.target.checked })}
                       />
                       <span>משתמש ניסיון (Trial + NDA)</span>
                     </label>
@@ -1549,7 +1564,7 @@ export default function AdminAllowlistModal({
                       <input
                         type="checkbox"
                         checked={sendInviteEmailOnCreate}
-                        onChange={(e) => setSendInviteEmailOnCreate(e.target.checked)}
+                        onChange={(e: any) => setSendInviteEmailOnCreate(e.target.checked)}
                       />
                       <span>שלח מייל הזמנה והדרכה מעוצב</span>
                     </label>
@@ -1639,7 +1654,7 @@ export default function AdminAllowlistModal({
                       const remainingDays = getTrialRemainingDays(u);
                       const isEditingThisUser = editingDetailsUserId === u.id;
                       const studentCount = studentCountByEmail.get((u.email || '').toLowerCase()) || 0;
-                      const aiCalls = Number(u.aiUsageCount) || 0;
+                      
 
                       return (
                         <tr
@@ -1656,13 +1671,13 @@ export default function AdminAllowlistModal({
                                 <input
                                   type="text"
                                   value={editUserForm.name}
-                                  onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                                  onChange={(e: any) => setEditUserForm({ ...editUserForm, name: e.target.value })}
                                   style={{ padding: '4px 8px', borderRadius: '6px', border: '1.5px solid #2563eb', fontSize: '12px', fontWeight: 700 }}
                                 />
                                 {!isMainAdmin && (
                                   <select
                                     value={editUserForm.role}
-                                    onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                                    onChange={(e: any) => setEditUserForm({ ...editUserForm, role: e.target.value })}
                                     style={{ padding: '3px 6px', borderRadius: '6px', fontSize: '11px' }}
                                   >
                                     <option value="teacher">מורה / גננת</option>
@@ -1694,7 +1709,7 @@ export default function AdminAllowlistModal({
                                 type="email"
                                 dir="ltr"
                                 value={editUserForm.email}
-                                onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                                onChange={(e: any) => setEditUserForm({ ...editUserForm, email: e.target.value })}
                                 style={{ padding: '4px 8px', borderRadius: '6px', border: '1.5px solid #2563eb', fontSize: '12px' }}
                               />
                             ) : (
@@ -1709,7 +1724,7 @@ export default function AdminAllowlistModal({
                                 type="text"
                                 list="admin-groups-datalist"
                                 value={editUserForm.group}
-                                onChange={(e) => setEditUserForm({ ...editUserForm, group: e.target.value })}
+                                onChange={(e: any) => setEditUserForm({ ...editUserForm, group: e.target.value })}
                                 placeholder="ללא שיוך..."
                                 style={{ padding: '4px 8px', borderRadius: '6px', border: '1.5px solid #2563eb', fontSize: '12px' }}
                               />
@@ -1842,7 +1857,7 @@ export default function AdminAllowlistModal({
                                   <input
                                     type={showEditingPassword ? 'text' : 'password'}
                                     value={newPasswordValue}
-                                    onChange={(e) => setNewPasswordValue(e.target.value)}
+                                    onChange={(e: any) => setNewPasswordValue(e.target.value)}
                                     placeholder="סיסמה חדשה..."
                                     style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #2563eb', fontSize: '11.5px', width: '95px' }}
                                   />
@@ -1851,7 +1866,7 @@ export default function AdminAllowlistModal({
                                     onClick={() => {
                                       if (!newPasswordValue.trim()) return;
                                       const creds = createPasswordCredentials(newPasswordValue.trim());
-                                      onUpdateAllowedUsers(
+                                      onUpdateAllowedUsers?.(
                                         allowedUsers.map((item) =>
                                           item.id === u.id
                                             ? { ...item, ...creds, mustChangePassword: true, active: true, lockedOut: false }
@@ -2033,7 +2048,7 @@ export default function AdminAllowlistModal({
                   <input
                     type="text"
                     value={newGroupNameInput}
-                    onChange={(e) => setNewGroupNameInput(e.target.value)}
+                    onChange={(e: any) => setNewGroupNameInput(e.target.value)}
                     placeholder="שם חדש ומדויק..."
                     style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #60a5fa', fontSize: '13px', width: '220px' }}
                   />
@@ -2120,8 +2135,8 @@ export default function AdminAllowlistModal({
               <AdminUsageAndSecurityDashboard
                 students={students}
                 settings={{ aiFreeze }}
-                onSettingsChange={(s) => onUpdateAiFreeze && onUpdateAiFreeze(s.aiFreeze)}
-                onTelemetryUpdated={(snap) => {
+                onSettingsChange={(s: any) => onUpdateAiFreeze && onUpdateAiFreeze(s.aiFreeze)}
+                onTelemetryUpdated={(snap: any) => {
                   const agg = aggregateTelemetryData({
                     aiLogs: snap.aiLogs,
                     emailLogs: snap.emailLogs,
@@ -2489,7 +2504,7 @@ export default function AdminAllowlistModal({
                     <input
                       type="text"
                       value={inquiriesSearch}
-                      onChange={(e) => setInquiriesSearch(e.target.value)}
+                      onChange={(e: any) => setInquiriesSearch(e.target.value)}
                       placeholder="חיפוש לפי שם מורה, מייל, בית ספר או תוכן הפנייה..."
                       style={{
                         width: '100%',
@@ -2781,7 +2796,7 @@ export default function AdminAllowlistModal({
                                   עדיין אין הודעות קודמות בשרשור זה. ההודעה המקורית של המורה: "{inq.notes || inq.topic}".
                                 </div>
                               ) : (
-                                messages.map((m) => {
+                                messages.map((m: any) => {
                                   const isAdmin = m.senderRole === SENDER_ROLES.ADMIN;
                                   const hasAttachment = Boolean(m.attachment?.url);
                                   return (
@@ -2880,7 +2895,7 @@ export default function AdminAllowlistModal({
                               <textarea
                                 rows={2}
                                 value={adminReplyText}
-                                onChange={(e) => setAdminReplyText(e.target.value)}
+                                onChange={(e: any) => setAdminReplyText(e.target.value)}
                                 placeholder={`כתוב/י מענה ישיר ל-${inq.name}...`}
                                 style={{
                                   flex: 1,
@@ -3087,7 +3102,7 @@ export default function AdminAllowlistModal({
                   <input
                     type={showGeminiKey ? 'text' : 'password'}
                     value={geminiApiKey || ''}
-                    onChange={(e) => onChangeGeminiApiKey && onChangeGeminiApiKey(e.target.value)}
+                    onChange={(e: any) => onChangeGeminiApiKey && onChangeGeminiApiKey(e.target.value)}
                     placeholder="הזן מפתח גיבוי מקומי (AI Studio)..."
                     style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
                   />
@@ -3121,7 +3136,7 @@ export default function AdminAllowlistModal({
                   <input
                     type="checkbox"
                     checked={Boolean(enforcePasswordPolicy)}
-                    onChange={(e) => onChangeEnforcePasswordPolicy && onChangeEnforcePasswordPolicy(e.target.checked)}
+                    onChange={(e: any) => onChangeEnforcePasswordPolicy && onChangeEnforcePasswordPolicy(e.target.checked)}
                   />
                   <span>אכוף מדיניות סיסמאות מאובטחת לכל המשתמשים (8+ תווים, אות גדולה, ספרה ותו מיוחד)</span>
                 </label>

@@ -1,15 +1,10 @@
-import React from 'react';
+
 import {
   ChevronUp,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Compass,
   Pause,
   Play,
-  CheckCircle2,
-  ExternalLink,
-  Lightbulb,
   X
 } from 'lucide-react';
 import {
@@ -18,23 +13,37 @@ import {
   ONBOARDING_TOTAL_STEPS
 } from '../../domain/onboardingJourney';
 
+export interface OnboardingGuidedWorkspaceProps {
+  onboardingState?: any;
+  onNextStep?: () => void;
+  onPreviousStep?: () => void;
+  onGoToStep?: (stepId: any) => void;
+  onPauseJourney?: () => void;
+  onResumeJourney?: () => void;
+  onCloseJourney?: () => void;
+  onOpenNavigator?: () => void;
+  onExecuteAction?: (step: any, options?: any) => void;
+  onToggleCollapse?: () => void;
+}
+
 export default function OnboardingGuidedWorkspace({
   onboardingState,
   onNextStep,
   onPreviousStep,
-  onGoToStep,
+  onGoToStep: _onGoToStep,
   onPauseJourney,
   onResumeJourney,
   onCloseJourney,
   onOpenNavigator,
   onExecuteAction,
   onToggleCollapse
-}) {
+}: OnboardingGuidedWorkspaceProps) {
+  void _onGoToStep;
   if (!onboardingState || onboardingState.isDismissed) return null;
 
   const currentStepId = onboardingState.currentStep || 1;
   const currentStep = getStepById(currentStepId) || ONBOARDING_STEPS[0];
-  const completedSteps = onboardingState.completedSteps || [];
+  const completedSteps = onboardingState.completedSteps || []; void completedSteps;
   const isPaused = Boolean(onboardingState.isPaused);
   const isCollapsed = Boolean(onboardingState.isDockCollapsed);
   const isClosing = Boolean(onboardingState.isClosing);

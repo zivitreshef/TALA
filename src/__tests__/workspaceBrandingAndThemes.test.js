@@ -4,7 +4,7 @@ import path from 'path';
 
 describe('Workspace Branding & Unified Blue Theme Contract', () => {
   it('defines the 3 full-page workspaces in App navigation with "ניהול תלמידים" replacing "דף הבית"', () => {
-    const appCode = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
+    const appCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx')), 'utf8');
 
     // Tab 1: ניהול תלמידים with Users icon
     expect(appCode).toContain('<span>ניהול תלמידים</span>');
@@ -19,10 +19,10 @@ describe('Workspace Branding & Unified Blue Theme Contract', () => {
   });
 
   it('provides consistent back navigation to "ניהול תלמידים" in subcomponents and mobile header', () => {
-    const appCode = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
-    const formCode = fs.readFileSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'), 'utf8');
-    const trackerCode = fs.readFileSync(path.resolve(__dirname, '../components/DailyPedagogicalTracker.jsx'), 'utf8');
-    const goalBankCode = fs.readFileSync(path.resolve(__dirname, '../components/GoalBankPage.jsx'), 'utf8');
+    const appCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx')), 'utf8');
+    const formCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx')) ? path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx') : path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx')), 'utf8');
+    const trackerCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../components/DailyPedagogicalTracker.tsx')) ? path.resolve(__dirname, '../components/DailyPedagogicalTracker.tsx') : path.resolve(__dirname, '../components/DailyPedagogicalTracker.jsx')), 'utf8');
+    const goalBankCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../components/GoalBankPage.tsx')) ? path.resolve(__dirname, '../components/GoalBankPage.tsx') : path.resolve(__dirname, '../components/GoalBankPage.jsx')), 'utf8');
 
     // Mobile nav in App.jsx
     expect(appCode).toContain('className="btn-mobile-back-roster"');
@@ -65,7 +65,7 @@ describe('Workspace Branding & Unified Blue Theme Contract', () => {
   });
 
   it('aligns the thickness, padding (22px 28px), and 48px avatar boxes across all 3 workspaces (Option B)', () => {
-    const appCode = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
+    const appCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx')), 'utf8');
     const indexCss = fs.readFileSync(path.resolve(__dirname, '../index.css'), 'utf8');
     const trackerCss = fs.readFileSync(path.resolve(__dirname, '../components/DailyPedagogicalTracker.css'), 'utf8');
     const goalBankCss = fs.readFileSync(path.resolve(__dirname, '../components/GoalBankPage.css'), 'utf8');
@@ -86,8 +86,8 @@ describe('Workspace Branding & Unified Blue Theme Contract', () => {
   });
 
   it('verifies read-only banner and student list badge contracts for locked shared plans', () => {
-    const appCode = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
-    const formCode = fs.readFileSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'), 'utf8');
+    const appCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx')), 'utf8');
+    const formCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx')) ? path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx') : path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx')), 'utf8');
 
     // App.jsx displays read-only indicator for locked shared students
     expect(appCode).toContain("st.isLocked ? 'שותף עמך (קריאה בלבד)' : 'שותף עמך'");
@@ -99,7 +99,7 @@ describe('Workspace Branding & Unified Blue Theme Contract', () => {
   });
 
   it('ensures "שיח צוות" chat button is accessible in top action bar when plan is shared, without duplicate in section 1', () => {
-    const formCode = fs.readFileSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'), 'utf8');
+    const formCode = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx')) ? path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx') : path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx')), 'utf8');
 
     // Sticky top action bar renders Team Chat drawer trigger guarded by isPlanShared
     expect(formCode).toContain('data-testid="top-action-bar-team-chat-btn"');

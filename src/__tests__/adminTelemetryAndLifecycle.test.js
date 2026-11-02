@@ -194,7 +194,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
       const fs = await import('fs');
       const path = await import('path');
       const content = fs.readFileSync(
-        path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+        (fs.existsSync(path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx')) ? path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx') : path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx')),
         'utf-8'
       );
 
@@ -207,7 +207,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
       const fs = await import('fs');
       const path = await import('path');
       const content = fs.readFileSync(
-        path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+        (fs.existsSync(path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx')) ? path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx') : path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx')),
         'utf-8'
       );
 
@@ -219,7 +219,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
       const fs = await import('fs');
       const path = await import('path');
       const content = fs.readFileSync(
-        path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+        (fs.existsSync(path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx')) ? path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx') : path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx')),
         'utf-8'
       );
 
@@ -234,7 +234,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
       const fs = await import('fs');
       const path = await import('path');
       const content = fs.readFileSync(
-        path.resolve(__dirname, '../App.jsx'),
+        (fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx')),
         'utf-8'
       );
 
@@ -246,7 +246,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
       const fs = await import('fs');
       const path = await import('path');
       const content = fs.readFileSync(
-        path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx'),
+        (fs.existsSync(path.resolve(__dirname, '../components/modals/AdminAllowlistModal.tsx')) ? path.resolve(__dirname, '../components/modals/AdminAllowlistModal.tsx') : path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx')),
         'utf-8'
       );
 
@@ -287,7 +287,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         const fs = await import('fs');
         const path = await import('path');
         const modalContent = fs.readFileSync(
-          path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+          (fs.existsSync(path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx')) ? path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx') : path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx')),
           'utf-8'
         );
 
@@ -300,7 +300,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         const fs = await import('fs');
         const path = await import('path');
         const modalContent = fs.readFileSync(
-          path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+          (fs.existsSync(path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx')) ? path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx') : path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx')),
           'utf-8'
         );
 
@@ -315,7 +315,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         const fs = await import('fs');
         const path = await import('path');
         const modalContent = fs.readFileSync(
-          path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+          (fs.existsSync(path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx')) ? path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx') : path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx')),
           'utf-8'
         );
 
@@ -333,7 +333,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         const fs = await import('fs');
         const path = await import('path');
         const modalContent = fs.readFileSync(
-          path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx'),
+          (fs.existsSync(path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx')) ? path.resolve(__dirname, '../components/modals/TrialUpgradeModal.tsx') : path.resolve(__dirname, '../components/modals/TrialUpgradeModal.jsx')),
           'utf-8'
         );
 
@@ -430,7 +430,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         const fs = await import('fs');
         const path = await import('path');
         const modalContent = fs.readFileSync(
-          path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx'),
+          (fs.existsSync(path.resolve(__dirname, '../components/modals/AdminAllowlistModal.tsx')) ? path.resolve(__dirname, '../components/modals/AdminAllowlistModal.tsx') : path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx')),
           'utf-8'
         );
 
@@ -442,7 +442,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         const fs = await import('fs');
         const path = await import('path');
         const modalContent = fs.readFileSync(
-          path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx'),
+          (fs.existsSync(path.resolve(__dirname, '../components/modals/AdminAllowlistModal.tsx')) ? path.resolve(__dirname, '../components/modals/AdminAllowlistModal.tsx') : path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx')),
           'utf-8'
         );
 
@@ -461,7 +461,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         const fs = await import('fs');
         const path = await import('path');
         const modalContent = fs.readFileSync(
-          path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx'),
+          (fs.existsSync(path.resolve(__dirname, '../components/modals/AdminAllowlistModal.tsx')) ? path.resolve(__dirname, '../components/modals/AdminAllowlistModal.tsx') : path.resolve(__dirname, '../components/modals/AdminAllowlistModal.jsx')),
           'utf-8'
         );
 

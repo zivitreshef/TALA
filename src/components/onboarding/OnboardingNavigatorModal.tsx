@@ -1,9 +1,8 @@
-import React from 'react';
+
 import {
   Sparkles,
   UserPlus,
   CheckCircle2,
-  Circle,
   ArrowLeft,
   RotateCcw,
   X,
@@ -11,15 +10,13 @@ import {
   BookOpen,
   Calendar,
   FileText,
-  Share2,
   Users,
-  Settings,
-  HelpCircle
+  Settings
 } from 'lucide-react';
 import { ONBOARDING_STEPS, ONBOARDING_TOTAL_STEPS } from '../../domain/onboardingJourney';
 
 // Icon mapping per step key for rich visual hierarchy
-const STEP_ICONS = {
+export const STEP_ICONS = {
   getting_started: Sparkles,
   create_student: UserPlus,
   student_profile: BookOpen,
@@ -32,6 +29,16 @@ const STEP_ICONS = {
   matya_settings: Settings
 };
 
+export interface OnboardingNavigatorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onboardingState?: any;
+  onSelectMode?: (mode: any) => void;
+  onSelectStep?: (stepId: any) => void;
+  onRestartJourney?: () => void;
+  onResumeJourney?: () => void;
+}
+
 export default function OnboardingNavigatorModal({
   isOpen,
   onClose,
@@ -40,7 +47,7 @@ export default function OnboardingNavigatorModal({
   onSelectStep,
   onRestartJourney,
   onResumeJourney
-}) {
+}: OnboardingNavigatorModalProps) {
   if (!isOpen) return null;
 
   const currentStep = onboardingState?.currentStep || 1;
@@ -302,7 +309,6 @@ export default function OnboardingNavigatorModal({
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {ONBOARDING_STEPS.map((step) => {
-                const IconComponent = STEP_ICONS[step.key] || Circle;
                 const isCurrent = currentStep === step.id;
                 const isDone = completedSteps.includes(step.id);
 
