@@ -113,7 +113,7 @@ describe('Top Bar and Team Collaboration UX Contract', () => {
 
   describe('EcologicalWorkPlanForm UI Component Contract', () => {
     const formCode = fs.readFileSync(
-      path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'),
+      (fs.existsSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx')) ? path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx') : path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx')),
       'utf8'
     );
     const cssCode = fs.readFileSync(

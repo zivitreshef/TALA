@@ -18,7 +18,7 @@ describe('Document Title Banner Alignment & CSS Grid', () => {
   });
 
   it('renders EcologicalWorkPlanForm banner with banner-slot-date and banner-slot-controls', () => {
-    const formPath = path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx');
+    const formPath = (fs.existsSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx')) ? path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx') : path.resolve(__dirname, '../EcologicalWorkPlanForm.jsx'));
     const formCode = fs.readFileSync(formPath, 'utf8');
 
     expect(formCode).toContain('className="inline-meta-field banner-slot-date"');

@@ -12,7 +12,7 @@ import { reportHealthEvent } from '../services/healthTelemetry';
 import { usageTelemetryService } from '../services/usageTelemetryService';
 import * as firebaseBackend from '../firebaseBackend.js';
 import { reverseEngineerRawTextLocally } from '../goalBankData.js';
-import EcologicalWorkPlanForm from '../EcologicalWorkPlanForm.jsx';
+import EcologicalWorkPlanForm from '../EcologicalWorkPlanForm';
 
 vi.mock('../firebaseBackend.js', () => ({
   getFirebaseAuth: vi.fn(() => ({

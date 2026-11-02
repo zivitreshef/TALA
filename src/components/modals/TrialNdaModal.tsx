@@ -160,7 +160,7 @@ export interface TrialNdaModalProps {
   isOpen: boolean;
   currentUser?: any;
   onCompleteNda?: (details: any) => void;
-  onSignNdaComplete?: () => void;
+  onSignNdaComplete?: (details?: any) => void;
   onLogout?: () => void;
 }
 

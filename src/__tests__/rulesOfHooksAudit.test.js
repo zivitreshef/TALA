@@ -125,7 +125,7 @@ describe('Rules of Hooks Zero-Exception Audit Suite (Prevents React #310 across 
   });
 
   it('verifies App.jsx strictly calls all hooks in initialization preamble before auth gates', () => {
-    const appPath = path.resolve(srcRoot, 'App.jsx');
+    const appPath = (fs.existsSync(path.resolve(srcRoot, 'App.tsx')) ? path.resolve(srcRoot, 'App.tsx') : path.resolve(srcRoot, 'App.jsx'));
     const appCode = fs.readFileSync(appPath, 'utf8');
     const lines = appCode.split(/\r?\n/);
 

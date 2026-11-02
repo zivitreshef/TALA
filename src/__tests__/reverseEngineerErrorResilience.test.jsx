@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { reverseEngineerRawTextLocally } from '../goalBankData';
-import EcologicalWorkPlanForm from '../EcologicalWorkPlanForm.jsx';
+import EcologicalWorkPlanForm from '../EcologicalWorkPlanForm';
 import { HEALTH_EVENT_KINDS } from '../domain/healthEvents';
 
 vi.mock('../firebaseBackend.js', () => ({

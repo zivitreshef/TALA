@@ -11,8 +11,8 @@ export interface StudentToDelete {
 export interface DeleteStudentModalProps {
   studentToDelete?: StudentToDelete | null;
   onClose: () => void;
-  onConfirmArchiveInstead: (student: StudentToDelete) => void;
-  onConfirmDelete: (student: StudentToDelete) => void;
+  onConfirmArchiveInstead: (student?: any) => void;
+  onConfirmDelete: (student?: any) => void;
 }
 
 export function DeleteStudentModal({
@@ -163,7 +163,7 @@ export interface StudentToArchive {
 export interface ArchiveStudentModalProps {
   studentToArchive?: StudentToArchive | null;
   onClose: () => void;
-  onConfirmArchive: (student: StudentToArchive) => void;
+  onConfirmArchive: (student?: any) => void;
 }
 
 export function ArchiveStudentModal({

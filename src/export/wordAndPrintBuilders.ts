@@ -12,12 +12,12 @@ import {
 } from '../goalBankData';
 import { formatDateWithPreferences } from '../domain/userPreferences';
 
-export function getDisplayReportDate(formData = {}) {
+export function getDisplayReportDate(formData: any = {}) {
   if (!formData.date) return '__________';
   return formatDateWithPreferences(formData.date, formData.reportDateFormat || 'both') || formData.date;
 }
 
-export function getTeacherMetaBadge(formData = {}) {
+export function getTeacherMetaBadge(formData: any = {}) {
   if (!formData.teacherName) return '';
   const parts = [
     formData.teacherName,
@@ -27,7 +27,7 @@ export function getTeacherMetaBadge(formData = {}) {
   return `<div><strong>עורך/ת התוכנית:</strong> ${parts.join(' ')}</div>`;
 }
 
-export function getTeacherMetaWordText(formData = {}) {
+export function getTeacherMetaWordText(formData: any = {}) {
   if (!formData.teacherName) return '';
   const parts = [
     formData.teacherName,
@@ -37,7 +37,7 @@ export function getTeacherMetaWordText(formData = {}) {
   return ` &nbsp;&nbsp;|&nbsp;&nbsp; <strong>עורך/ת התוכנית:</strong> ${parts.join(' ')}`;
 }
 
-export function getTeacherSignaturePrintBlock(formData = {}, defaultRole = 'צוות חינוכי') {
+export function getTeacherSignaturePrintBlock(formData: any = {}, defaultRole = 'צוות חינוכי') {
   const role = formData.teacherTitle || defaultRole;
   const name = formData.teacherName || '';
   const aff = formData.institutionalAffiliation || '';
@@ -61,7 +61,7 @@ export function getTeacherSignaturePrintBlock(formData = {}, defaultRole = 'צו
   return `<div>חתימת ${role}: _________________________</div>`;
 }
 
-export function getTeacherSignatureWordCell(formData = {}, defaultRole = 'צוות חינוכי') {
+export function getTeacherSignatureWordCell(formData: any = {}, defaultRole = 'צוות חינוכי') {
   const role = formData.teacherTitle || defaultRole;
   const name = formData.teacherName || '';
   const aff = formData.institutionalAffiliation || '';
@@ -73,7 +73,7 @@ export function getTeacherSignatureWordCell(formData = {}, defaultRole = 'צוו
   return `חתימת ${role}: ______________`;
 }
 
-export function getAdditionalMetadataItems(formData = {}, hideDetails = false) {
+export function getAdditionalMetadataItems(formData: any = {}, hideDetails = false) {
   const isKindergarten = formData.stage === 'kindergarten';
   const rawItems = [
     { label: isKindergarten ? 'גן' : 'בית הספר', value: formData.schoolName, sensitive: true },
@@ -96,7 +96,7 @@ export function getAdditionalMetadataItems(formData = {}, hideDetails = false) {
     }));
 }
 
-export function getEffectiveStudentProfileForTala(formData = {}, hideDetails = false) {
+export function getEffectiveStudentProfileForTala(formData: any = {}, hideDetails = false) {
   const generalBackground = getRedactedText(
     formData.studentGeneralBackground,
     formData,
@@ -116,11 +116,11 @@ export function getEffectiveStudentProfileForTala(formData = {}, hideDetails = f
   return { generalBackground, supportReceived, studentMainGoal };
 }
 
-export function getEffectiveTalaProfileRows(formData = {}) {
+export function getEffectiveTalaProfileRows(formData: any = {}) {
   return buildDefaultTalaProfileRows(formData.talaProfileRows);
 }
 
-export function hasPopulatedTalaProfile(formData = {}) {
+export function hasPopulatedTalaProfile(formData: any = {}) {
   const rows = getEffectiveTalaProfileRows(formData);
   return rows.some(
     (r) =>
@@ -129,7 +129,7 @@ export function hasPopulatedTalaProfile(formData = {}) {
   );
 }
 
-export function getFullDocTitle(formData = {}) {
+export function getFullDocTitle(formData: any = {}) {
   return formData.planType
     ? `תוכנית עבודה שנתית – ${formData.planType}`
     : 'תוכנית עבודה שנתית';
@@ -143,25 +143,25 @@ export function getStatusReportTitle() {
   return 'דו"ח מצב חינוכי-תפקודי עדכני';
 }
 
-export function getDisplayStudentName(formData = {}, hideDetails = false) {
+export function getDisplayStudentName(formData: any = {}, hideDetails = false) {
   if (hideDetails) {
     return toHebrewAcronym(formData.name);
   }
   return escapeHtml(formData.name || '__________');
 }
 
-export function getDisplayMaskedField(val, hideDetails = false) {
+export function getDisplayMaskedField(val: any, hideDetails = false) {
   if (hideDetails) {
     return maskSensitiveValue(val);
   }
   return val || '__________';
 }
 
-export function getRedactedText(text, formData = {}, hideDetails = false) {
+export function getRedactedText(text: any, formData: any = {}, hideDetails = false) {
   return escapeHtml(redactStudentNameInText(text || '', formData.name, hideDetails));
 }
 
-export function getSafeReportFilename(formData = {}, hideDetails = false, ext = 'doc', mode = 'tala') {
+export function getSafeReportFilename(formData: any = {}, hideDetails = false, ext = 'doc', mode = 'tala') {
   const displayName = getDisplayStudentName(formData, hideDetails).replace(/[^a-zA-Z0-9א-ת_-]/g, '_');
   const yearStr = (formData.schoolYear || '2026').replace(/[^a-zA-Z0-9א-ת_-]/g, '_');
   const prefix =
@@ -173,15 +173,15 @@ export function getSafeReportFilename(formData = {}, hideDetails = false, ext = 
   return `${prefix}_${displayName}_${yearStr}.${ext}`;
 }
 
-export function getActiveStatusReportSections(formData = {}) {
+export function getActiveStatusReportSections(formData: any = {}) {
   const existing = Array.isArray(formData.statusReportSections)
-    ? formData.statusReportSections.filter((s) => s && (s.content || '').trim())
+    ? formData.statusReportSections.filter((s: any) => s && (s.content || '').trim())
     : [];
   if (existing.length > 0) return existing;
   return generateStatusReportLocally(formData);
 }
 
-export function openHtmlPrintWindow(htmlString) {
+export function openHtmlPrintWindow(htmlString: string) {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     window.print();
@@ -195,7 +195,7 @@ export function openHtmlPrintWindow(htmlString) {
   }, 400);
 }
 
-export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoUrl = '') {
+export function buildWorkPlanPrintHtml(formData: any = {}, hideDetails = false, logoUrl = '') {
   const displayName = getDisplayStudentName(formData, hideDetails);
   const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
   const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
@@ -333,7 +333,7 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
         </thead>
         <tbody>
           ${(formData.goals || [])
-            .map((g) => {
+            .map((g: any) => {
               const envText = g.environment ? `תחום: ${g.environment}\n` : '';
               const titleText = getRedactedText(g.title, formData, hideDetails);
               const objectivesText = getRedactedText(g.objectives, formData, hideDetails);
@@ -367,7 +367,7 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
       </table>
     `
     : (formData.goals || [])
-        .map((g) => {
+        .map((g: any) => {
           const activityText = getRedactedText(g.activityParticipation, formData, hideDetails);
           const titleText = getRedactedText(g.title, formData, hideDetails);
           const objectivesText = getRedactedText(g.objectives, formData, hideDetails);
@@ -610,7 +610,7 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
             <div class="student-details-bar" style="background: #f0fdf4; border: 1px solid #86efac; border-right: 4px solid #16a34a; border-radius: 6px; padding: 6px 10px; margin-bottom: 12px; font-size: 12px;">
               <div style="font-weight: 700; color: #166534; margin-bottom: 3px;">מסמכי אבחון ונספחים שמורים בתיק (${docs.length}):</div>
               <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                ${docs.map(d => `<span>📄 <strong>${d.fileName || 'מסמך'}</strong> (${d.fileType || 'קובץ'}${d.fileSizeFormatted ? ' • ' + d.fileSizeFormatted : ''})</span>`).join('')}
+                ${docs.map((d: any) => `<span>📄 <strong>${d.fileName || 'מסמך'}</strong> (${d.fileType || 'קובץ'}${d.fileSizeFormatted ? ' • ' + d.fileSizeFormatted : ''})</span>`).join('')}
               </div>
             </div>
           `;
@@ -635,7 +635,7 @@ export function buildWorkPlanPrintHtml(formData = {}, hideDetails = false, logoU
   `;
 }
 
-export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
+export function buildWordDocumentHtml(formData: any = {}, hideDetails = false) {
   const displayName = getDisplayStudentName(formData, hideDetails);
   const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
   const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
@@ -749,7 +749,7 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
           <th style="width:11%; border:1px solid #7997be; padding:6pt;">מטפלת באומנויות</th>
         </tr>
         ${(formData.goals || [])
-          .map((g) => {
+          .map((g: any) => {
             const envPrefix = g.environment ? `<div style="font-size:9pt; color:#1e3a5f; margin-bottom:2pt;">תחום: ${g.environment}</div>` : '';
             const titleText = (getRedactedText(g.title, formData, hideDetails) || '').replace(/\n/g, '<br/>');
             const objectivesText = (getRedactedText(g.objectives, formData, hideDetails) || '').replace(/\n/g, '<br/>');
@@ -784,7 +784,7 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
       </table>
     `
     : (formData.goals || [])
-        .map((g) => {
+        .map((g: any) => {
           const activityText = (getRedactedText(g.activityParticipation, formData, hideDetails) || '').replace(/\n/g, '<br/>');
           const titleText = (getRedactedText(g.title, formData, hideDetails) || '').replace(/\n/g, '<br/>');
           const objectivesText = (getRedactedText(g.objectives, formData, hideDetails) || '').replace(/\n/g, '<br/>');
@@ -913,7 +913,7 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
           return `
             <div style="background-color:#f0fdf4; border:1px solid #86efac; padding:6pt 12pt; margin-bottom:12pt; font-size:10pt;">
               <strong style="color:#166534;">מסמכי אבחון ונספחים שמורים בתיק (${docs.length}):</strong><br/>
-              ${docs.map(d => `📄 <strong>${d.fileName || 'מסמך'}</strong> (${d.fileType || 'קובץ'}${d.fileSizeFormatted ? ' • ' + d.fileSizeFormatted : ''})`).join(' &nbsp;|&nbsp; ')}
+              ${docs.map((d: any) => `📄 <strong>${d.fileName || 'מסמך'}</strong> (${d.fileType || 'קובץ'}${d.fileSizeFormatted ? ' • ' + d.fileSizeFormatted : ''})`).join(' &nbsp;|&nbsp; ')}
             </div>
           `;
         })()}
@@ -934,7 +934,7 @@ export function buildWordDocumentHtml(formData = {}, hideDetails = false) {
   `;
 }
 
-export function buildEvalWordDocumentHtml(formData = {}, hideDetails = false) {
+export function buildEvalWordDocumentHtml(formData: any = {}, hideDetails = false) {
   const displayName = getDisplayStudentName(formData, hideDetails);
   const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
   const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
@@ -948,7 +948,7 @@ export function buildEvalWordDocumentHtml(formData = {}, hideDetails = false) {
   const recommendationsHtml = (getRedactedText(formData.recommendations, formData, hideDetails) || '').replace(/\n/g, '<br/>');
 
   const evalGoalsRowsHtml = (formData.goals || [])
-    .map((g, idx) => {
+    .map((g: any, idx: number) => {
       const titleText = (getRedactedText(g.title, formData, hideDetails) || '').replace(/\n/g, '<br/>');
       const objectivesText = (getRedactedText(g.objectives, formData, hideDetails) || '').replace(/\n/g, '<br/>');
       const midEvalText = (getRedactedText(g.midYearEvaluation, formData, hideDetails) || '').replace(/\n/g, '<br/>');
@@ -1067,7 +1067,7 @@ export function buildEvalWordDocumentHtml(formData = {}, hideDetails = false) {
   `;
 }
 
-export function buildEvalReportPrintHtml(formData = {}, hideDetails = false, logoUrl = '') {
+export function buildEvalReportPrintHtml(formData: any = {}, hideDetails = false, logoUrl = '') {
   const displayName = getDisplayStudentName(formData, hideDetails);
   const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
   const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
@@ -1079,7 +1079,7 @@ export function buildEvalReportPrintHtml(formData = {}, hideDetails = false, log
   const evalDocTitle = getEvalReportTitle();
 
   const evalRowsHtml = (formData.goals || [])
-    .map((g, idx) => {
+    .map((g: any, idx: number) => {
       const titleText = getRedactedText(g.title, formData, hideDetails);
       const objectivesText = getRedactedText(g.objectives, formData, hideDetails);
       const midEvalText = getRedactedText(g.midYearEvaluation, formData, hideDetails);
@@ -1280,7 +1280,7 @@ export function buildEvalReportPrintHtml(formData = {}, hideDetails = false, log
   `;
 }
 
-export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = false) {
+export function buildStatusReportWordDocumentHtml(formData: any = {}, hideDetails = false) {
   const displayName = getDisplayStudentName(formData, hideDetails);
   const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
   const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
@@ -1292,7 +1292,7 @@ export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = f
   const statusDocTitle = getStatusReportTitle();
   const sectionsToRender = getActiveStatusReportSections(formData);
 
-  const formatBulletLinesForExport = (rawText) =>
+  const formatBulletLinesForExport = (rawText: any) =>
     String(rawText || '')
       .split('\n')
       .map((line) =>
@@ -1304,7 +1304,7 @@ export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = f
       .map((line) => `• ${line}`);
 
   const sectionsHtml = sectionsToRender
-    .map((sec) => {
+    .map((sec: any) => {
       const cleanTitle = String(sec.title || '')
         .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪\-]\s*)/, '')
         .trim();
@@ -1384,7 +1384,7 @@ export function buildStatusReportWordDocumentHtml(formData = {}, hideDetails = f
   `;
 }
 
-export function buildStatusReportPrintHtml(formData = {}, hideDetails = false, logoUrl = '') {
+export function buildStatusReportPrintHtml(formData: any = {}, hideDetails = false, logoUrl = '') {
   const displayName = getDisplayStudentName(formData, hideDetails);
   const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
   const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
@@ -1397,7 +1397,7 @@ export function buildStatusReportPrintHtml(formData = {}, hideDetails = false, l
   const sectionsToRender = getActiveStatusReportSections(formData);
 
   const sectionsHtml = sectionsToRender
-    .map((sec) => {
+    .map((sec: any) => {
       const cleanTitle = String(sec.title || '')
         .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪\-]\s*)/, '')
         .trim();
