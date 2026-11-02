@@ -1,11 +1,15 @@
 export const PRIMARY_ADMIN_EMAIL = 'zivit.reshef@gmail.com';
 
 export interface UserPermissionEntity {
+  name?: string;
+  role?: string;
+  title?: string;
   email?: string;
   group?: string;
   active?: boolean;
   notifyOnSharedReport?: boolean;
   dismissedSharedReportIds?: string[];
+  [key: string]: unknown;
 }
 
 export interface TeamMessageEntity {

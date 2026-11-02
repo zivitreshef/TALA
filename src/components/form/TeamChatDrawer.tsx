@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Send, Trash2, X, Clock, Pin, AlertCircle } from 'lucide-react';
+import { MessageSquare, Send, Trash2, X, Clock } from 'lucide-react';
 
-export const AUTHOR_COLOR_THEMES = [
+export interface AuthorColorTheme {
+  bg: string;
+  border: string;
+  avatarBg: string;
+  badgeBg: string;
+  badgeColor: string;
+  nameColor: string;
+  pinColor: string;
+}
+
+export const AUTHOR_COLOR_THEMES: readonly AuthorColorTheme[] = [
   {
     bg: '#faf5ff', // Soft purple/violet (שרה כהן - מחנכת)
     border: '#d8b4fe',
@@ -58,7 +68,7 @@ export const AUTHOR_COLOR_THEMES = [
   }
 ];
 
-export function getAuthorInitials(name = '', email = '') {
+export function getAuthorInitials(name = '', email = ''): string {
   const cleanName = String(name || '').trim();
   if (cleanName) {
     const parts = cleanName.split(/\s+/).filter(Boolean);
@@ -74,7 +84,7 @@ export function getAuthorInitials(name = '', email = '') {
   return 'צו';
 }
 
-export function getAuthorColorTheme(authorEmail = '', authorIndex) {
+export function getAuthorColorTheme(authorEmail = '', authorIndex?: number): AuthorColorTheme {
   if (typeof authorIndex === 'number' && authorIndex >= 0) {
     return AUTHOR_COLOR_THEMES[authorIndex % AUTHOR_COLOR_THEMES.length];
   }
@@ -89,11 +99,41 @@ export function getAuthorColorTheme(authorEmail = '', authorIndex) {
   return AUTHOR_COLOR_THEMES[index];
 }
 
-const DRAWER_QUICK_CHIPS = [
+const DRAWER_QUICK_CHIPS: readonly string[] = [
   'נא לבדוק מטרות',
   'עודכן לקראת ישיבה',
   'אשמח להתייעצות'
 ];
+
+export interface TeamChatMessage {
+  id: string;
+  text: string;
+  createdAt?: string;
+  authorEmail?: string;
+  authorName?: string;
+  authorRole?: string;
+  recipientName?: string;
+  type?: string;
+  isDeleted?: boolean;
+  [key: string]: unknown;
+}
+
+export interface TeamChatUser {
+  email?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+export interface TeamChatDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  studentName?: string;
+  teamMessages?: TeamChatMessage[];
+  currentUser?: TeamChatUser | null;
+  sharedWith?: string[];
+  onSendMessage?: (text: string) => void;
+  onRetractMessage?: (messageId: string) => void;
+}
 
 export default function TeamChatDrawer({
   isOpen,
@@ -104,8 +144,8 @@ export default function TeamChatDrawer({
   sharedWith = [],
   onSendMessage,
   onRetractMessage
-}) {
-  const [inputText, setInputText] = useState('');
+}: TeamChatDrawerProps): React.JSX.Element | null {
+  const [inputText, setInputText] = useState<string>('');
 
   // Prevent background support chat launcher or other floating elements from overlapping
   useEffect(() => {
@@ -129,7 +169,7 @@ export default function TeamChatDrawer({
   });
 
   // Track unique authors across the thread so each person gets a distinct high-contrast color (0% collision)
-  const uniqueAuthors = [];
+  const uniqueAuthors: string[] = [];
   sortedMessages.forEach((msg) => {
     const key = (msg.authorEmail || msg.authorName || '').trim().toLowerCase();
     if (key && !uniqueAuthors.includes(key)) {
@@ -137,7 +177,7 @@ export default function TeamChatDrawer({
     }
   });
 
-  const getThemeForMsg = (msg) => {
+  const getThemeForMsg = (msg: TeamChatMessage): AuthorColorTheme => {
     const key = (msg.authorEmail || msg.authorName || '').trim().toLowerCase();
     const idx = uniqueAuthors.indexOf(key);
     if (idx !== -1) {
@@ -146,7 +186,7 @@ export default function TeamChatDrawer({
     return getAuthorColorTheme(msg.authorEmail);
   };
 
-  const handleSend = (e) => {
+  const handleSend = (e?: React.FormEvent): void => {
     e?.preventDefault();
     const trimmed = inputText.trim();
     if (!trimmed || !onSendMessage) return;
@@ -154,14 +194,14 @@ export default function TeamChatDrawer({
     setInputText('');
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
 
-  const formatTimestamp = (isoString) => {
+  const formatTimestamp = (isoString?: string): string => {
     if (!isoString) return '';
     try {
       const d = new Date(isoString);
@@ -329,7 +369,7 @@ export default function TeamChatDrawer({
             </div>
           ) : (
             sortedMessages.map((msg) => {
-              const isMine = myEmail && String(msg.authorEmail || '').trim().toLowerCase() === myEmail;
+              const isMine = Boolean(myEmail && String(msg.authorEmail || '').trim().toLowerCase() === myEmail);
               const isHandoff = msg.type === 'share_handoff';
               const initials = getAuthorInitials(msg.authorName, msg.authorEmail);
               const theme = getThemeForMsg(msg);

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import React, { useEffect, useState, type CSSProperties } from 'react';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import {
   MessageSquareHeart,
   X,
@@ -22,7 +22,8 @@ import {
   getInviteQuestions,
   sanitizeResponses,
   summarizeInvites,
-  toMillis
+  toMillis,
+  type InviteDoc
 } from '../../domain/parentInvite';
 import {
   createInvite,
@@ -32,14 +33,41 @@ import {
   subscribeToStudentInvites
 } from '../../services/inviteService';
 
-const PILL_STYLES = {
+const PILL_STYLES: Record<'none' | 'waiting' | 'received', CSSProperties> = {
   none: { background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' },
   waiting: { background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' },
   received: { background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }
 };
 
-function getFirstName(name) {
+function getFirstName(name?: string | null): string {
   return String(name || '').trim().split(/\s+/)[0] || '';
+}
+
+export type StoredInvite = Partial<InviteDoc> & {
+  token: string;
+  [key: string]: unknown;
+};
+
+export interface ParentVoiceControlStudent {
+  id?: string;
+  name?: string;
+  gender?: string;
+  [key: string]: unknown;
+}
+
+export interface ParentVoiceControlUser {
+  email?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ParentVoiceControlProps {
+  student?: ParentVoiceControlStudent | null;
+  currentUser?: ParentVoiceControlUser | null;
+  disabled?: boolean;
+  onMerge?: (mergedText: string) => void;
+  initialOpen?: boolean;
+  initialInvites?: StoredInvite[] | null;
+  highlight?: boolean;
 }
 
 /**
@@ -49,87 +77,95 @@ function getFirstName(name) {
 export default function ParentVoiceControl({
   student,
   currentUser,
-  disabled,
+  disabled = false,
   onMerge,
   initialOpen = false,
   initialInvites = null,
   highlight = false
-}) {
-  const [invites, setInvites] = useState(() => initialInvites || []);
-  const [open, setOpen] = useState(initialOpen);
-  const [busyKey, setBusyKey] = useState('');
-  const [error, setError] = useState('');
-  const [copiedToken, setCopiedToken] = useState('');
-  const [questionsList, setQuestionsList] = useState(null);
-  const [isCustomExpanded, setIsCustomExpanded] = useState(false);
-  const [historyExpanded, setHistoryExpanded] = useState(false);
+}: ParentVoiceControlProps): React.JSX.Element {
+  const [invites, setInvites] = useState<StoredInvite[]>(() => initialInvites || []);
+  const [open, setOpen] = useState<boolean>(initialOpen);
+  const [busyKey, setBusyKey] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [copiedToken, setCopiedToken] = useState<string>('');
+  const [questionsList, setQuestionsList] = useState<string[] | null>(null);
+  const [isCustomExpanded, setIsCustomExpanded] = useState<boolean>(false);
+  const [historyExpanded, setHistoryExpanded] = useState<boolean>(false);
 
   const ownerEmail = String(currentUser?.email || '').trim().toLowerCase();
   const studentId = student?.id;
 
   // Re-subscribe once Firebase sign-in completes: a listener opened before sign-in is denied for good.
-  const [authedEmail, setAuthedEmail] = useState(() => getFirebaseAuth()?.currentUser?.email || '');
+  const [authedEmail, setAuthedEmail] = useState<string>(() => getFirebaseAuth()?.currentUser?.email || '');
   useEffect(() => {
     const auth = getFirebaseAuth();
     if (!auth) return undefined;
-    return onAuthStateChanged(auth, (user) => setAuthedEmail(user?.email || ''));
+    return onAuthStateChanged(auth, (user: User | null) => setAuthedEmail(user?.email || ''));
   }, []);
 
   useEffect(() => {
     if (initialInvites) return undefined;
     setInvites([]);
-    return subscribeToStudentInvites(ownerEmail, studentId, setInvites, () => {});
+    if (!ownerEmail || !studentId) return undefined;
+    return subscribeToStudentInvites(
+      ownerEmail,
+      studentId,
+      (incoming) => setInvites(incoming as StoredInvite[]),
+      () => {}
+    );
   }, [ownerEmail, studentId, authedEmail, initialInvites]);
 
-  const summary = summarizeInvites(invites);
+  const summary = summarizeInvites(invites as InviteDoc[]);
   const childFirstName = getFirstName(student?.name);
-  const gender = student?.gender === 'girl' ? 'girl' : 'boy';
-  const pending = summary.pending;
-  const url = pending ? buildInviteUrl(window.location.href, pending.token) : '';
+  const gender: 'boy' | 'girl' = student?.gender === 'girl' ? 'girl' : 'boy';
+  const pending = summary.pending as StoredInvite | null;
+  const currentHref = typeof window !== 'undefined' ? window.location.href : 'http://localhost';
+  const url = pending?.token ? buildInviteUrl(currentHref, pending.token) : '';
 
   const defaultQuestions = getDefaultQuestions({ childName: childFirstName, gender });
   const activeQuestions = questionsList !== null ? questionsList : defaultQuestions;
 
-  const handleQuestionChange = (idx, val) => {
+  const handleQuestionChange = (idx: number, val: string): void => {
     const next = [...activeQuestions];
     next[idx] = val;
     setQuestionsList(next);
   };
 
-  const handleQuestionDelete = (idx) => {
+  const handleQuestionDelete = (idx: number): void => {
     const next = activeQuestions.filter((_, i) => i !== idx);
     setQuestionsList(next);
   };
 
-  const handleQuestionAdd = () => {
+  const handleQuestionAdd = (): void => {
     if (activeQuestions.length < 5) {
       setQuestionsList([...activeQuestions, '']);
     }
   };
 
-  const handleResetQuestions = () => {
+  const handleResetQuestions = (): void => {
     setQuestionsList(null);
   };
 
-  const run = async (key, action) => {
+  const run = async (key: string, action: () => Promise<unknown>): Promise<void> => {
     setBusyKey(key);
     setError('');
     try {
       await ensureTeacherSession(ownerEmail);
       await action();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('[ParentVoiceControl]', err);
+      const fbErr = err as { code?: string; message?: string };
       const reason =
-        err?.code === 'permission-denied'
+        fbErr?.code === 'permission-denied'
           ? 'אין הרשאה (ייתכן שהחיבור ל-Firebase לא פעיל או שכללי האבטחה טרם עודכנו)'
-          : err?.code || err?.message || '';
+          : fbErr?.code || fbErr?.message || '';
       setError(`הפעולה נכשלה${reason ? `: ${reason}` : ''}. נסי שוב.`);
     } finally {
       setBusyKey('');
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = (): void => {
     const isCustomized = questionsList !== null;
     const finalQuestions = (isCustomized ? questionsList : defaultQuestions)
       .map((q) => q.trim())
@@ -140,7 +176,12 @@ export default function ParentVoiceControl({
       return;
     }
 
-    run('create', async () => {
+    if (!studentId) {
+      setError('לא נבחר תלמיד.');
+      return;
+    }
+
+    void run('create', async () => {
       await createInvite({
         ownerEmail,
         studentId,
@@ -154,22 +195,24 @@ export default function ParentVoiceControl({
     });
   };
 
-  const handleCopy = async (token, url) => {
+  const handleCopy = async (token: string, copyUrl: string): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(copyUrl);
       setCopiedToken(token);
       setTimeout(() => setCopiedToken(''), 2000);
-    } catch (_) {
+    } catch {
       setError('לא ניתן להעתיק אוטומטית. סמני את הקישור והעתיקי ידנית.');
     }
   };
 
-  const handleMerge = (invite) =>
-    run(invite.token, async () => {
-      await markInviteReviewed(invite.token, 'merged');
-      onMerge(buildVoiceMergeText(invite));
+  const handleMerge = (invite: Partial<InviteDoc>): Promise<void> => {
+    const token = String((invite as StoredInvite).token || '');
+    return run(token, async () => {
+      await markInviteReviewed(token, 'merged');
+      onMerge?.(buildVoiceMergeText(invite as InviteDoc));
       setOpen(false);
     });
+  };
 
   const pillLabel = {
     none: 'קול ההורים',
@@ -181,7 +224,7 @@ export default function ParentVoiceControl({
     <>
       <button
         type="button"
-        className={highlight ? "tour-highlight-btn" : ""}
+        className={highlight ? 'tour-highlight-btn' : ''}
         disabled={disabled || !studentId || !ownerEmail}
         onClick={() => setOpen(true)}
         title="איסוף דעת ההורים בקישור קצר"
@@ -227,16 +270,18 @@ export default function ParentVoiceControl({
 
             <div className="modal-body email-modal-body">
               {summary.unreviewed.map((invite) => {
-                const responses = sanitizeResponses(invite.responses, invite.customQuestions);
+                const stored = invite as StoredInvite;
+                const token = String(stored.token || '');
+                const responses = sanitizeResponses(stored.responses, stored.customQuestions);
                 const questions = getInviteQuestions({
                   childName: childFirstName,
                   gender,
-                  customQuestions: invite.customQuestions,
-                  overrideDefaults: !!invite.overrideDefaults
+                  customQuestions: stored.customQuestions,
+                  overrideDefaults: Boolean(stored.overrideDefaults)
                 });
                 return (
                   <div
-                    key={invite.token}
+                    key={token}
                     style={{
                       border: '1px solid #86efac',
                       background: '#f0fdf4',
@@ -260,16 +305,16 @@ export default function ParentVoiceControl({
                       <button
                         type="button"
                         className="btn-submit-email"
-                        disabled={busyKey === invite.token}
-                        onClick={() => handleMerge(invite)}
+                        disabled={busyKey === token}
+                        onClick={() => void handleMerge(stored)}
                       >
                         <span>שלבי בתיאור החופשי של המורה</span>
                       </button>
                       <button
                         type="button"
-                        disabled={busyKey === invite.token}
+                        disabled={busyKey === token}
                         onClick={() =>
-                          run(invite.token, () => markInviteReviewed(invite.token, 'archived'))
+                          void run(token, () => markInviteReviewed(token, 'archived'))
                         }
                         style={{
                           background: '#ffffff',
@@ -288,20 +333,20 @@ export default function ParentVoiceControl({
 
               <div style={{ borderTop: '1px dashed #cbd5e1', padding: '12px 0' }}>
                 <div style={{ fontWeight: 700, marginBottom: '6px' }}>קישור להורים</div>
-                {pending ? (
+                {pending && pending.token ? (
                   <>
                     <input
                       type="text"
                       readOnly
                       value={url}
-                      onFocus={(e) => e.target.select()}
+                      onFocus={(e) => (e.target as HTMLInputElement).select()}
                       style={{ width: '100%', direction: 'ltr', marginBottom: '8px' }}
                     />
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <button
                         type="button"
                         className="btn-send-email-doc"
-                        onClick={() => handleCopy(pending.token, url)}
+                        onClick={() => void handleCopy(String(pending.token), url)}
                       >
                         {copiedToken === pending.token ? <Check size={16} /> : <Copy size={16} />}
                         <span>{copiedToken === pending.token ? 'הועתק' : 'העתקי קישור'}</span>
@@ -319,7 +364,7 @@ export default function ParentVoiceControl({
                       <button
                         type="button"
                         disabled={busyKey === pending.token}
-                        onClick={() => run(pending.token, () => deleteInvite(pending.token))}
+                        onClick={() => void run(String(pending.token), () => deleteInvite(String(pending.token)))}
                         style={{
                           background: 'transparent',
                           border: 'none',
@@ -534,15 +579,17 @@ export default function ParentVoiceControl({
                   {historyExpanded && (
                     <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {summary.history.map((inv) => {
-                        const responses = sanitizeResponses(inv.responses, inv.customQuestions);
+                        const stored = inv as StoredInvite;
+                        const token = String(stored.token || '');
+                        const responses = sanitizeResponses(stored.responses, stored.customQuestions);
                         const questions = getInviteQuestions({
                           childName: childFirstName,
                           gender,
-                          customQuestions: inv.customQuestions,
-                          overrideDefaults: !!inv.overrideDefaults
+                          customQuestions: stored.customQuestions,
+                          overrideDefaults: Boolean(stored.overrideDefaults)
                         });
-                        const rawDate = inv.submittedAt || inv.createdAt;
-                        const dateMs = toMillis(rawDate);
+                        const rawDate = stored.submittedAt || stored.createdAt;
+                        const dateMs = toMillis(rawDate as Date | string);
                         const dateStr = !Number.isNaN(dateMs)
                           ? new Date(dateMs).toLocaleDateString('he-IL', {
                               day: '2-digit',
@@ -550,11 +597,11 @@ export default function ParentVoiceControl({
                               year: 'numeric'
                             })
                           : '';
-                        const wasMerged = inv.reviewedAction === 'merged';
+                        const wasMerged = stored.reviewedAction === 'merged';
 
                         return (
                           <div
-                            key={inv.token}
+                            key={token}
                             style={{
                               border: '1px solid #e2e8f0',
                               background: '#ffffff',
@@ -604,8 +651,8 @@ export default function ParentVoiceControl({
                               <button
                                 type="button"
                                 className="btn-submit-email"
-                                disabled={busyKey === inv.token}
-                                onClick={() => handleMerge(inv)}
+                                disabled={busyKey === token}
+                                onClick={() => void handleMerge(stored)}
                                 style={{ fontSize: '12px', padding: '4px 10px' }}
                               >
                                 <span>שלבי שוב בתיאור החופשי</span>
