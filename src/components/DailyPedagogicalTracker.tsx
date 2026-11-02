@@ -10,10 +10,8 @@ import {
   Pencil,
   Trash2,
   Sparkles,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   AlertTriangle,
   Download,
   X,
@@ -32,7 +30,6 @@ import {
   generateIcsFileContent,
   buildAiGoalMatchPrompt,
   parseAiGoalMatchResponse,
-  getIsraeliHolidayOrVacation,
   getIsraeliHolidayInfo,
   calculateDurationMinutes,
   getEventBarThickness
@@ -48,11 +45,11 @@ import './DailyPedagogicalTracker.css';
  * Calculates the current consecutive tracking streak (in days) based on
  * logged observation dates across all active students.
  */
-export function calculateCurrentStreak(students, todayStr = new Date().toISOString().slice(0, 10)) {
+export function calculateCurrentStreak(students: any[], todayStr = new Date().toISOString().slice(0, 10)) {
   const datesSet = new Set();
-  (students || []).forEach((st) => {
-    (st.goals || []).forEach((g) => {
-      (g.observations || []).forEach((obs) => {
+  (students || []).forEach((st: any) => {
+    (st.goals || []).forEach((g: any) => {
+      (g.observations || []).forEach((obs: any) => {
         if (obs.date) datesSet.add(obs.date.slice(0, 10));
         else if (obs.timestamp) datesSet.add(obs.timestamp.slice(0, 10));
       });
@@ -87,7 +84,7 @@ const TIME_SLOTS = [
   '19:00', '19:30', '20:00', '20:30', '21:00'
 ];
 
-function addMinutesToTime(timeStr, minutesToAdd) {
+function addMinutesToTime(timeStr: string, minutesToAdd: number): string {
   const [h, m] = (timeStr || '09:00').split(':').map(Number);
   const total = (h * 60 + m + minutesToAdd) % (24 * 60);
   const newH = String(Math.floor(total / 60)).padStart(2, '0');
@@ -121,14 +118,24 @@ const SUPPORT_LEVELS = [
   'הדגמה וליווי מלא'
 ];
 
+export interface DailyPedagogicalTrackerProps {
+  students?: any[];
+  currentUser?: any;
+  onUpdateStudent?: (student: any) => void;
+  onSelectStudent?: (student: any) => void;
+  onClose?: () => void;
+  activeOnboardingStep?: number;
+}
+
 export default function DailyPedagogicalTracker({
   students = [],
   currentUser = {},
   onUpdateStudent,
-  onSelectStudent,
+  onSelectStudent: _onSelectStudent,
   onClose,
   activeOnboardingStep = 0
-}) {
+}: DailyPedagogicalTrackerProps) {
+  void _onSelectStudent;
   const teacherEmail = (currentUser?.email || 'teacher').toLowerCase();
   const STORAGE_TODOS_KEY = `tala_daily_todos_${teacherEmail}`;
   const STORAGE_EVENTS_KEY = `tala_daily_events_${teacherEmail}`;
@@ -164,7 +171,7 @@ export default function DailyPedagogicalTracker({
   });
 
   const handleToggleCalendarCollapse = () => {
-    setIsCalendarCollapsed((prev) => {
+    setIsCalendarCollapsed((prev: any) => {
       const next = !prev;
       try {
         localStorage.setItem(STORAGE_COLLAPSE_KEY, String(next));
@@ -212,9 +219,9 @@ export default function DailyPedagogicalTracker({
 
   const [newTodoText, setNewTodoText] = useState('');
   const [newTodoDate, setNewTodoDate] = useState(todayStr);
-  const [newTodoTime, setNewTodoTime] = useState('');
+  const [newTodoTime, setNewTodoTime] = useState(''); void setNewTodoTime;
 
-  const handleAddTodo = (e) => {
+  const handleAddTodo = (e: any) => {
     e.preventDefault();
     if (!newTodoText.trim()) return;
     const newTask = {
@@ -224,25 +231,25 @@ export default function DailyPedagogicalTracker({
       time: newTodoTime || '',
       completed: false
     };
-    setTodos((prev) => [newTask, ...prev]);
+    setTodos((prev: any) => [newTask, ...prev]);
     setNewTodoText('');
   };
 
-  const handleToggleTodo = (id) => {
-    setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+  const handleToggleTodo = (id: any) => {
+    setTodos((prev: any) =>
+      prev.map((t: any) => (t.id === id ? { ...t, completed: !t.completed } : t))
     );
   };
 
-  const handleDeleteTodo = (id) => {
-    setTodos((prev) => prev.filter((t) => t.id !== id));
+  const handleDeleteTodo = (id: any) => {
+    setTodos((prev: any) => prev.filter((t: any) => t.id !== id));
   };
 
   const [showAiTasksModal, setShowAiTasksModal] = useState(false);
   const [taskToast, setTaskToast] = useState('');
 
-  const handleAddAiTasks = (tasksToAdd) => {
-    const formatted = tasksToAdd.map((t, idx) => ({
+  const handleAddAiTasks = (tasksToAdd: any[]) => {
+    const formatted = tasksToAdd.map((t: any, idx: any) => ({
       id: `todo_ai_${Date.now()}_${idx}`,
       text: t.text,
       date: t.date || selectedDate,
@@ -251,7 +258,7 @@ export default function DailyPedagogicalTracker({
       studentId: t.studentId || null,
       isAiGenerated: true
     }));
-    setTodos((prev) => [...formatted, ...prev]);
+    setTodos((prev: any) => [...formatted, ...prev]);
     setTaskToast(`✨ ${tasksToAdd.length} משימות פדגוגיות נוספו בהצלחה לרשימת היום!`);
     setTimeout(() => setTaskToast(''), 4500);
   };
@@ -304,7 +311,7 @@ export default function DailyPedagogicalTracker({
     location: 'חדר טיפולים / כיתה'
   });
 
-  const handleOpenNewEventModal = () => {
+  const handleOpenNewEventModal = () => { void handleOpenNewEventModal;
     setEditingEventId(null);
     setNewEventForm({
       title: '',
@@ -319,9 +326,9 @@ export default function DailyPedagogicalTracker({
     setShowScheduleModal(true);
   };
 
-  const handleEditEvent = (ev) => {
+  const handleEditEvent = (ev: any) => {
     setEditingEventId(ev.id);
-    const matchedSt = students.find((s) => s.id === ev.studentId || s.name === ev.studentName);
+    const matchedSt = students.find((s: any) => s.id === ev.studentId || s.name === ev.studentName);
     setNewEventForm({
       title: ev.title || '',
       type: ev.type || 'שיעור פרטני',
@@ -335,24 +342,24 @@ export default function DailyPedagogicalTracker({
     setShowScheduleModal(true);
   };
 
-  const handleDeleteEvent = (id) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
+  const handleDeleteEvent = (id: any) => {
+    setEvents((prev: any) => prev.filter((e: any) => e.id !== id));
     if (editingEventId === id) {
       setShowScheduleModal(false);
       setEditingEventId(null);
     }
   };
 
-  const handleSaveScheduledEvent = (e) => {
+  const handleSaveScheduledEvent = (e: any) => {
     e.preventDefault();
     const chosenType = (newEventForm.type || 'פגישה').trim();
     const chosenTitle = (newEventForm.title || chosenType).trim();
     const chosenColor = newEventForm.color || '#2563eb';
-    const st = students.find((s) => s.id === newEventForm.studentId);
+    const st = students.find((s: any) => s.id === newEventForm.studentId);
 
     if (editingEventId) {
-      setEvents((prev) =>
-        prev.map((ev) =>
+      setEvents((prev: any) =>
+        prev.map((ev: any) =>
           ev.id === editingEventId
             ? {
                 ...ev,
@@ -382,13 +389,13 @@ export default function DailyPedagogicalTracker({
         studentId: st?.id || '',
         location: newEventForm.location
       };
-      setEvents((prev) => [...prev, ev]);
+      setEvents((prev: any) => [...prev, ev]);
     }
 
     // Update teacher's custom event types history
-    setEventTypes((prev) => {
+    setEventTypes((prev: any) => {
       const idx = prev.findIndex(
-        (t) => t.name.trim().toLowerCase() === chosenType.toLowerCase()
+        (t: any) => t.name.trim().toLowerCase() === chosenType.toLowerCase()
       );
       if (idx >= 0) {
         const next = [...prev];
@@ -411,23 +418,23 @@ export default function DailyPedagogicalTracker({
   const [updaterMode, setUpdaterMode] = useState('ai'); // 'ai' | 'manual'
   const [targetStudentId, setTargetBankStudentId] = useState(() => students[0]?.id || '');
   const targetStudent = useMemo(() => {
-    return students.find((s) => s.id === targetStudentId) || students[0] || null;
+    return students.find((s: any) => s.id === targetStudentId) || students[0] || null;
   }, [students, targetStudentId]);
 
   // AI Free-text Note Mode State
   const [aiNoteText, setAiNoteText] = useState('');
   const [isAnalyzingAi, setIsAnalyzingAi] = useState(false);
-  const [aiAnalysisResult, setAiAnalysisResult] = useState(null);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<any | null>(null);
   const [aiAnalysisError, setAiAnalysisError] = useState('');
 
   // Manual Mode State
   const [selectedGoalId, setSelectedGoalId] = useState('');
   const activeStudentGoals = useMemo(() => {
-    return Array.isArray(targetStudent?.goals) ? targetStudent.goals.filter((g) => g.title) : [];
+    return Array.isArray(targetStudent?.goals) ? targetStudent.goals.filter((g: any) => g.title) : [];
   }, [targetStudent]);
 
   const selectedGoal = useMemo(() => {
-    return activeStudentGoals.find((g) => g.id === selectedGoalId) || activeStudentGoals[0] || null;
+    return activeStudentGoals.find((g: any) => g.id === selectedGoalId) || activeStudentGoals[0] || null;
   }, [activeStudentGoals, selectedGoalId]);
 
   const [manualProgress, setManualProgress] = useState(60);
@@ -437,7 +444,7 @@ export default function DailyPedagogicalTracker({
 
   // Daily Tracking Telemetry State & Refs
   const [isVoice, setIsVoice] = useState(false);
-  const entryStartTimeRef = React.useRef(null);
+  const entryStartTimeRef = React.useRef<number | null>(null);
   const hasDispatchedStartedRef = React.useRef(false);
   const currentEntryModeRef = React.useRef('text');
 
@@ -519,12 +526,14 @@ export default function DailyPedagogicalTracker({
         hints: { gender: targetStudent?.gender || 'boy', name: targetStudent?.name, model: 'gemini-2.5-flash' }
       });
 
-      const parsed = parseAiGoalMatchResponse(response);
+      const parsed: any = parseAiGoalMatchResponse(response);
+      if (parsed) {
       if (!parsed.matchedGoalId && activeStudentGoals.length > 0) {
         parsed.matchedGoalId = activeStudentGoals[0].id;
         parsed.matchedGoalTitle = activeStudentGoals[0].title;
       }
       setAiAnalysisResult(parsed);
+      }
     } catch (err) {
       const fallbackGoal = activeStudentGoals[0] || { id: 'g_default', title: 'התקדמות כללית' };
       setAiAnalysisResult({
@@ -558,7 +567,7 @@ export default function DailyPedagogicalTracker({
       source: 'ai_daily_tracker'
     };
 
-    const updatedGoals = (targetStudent.goals || []).map((g) => {
+    const updatedGoals = (targetStudent.goals || []).map((g: any) => {
       if (g.id === goalId) {
         const currentP = Number(g.currentProgress) || 0;
         const newP = Math.min(100, currentP + delta);
@@ -615,7 +624,7 @@ export default function DailyPedagogicalTracker({
   };
 
   // Commit Manual Goal Update
-  const handleSaveManualGoal = (e) => {
+  const handleSaveManualGoal = (e: any) => {
     e.preventDefault();
     if (!targetStudent || !selectedGoal) return;
 
@@ -631,7 +640,7 @@ export default function DailyPedagogicalTracker({
         }
       : null;
 
-    const updatedGoals = (targetStudent.goals || []).map((g) => {
+    const updatedGoals = (targetStudent.goals || []).map((g: any) => {
       if (g.id === selectedGoal.id) {
         const existingObs = Array.isArray(g.observations) ? g.observations : [];
         return {
@@ -685,7 +694,7 @@ export default function DailyPedagogicalTracker({
 
   // Download Universal .ics Calendar File
   const handleDownloadIcs = () => {
-    const calendarEvents = events.map((ev) => ({
+    const calendarEvents = events.map((ev: any) => ({
       title: `${ev.title} - ${ev.studentName || ''}`,
       startIso: `${ev.date}T${ev.startTime || '09:00'}:00`,
       endIso: `${ev.date}T${ev.endTime || '10:00'}:00`,
@@ -713,8 +722,8 @@ export default function DailyPedagogicalTracker({
   const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
 
   // Filter tasks for selected date
-  const filteredTodos = todos.filter((t) => t.date === selectedDate);
-  const filteredEvents = events.filter((ev) => ev.date === selectedDate);
+  const filteredTodos = todos.filter((t: any) => t.date === selectedDate);
+  const filteredEvents = events.filter((ev: any) => ev.date === selectedDate);
 
   return (
     <div className="daily-tracker-container" dir="rtl">
@@ -772,10 +781,10 @@ export default function DailyPedagogicalTracker({
             <span className="scorecard-label">משימות פדגוגיות להיום</span>
             <div className="scorecard-stats-row">
               <span className="scorecard-val">
-                {todos.filter((t) => t.date === todayStr && t.completed).length}
+                {todos.filter((t: any) => t.date === todayStr && t.completed).length}
               </span>
               <span className="scorecard-sub">
-                מתוך {todos.filter((t) => t.date === todayStr).length} הושלמו
+                מתוך {todos.filter((t: any) => t.date === todayStr).length} הושלמו
               </span>
             </div>
           </div>
@@ -947,7 +956,7 @@ export default function DailyPedagogicalTracker({
                     const dayStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                     const isSelected = dayStr === selectedDate;
                     const isToday = dayStr === todayStr;
-                    const dayEvents = events.filter((e) => e.date === dayStr);
+                    const dayEvents = events.filter((e: any) => e.date === dayStr);
                     const dayOfWeek = new Date(calYear, calMonth, dayNum).getDay();
                     const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
                     const holidayInfo = getIsraeliHolidayInfo(dayStr);
@@ -980,7 +989,7 @@ export default function DailyPedagogicalTracker({
                         {/* Horizontal colored bars crossing date horizontally */}
                         {dayEvents.length > 0 && (
                           <div className="cal-day-event-bars">
-                            {dayEvents.slice(0, 4).map((ev, i) => (
+                            {dayEvents.slice(0, 4).map((ev: any, i: any) => (
                               <div
                                 key={ev.id || i}
                                 className="cal-event-horizontal-bar"
@@ -1013,7 +1022,7 @@ export default function DailyPedagogicalTracker({
                 <button
                   type="button"
                   onClick={() => {
-                    setNewEventForm((prev) => ({
+                    setNewEventForm((prev: any) => ({
                       ...prev,
                       date: selectedDate,
                       title: '',
@@ -1047,7 +1056,7 @@ export default function DailyPedagogicalTracker({
               <div className="agenda-empty">אין אירועים מתוזמנים לתאריך זה.</div>
             ) : (
               <div className="agenda-list">
-                {filteredEvents.map((ev) => (
+                {filteredEvents.map((ev: any) => (
                   <div key={ev.id} className="agenda-item">
                     <div className="agenda-item-main">
                       <span
@@ -1207,7 +1216,7 @@ export default function DailyPedagogicalTracker({
                   <span>מיקוד פדגוגי עם AI</span>
                 </button>
                 <span className="todo-count-badge">
-                  {filteredTodos.filter((t) => !t.completed).length} פתוחות
+                  {filteredTodos.filter((t: any) => !t.completed).length} פתוחות
                 </span>
               </div>
             </div>
@@ -1241,7 +1250,7 @@ export default function DailyPedagogicalTracker({
                 type="text"
                 placeholder="הוסיפי משימה פדגוגית..."
                 value={newTodoText}
-                onChange={(e) => setNewTodoText(e.target.value)}
+                onChange={(e: any) => setNewTodoText(e.target.value)}
                 className="todo-input-text"
               />
               <HebrewDatePicker
@@ -1282,7 +1291,7 @@ export default function DailyPedagogicalTracker({
                   </button>
                 </div>
               ) : (
-                filteredTodos.map((todo) => (
+                filteredTodos.map((todo: any) => (
                   <div key={todo.id} className="todo-row">
                     <label className="todo-label-group">
                       <input
@@ -1365,7 +1374,7 @@ export default function DailyPedagogicalTracker({
               <span className="student-select-label">תלמיד/ה לעדכון:</span>
               <select
                 value={targetStudentId}
-                onChange={(e) => {
+                onChange={(e: any) => {
                   setTargetBankStudentId(e.target.value);
                   setSelectedGoalId('');
                 }}
@@ -1419,7 +1428,7 @@ export default function DailyPedagogicalTracker({
                     rows={3}
                     value={aiNoteText}
                     onFocus={() => startObservationEntry(isVoice ? 'voice' : 'text', false)}
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                       startObservationEntry(isVoice ? 'voice' : 'text', false);
                       setAiNoteText(e.target.value);
                     }}
@@ -1510,10 +1519,10 @@ export default function DailyPedagogicalTracker({
                     </span>
                     <select
                       value={selectedGoalId}
-                      onChange={(e) => setSelectedGoalId(e.target.value)}
+                      onChange={(e: any) => setSelectedGoalId(e.target.value)}
                       className="manual-goal-select"
                     >
-                      {activeStudentGoals.map((g) => (
+                      {activeStudentGoals.map((g: any) => (
                         <option key={g.id} value={g.id}>
                           {g.environment || 'סביבה'}: {g.title}
                         </option>
@@ -1578,7 +1587,7 @@ export default function DailyPedagogicalTracker({
                     placeholder="הערת תצפית מהירה..."
                     value={manualNote}
                     onFocus={() => startObservationEntry('text', false)}
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                       startObservationEntry('text', false);
                       setManualNote(e.target.value);
                     }}
@@ -1629,10 +1638,10 @@ export default function DailyPedagogicalTracker({
                     list="event-types-list"
                     value={newEventForm.type}
                     placeholder="הקלידי סוג אירוע..."
-                    onChange={(e) => {
+                    onChange={(e: any) => {
                       const val = e.target.value;
                       const matched = eventTypes.find(
-                        (t) => t.name.trim().toLowerCase() === val.trim().toLowerCase()
+                        (t: any) => t.name.trim().toLowerCase() === val.trim().toLowerCase()
                       );
                       setNewEventForm({
                         ...newEventForm,
@@ -1643,7 +1652,7 @@ export default function DailyPedagogicalTracker({
                     className="modal-type-input"
                   />
                   <datalist id="event-types-list">
-                    {eventTypes.map((t, idx) => (
+                    {eventTypes.map((t: any, idx: any) => (
                       <option key={idx} value={t.name} />
                     ))}
                   </datalist>
@@ -1653,7 +1662,7 @@ export default function DailyPedagogicalTracker({
                 <div className="event-type-pills-row">
                   <span className="pills-label">סוגים שנשמרו בהיסטוריה שלך:</span>
                   <div className="pills-container">
-                    {eventTypes.map((t, idx) => {
+                    {eventTypes.map((t: any, idx: any) => {
                       const isSelected = newEventForm.type.trim().toLowerCase() === t.name.trim().toLowerCase();
                       return (
                         <button
@@ -1699,7 +1708,7 @@ export default function DailyPedagogicalTracker({
                     <input
                       type="color"
                       value={newEventForm.color || '#2563eb'}
-                      onChange={(e) => setNewEventForm({ ...newEventForm, color: e.target.value })}
+                      onChange={(e: any) => setNewEventForm({ ...newEventForm, color: e.target.value })}
                       className="native-color-picker-input"
                     />
                   </div>
@@ -1712,7 +1721,7 @@ export default function DailyPedagogicalTracker({
                   type="text"
                   placeholder="לדוגמה: דיון תוכנית עבודה, צפייה בהפסקת חצר..."
                   value={newEventForm.title}
-                  onChange={(e) => setNewEventForm({ ...newEventForm, title: e.target.value })}
+                  onChange={(e: any) => setNewEventForm({ ...newEventForm, title: e.target.value })}
                 />
               </div>
 
@@ -1720,9 +1729,9 @@ export default function DailyPedagogicalTracker({
                 <label>תלמיד/ה משויך/ת:</label>
                 <select
                   value={newEventForm.studentId}
-                  onChange={(e) => setNewEventForm({ ...newEventForm, studentId: e.target.value })}
+                  onChange={(e: any) => setNewEventForm({ ...newEventForm, studentId: e.target.value })}
                 >
-                  {students.map((s) => (
+                  {students.map((s: any) => (
                     <option key={s.id} value={s.id}>
                       {s.name}{s.educationalFramework ? ` • ${s.educationalFramework}` : ''}
                     </option>
@@ -1745,7 +1754,7 @@ export default function DailyPedagogicalTracker({
                     <label>שעת התחלה:</label>
                     <select
                       value={newEventForm.startTime}
-                      onChange={(e) => {
+                      onChange={(e: any) => {
                         const start = e.target.value;
                         const duration = calculateDurationMinutes(newEventForm.startTime, newEventForm.endTime);
                         const end = addMinutesToTime(start, duration > 0 ? duration : 45);
@@ -1753,7 +1762,7 @@ export default function DailyPedagogicalTracker({
                       }}
                       className="modal-time-select"
                     >
-                      {TIME_SLOTS.map((t) => (
+                      {TIME_SLOTS.map((t: any) => (
                         <option key={t} value={t}>{t}</option>
                       ))}
                     </select>
@@ -1763,10 +1772,10 @@ export default function DailyPedagogicalTracker({
                     <label>שעת סיום:</label>
                     <select
                       value={newEventForm.endTime}
-                      onChange={(e) => setNewEventForm({ ...newEventForm, endTime: e.target.value })}
+                      onChange={(e: any) => setNewEventForm({ ...newEventForm, endTime: e.target.value })}
                       className="modal-time-select"
                     >
-                      {TIME_SLOTS.map((t) => (
+                      {TIME_SLOTS.map((t: any) => (
                         <option key={t} value={t}>{t}</option>
                       ))}
                     </select>

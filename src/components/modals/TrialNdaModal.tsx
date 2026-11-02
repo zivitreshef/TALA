@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ShieldCheck, Check, RotateCcw, LogOut, Loader2, FileCheck2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ShieldCheck, RotateCcw, LogOut, Loader2, FileCheck2 } from 'lucide-react';
 
-function extractSignatureAssetsFromCanvas(canvas, fallbackText = '') {
+function extractSignatureAssetsFromCanvas(canvas: any, fallbackText = ''): { signatureDataUrl: string; signatureTableHtml: string } {
   try {
     const targetW = 280;
     const targetH = 84;
@@ -19,7 +19,7 @@ function extractSignatureAssetsFromCanvas(canvas, fallbackText = '') {
     if (canvas) {
       const w = canvas.width;
       const h = canvas.height;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D; if (!ctx) return { signatureDataUrl: '', signatureTableHtml: '' };
       if (ctx) {
         const imgData = ctx.getImageData(0, 0, w, h).data;
         let minX = w;
@@ -150,10 +150,18 @@ function extractSignatureAssetsFromCanvas(canvas, fallbackText = '') {
     const signatureTableHtml = `<table dir="ltr" width="224" border="0" cellpadding="0" cellspacing="0" style="border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#ffffff;border:1.5px solid #64748b;border-bottom:2.5px solid #1e3a5f;border-radius:6px;width:224px;table-layout:fixed;"><tbody>${trList.join('')}</tbody></table>`;
 
     return { signatureDataUrl, signatureTableHtml };
-  } catch (err) {
+  } catch (err: any) {
     console.warn('Could not extract canvas signature assets:', err);
     return { signatureDataUrl: '', signatureTableHtml: '' };
   }
+}
+
+export interface TrialNdaModalProps {
+  isOpen: boolean;
+  currentUser?: any;
+  onCompleteNda?: (details: any) => void;
+  onSignNdaComplete?: () => void;
+  onLogout?: () => void;
 }
 
 export default function TrialNdaModal({
@@ -162,7 +170,7 @@ export default function TrialNdaModal({
   onCompleteNda,
   onSignNdaComplete,
   onLogout
-}) {
+}: TrialNdaModalProps) {
   const todayIso = new Date().toISOString().slice(0, 10);
   const [signerName, setSignerName] = useState(currentUser?.name || '');
   const [signerIdNumber, setSignerIdNumber] = useState('');
@@ -173,7 +181,7 @@ export default function TrialNdaModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
 
   useEffect(() => {
@@ -186,7 +194,7 @@ export default function TrialNdaModal({
     if (!isOpen) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D; if (!ctx) return;
     if (!ctx) return;
     ctx.strokeStyle = '#1e3a5f';
     ctx.lineWidth = 3.5;
@@ -198,7 +206,7 @@ export default function TrialNdaModal({
 
   const trialDays = Number(currentUser.trialDays) || 7;
 
-  const getPointerPos = (e) => {
+  const getPointerPos = (e: any) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -212,11 +220,11 @@ export default function TrialNdaModal({
     };
   };
 
-  const handleStartDraw = (e) => {
+  const handleStartDraw = (e: any) => {
     if (e.cancelable) e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D; if (!ctx) return;
     ctx.strokeStyle = '#1e3a5f';
     ctx.lineWidth = 3.5;
     ctx.lineCap = 'round';
@@ -231,12 +239,12 @@ export default function TrialNdaModal({
     setErrorMsg('');
   };
 
-  const handleMoveDraw = (e) => {
+  const handleMoveDraw = (e: any) => {
     if (!isDrawingRef.current) return;
     if (e.cancelable) e.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D; if (!ctx) return;
     ctx.strokeStyle = '#1e3a5f';
     ctx.lineWidth = 3.5;
     ctx.lineCap = 'round';
@@ -253,12 +261,12 @@ export default function TrialNdaModal({
   const handleClearCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D; if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasDrawnSignature(false);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -324,7 +332,7 @@ export default function TrialNdaModal({
         trialDays,
         signedAtTimestamp
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error submitting NDA:', err);
       setErrorMsg('אירעה שגיאה בשמירת ההסכם. נא לנסות שנית.');
     } finally {

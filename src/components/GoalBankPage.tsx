@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   TrendingUp,
   Plus,
@@ -10,7 +10,6 @@ import {
   Trash2,
   X,
   Users,
-  Home,
   ArrowRight,
   Sparkles
 } from 'lucide-react';
@@ -40,6 +39,21 @@ const DOMAIN_ICONS = {
   'כשירות לשונית – ידע לשוני': '💬'
 };
 
+export interface GoalBankPageProps {
+  goalBank?: any[];
+  currentUser?: any;
+  userStudents?: any[];
+  targetBankStudentId?: string;
+  setTargetBankStudentId?: (id: string) => void;
+  unsavedDraftState?: { isDirty: boolean; draftData: any };
+  onAddGoalToStudent?: (goal: any, student?: any) => void;
+  onSaveBankGoal?: (goal: any, payload?: any) => void;
+  onDeleteBankGoal?: (goal: any) => void;
+  onResetAllGoalWeights?: () => void;
+  onOpenStudentPlan?: (studentId: string) => void;
+  onGoHome?: () => void;
+}
+
 export default function GoalBankPage({
   goalBank = [],
   currentUser = {},
@@ -53,12 +67,12 @@ export default function GoalBankPage({
   onResetAllGoalWeights,
   onOpenStudentPlan,
   onGoHome
-}) {
+}: GoalBankPageProps) {
   const [goalBankSearch, setGoalBankSearch] = useState('');
-  const [goalBankStageFilter, setGoalBankStageFilter] = useState(null);
+  const [goalBankStageFilter, setGoalBankStageFilter] = useState<string | null>(null);
   const [goalBankEnvFilter, setGoalBankEnvFilter] = useState('הכל');
-  const [selectedHlDomain, setSelectedHlDomain] = useState(null);
-  const [editingBankGoal, setEditingBankGoal] = useState(null);
+  const [selectedHlDomain, setSelectedHlDomain] = useState<string | null>(null);
+  const [editingBankGoal, setEditingBankGoal] = useState<any | null>(null);
   const [bankAddToast, setBankAddToast] = useState('');
 
   // Resolved active target student
@@ -83,7 +97,7 @@ export default function GoalBankPage({
 
   // High-level domains to show in grid
   const domainsToShow = useMemo(() => {
-    const list = [];
+    const list: any[] = [];
     if (activeStage === 'kindergarten' || activeStage === 'all') {
       KINDERGARTEN_ENVIRONMENTS.forEach((env) => {
         list.push({ name: env, stage: 'kindergarten', stageLabel: 'גן' });
@@ -102,7 +116,7 @@ export default function GoalBankPage({
     const effectiveEnvFilter = selectedHlDomain || goalBankEnvFilter;
     const query = goalBankSearch.trim().toLowerCase();
 
-    return sortedBank.filter((g) => {
+    return sortedBank.filter((g: any) => {
       if (!isGoalRelevantForStage(g, activeStage)) return false;
 
       if (
@@ -117,7 +131,7 @@ export default function GoalBankPage({
 
       const titleMatch = (g.title || '').toLowerCase().includes(query);
       const envMatch = (g.environment || '').toLowerCase().includes(query);
-      const objMatch = (g.suggestedObjectives || []).some((o) =>
+      const objMatch = (g.suggestedObjectives || []).some((o: any) =>
         o.toLowerCase().includes(query)
       );
 
@@ -142,7 +156,7 @@ export default function GoalBankPage({
     });
   };
 
-  const handleStartEditGoal = (goalItem) => {
+  const handleStartEditGoal = (goalItem: any) => {
     setEditingBankGoal({
       mode: 'edit',
       id: goalItem.id,
@@ -161,7 +175,7 @@ export default function GoalBankPage({
     });
   };
 
-  const handleSaveForm = (e) => {
+  const handleSaveForm = (e: any) => {
     e.preventDefault();
     if (!editingBankGoal || !editingBankGoal.title.trim()) {
       window.alert('נא להזין כותרת למטרה.');
@@ -184,7 +198,7 @@ export default function GoalBankPage({
     setTimeout(() => setBankAddToast(''), 4500);
   };
 
-  const handleDeleteGoal = (goalItem) => {
+  const handleDeleteGoal = (goalItem: any) => {
     if (onDeleteBankGoal) {
       onDeleteBankGoal(goalItem);
       setBankAddToast(`🗑️ המטרה "${goalItem.title}" הוסרה מהמאגר.`);
@@ -195,7 +209,7 @@ export default function GoalBankPage({
     }
   };
 
-  const handleAddGoalDirectly = (goalItem) => {
+  const handleAddGoalDirectly = (goalItem: any) => {
     if (!activeBankTargetStudent || !onAddGoalToStudent) return;
     onAddGoalToStudent(goalItem, activeBankTargetStudent);
     const stName = (activeBankTargetStudent.name || 'התלמיד/ה').split(/\s+/)[0];
@@ -296,7 +310,7 @@ export default function GoalBankPage({
                     <option key={st.id} value={st.id}>
                       {st.name || 'תלמיד/ה ללא שם'}{' '}
                       {st.educationalFramework ? `(${st.educationalFramework})` : ''} –{' '}
-                      {(st.goals || []).filter((g) => (g.title || '').trim()).length} מטרות
+                      {(st.goals || []).filter((g: any) => (g.title || '').trim()).length} מטרות
                     </option>
                   ))}
                 </select>
@@ -383,7 +397,7 @@ export default function GoalBankPage({
                         const cur = editingBankGoal.stages || [];
                         const next = e.target.checked
                           ? [...cur, 'kindergarten']
-                          : cur.filter((s) => s !== 'kindergarten');
+                          : cur.filter((s: string) => s !== 'kindergarten');
                         setEditingBankGoal({
                           ...editingBankGoal,
                           stages: next.length > 0 ? next : ['kindergarten']
@@ -400,7 +414,7 @@ export default function GoalBankPage({
                         const cur = editingBankGoal.stages || [];
                         const next = e.target.checked
                           ? [...cur, 'school']
-                          : cur.filter((s) => s !== 'school');
+                          : cur.filter((s: string) => s !== 'school');
                         setEditingBankGoal({
                           ...editingBankGoal,
                           stages: next.length > 0 ? next : ['school']
@@ -614,7 +628,7 @@ export default function GoalBankPage({
             </div>
             <div className="goal-bank-hl-domains-grid">
               {domainsToShow.map((item) => {
-                const count = sortedBank.filter((g) => {
+                const count = sortedBank.filter((g: any) => {
                   if (!isGoalRelevantForStage(g, activeStage)) return false;
                   const canon = canonicalizeEnvironment(g.environment);
                   return canon === item.name || (g.environment || '').includes(item.name);
@@ -631,7 +645,7 @@ export default function GoalBankPage({
                   >
                     <div className="goal-bank-hl-card-header">
                       <span className="goal-bank-hl-card-icon">
-                        {DOMAIN_ICONS[item.name] || '🎯'}
+                        {(DOMAIN_ICONS as Record<string, string>)[item.name] || '🎯'}
                       </span>
                       <span
                         className={`stage-chip ${
@@ -706,7 +720,7 @@ export default function GoalBankPage({
                   const isAlreadyInTargetStudent = Boolean(
                     targetStudentForCheck &&
                       (targetStudentForCheck.goals || []).some(
-                        (stGoal) =>
+                        (stGoal: any) =>
                           (stGoal.title || '').trim() === genderAdaptedTitle.trim() ||
                           (stGoal.title || '').trim() === (g.title || '').trim()
                       )

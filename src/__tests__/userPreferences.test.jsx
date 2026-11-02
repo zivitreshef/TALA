@@ -526,13 +526,13 @@ describe('Teacher Profile in Reports and Exports', () => {
   });
 
   it('ensures App.jsx imports useMemo to prevent runtime ReferenceError (Regression #useMemo)', () => {
-    const appSource = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
+    const appSource = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx')), 'utf8');
     const firstLines = appSource.slice(0, 500);
     expect(firstLines).toMatch(/import\s+React,\s*\{[^}]*useMemo[^}]*\}\s+from\s+['"]react['"]/);
   });
 
   it('ensures App.jsx effectiveCurrentUser strictly maintains currentUser.group and forbids overriding by userPreferences (Zero-Trust Security Boundary)', () => {
-    const appSource = fs.readFileSync(path.resolve(__dirname, '../App.jsx'), 'utf8');
+    const appSource = fs.readFileSync((fs.existsSync(path.resolve(__dirname, '../App.tsx')) ? path.resolve(__dirname, '../App.tsx') : path.resolve(__dirname, '../App.jsx')), 'utf8');
     expect(appSource).toContain("group: currentUser.group || ''");
     expect(appSource).not.toContain('group: userPreferences?.institutionalAffiliation || currentUser.group');
   });

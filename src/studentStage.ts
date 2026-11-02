@@ -4,7 +4,9 @@
 // 2. teacherFreeText (raw teacher text)
 // 3. birthDate (fallback only if 1-2 give no unambiguous signal)
 
-const KDG_KEYWORDS = [
+import { StudentStageInfo } from './domain/types';
+
+const KDG_KEYWORDS: readonly string[] = [
   'גן',
   'גני',
   'בגן',
@@ -17,7 +19,7 @@ const KDG_KEYWORDS = [
   'הגננות'
 ];
 
-const SCHOOL_KEYWORDS = [
+const SCHOOL_KEYWORDS: readonly string[] = [
   'בית-הספר',
   'בית־הספר',
   'בית ספר',
@@ -39,9 +41,9 @@ const SCHOOL_KEYWORDS = [
   'מורי'
 ];
 
-const BARE_AMBIGUOUS = ['מורה', 'המורה'];
+const BARE_AMBIGUOUS: readonly string[] = ['מורה', 'המורה'];
 
-export function normalizeText(text) {
+export function normalizeText(text?: unknown): string {
   if (text == null) return '';
   let s = String(text);
   // NBSP and whitespace
@@ -60,13 +62,13 @@ export function normalizeText(text) {
   return s;
 }
 
-function tokenize(text) {
+function tokenize(text?: unknown): string[] {
   const norm = normalizeText(text);
   if (!norm) return [];
   return norm.split(/\s+/).filter(Boolean);
 }
 
-export function hasKindergarten(text) {
+export function hasKindergarten(text?: unknown): boolean {
   const tokens = tokenize(text);
   if (tokens.length === 0) return false;
 
@@ -78,7 +80,7 @@ export function hasKindergarten(text) {
   });
 }
 
-export function hasSchool(text) {
+export function hasSchool(text?: unknown): boolean {
   const norm = normalizeText(text);
   const tokens = tokenize(text);
   if (tokens.length === 0) return false;
@@ -110,39 +112,39 @@ export function hasSchool(text) {
   });
 }
 
-export function parseDate(d) {
+export function parseDate(d?: unknown): Date | null {
   if (!d) return null;
-  if (d instanceof Date && !isNaN(d)) return d;
+  if (d instanceof Date && !isNaN(d.getTime())) return d;
   const s = String(d).trim();
   if (!s) return null;
 
   // Try Israeli DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY first
-  const m = s.match(/^(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})$/);
+  const m = s.match(/^(\d{1,2})[/.\\-](\d{1,2})[/.\\-](\d{2,4})$/);
   if (m) {
     const day = parseInt(m[1], 10);
     const month = parseInt(m[2], 10) - 1;
     let year = parseInt(m[3], 10);
     if (year < 100) year += year >= 30 ? 1900 : 2000;
     const dt2 = new Date(year, month, day);
-    if (!isNaN(dt2)) return dt2;
+    if (!isNaN(dt2.getTime())) return dt2;
   }
 
   // Fallback to ISO / Standard Date parse
   const dt = new Date(s);
-  if (!isNaN(dt)) return dt;
+  if (!isNaN(dt.getTime())) return dt;
 
   return null;
 }
 
-export function calcAgeYears(birthDate, referenceDate) {
+export function calcAgeYears(birthDate?: unknown, referenceDate?: unknown): number | null {
   const b = parseDate(birthDate);
   if (!b) return null;
   const ref = referenceDate ? parseDate(referenceDate) : new Date();
-  if (!ref || isNaN(ref)) return null;
+  if (!ref || isNaN(ref.getTime())) return null;
 
   let ageYears = ref.getFullYear() - b.getFullYear();
   let monthDiff = ref.getMonth() - b.getMonth();
-  let dayDiff = ref.getDate() - b.getDate();
+  const dayDiff = ref.getDate() - b.getDate();
 
   if (dayDiff < 0) {
     monthDiff -= 1;
@@ -157,7 +159,7 @@ export function calcAgeYears(birthDate, referenceDate) {
   return age;
 }
 
-export function parseAgeFromFreeText(rawText = '') {
+export function parseAgeFromFreeText(rawText: unknown = ''): number | null {
   if (!rawText) return null;
   const numAgeMatch = String(rawText).match(/(?:בן|בת|גיל)\s*(\d{1,2}(?:\.\d+)?)\s*(וחצי)?/);
   if (numAgeMatch) {
@@ -165,7 +167,7 @@ export function parseAgeFromFreeText(rawText = '') {
     if (numAgeMatch[2] && !String(numAgeMatch[1]).includes('.')) val += 0.5;
     if (val >= 1 && val <= 25) return val;
   }
-  const hebWordAges = {
+  const hebWordAges: Record<string, number> = {
     שנתיים: 2,
     שלוש: 3,
     ארבע: 4,
@@ -188,7 +190,7 @@ export function parseAgeFromFreeText(rawText = '') {
 }
 
 // Mandatory stage rule appended to every AI prompt (English so it survives Hebrew privacy masking).
-function getStageRuleLine(stage) {
+function getStageRuleLine(stage?: string): string {
   if (stage === 'school') {
     return 'stage_rule: SCHOOL student (teacher-selected). Never use kindergarten goals, kindergarten environments or kindergarten staff.';
   }
@@ -198,7 +200,15 @@ function getStageRuleLine(stage) {
   return 'stage_rule: none';
 }
 
-export function formatPromptWithStudentContext(prompt, formData = {}) {
+export interface StudentContextFormData {
+  stage?: 'kindergarten' | 'school' | 'unknown' | 'all';
+  stageSource?: string;
+  stageReason?: string;
+  stageUpdatedAt?: string;
+  [key: string]: unknown;
+}
+
+export function formatPromptWithStudentContext(prompt: string, formData: StudentContextFormData = {}): string {
   const stageContext = `
 [STUDENT_CONTEXT]
 stage: ${formData.stage || 'unknown'}
@@ -214,7 +224,20 @@ ${getStageRuleLine(formData.stage)}
 ${prompt}`;
 }
 
-export function detectStudentStage(fields = {}, referenceDate) {
+export interface DetectStudentStageInput {
+  stage?: string;
+  stageSource?: string;
+  stageReason?: string;
+  stageUpdatedAt?: string;
+  educationalFramework?: string;
+  מסגרת_חינוכית?: string;
+  teacherFreeText?: string;
+  birthDate?: string | Date;
+  rawText?: string;
+  [key: string]: unknown;
+}
+
+export function detectStudentStage(fields: DetectStudentStageInput = {}, referenceDate?: unknown): StudentStageInfo {
   // 0. User explicit selection (highest priority)
   if (fields.stageSource === 'user_explicit' && (fields.stage === 'kindergarten' || fields.stage === 'school')) {
     return {
@@ -356,7 +379,7 @@ export function detectStudentStage(fields = {}, referenceDate) {
  * Returns effective stage: 'kindergarten' | 'school' | 'all'
  * If student is not passed or stage is unknown, returns 'all' (present both).
  */
-export function getEffectiveStudentStage(studentOrFields = {}, referenceDate) {
+export function getEffectiveStudentStage(studentOrFields: DetectStudentStageInput | null = {}, referenceDate?: unknown): 'kindergarten' | 'school' | 'all' {
   if (!studentOrFields) return 'all';
   // If already detected and known
   if (studentOrFields.stage === 'kindergarten' || studentOrFields.stage === 'school') {
@@ -369,10 +392,16 @@ export function getEffectiveStudentStage(studentOrFields = {}, referenceDate) {
   return 'all';
 }
 
+export interface StageRelevanceGoal {
+  stages?: string[];
+  stage?: string;
+  [key: string]: unknown;
+}
+
 /**
  * Checks if a goal is relevant for a given effective stage ('kindergarten' | 'school' | 'all')
  */
-export function isGoalRelevantForStage(goal, effectiveStage = 'all') {
+export function isGoalRelevantForStage(goal?: StageRelevanceGoal | null, effectiveStage: string = 'all'): boolean {
   if (!goal) return false;
   if (!effectiveStage || effectiveStage === 'all' || effectiveStage === 'unknown') {
     return true;

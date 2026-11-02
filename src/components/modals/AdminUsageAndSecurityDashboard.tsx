@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Zap,
   Mail,
@@ -7,7 +7,6 @@ import {
   ShieldAlert,
   RefreshCw,
   TrendingUp,
-  DollarSign,
   AlertTriangle,
   Lock,
   Ban,
@@ -15,31 +14,35 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-  Clock,
   Layers
 } from 'lucide-react';
 import {
   aggregateTelemetryData,
-  generateTelemetryCsv,
-  DAILY_AI_QUOTA_LIMIT,
-  DAILY_EMAIL_QUOTA_LIMIT
+  generateTelemetryCsv
 } from '../../domain/telemetry';
 import {
   fetchTelemetrySnapshot,
   setEmergencyAiFreeze
 } from '../../services/telemetryService';
 
+export interface AdminUsageAndSecurityDashboardProps {
+  students?: any[];
+  settings?: any;
+  onSettingsChange?: (settings: any) => void;
+  onTelemetryUpdated?: (telemetry: any) => void;
+}
+
 export default function AdminUsageAndSecurityDashboard({
   students = [],
   settings = {},
   onSettingsChange,
   onTelemetryUpdated
-}) {
+}: AdminUsageAndSecurityDashboardProps) {
   const [loading, setLoading] = useState(false);
   const [freezeLoading, setFreezeLoading] = useState(false);
-  const [rawAiLogs, setRawAiLogs] = useState([]);
-  const [rawEmailLogs, setRawEmailLogs] = useState([]);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
+  const [rawAiLogs, setRawAiLogs] = useState<any[]>([]);
+  const [rawEmailLogs, setRawEmailLogs] = useState<any[]>([]);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [showBlazeBreakdown, setShowBlazeBreakdown] = useState(false);
   const [showLargestFiles, setShowLargestFiles] = useState(false);
 
@@ -53,7 +56,7 @@ export default function AdminUsageAndSecurityDashboard({
       if (onTelemetryUpdated) {
         onTelemetryUpdated(snap);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[AdminUsageAndSecurityDashboard] Refresh failed:', err);
     } finally {
       setLoading(false);
@@ -88,7 +91,7 @@ export default function AdminUsageAndSecurityDashboard({
       if (onSettingsChange) {
         onSettingsChange({ ...settings, aiFreeze: nextFreeze });
       }
-    } catch (err) {
+    } catch (err: any) {
       alert('שגיאה בעדכון מצב הקפאת AI: ' + err.message);
     } finally {
       setFreezeLoading(false);
@@ -109,7 +112,7 @@ export default function AdminUsageAndSecurityDashboard({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) {
+    } catch (err: any) {
       alert('שגיאה ביצוא קובץ CSV: ' + err.message);
     }
   };
@@ -852,7 +855,7 @@ export default function AdminUsageAndSecurityDashboard({
                 </tr>
               </thead>
               <tbody>
-                {data.blockedInjections.map((inj) => (
+                {data.blockedInjections.map((inj: any) => (
                   <tr key={inj.id}>
                     <td style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>
                       {new Date(inj.createdAtMs).toLocaleString('he-IL', {
@@ -893,7 +896,7 @@ export default function AdminUsageAndSecurityDashboard({
                     </td>
                   </tr>
                 ))}
-                {data.rateLimitEvents.map((rl) => (
+                {data.rateLimitEvents.map((rl: any) => (
                   <tr key={rl.id}>
                     <td style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>
                       {new Date(rl.createdAtMs).toLocaleString('he-IL', {

@@ -1,3 +1,45 @@
+
+export interface GoalBankFacilitatingQuestion {
+  q: string;
+  suggestions: string[];
+}
+
+export interface GoalBankItem {
+  id: string;
+  title: string;
+  stages?: string[];
+  stage?: string;
+  environment: string;
+  usageCount?: number;
+  defaultActivity?: string;
+  suggestedObjectives?: string[];
+  defaultOpportunities?: string;
+  defaultPartners?: string;
+  defaultDuration?: string;
+  defaultEvaluation?: string;
+  facilitatingQuestions?: GoalBankFacilitatingQuestion[];
+  isCustom?: boolean;
+  addedByAdmin?: boolean;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+export interface TalaProfileRow {
+  id?: string;
+  category?: string;
+  domain?: string;
+  subDomain?: string;
+  bg?: string;
+  strengthsAndFacilitators?: string;
+  areasToStrengthenAndBarriers?: string;
+  strengths?: string;
+  toStrengthen?: string;
+  status?: string;
+  comments?: string;
+  supportLevel?: string;
+  [key: string]: unknown;
+}
+
 import { safeGetStorageItem, safeSetStorageItem, safeRemoveStorageItem } from './services/storage';
 // מאגר מטרות ויעדים דינמי (מבוסס על סביבות ההשתתפות בגן)
 
@@ -134,7 +176,7 @@ export const TALA_FOCUS_DOMAINS = [
   'כישורי חיים'
 ];
 
-export function buildDefaultTalaProfileRows(existingList = []) {
+export function buildDefaultTalaProfileRows(existingList: any[] = []): TalaProfileRow[] {
   const byDomain = new Map();
   if (Array.isArray(existingList)) {
     existingList.forEach((row) => {
@@ -1064,7 +1106,7 @@ const GOAL_DEDUPLICATION_FLAG_KEY = 'tala_goal_dedup_and_clean_v1';
  * 2. Merges gender duplicates (e.g. ישחק... and תשחק...) into a single canonical masculine entry.
  * 3. Keeps highest usageCount and merges suggestedObjectives.
  */
-export function deduplicateAndNormalizeGoalBank(rawBank = []) {
+export function deduplicateAndNormalizeGoalBank(rawBank: any[] = []): GoalBankItem[] {
   if (!Array.isArray(rawBank)) return INITIAL_GOAL_BANK;
 
   const dedupMap = new Map();
@@ -1090,7 +1132,7 @@ export function deduplicateAndNormalizeGoalBank(rawBank = []) {
     const objectives = Array.isArray(g.suggestedObjectives)
       ? g.suggestedObjectives
       : (typeof g.suggestedObjectives === 'string' ? g.suggestedObjectives.split('\n') : []);
-    const cleanObjectives = objectives.map((o) => o.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean);
+    const cleanObjectives = objectives.map((o: string) => o.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean);
 
     if (dedupMap.has(key)) {
       const existing = dedupMap.get(key);
@@ -1098,7 +1140,7 @@ export function deduplicateAndNormalizeGoalBank(rawBank = []) {
       const mergedStages = Array.from(new Set([...(existing.stages || []), ...stages]));
       const existingObjSet = new Set(existing.suggestedObjectives || []);
       const mergedObjectives = [...(existing.suggestedObjectives || [])];
-      cleanObjectives.forEach((obj) => {
+      cleanObjectives.forEach((obj: string) => {
         if (!existingObjSet.has(obj)) {
           existingObjSet.add(obj);
           mergedObjectives.push(obj);
@@ -1134,7 +1176,7 @@ export function deduplicateAndNormalizeGoalBank(rawBank = []) {
   return Array.from(dedupMap.values());
 }
 
-export function loadGoalBank() {
+export function loadGoalBank(): GoalBankItem[] {
   try {
     safeRemoveStorageItem('tala_ecological_goal_bank_v1');
     const saved = safeGetStorageItem(GOAL_BANK_STORAGE_KEY);
@@ -1154,13 +1196,11 @@ export function loadGoalBank() {
         });
 
         // Merge any new initial goals that aren't yet in saved bank
-        let hasNewInitial = false;
         INITIAL_GOAL_BANK.forEach((initGoal) => {
           const initKey = adaptTextToGender((initGoal.title || '').trim(), 'boy');
           if (!existingTitles.has(initKey)) {
             upgraded.push({ ...initGoal });
-            hasNewInitial = true;
-          }
+            }
         });
 
         // Run deduplication & canonicalization pass
@@ -1184,16 +1224,16 @@ export function loadGoalBank() {
   return deduplicateAndNormalizeGoalBank(INITIAL_GOAL_BANK);
 }
 
-export function saveGoalBank(bank) {
+export function saveGoalBank(bank: any[]): void {
   safeSetStorageItem(GOAL_BANK_STORAGE_KEY, JSON.stringify(bank));
 }
 
-export function getSortedGoalBank(bank) {
+export function getSortedGoalBank(bank?: any[]): GoalBankItem[] {
   const list = bank || loadGoalBank();
   return [...list].sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0));
 }
 
-export function recordGoalUsageOrAdd(goalData, currentBank) {
+export function recordGoalUsageOrAdd(goalData: any, currentBank?: any[]): GoalBankItem[] {
   const bank = [...(currentBank || loadGoalBank())];
   const rawTitle = (goalData.title || '').trim();
   if (!rawTitle) return bank;
@@ -1220,9 +1260,9 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
     if (goalData.objectives) {
       const lines = goalData.objectives
         .split('\n')
-        .map((l) => l.replace(/^[•\-*]\s*/, '').trim())
+        .map((l: string) => l.replace(/^[•\-*]\s*/, '').trim())
         .filter(Boolean);
-      lines.forEach((line) => {
+      lines.forEach((line: string) => {
         if (!newObjList.includes(line)) {
           newObjList.push(line);
         }
@@ -1258,7 +1298,7 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
   } else {
     const objLines = (goalData.objectives || '')
       .split('\n')
-      .map((l) => l.replace(/^[•\-*]\s*/, '').trim())
+      .map((l: string) => l.replace(/^[•\-*]\s*/, '').trim())
       .filter(Boolean);
     const newEntryStage = goalStages.length === 1 ? goalStages[0] : null;
 
@@ -1287,13 +1327,13 @@ export function recordGoalUsageOrAdd(goalData, currentBank) {
 
 // === ניהול מאגר מטרות דינמי על ידי מנהל מערכת (Admin: הוספה, עריכה, מחיקה) ===
 
-export function addGoalByAdmin(goalInput, currentBank) {
+export function addGoalByAdmin(goalInput: any, currentBank?: any[]): GoalBankItem[] {
   const bank = [...(currentBank || loadGoalBank())];
   const cleanTitle = adaptTextToGender((goalInput.title || '').trim(), 'boy');
   if (!cleanTitle) return bank;
 
   const objectivesArray = Array.isArray(goalInput.suggestedObjectives)
-    ? goalInput.suggestedObjectives.map((s) => s.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean)
+    ? goalInput.suggestedObjectives.map((s: string) => s.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean)
     : String(goalInput.suggestedObjectives || '')
         .split('\n')
         .map((s) => s.replace(/^[•\-*]\s*/, '').trim())
@@ -1329,14 +1369,14 @@ export function addGoalByAdmin(goalInput, currentBank) {
   return bank;
 }
 
-export function updateGoalByAdmin(goalId, updatedFields, currentBank) {
+export function updateGoalByAdmin(goalId: string, updatedFields: any, currentBank?: any[]): GoalBankItem[] {
   const bank = [...(currentBank || loadGoalBank())];
   const idx = bank.findIndex((g) => g.id === goalId);
   if (idx === -1) return bank;
 
   const existing = bank[idx];
   const objectivesArray = Array.isArray(updatedFields.suggestedObjectives)
-    ? updatedFields.suggestedObjectives.map((s) => s.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean)
+    ? updatedFields.suggestedObjectives.map((s: string) => s.replace(/^[•\-*]\s*/, '').trim()).filter(Boolean)
     : String(updatedFields.suggestedObjectives ?? (existing.suggestedObjectives || []).join('\n'))
         .split('\n')
         .map((s) => s.replace(/^[•\-*]\s*/, '').trim())
@@ -1371,7 +1411,7 @@ export function updateGoalByAdmin(goalId, updatedFields, currentBank) {
   return bank;
 }
 
-export function deleteGoalByAdmin(goalId, currentBank) {
+export function deleteGoalByAdmin(goalId: string, currentBank?: any[]): GoalBankItem[] {
   const bank = (currentBank || loadGoalBank()).filter((g) => g.id !== goalId);
   saveGoalBank(bank);
   return bank;
@@ -1379,7 +1419,7 @@ export function deleteGoalByAdmin(goalId, currentBank) {
 
 // === מנוע פירוש סמנטי ותקציר מנהלים (Executive Summary & Semantic Interpretation) ===
 // לעולם אינו מעתיק משפטים גולמיים "As-Is", מתקן שגיאות מתוך ההקשר ומייצר תקציר מנהלים תמציתי לפי נושאים!
-export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank) {
+export function reverseEngineerRawTextLocally(rawText: string, currentFormData: any = {}, goalBank?: any[]): any {
   const rawTrimmed = (rawText || '').trim();
   if (!rawTrimmed) return null;
 
@@ -1504,7 +1544,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     }
   ];
 
-  const executiveStrengths = [];
+  const executiveStrengths: string[] = [];
   strengthTopicEvaluators.forEach((item) => {
     if (item.rx.test(text) && executiveStrengths.length < 4) {
       executiveStrengths.push(item.summary);
@@ -1549,7 +1589,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
       triggerRx: /משחקי שולחן|קופסא|בנייה|הרכבה|דגם|קוביה|מסלול|תור|תורות|חוקי|ניצחון|הפסד|מפסיד|מיון|הכללה|דיגיטלי|אסטרטגיה|פאזל|לגו/,
       executiveEmpowerBullet:
         '• משחקי שולחן, בנייה וקופסא: פיתוח משחק משותף, הפנמת חוקים ותורות וויסות בניצחון והפסד',
-      buildGoal: (ctx) => {
+      buildGoal: (ctx: string) => {
         const hasWinLoss = /ניצחון|הפסד|מפסיד|בוכה|תסכול|כועס/.test(ctx);
         const hasTurnsOrRules = /תור|תורות|חוק|קופסא|קוביה|מסלול/.test(ctx);
         const hasModelOrSort = /דגם|בנייה|הרכבה|לגו|מיון|הכללה|פאזל/.test(ctx);
@@ -1610,7 +1650,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
       triggerRx: /מפגש|סיפור|סקרנות|קשב|ריכוז|מוסח|מוסחת|לשבת|קם|קמה|שאלה|ריקוד|תנועות|קטגוריזציה|יוצאי דופן|פעלים|רגשות/,
       executiveEmpowerBullet:
         '• מפגש בגן: הארכת טווח הקשב, השתתפות פעילה בסיפור ובתנועה והפקת מידע שפתי',
-      buildGoal: (ctx) => {
+      buildGoal: (ctx: string) => {
         const hasStory = /סיפור|תמונות|איורים|מידע/.test(ctx);
         const activityDesc = hasStory
           ? `בזמן המפגש בגן ${firstName} ${g.needs} להטרמה ולתיווך כדי לשמור על מיקוד קשב לאורך הסיפור, להתייחס לתוכן ולאיורים ולהשתתף באופן פעיל.`
@@ -1666,7 +1706,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
       triggerRx: /מרחב הגן|פינות הגן|פינות השונות|סוציודרמטי|משחק משמעותי|משחק חזרתי|תבניתי|ליד הילדים|לבחור פינה|משחק חופשי|משחק משותף/,
       executiveEmpowerBullet:
         '• משחק במרחב הגן: בחירה עצמאית של סביבת משחק, התמדה במשחק משמעותי ומשחק משותף עם חבר',
-      buildGoal: (ctx) => ({
+      buildGoal: (ctx: string) => ({
         environment: 'משחק במרחב הגן',
         activityParticipation: `בזמן פעילות חופשית במרחב הגן, ${firstName} ${g.needs} להכוונה ותיווך בבחירה עצמאית של סביבת משחק, בהתמדה במשחק משמעותי וביצירת משחק משותף והדדי עם חבר.`,
         title: 'יתנסה בפינות השונות בגן תוך התמדה ומשחק משותף עם חבר',
@@ -1687,7 +1727,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
       triggerRx: /סדנא|יצירה|ציור|העתקה|גזירה|הדבקה|צביעה|מספריים|דבק|טושים|מוטוריקה עדינה|וויזו מוטורי|תוצר|תכנון|התארגנות|ציוד/,
       executiveEmpowerBullet:
         '• סדנא ויצירה: התארגנות ותכנון שלבי העבודה, יוזמה אישית ושכלול מיומנויות וויזו-מוטוריות',
-      buildGoal: (ctx) => {
+      buildGoal: (ctx: string) => {
         let title = 'יתנסה בסדנאות השונות בגן באופן עצמאי';
         let tShirtSize = 'S';
         if (/ציור|העתקה|גזירה|מספריים|מוטוריקה עדינה|וויזו/.test(ctx)) {
@@ -1727,7 +1767,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
       triggerRx: /חצר|מוטורי|מתקנים|ריצה|קפיצה|כדור|מעגל חברתי|להצטרף לחברים|ים יבשה|דג מלוח|אינטראקציות חברתיות|חברים נוספים|חברתית/,
       executiveEmpowerBullet:
         '• מרחב החצר: הרחבת המעגל החברתי והתנסות מדורגת במשחקים מוטוריים וקבוצתיים',
-      buildGoal: (ctx) => {
+      buildGoal: (ctx: string) => {
         const isMotorFocus = /מוטורי|מתקנים|ריצה|קפיצה|כדור|גסה/.test(ctx);
         const title = isMotorFocus
           ? 'יתנסה בהדרגה במשחקים מוטוריים בחצר (במדרג קושי עולה)'
@@ -1822,7 +1862,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
       item.stages.includes('school') &&
       !textHasKindergartenMarker(item.title)
   );
-  const pickSchoolBankGoal = (environment, preferences, ctx) => {
+  const pickSchoolBankGoal = (environment: string, preferences: any[], ctx: string) => {
     const inEnv = schoolBankPool.filter((item) => item.environment === environment);
     if (inEnv.length === 0) return null;
     for (const [ctxRx, titleRx] of preferences) {
@@ -1833,7 +1873,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     }
     return inEnv[0];
   };
-  const buildGoalFromSchoolBankItem = (item) => {
+  const buildGoalFromSchoolBankItem = (item: any) => {
     const activity = adaptTextToGender(item.defaultActivity || '', resolvedGender).trim();
     return {
       environment: item.environment,
@@ -1843,7 +1883,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
       title: adaptTextToGender(item.title, resolvedGender),
       objectives: (item.suggestedObjectives || [])
         .slice(0, 5)
-        .map((o) => `• ${adaptTextToGender(o, resolvedGender)}`)
+        .map((o: string) => `• ${adaptTextToGender(o, resolvedGender)}`)
         .join('\n'),
       opportunities: item.defaultOpportunities || '',
       partners: item.defaultPartners || 'מחנכת, מורת שילוב',
@@ -1906,7 +1946,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     }
   ].map((dom) => ({
     ...dom,
-    buildGoal: (ctx) => {
+    buildGoal: (ctx: string) => {
       const item = pickSchoolBankGoal(dom.environment, dom.preferences, ctx);
       return item ? buildGoalFromSchoolBankItem(item) : null;
     }
@@ -1915,10 +1955,10 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
   const activeInterpreters = isSchool ? schoolInterpreters : domainInterpreters;
 
   const matchedGoals = [];
-  const executiveEmpowerBullets = [];
+  const executiveEmpowerBullets: string[] = [];
 
   const challengeClausesList = rawClauses.filter((c) => challengeMarkerRx.test(c));
-  const unmatchedClauses = [];
+  const unmatchedClauses: any[] = [];
 
   activeInterpreters.forEach((dom) => {
     if (dom.triggerRx.test(challengeContextText)) {
@@ -1947,7 +1987,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
   });
 
   // פונקציית סינתזה ליצירת מטרה חדשה ומותאמת אישית לתלמיד/ה כאשר אף מטרה במאגר אינה מתאימה
-  const synthesizeCustomGoalFromClause = (clauseText, idx) => {
+  const synthesizeCustomGoalFromClause = (clauseText: string, idx: number) => {
     const cleanedTopic = clauseText
       .replace(
         /^.*?(?:מתקשה ב|מתקשה ל|קושי ב|קשיים ב|זקוק לתיווך ב|זקוקה לתיווך ב|זקוק לעזרה ב|זקוקה לעזרה ב|זקוק לחיזוק ב|זקוקה לחיזוק ב|צריך חיזוק ב|צריכה חיזוק ב|נמנע מ|נמנעת מ|לא מצליח ל|לא מצליחה ל)/,
@@ -2047,7 +2087,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
     ? `תיווך פרטני ובקבוצה קטנה במסגרת הכיתתית, ליווי לימודי ורגשי-חברתי מותאם לצרכיה של ${firstName}, ושיתוף פעולה עם צוות השילוב והטיפול.`
     : `תיווך פרטני ובקבוצה קטנה במסגרת הכיתתית, ליווי לימודי ורגשי-חברתי מותאם לצרכיו של ${firstName}, ושיתוף פעולה עם צוות השילוב והטיפול.`;
 
-  const firstGoalTitle = (finalMergedGoals[0]?.title || '').trim();
+  const firstGoalTitle = String((finalMergedGoals[0] as any)?.title || '').trim();
   const studentMainGoal = firstGoalTitle
     ? isFemale
       ? `${firstName} תתקדם בתפקוד העצמאי, הרגשי-חברתי והלימודי במסגרת, בדגש על: ${firstGoalTitle}`
@@ -2072,7 +2112,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
   // תלמיד/ת בית ספר: המרת ניסוחי תבנית של גן (צוות הגן, בגן, מרחב הגן...) לניסוח בית-ספרי
   // Teacher-derived fragments may mention the child's past ("עבר מהגן") – keep bare place words then.
   const teacherMentionsKindergarten = textHasKindergartenMarker(rawTrimmed);
-  const S = (txt) =>
+  const S = (txt: any) =>
     isSchool ? adaptTextToSchoolStage(txt, { includeBarePlaceWords: !teacherMentionsKindergarten }) : txt;
 
   const synthesizedProfileRows = buildDefaultTalaProfileRows(
@@ -2149,7 +2189,7 @@ export function reverseEngineerRawTextLocally(rawText, currentFormData, goalBank
   };
 }
 
-export function generateDefaultQuestionsForCustomGoal(goalTitle, environment, formData = {}) {
+export function generateDefaultQuestionsForCustomGoal(goalTitle: string, environment: string, formData: any = {}): GoalBankFacilitatingQuestion[] {
   const isSchoolStage = normalizeStage(formData?.stage) === 'school';
   const envLabel = environment || (isSchoolStage ? 'הכיתה' : 'סביבת הגן');
   const dateInfo = resolveStudentAgeAndDateInfo(formData, '');

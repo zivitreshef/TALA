@@ -367,8 +367,8 @@ export const normalizeStudentForForm = <T extends FormStudentInput>(st: T): T & 
     ? (st.stage as EducationalStage)
     : (stageInfo.stage === 'kindergarten' ? 'kindergarten' : 'school');
   const resolvedStageSource: StageSource = (st?.stageSource as StageSource) || (st?.stage ? 'user_explicit' : (stageInfo.stageSource || 'user_explicit'));
-  const resolvedStageReason = st?.stageReason || (st?.stage ? 'בחירת משתמש' : stageInfo.stageReason);
-  const resolvedStageUpdatedAt = st?.stageUpdatedAt || stageInfo.stageUpdatedAt;
+  const resolvedStageReason = st?.stageReason || (st?.stage ? 'בחירת משתמש' : stageInfo.stageReason) || '';
+  const resolvedStageUpdatedAt = st?.stageUpdatedAt || stageInfo.stageUpdatedAt || new Date().toISOString();
 
   if (hasTachiStrengthsOnly && isTalaPlanType(currentPlanType)) {
     const tachiKey = getPlanTypeStorageKey(currentYear, TACHI_PLAN_TYPE);

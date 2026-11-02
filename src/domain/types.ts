@@ -3,9 +3,9 @@
  * Part of the progressive TypeScript migration (Phase 2).
  */
 
-export type EducationalStage = 'kindergarten' | 'school';
+export type EducationalStage = 'kindergarten' | 'school' | 'unknown' | 'all';
 
-export type StageSource = 'user_explicit' | 'auto_framework' | 'auto_age' | 'default';
+export type StageSource = 'user_explicit' | 'educational_framework' | 'teacher_text' | 'birth_date' | 'teacher_text_age' | 'conflict' | 'no_data' | 'auto_framework' | 'auto_age' | 'default';
 
 export interface StudentStageInfo {
   stage: EducationalStage;

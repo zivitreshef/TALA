@@ -4,6 +4,120 @@ import { recordEmailAuditLogToCloud } from './services/telemetryService';
 
 export const EMAIL_ENGINE_STORAGE_KEY = 'tala_email_engine_config_v1';
 
+export interface EmailEngineConfig {
+  provider: 'apps_script' | 'emailjs';
+  appsScriptUrl: string;
+  emailjsServiceId?: string;
+  emailjsTemplateId?: string;
+  emailjsPublicKey?: string;
+  senderName?: string;
+}
+
+export interface SendReportEmailParams {
+  config?: EmailEngineConfig;
+  toEmail: string;
+  subject: string;
+  htmlBody?: string;
+  textBody?: string;
+  attachmentBlob?: Blob;
+  filename?: string;
+  mimeType?: string;
+}
+
+export interface OnboardingInvitationParams {
+  userName?: string;
+  userEmail: string;
+  userTitle?: string;
+  tempPassword?: string;
+  siteUrl?: string;
+}
+
+export interface SendUserInvitationEmailParams extends OnboardingInvitationParams {
+  config?: EmailEngineConfig;
+}
+
+export interface SignedNdaDocumentParams {
+  signerName?: string;
+  signerEmail?: string;
+  signerIdNumber?: string;
+  signerDate?: string;
+  signatureText?: string;
+  signatureDataUrl?: string;
+  signatureTableHtml?: string;
+  preferImageSignature?: boolean;
+  trialDays?: number;
+  signedAtTimestamp?: string;
+}
+
+export interface SendSignedNdaEmailParams extends SignedNdaDocumentParams {
+  config?: EmailEngineConfig;
+  adminEmail?: string;
+}
+
+export interface UserSurveyParams {
+  userName?: string;
+  userEmail?: string;
+  userTitle?: string;
+  userGroup?: string;
+  isTrialUser?: boolean;
+  ratings?: Record<string, number | string>;
+  recommendToColleaguesAndManager?: string;
+  overallFeedback?: string;
+  improvementSuggestions?: string;
+  submittedAt?: string;
+}
+
+export interface SendUserSurveyEmailParams extends UserSurveyParams {
+  config?: EmailEngineConfig;
+  adminEmail?: string;
+}
+
+export interface PedagogicalGap {
+  studentName?: string;
+  goalTitle?: string;
+  framework?: string;
+  environment?: string;
+  daysSinceObservation?: number;
+  neverObserved?: boolean;
+  currentProgress?: number;
+}
+
+export interface PedagogicalObservation {
+  studentName?: string;
+  goalTitle?: string;
+  framework?: string;
+  environment?: string;
+  supportLevel?: string;
+  note?: string;
+  timestamp?: string;
+}
+
+export interface PedagogicalAdvancedGoal {
+  studentName?: string;
+  goalTitle?: string;
+  environment?: string;
+  currentProgress?: number;
+}
+
+export interface PedagogicalAccomplishments {
+  recentObservations?: PedagogicalObservation[];
+  advancedGoals?: PedagogicalAdvancedGoal[];
+}
+
+export interface PedagogicalReminderEmailParams {
+  teacherName?: string;
+  gaps?: PedagogicalGap[];
+  accomplishments?: PedagogicalAccomplishments | null;
+  totalStudents?: number;
+  privacyMode?: 'full_name' | 'acronym';
+  siteUrl?: string;
+}
+
+export interface SendPedagogicalReminderEmailParams extends PedagogicalReminderEmailParams {
+  config?: EmailEngineConfig;
+  toEmail: string;
+}
+
 // Default template for Google Apps Script Direct Email Dispatcher (100% Free, Unlimited Attachments up to 25MB)
 export const GOOGLE_APPS_SCRIPT_TEMPLATE = `function doPost(e) {
   try {
@@ -34,13 +148,13 @@ export const GOOGLE_APPS_SCRIPT_TEMPLATE = `function doPost(e) {
 export const DEFAULT_APPS_SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbwp3HLCO9kErrN-vS2odXYcco1B5KMlbTw7qeJWrSSKg5nqZocfrsvyUOIO-LurJJtg/exec';
 
-export function loadEmailEngineConfig() {
+export function loadEmailEngineConfig(): EmailEngineConfig {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(EMAIL_ENGINE_STORAGE_KEY) : null;
     if (raw) {
       const parsed = JSON.parse(raw);
       return {
-        provider: parsed.provider || 'apps_script', // 'apps_script' | 'emailjs'
+        provider: parsed.provider || 'apps_script',
         appsScriptUrl: (parsed.appsScriptUrl || '').trim() || DEFAULT_APPS_SCRIPT_URL,
         emailjsServiceId: parsed.emailjsServiceId || '',
         emailjsTemplateId: parsed.emailjsTemplateId || '',
@@ -61,8 +175,8 @@ export function loadEmailEngineConfig() {
   };
 }
 
-export function saveEmailEngineConfig(configObj) {
-  const normalized = {
+export function saveEmailEngineConfig(configObj: Partial<EmailEngineConfig>): EmailEngineConfig {
+  const normalized: EmailEngineConfig = {
     provider: configObj?.provider || 'apps_script',
     appsScriptUrl: (configObj?.appsScriptUrl || '').trim() || DEFAULT_APPS_SCRIPT_URL,
     emailjsServiceId: (configObj?.emailjsServiceId || '').trim(),
@@ -74,7 +188,7 @@ export function saveEmailEngineConfig(configObj) {
   return normalized;
 }
 
-export function isDirectEmailEngineConfigured(configObj) {
+export function isDirectEmailEngineConfigured(configObj?: EmailEngineConfig): boolean {
   const cfg = configObj || loadEmailEngineConfig();
   if (cfg.provider === 'emailjs') {
     return Boolean(
@@ -92,7 +206,7 @@ export function isDirectEmailEngineConfigured(configObj) {
 /**
  * Convert a Blob to a pure Base64 string (without the data:...;base64, prefix)
  */
-export function blobToBase64(blob) {
+export function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -108,7 +222,7 @@ export function blobToBase64(blob) {
 /**
  * Generate a real landscape PDF Blob in the background using html2pdf.js (no print window needed!)
  */
-export async function generatePdfBlobFromHtml(htmlString, filename = 'report.pdf') {
+export async function generatePdfBlobFromHtml(htmlString: string, filename = 'report.pdf'): Promise<Blob> {
   const container = document.createElement('div');
   container.style.position = 'fixed';
   container.style.top = '-9999px';
@@ -138,9 +252,9 @@ export async function generatePdfBlobFromHtml(htmlString, filename = 'report.pdf
       }
     };
 
-    const html2pdfModule = await import('html2pdf.js');
+    const html2pdfModule: any = await import('html2pdf.js');
     const html2pdf = html2pdfModule.default || html2pdfModule;
-    const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob');
+    const pdfBlob: Blob = await html2pdf().set(opt).from(container).outputPdf('blob');
     return pdfBlob;
   } finally {
     if (container.parentNode) {
@@ -162,7 +276,7 @@ export async function sendReportEmailInBackground({
   attachmentBlob,
   filename,
   mimeType
-}) {
+}: SendReportEmailParams): Promise<{ ok: boolean; provider: string }> {
   const cfg = config || loadEmailEngineConfig();
   const base64Data = attachmentBlob ? await blobToBase64(attachmentBlob) : '';
 
@@ -206,7 +320,6 @@ export async function sendReportEmailInBackground({
       attachmentBase64: base64Data
     };
 
-    // Google Apps Script Web Apps use text/plain to avoid CORS preflight blocks while still receiving JSON in e.postData.contents
     const response = await fetch(cfg.appsScriptUrl.trim(), {
       method: 'POST',
       headers: {
@@ -215,7 +328,7 @@ export async function sendReportEmailInBackground({
       body: JSON.stringify(payload)
     });
 
-    let resultJson = null;
+    let resultJson: any = null;
     try {
       resultJson = await response.json();
     } catch (_) {
@@ -243,7 +356,7 @@ export function buildOnboardingInvitationHtml({
   userTitle,
   tempPassword,
   siteUrl
-}) {
+}: OnboardingInvitationParams): string {
   const appUrl = siteUrl || 'https://zivitreshef.github.io/TALA/';
   return `
     <!DOCTYPE html>
@@ -320,7 +433,7 @@ export function buildOnboardingInvitationHtml({
               <strong>כתובת אימייל לכניסה:</strong> <span dir="ltr" style="font-family:monospace; background:#ffffff; padding:3px 8px; border-radius:6px; border:1px solid #cbd5e1;">${userEmail}</span>
             </div>
             <div style="font-size:13.5px; color:#1e293b; margin-bottom:10px;">
-              <strong>סיסמה זמנית ראשונית:</strong> <span dir="ltr" style="font-family:monospace; font-size:15px; font-weight:bold; color:#4c1d95; background:#ffffff; padding:4px 10px; border-radius:6px; border:1px solid #a78bfa;">${tempPassword}</span>
+              <strong>סיסמה זמנית ראשונית:</strong> <span dir="ltr" style="font-family:monospace; font-size:15px; font-weight:bold; color:#4c1d95; background:#ffffff; padding:4px 10px; border-radius:6px; border:1px solid #a78bfa;">${tempPassword || ''}</span>
             </div>
             <div style="font-size:12px; color:#b45309; background:#fffbeb; border:1px solid #fde68a; padding:8px 10px; border-radius:8px; font-weight:bold;">
               🔒 שים/י לב: מטעמי אבטחת מידע, בכניסתך הראשונה לאתר תתבקש/י לבחור סיסמה אישית חדשה ומיד לאחר מכן תוכל/י להתחיל בעבודה השוטפת.
@@ -351,8 +464,6 @@ export function buildOnboardingInvitationHtml({
 
 /**
  * Send the onboarding invitation email in the background.
- * Note: Because the deployed Google Apps Script expects attachmentBase64 to be non-empty if it calls Utilities.newBlob unconditionally,
- * we attach a compact "TALA_QuickStart_Card.html" welcome card so the existing deployed Apps Script works 100% seamlessly without needing re-deployment!
  */
 export async function sendUserInvitationEmailInBackground({
   config,
@@ -361,7 +472,7 @@ export async function sendUserInvitationEmailInBackground({
   userTitle,
   tempPassword,
   siteUrl
-}) {
+}: SendUserInvitationEmailParams): Promise<{ ok: boolean; provider: string }> {
   const htmlBody = buildOnboardingInvitationHtml({
     userName,
     userEmail,
@@ -370,18 +481,17 @@ export async function sendUserInvitationEmailInBackground({
     siteUrl
   });
 
-  const subject = `ברוכים הבאים למערכת TALA – פרטי כניסה וסיסמה זמנית עבור ${userName}`;
+  const subject = `ברוכים הבאים למערכת TALA – פרטי כניסה וסיסמה זמנית עבור ${userName || userEmail}`;
   const textBody = [
-    `שלום ${userName},`,
+    `שלום ${userName || userEmail},`,
     '',
     `ברוכים הבאים למערכת TALA – תוכנית עבודה שנתית (תל"א / תח"י) ברוח הגישה האקולוגית.`,
     `אימייל לכניסה: ${userEmail}`,
-    `סיסמה זמנית: ${tempPassword}`,
+    `סיסמה זמנית: ${tempPassword || ''}`,
     `בכניסתך הראשונה תתבקש/י להחליף את הסיסמה הזמנית לסיסמה אישית חדשה.`,
     `קישור למערכת: ${siteUrl || 'https://zivitreshef.github.io/TALA/'}`
   ].join('\r\n');
 
-  // Attach a clean HTML quick-access card so the currently deployed Apps Script (which decodes attachmentBase64) succeeds without any re-deploy
   const welcomeCardBlob = new Blob(['\ufeff', htmlBody], {
     type: 'text/html;charset=utf-8'
   });
@@ -400,8 +510,6 @@ export async function sendUserInvitationEmailInBackground({
 
 /**
  * Builds the official Hebrew NDA Agreement HTML document signed by a trial user.
- * - For email bodies & Word (.doc), uses `signatureTableHtml` (pure HTML table bitmap that Gmail and Word never strip).
- * - For PDF generation (`preferImageSignature = true`), uses the high-resolution `signatureDataUrl` PNG.
  */
 export function buildSignedNdaDocumentHtml({
   signerName,
@@ -414,7 +522,7 @@ export function buildSignedNdaDocumentHtml({
   preferImageSignature = false,
   trialDays = 7,
   signedAtTimestamp
-}) {
+}: SignedNdaDocumentParams): string {
   const cleanName = signerName || 'משתמש/ת ניסיון';
   const cleanEmail = signerEmail || '';
   const cleanId = signerIdNumber || '';
@@ -515,10 +623,8 @@ export function buildSignedNdaDocumentHtml({
 
 /**
  * Generates a Portrait A4 PDF Blob of the signed NDA document (with the drawn signature image baked in).
- * Note: html2pdf.js creates its own hidden .html2pdf__overlay (opacity:0) and clones `container`,
- * so `container` must NOT have `position:fixed; top:-9999px; left:-9999px` (which would push the clone off-canvas).
  */
-async function generateSignedNdaPdfBlob(htmlString, filename = 'TALA_Signed_NDA.pdf') {
+async function generateSignedNdaPdfBlob(htmlString: string, filename = 'TALA_Signed_NDA.pdf'): Promise<Blob> {
   const container = document.createElement('div');
   container.style.width = '720px';
   container.style.direction = 'rtl';
@@ -527,7 +633,6 @@ async function generateSignedNdaPdfBlob(htmlString, filename = 'TALA_Signed_NDA.
   container.style.boxSizing = 'border-box';
   container.innerHTML = htmlString;
 
-  // Ensure any embedded <img> (such as the drawn signature PNG) is decoded before html2canvas captures
   const images = Array.from(container.querySelectorAll('img'));
   await Promise.all(
     images.map((img) => {
@@ -535,9 +640,9 @@ async function generateSignedNdaPdfBlob(htmlString, filename = 'TALA_Signed_NDA.
       if (typeof img.decode === 'function') {
         return img.decode().catch(() => {});
       }
-      return new Promise((resolve) => {
-        img.onload = resolve;
-        img.onerror = resolve;
+      return new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
       });
     })
   );
@@ -561,9 +666,9 @@ async function generateSignedNdaPdfBlob(htmlString, filename = 'TALA_Signed_NDA.
     }
   };
 
-  const html2pdfModule = await import('html2pdf.js');
+  const html2pdfModule: any = await import('html2pdf.js');
   const html2pdf = html2pdfModule.default || html2pdfModule;
-  const pdfBlob = await html2pdf().set(opt).from(container).outputPdf('blob');
+  const pdfBlob: Blob = await html2pdf().set(opt).from(container).outputPdf('blob');
   if (!pdfBlob || pdfBlob.size < 500) {
     throw new Error('Generated PDF blob was empty');
   }
@@ -571,8 +676,7 @@ async function generateSignedNdaPdfBlob(htmlString, filename = 'TALA_Signed_NDA.
 }
 
 /**
- * Sends the signed NDA agreement directly to the Admin email address (zivit.reshef@gmail.com)
- * with the signature visible both in the email body (via HTML table bitmap) and in the attached signed PDF document.
+ * Sends the signed NDA agreement directly to the Admin email address
  */
 export async function sendSignedNdaEmailToAdmin({
   config,
@@ -586,8 +690,7 @@ export async function sendSignedNdaEmailToAdmin({
   signatureTableHtml,
   trialDays = 7,
   signedAtTimestamp
-}) {
-  // Email body uses signatureTableHtml because Gmail strips data:image/png URIs
+}: SendSignedNdaEmailParams): Promise<{ ok: boolean; provider: string }> {
   const emailHtmlBody = buildSignedNdaDocumentHtml({
     signerName,
     signerEmail,
@@ -601,7 +704,6 @@ export async function sendSignedNdaEmailToAdmin({
     signedAtTimestamp
   });
 
-  // PDF attachment uses high-resolution PNG signatureDataUrl (with table fallback)
   const pdfHtmlSource = buildSignedNdaDocumentHtml({
     signerName,
     signerEmail,
@@ -615,13 +717,13 @@ export async function sendSignedNdaEmailToAdmin({
     signedAtTimestamp
   });
 
-  const subject = `✍️ הסכם סודיות (NDA) חתום – משתמש ניסיון: ${signerName} (ת.ז. ${signerIdNumber})`;
+  const subject = `✍️ הסכם סודיות (NDA) חתום – משתמש ניסיון: ${signerName || 'לא צוין'} (ת.ז. ${signerIdNumber || 'לא צוין'})`;
   const textBody = [
     `שלום זיוית,`,
     '',
-    `משתמש/ת הניסיון ${signerName} (${signerEmail}) התחבר/ה למערכת TALA, החליף/ה סיסמה וחתם/ה כעת על הסכם שמירת סודיות (NDA).`,
-    `מספר ת.ז.: ${signerIdNumber}`,
-    `תאריך חתימה: ${signerDate}`,
+    `משתמש/ת הניסיון ${signerName || ''} (${signerEmail || ''}) התחבר/ה למערכת TALA, החליף/ה סיסמה וחתם/ה כעת על הסכם שמירת סודיות (NDA).`,
+    `מספר ת.ז.: ${signerIdNumber || ''}`,
+    `תאריך חתימה: ${signerDate || ''}`,
     `מגבלת ימי ניסיון: ${trialDays} ימים`,
     '',
     `מצורף עותק PDF רשמי של המסמך החתום הכולל את חתימת המשתמש/ת.`
@@ -629,17 +731,17 @@ export async function sendSignedNdaEmailToAdmin({
 
   const safeName = String(signerName || 'TrialUser').replace(/[^א-תa-zA-Z0-9_-]/g, '_');
 
-  let attachmentBlob;
-  let filename;
-  let mimeType;
+  let attachmentBlob: Blob;
+  let filename: string;
+  let mimeType: string;
 
   try {
-    filename = `TALA_Signed_NDA_${safeName}_${signerIdNumber}.pdf`;
+    filename = `TALA_Signed_NDA_${safeName}_${signerIdNumber || '0'}.pdf`;
     attachmentBlob = await generateSignedNdaPdfBlob(pdfHtmlSource, filename);
     mimeType = 'application/pdf';
   } catch (pdfErr) {
     console.warn('Fallback to .doc attachment for NDA:', pdfErr);
-    filename = `TALA_Signed_NDA_${safeName}_${signerIdNumber}.doc`;
+    filename = `TALA_Signed_NDA_${safeName}_${signerIdNumber || '0'}.doc`;
     attachmentBlob = new Blob(['\ufeff', emailHtmlBody], {
       type: 'application/msword;charset=utf-8'
     });
@@ -672,7 +774,7 @@ export function buildUserSurveyEmailHtml({
   overallFeedback = '',
   improvementSuggestions = '',
   submittedAt
-}) {
+}: UserSurveyParams): string {
   const cleanName = userName || 'משתמש/ת מערכת TALA';
   const cleanEmail = userEmail || '';
   const cleanTitle = userTitle || 'צוות חינוכי';
@@ -712,7 +814,7 @@ export function buildUserSurveyEmailHtml({
       ? (numericScores.reduce((acc, v) => acc + v, 0) / numericScores.length).toFixed(1)
       : '—';
 
-  const renderStars = (score) => {
+  const renderStars = (score: number | string | undefined) => {
     const n = Math.max(0, Math.min(5, Number(score) || 0));
     if (!n) return '<span style="color:#94a3b8;">לא דורג</span>';
     return (
@@ -792,7 +894,7 @@ export function buildUserSurveyEmailHtml({
 }
 
 /**
- * Sends the completed User Experience Survey directly to the Admin email (zivit.reshef@gmail.com).
+ * Sends the completed User Experience Survey directly to the Admin email.
  */
 export async function sendUserSurveyEmailToAdmin({
   config,
@@ -807,7 +909,7 @@ export async function sendUserSurveyEmailToAdmin({
   overallFeedback = '',
   improvementSuggestions = '',
   submittedAt
-}) {
+}: SendUserSurveyEmailParams): Promise<{ ok: boolean; provider: string }> {
   const htmlBody = buildUserSurveyEmailHtml({
     userName,
     userEmail,
@@ -821,11 +923,11 @@ export async function sendUserSurveyEmailToAdmin({
     submittedAt
   });
 
-  const subject = `⭐ משוב משתמש חדש במערכת TALA – מאת ${userName || userEmail}`;
+  const subject = `⭐ משוב משתמש חדש במערכת TALA – מאת ${userName || userEmail || 'משתמש'}`;
   const textBody = [
     `שלום זיוית,`,
     '',
-    `התקבל משוב חוויית משתמש חדש במערכת TALA מאת ${userName} (${userEmail}).`,
+    `התקבל משוב חוויית משתמש חדש במערכת TALA מאת ${userName || ''} (${userEmail || ''}).`,
     `1. קלות ונוחות השימוש באתר: ${ratings.easeOfWebsite || '—'}/5`,
     `2. יצירת כרטיס תלמיד/ה חדש/ה: ${ratings.createStudent || '—'}/5`,
     `3. ניסוח ובניית מטרות ויעדים: ${ratings.generateGoals || '—'}/5`,
@@ -853,16 +955,8 @@ export async function sendUserSurveyEmailToAdmin({
   });
 }
 
-
-
-
-/**
- * Build rich HTML email for Pedagogical Reminder (מעקב יעדים ורציפות פדגוגית)
- */
 /**
  * Build rich HTML email for Pedagogical Summary & Team Meeting Preparation
- * Includes positive accomplishments, recent ad-hoc observations from individual work,
- * milestone progress, and observation gaps for continuity.
  */
 export function buildPedagogicalReminderEmailHtml({
   teacherName = 'צוות חינוכי',
@@ -871,7 +965,7 @@ export function buildPedagogicalReminderEmailHtml({
   totalStudents = 0,
   privacyMode = 'full_name',
   siteUrl = 'https://zivitreshef.github.io/TALA/'
-}) {
+}: PedagogicalReminderEmailParams): string {
   const appUrl = siteUrl || 'https://zivitreshef.github.io/TALA/';
 
   const recentObs = Array.isArray(accomplishments?.recentObservations)
@@ -881,7 +975,6 @@ export function buildPedagogicalReminderEmailHtml({
     ? accomplishments.advancedGoals
     : [];
 
-  // 1. Observations rows / cards
   const observationCards = recentObs.slice(0, 8).map((obs) => {
     const studentName = privacyMode === 'acronym'
       ? toHebrewAcronym(obs.studentName || '')
@@ -894,11 +987,11 @@ export function buildPedagogicalReminderEmailHtml({
     const dateStr = obs.timestamp ? new Date(obs.timestamp).toLocaleDateString('he-IL') : '';
 
     const safeGoalTitle = privacyMode === 'acronym'
-      ? redactStudentNameInText(obs.goalTitle, obs.studentName, true)
-      : obs.goalTitle;
+      ? redactStudentNameInText(obs.goalTitle || '', obs.studentName, true)
+      : (obs.goalTitle || '');
     const safeNote = privacyMode === 'acronym'
-      ? redactStudentNameInText(obs.note, obs.studentName, true)
-      : obs.note;
+      ? redactStudentNameInText(obs.note || '', obs.studentName, true)
+      : (obs.note || '');
 
     return `
       <div style="background:#f8fafc; border:1px solid #e2e8f0; border-right:4px solid #3b82f6; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
@@ -920,15 +1013,14 @@ export function buildPedagogicalReminderEmailHtml({
     `;
   }).join('');
 
-  // 2. Advanced Goals rows
   const advancedGoalsRows = advancedGoals.slice(0, 8).map((goal, idx) => {
     const studentName = privacyMode === 'acronym'
       ? toHebrewAcronym(goal.studentName || '')
       : (goal.studentName || 'תלמיד/ה');
 
     const safeGoalTitle = privacyMode === 'acronym'
-      ? redactStudentNameInText(goal.goalTitle, goal.studentName, true)
-      : goal.goalTitle;
+      ? redactStudentNameInText(goal.goalTitle || '', goal.studentName, true)
+      : (goal.goalTitle || '');
 
     return `
       <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f0fdf4'}; border-bottom:1px solid #dcfce7;">
@@ -937,14 +1029,13 @@ export function buildPedagogicalReminderEmailHtml({
         <td style="padding:10px 12px; color:#475569; font-size:12px;">${goal.environment || 'כללי'}</td>
         <td style="padding:10px 12px; text-align:center;">
           <span style="display:inline-block; background:#dcfce7; color:#15803d; font-weight:800; font-size:12.5px; padding:3px 10px; border-radius:999px;">
-            ${goal.currentProgress}%
+            ${goal.currentProgress ?? 0}%
           </span>
         </td>
       </tr>
     `;
   }).join('');
 
-  // 3. Observation Gaps rows
   const gapsRows = gaps.map((gap, idx) => {
     const studentDisplayName = privacyMode === 'acronym'
       ? toHebrewAcronym(gap.studentName || '')
@@ -1146,7 +1237,7 @@ export async function sendPedagogicalReminderEmailInBackground({
   totalStudents = 0,
   privacyMode = 'full_name',
   siteUrl = 'https://zivitreshef.github.io/TALA/'
-}) {
+}: SendPedagogicalReminderEmailParams): Promise<{ ok: boolean; provider: string }> {
   const htmlBody = buildPedagogicalReminderEmailHtml({
     teacherName,
     gaps,

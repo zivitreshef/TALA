@@ -20,33 +20,39 @@ import {
 } from '../../domain/adminAlerts';
 import { sendTestAdminAlert } from '../../services/alertDispatcher';
 
+export interface AdminAlertsPanelProps {
+  allowedUsers?: any[];
+  onUpdateAllowedUsers?: (users: any[]) => void;
+  emailEngineConfig?: any;
+}
+
 export default function AdminAlertsPanel({
   allowedUsers = [],
   onUpdateAllowedUsers,
   emailEngineConfig = null
-}) {
+}: AdminAlertsPanelProps) {
   const admins = (allowedUsers || []).filter((u) => u && u.role === 'admin' && u.active !== false);
 
   // Local state for each admin's alert preferences while editing
-  const [alertsState, setAlertsState] = useState(() => {
-    const initial = {};
-    admins.forEach((admin) => {
+  const [alertsState, setAlertsState] = useState<Record<string, any>>(() => {
+    const initial: Record<string, any> = {};
+    admins.forEach((admin: any) => {
       initial[admin.id || admin.email] = normalizeAdminAlerts(admin.adminAlerts, admin.email);
     });
     return initial;
   });
 
-  const [expandedAdminId, setExpandedAdminId] = useState(() => (admins[0]?.id || admins[0]?.email || null));
+  const [expandedAdminId, setExpandedAdminId] = useState<string | null>(() => (admins[0]?.id || admins[0]?.email || null));
   const [showGuide, setShowGuide] = useState(false);
-  const [testingChannel, setTestingChannel] = useState(null); // { adminId, channel }
-  const [testResult, setTestResult] = useState(null); // { adminId, channel, ok: boolean, message: string }
+  const [testingChannel, setTestingChannel] = useState<{ adminKey: string; channel: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ adminKey: string; channel: string; ok: boolean; message: string } | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Sync state if admins list changes
   React.useEffect(() => {
     setAlertsState((prev) => {
       const updated = { ...prev };
-      admins.forEach((admin) => {
+      admins.forEach((admin: any) => {
         const key = admin.id || admin.email;
         if (!updated[key]) {
           updated[key] = normalizeAdminAlerts(admin.adminAlerts, admin.email);
@@ -56,7 +62,7 @@ export default function AdminAlertsPanel({
     });
   }, [allowedUsers]);
 
-  const handleToggleChatNotification = (adminKey, enabled) => {
+  const handleToggleChatNotification = (adminKey: string, enabled: boolean) => {
     setAlertsState((prev) => {
       const current = prev[adminKey] || normalizeAdminAlerts({});
       return {
@@ -70,7 +76,7 @@ export default function AdminAlertsPanel({
     setSaveSuccess(false);
   };
 
-  const handleToggleHealthNotification = (adminKey, enabled) => {
+  const handleToggleHealthNotification = (adminKey: string, enabled: boolean) => {
     setAlertsState((prev) => {
       const current = prev[adminKey] || normalizeAdminAlerts({});
       return {
@@ -84,7 +90,7 @@ export default function AdminAlertsPanel({
     setSaveSuccess(false);
   };
 
-  const handleToggleChannel = (adminKey, channel) => {
+  const handleToggleChannel = (adminKey: string, channel: string) => {
     setAlertsState((prev) => {
       const currentAdmin = prev[adminKey] || normalizeAdminAlerts({});
       return {
@@ -101,7 +107,7 @@ export default function AdminAlertsPanel({
     setSaveSuccess(false);
   };
 
-  const handleFieldChange = (adminKey, channel, field, value) => {
+  const handleFieldChange = (adminKey: string, channel: string, field: string, value: any) => {
     setAlertsState((prev) => {
       const currentAdmin = prev[adminKey] || normalizeAdminAlerts({});
       return {
@@ -137,7 +143,7 @@ export default function AdminAlertsPanel({
     setTimeout(() => setSaveSuccess(false), 3500);
   };
 
-  const handleSendTest = async (admin, channel) => {
+  const handleSendTest = async (admin: any, channel: string) => {
     const adminKey = admin.id || admin.email;
     const config = alertsState[adminKey]?.[channel];
     const validation = validateAlertChannel(channel, config);
@@ -147,7 +153,7 @@ export default function AdminAlertsPanel({
         adminKey,
         channel,
         ok: false,
-        message: validation.error
+        message: validation.error || 'שגיאת אימות'
       });
       return;
     }
@@ -168,7 +174,7 @@ export default function AdminAlertsPanel({
         ok: true,
         message: 'הודעת בדיקה נשלחה בהצלחה!'
       });
-    } catch (err) {
+    } catch (err: any) {
       setTestResult({
         adminKey,
         channel,
@@ -182,14 +188,14 @@ export default function AdminAlertsPanel({
 
   if (!admins.length) {
     return (
-      <div dir="rtl" align="right" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+      <div dir="rtl" style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
         לא נמצאו משתמשים בעלי הרשאת מנהל מערכת (Admin) להגדרת התראות.
       </div>
     );
   }
 
   return (
-    <div dir="rtl" align="right" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div dir="rtl" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       {/* Header Banner */}
       <div
         style={{

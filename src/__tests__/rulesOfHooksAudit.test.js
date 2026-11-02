@@ -146,14 +146,14 @@ describe('Rules of Hooks Zero-Exception Audit Suite (Prevents React #310 across 
   });
 
   it('verifies AllowlistAuthGate.jsx has no hook violations', () => {
-    const gatePath = path.resolve(srcRoot, 'AllowlistAuthGate.jsx');
+    const gatePath = (fs.existsSync(path.resolve(srcRoot, 'AllowlistAuthGate.tsx')) ? path.resolve(srcRoot, 'AllowlistAuthGate.tsx') : path.resolve(srcRoot, 'AllowlistAuthGate.jsx'));
     const gateCode = fs.readFileSync(gatePath, 'utf8');
     const violations = analyzeComponentHooks(gateCode, 'AllowlistAuthGate.jsx');
     expect(violations).toEqual([]);
   });
 
   it('verifies AdminAllowlistModal.jsx has no hooks called after if (!isOpen) return null', () => {
-    const modalPath = path.resolve(srcRoot, 'components/modals/AdminAllowlistModal.jsx');
+    const modalPath = (fs.existsSync(path.resolve(srcRoot, 'components/modals/AdminAllowlistModal.tsx')) ? path.resolve(srcRoot, 'components/modals/AdminAllowlistModal.tsx') : path.resolve(srcRoot, 'components/modals/AdminAllowlistModal.jsx'));
     const modalCode = fs.readFileSync(modalPath, 'utf8');
     const violations = analyzeComponentHooks(modalCode, 'AdminAllowlistModal.jsx');
     expect(violations).toEqual([]);

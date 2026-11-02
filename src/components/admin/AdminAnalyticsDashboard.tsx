@@ -1,39 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, CSSProperties } from 'react';
 import {
-  BarChart3,
-  TrendingUp,
-  Clock,
-  ShieldCheck,
-  Users,
-  CheckCircle2,
-  AlertTriangle,
-  FileSpreadsheet,
   RefreshCw,
-  Sliders,
-  Sparkles,
-  MessageSquare,
-  Share2,
-  Calendar,
-  Layers,
-  ArrowRight,
-  EyeOff,
-  Filter,
-  Activity,
-  Award,
   Download,
-  AlertCircle,
-  HelpCircle,
-  Laptop,
-  Smartphone,
-  Tablet,
   Mic,
-  FileText,
-  ChevronDown
+  FileText
 } from 'lucide-react';
 import { fetchTelemetryEvents } from '../../services/telemetryStorage';
 import { computeTelemetryAnalytics } from '../../domain/telemetryAggregator';
 
-export function isUserAdmin(user) {
+export function isUserAdmin(user: any): boolean {
   if (!user) return false;
   if (user.role === 'admin' || user.role === 'superadmin' || user.isAdmin === true) return true;
   const email = (user.email || '').trim().toLowerCase();
@@ -47,7 +22,7 @@ export function isUserAdmin(user) {
 }
 
 // Reusable styling objects
-const cardStyle = {
+const cardStyle: CSSProperties = {
   background: '#ffffff',
   border: '1px solid var(--border, #d3dff0)',
   borderRadius: '12px',
@@ -58,19 +33,19 @@ const cardStyle = {
   gap: '6px'
 };
 
-const cardHeaderStyle = {
+const cardHeaderStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center'
 };
 
-const cardTitleStyle = {
+const cardTitleStyle: CSSProperties = {
   fontSize: '12.5px',
   fontWeight: 600,
   color: 'var(--text-muted, #5e718d)'
 };
 
-const cardIconStyle = {
+const cardIconStyle: CSSProperties = {
   width: '32px',
   height: '32px',
   borderRadius: '8px',
@@ -80,13 +55,13 @@ const cardIconStyle = {
   fontSize: '14px'
 };
 
-const cardValueStyle = {
+const cardValueStyle: CSSProperties = {
   fontSize: '24px',
   fontWeight: 700,
   color: 'var(--text-main, #24344d)'
 };
 
-const panelStyle = {
+const panelStyle: CSSProperties = {
   background: '#ffffff',
   border: '1px solid var(--border, #d3dff0)',
   borderRadius: '12px',
@@ -94,7 +69,7 @@ const panelStyle = {
   boxShadow: '0 1px 3px rgba(36, 52, 77, 0.04)'
 };
 
-const panelTitleStyle = {
+const panelTitleStyle: CSSProperties = {
   fontSize: '15px',
   fontWeight: 700,
   color: 'var(--text-main, #24344d)',
@@ -102,7 +77,7 @@ const panelTitleStyle = {
   marginBottom: '14px'
 };
 
-const calloutBoxStyle = {
+const calloutBoxStyle: CSSProperties = {
   background: '#fdfbf7',
   border: '1px solid #fde68a',
   borderRadius: '10px',
@@ -114,35 +89,42 @@ const calloutBoxStyle = {
   color: '#92400e'
 };
 
-const tableStyle = {
+const tableStyle: CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
   fontSize: '13px'
 };
 
-const thStyle = {
+const thStyle: CSSProperties = {
   padding: '10px 12px',
   textAlign: 'right',
   color: '#475569',
   fontWeight: 600
 };
 
-const tdStyle = {
+const tdStyle: CSSProperties = {
   padding: '10px 12px'
 };
 
+
+export interface AdminAnalyticsDashboardProps {
+  currentUser?: any;
+  initialTimeRange?: string;
+  initialEvents?: any[] | null;
+  onExport?: ((events: any[], analytics?: any) => void) | null;
+}
 
 export default function AdminAnalyticsDashboard({
   currentUser = null,
   initialTimeRange = '30d',
   initialEvents = null,
   onExport = null
-}) {
+}: AdminAnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState(initialTimeRange);
   const [activeTab, setActiveTab] = useState('overview');
   const [excludeInternal, setExcludeInternal] = useState(true);
   const [samplingMode, setSamplingMode] = useState(false);
-  const [events, setEvents] = useState(initialEvents || []);
+  const [events, setEvents] = useState<any[]>(initialEvents || []);
   const [isLoading, setIsLoading] = useState(!initialEvents);
   const [retentionPeriod, setRetentionPeriod] = useState('90');
 
