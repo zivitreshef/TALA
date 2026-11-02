@@ -2,23 +2,32 @@ import React, { useState, useMemo } from 'react';
 import { ClipboardCopy, Check, X, Eye, EyeOff } from 'lucide-react';
 import {
   buildMinistryCopyBlocks,
-  formatAllMinistryBlocks
+  formatAllMinistryBlocks,
+  type MinistryCopyFormData,
+  type MinistryCopyBlock
 } from '../../domain/ministryCopyFormatter';
+
+export interface MinistryCopyModalProps {
+  formData: MinistryCopyFormData;
+  hideDetails?: boolean;
+  onToggleHideDetails?: (hide: boolean) => void;
+  onClose: () => void;
+}
 
 export default function MinistryCopyModal({
   formData,
-  hideDetails,
+  hideDetails = false,
   onToggleHideDetails,
   onClose
-}) {
-  const [copiedId, setCopiedId] = useState(null);
+}: MinistryCopyModalProps): React.JSX.Element {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const blocks = useMemo(
-    () => buildMinistryCopyBlocks(formData, hideDetails),
+  const blocks: MinistryCopyBlock[] = useMemo(
+    () => buildMinistryCopyBlocks(formData, Boolean(hideDetails)),
     [formData, hideDetails]
   );
 
-  const handleCopy = async (id, text) => {
+  const handleCopy = async (id: string, text: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -86,7 +95,7 @@ export default function MinistryCopyModal({
               type="button"
               className="btn-submit-email"
               style={{ padding: '7px 14px', fontSize: '0.88rem' }}
-              onClick={() => handleCopy('all', formatAllMinistryBlocks(blocks))}
+              onClick={() => void handleCopy('all', formatAllMinistryBlocks(blocks))}
             >
               {copiedId === 'all' ? <Check size={16} /> : <ClipboardCopy size={16} />}
               <span>{copiedId === 'all' ? 'הכל הועתק ללוח!' : 'העתק את כל התוכנית'}</span>
@@ -131,7 +140,7 @@ export default function MinistryCopyModal({
                         borderColor: isCopied ? '#16a34a' : undefined,
                         color: isCopied ? '#15803d' : undefined
                       }}
-                      onClick={() => handleCopy(block.id, block.content)}
+                      onClick={() => void handleCopy(block.id, block.content)}
                     >
                       {isCopied ? <Check size={14} /> : <ClipboardCopy size={14} />}
                       <span>{isCopied ? 'הועתק!' : 'העתק סעיף'}</span>
