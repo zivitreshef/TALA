@@ -1,12 +1,25 @@
 import React from 'react';
 import { ShieldAlert, LogOut, XCircle, Clock, Globe } from 'lucide-react';
 
+export interface ExistingSessionInfo {
+  ipAddress?: string;
+  lastActiveIso?: string;
+  [key: string]: unknown;
+}
+
+export interface TakeoverModalProps {
+  existingSession?: ExistingSessionInfo | null;
+  onConfirmTakeover: () => void;
+  onCancel: () => void;
+  loading?: boolean;
+}
+
 export default function TakeoverModal({
   existingSession,
   onConfirmTakeover,
   onCancel,
   loading = false
-}) {
+}: TakeoverModalProps): React.JSX.Element {
   const formattedTime = existingSession?.lastActiveIso
     ? new Date(existingSession.lastActiveIso).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
     : 'לאחרונה';
@@ -98,17 +111,18 @@ export default function TakeoverModal({
               padding: '10px 18px',
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
-              backgroundColor: '#f1f5f9',
-              color: '#334155',
-              fontWeight: 600,
-              cursor: 'pointer',
+              backgroundColor: '#ffffff',
+              color: '#475569',
+              fontWeight: 500,
+              fontSize: '14px',
+              cursor: loading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
             }}
           >
             <XCircle size={16} />
-            ביטול
+            <span>ביטול וחזרה</span>
           </button>
 
           <button
@@ -122,15 +136,16 @@ export default function TakeoverModal({
               backgroundColor: '#dc2626',
               color: '#ffffff',
               fontWeight: 600,
-              cursor: 'pointer',
+              fontSize: '14px',
+              cursor: loading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.2)'
+              boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.25)'
             }}
           >
             <LogOut size={16} />
-            {loading ? 'מנתק ומתחבר...' : 'נתק מכשיר אחר והתחבר כאן'}
+            <span>{loading ? 'מנתק מכשיר קודם...' : 'נתק מכשיר קודם והתחבר כאן'}</span>
           </button>
         </div>
       </div>

@@ -1,7 +1,20 @@
 import React from 'react';
 import { LogOut, AlertTriangle, ShieldOff } from 'lucide-react';
 
-export default function SessionEvictedModal({ evictionInfo, onAcknowledge }) {
+export interface EvictionInfo {
+  newIp?: string;
+  evictedAt?: string;
+}
+
+export interface SessionEvictedModalProps {
+  evictionInfo?: EvictionInfo | null;
+  onAcknowledge?: () => void;
+}
+
+export default function SessionEvictedModal({
+  evictionInfo,
+  onAcknowledge
+}: SessionEvictedModalProps): React.JSX.Element {
   return (
     <div
       className="modal-overlay"
@@ -99,8 +112,8 @@ export default function SessionEvictedModal({ evictionInfo, onAcknowledge }) {
               boxShadow: '0 4px 6px -1px rgba(2, 132, 199, 0.25)'
             }}
           >
-            <LogOut size={16} />
-            חזור למסך ההתחברות
+            <LogOut size={18} />
+            <span>הבנתי, התנתק עכשיו</span>
           </button>
         </div>
       </div>
