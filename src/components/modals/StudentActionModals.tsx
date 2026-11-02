@@ -1,12 +1,26 @@
 import React from 'react';
 import { AlertTriangle, X, Archive, Trash2, LogOut, Save } from 'lucide-react';
 
+export interface StudentToDelete {
+  id?: string;
+  name?: string;
+  archived?: boolean;
+  [key: string]: unknown;
+}
+
+export interface DeleteStudentModalProps {
+  studentToDelete?: StudentToDelete | null;
+  onClose: () => void;
+  onConfirmArchiveInstead: (student: StudentToDelete) => void;
+  onConfirmDelete: (student: StudentToDelete) => void;
+}
+
 export function DeleteStudentModal({
   studentToDelete,
   onClose,
   onConfirmArchiveInstead,
   onConfirmDelete
-}) {
+}: DeleteStudentModalProps): React.JSX.Element | null {
   if (!studentToDelete) return null;
 
   return (
@@ -115,13 +129,13 @@ export function DeleteStudentModal({
 
             <button
               type="button"
-              onClick={onConfirmDelete}
+              onClick={() => onConfirmDelete(studentToDelete)}
               style={{
                 background: '#d9534f',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '6px',
-                padding: '8px 16px',
+                padding: '8px 14px',
                 fontSize: '13px',
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -140,11 +154,23 @@ export function DeleteStudentModal({
   );
 }
 
+export interface StudentToArchive {
+  id?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+export interface ArchiveStudentModalProps {
+  studentToArchive?: StudentToArchive | null;
+  onClose: () => void;
+  onConfirmArchive: (student: StudentToArchive) => void;
+}
+
 export function ArchiveStudentModal({
   studentToArchive,
   onClose,
   onConfirmArchive
-}) {
+}: ArchiveStudentModalProps): React.JSX.Element | null {
   if (!studentToArchive) return null;
 
   return (
@@ -232,13 +258,21 @@ export function ArchiveStudentModal({
   );
 }
 
+export interface LogoutUnsavedModalProps {
+  isOpen: boolean;
+  draftStudentName?: string;
+  onClose: () => void;
+  onDiscardAndLogout: () => void;
+  onSaveAndLogout: () => void;
+}
+
 export function LogoutUnsavedModal({
   isOpen,
   draftStudentName,
   onClose,
   onDiscardAndLogout,
   onSaveAndLogout
-}) {
+}: LogoutUnsavedModalProps): React.JSX.Element | null {
   if (!isOpen) return null;
 
   return (

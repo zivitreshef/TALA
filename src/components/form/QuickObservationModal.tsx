@@ -2,8 +2,32 @@ import React, { useState } from 'react';
 import { ClipboardList, Check, Plus, Trash2, X } from 'lucide-react';
 import {
   SUPPORT_LEVEL_OPTIONS,
-  formatObservationLine
+  formatObservationLine,
+  ObservationEntry
 } from '../../domain/goalObservations';
+
+export interface GoalRowItem {
+  id?: string;
+  environment?: string;
+  title?: string;
+  observations?: ObservationEntry[];
+  [key: string]: unknown;
+}
+
+export interface AddObservationPayload {
+  supportLevel: string;
+  note: string;
+  authorName: string;
+  targetEvalField: string;
+}
+
+export interface QuickObservationModalProps {
+  goalRow?: GoalRowItem | null;
+  authorName?: string;
+  onAddObservation?: (payload: AddObservationPayload) => void;
+  onDeleteObservation?: (obsId: string) => void;
+  onClose: () => void;
+}
 
 export default function QuickObservationModal({
   goalRow,
@@ -11,15 +35,15 @@ export default function QuickObservationModal({
   onAddObservation,
   onDeleteObservation,
   onClose
-}) {
-  const [supportLevel, setSupportLevel] = useState('תיווך חלקי');
-  const [note, setNote] = useState('');
-  const [targetEvalField, setTargetEvalField] = useState('midYearEvaluation');
-  const [savedToast, setSavedToast] = useState(false);
+}: QuickObservationModalProps): React.JSX.Element {
+  const [supportLevel, setSupportLevel] = useState<string>('תיווך חלקי');
+  const [note, setNote] = useState<string>('');
+  const [targetEvalField, setTargetEvalField] = useState<string>('midYearEvaluation');
+  const [savedToast, setSavedToast] = useState<boolean>(false);
 
-  const observations = Array.isArray(goalRow?.observations) ? goalRow.observations : [];
+  const observations: ObservationEntry[] = Array.isArray(goalRow?.observations) ? goalRow.observations : [];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault();
     onAddObservation?.({
       supportLevel,
