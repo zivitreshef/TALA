@@ -110,6 +110,15 @@ import ParentVoiceControl from './components/form/ParentVoiceControl';
 import MinistryCopyModal from './components/form/MinistryCopyModal';
 import QuickObservationModal from './components/form/QuickObservationModal';
 import DiagnosticIntakeModal from './components/form/DiagnosticIntakeModal';
+import PedagogicalFeed from './components/form/PedagogicalFeed';
+import {
+  migrateLegacyFreeTextToSnippets,
+  aggregateSnippetsForAiPrompt,
+  syncSnippetsToCombinedText,
+  addSnippet,
+  removeSnippet
+} from './domain/pedagogicalFeed';
+import type { PedagogicalSnippet } from './domain/types';
 import { removeDiagnosticDocumentFromStudent } from './domain/diagnosticIntake';
 import {
   deleteDossierFileBlob,
@@ -259,6 +268,54 @@ export default function EcologicalWorkPlanForm({
   const [copyTeamSuccessMsg, setCopyTeamSuccessMsg] = useState('');
 
   const attachedDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+
+  const activeSnippets = useMemo<PedagogicalSnippet[]>(() => {
+    return migrateLegacyFreeTextToSnippets(
+      formData.teacherFreeText,
+      formData.pedagogicalSnippets,
+      userPreferences?.fullName || currentUser?.name
+    );
+  }, [formData.teacherFreeText, formData.pedagogicalSnippets, userPreferences?.fullName, currentUser?.name]);
+
+  const handleAddSnippet = (snippet: PedagogicalSnippet) => {
+    const currentList = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+      ? formData.pedagogicalSnippets
+      : activeSnippets;
+    const nextSnippets = addSnippet(currentList, snippet);
+    const combinedText = syncSnippetsToCombinedText(nextSnippets);
+    setFormData((prev: any) => ({
+      ...prev,
+      pedagogicalSnippets: nextSnippets,
+      teacherFreeText: combinedText
+    }));
+  };
+
+  const handleRemoveSnippet = (snippetId: string) => {
+    const currentList = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+      ? formData.pedagogicalSnippets
+      : activeSnippets;
+    const nextSnippets = removeSnippet(currentList, snippetId);
+    const combinedText = syncSnippetsToCombinedText(nextSnippets);
+    setFormData((prev: any) => ({
+      ...prev,
+      pedagogicalSnippets: nextSnippets,
+      teacherFreeText: combinedText
+    }));
+  };
+
+  const handleSaveDraft = () => {
+    const snippets = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+      ? formData.pedagogicalSnippets
+      : activeSnippets;
+    const combinedText = syncSnippetsToCombinedText(snippets);
+    const updated = {
+      ...formData,
+      pedagogicalSnippets: snippets,
+      teacherFreeText: combinedText
+    };
+    setFormData(updated);
+    onSaveStudentPlan?.(updated);
+  };
 
   const handleRemoveDiagnosticDoc = async (docId: any, fileName: any, storagePath: any) => {
     if (window.confirm(`האם את בטוחה שברצונך להסיר את המסמך "${fileName}" מתיק התלמיד/ה?`)) {
@@ -1274,7 +1331,11 @@ export default function EcologicalWorkPlanForm({
   const handleForceLocalReverseEngineer = () => {
     setIsReverseEngineering(false);
     setReverseEngineerError('');
-    const rawText = (formData.teacherFreeText || '').trim();
+    const snippetsToUse = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+      ? formData.pedagogicalSnippets
+      : activeSnippets;
+    const aggregatedText = aggregateSnippetsForAiPrompt(snippetsToUse);
+    const rawText = (aggregatedText || formData.teacherFreeText || '').trim();
     if (!rawText) return;
     const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
     if (engineered) {
@@ -1284,9 +1345,13 @@ export default function EcologicalWorkPlanForm({
 
   async function handleReverseEngineerFullReport() {
     if (formData.isLocked) return;
-    const rawText = (formData.teacherFreeText || '').trim();
+    const snippetsToUse = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+      ? formData.pedagogicalSnippets
+      : activeSnippets;
+    const aggregatedText = aggregateSnippetsForAiPrompt(snippetsToUse);
+    const rawText = (aggregatedText || formData.teacherFreeText || '').trim();
     if (!rawText) {
-      window.alert('נא להזין טקסט גולמי על התלמיד/ה בתיבת התיאור החופשי כדי שה-AI יוכל להפיק ממנו דוח רשמי מלא.');
+      window.alert('נא להזין תצפית או לצרף מסמך בציר התובנות כדי שה-AI יוכל להפיק ממנו דוח ומטרות.');
       return;
     }
 
@@ -4545,7 +4610,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           )}
         </div>
 
-        <div className="free-text-area-box">
+        <div className="free-text-area-box" style={{ background: 'transparent', border: 'none', padding: 0 }}>
           <div
             style={{
               display: 'flex',
@@ -4557,7 +4622,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             }}
           >
             <label className="bold-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>✍️ תיאור חופשי של הילד/ה במילים שלך:</span>
+              <span>✍️ ציר תובנות פדגוגי ומסמכי רקע:</span>
               {isRawFreeTextAlreadyAnalyzed(formData) && (
                 <span
                   style={{
@@ -4576,12 +4641,11 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </label>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-
               <button
                 type="button"
                 onClick={() => setIsFreeTextCollapsed((prev) => !prev)}
-                title={isFreeTextCollapsed ? 'פתיחת תיאור חופשי' : 'סגירת תיאור חופשי'}
-                aria-label={isFreeTextCollapsed ? 'פתיחת תיאור חופשי' : 'סגירת תיאור חופשי'}
+                title={isFreeTextCollapsed ? 'פתיחת ציר תובנות' : 'סגירת ציר תובנות'}
+                aria-label={isFreeTextCollapsed ? 'פתיחת ציר תובנות' : 'סגירת ציר תובנות'}
                 style={{
                   width: '32px',
                   height: '32px',
@@ -4604,95 +4668,21 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           {!isFreeTextCollapsed && (
-            <>
-              <div className="privacy-sensitive-info-note">
-                🔒 <strong>לתשומת לבך (שמירה על פרטיות):</strong> נא להימנע מהקלדת פרטים מזהים או מידע אישי רגיש בטקסט החופשי (כגון שמות מלאים של הילד/ה או בני משפחה, מספרי תעודת זהות, טלפונים או כתובות). מומלץ להשתמש בתיאור כללי כגון "הילד/ה" או בראשי תיבות בלבד.
-              </div>
-              {/* Quick sample descriptions for live teacher trial */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>דוגמאות מוכנות להתנסות:</span>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleFieldChange('teacherFreeText', 'יונתן לומד בכיתה רגילה ומקבל תמיכה שבועית מסל שילוב. מאובחן עם הפרעת קשב ופעלתנות יתר (ADHD) וקשיי ויסות חושי. מפגין סקרנות יוצאת דופן ואינטליגנציה תקינה, אך מתקשה להתמיד במשימות כתיבה ממושכות, מגלה מוסחות גבוהה ברעש כיתתי, ונזקק לתיווך במעברים בין שיעור להפסקה. בתחום האורייני קיים פער ברכישת שטף ודיוק בקריאה. אוהב מאוד לבנות בלגו וסקרן לגבי בעלי חיים ודינוזאורים.');
-                    }}
-                    style={{
-                      background: '#f0fdf4',
-                      color: '#15803d',
-                      border: '1px solid #86efac',
-                      borderRadius: '8px',
-                      padding: '3px 9px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🪄 דוגמה לבי"ס (יונתן)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleFieldChange('teacherFreeText', 'נועם ילד מתוק, סקרן וחברותי בן 5.5 בגן חובה. מתקשה במעברים בין חצר למפגש, זקוק לתיווך בפתרון קונפליקטים ובמשחק משותף במוקדי הגן, ומתקשה באחיזת מספריים ועפרון. מגלה חוזקות רבות במוזיקה, יצירתיות בקוביות ואמפתיה רבה לחבריו לגן.');
-                    }}
-                    style={{
-                      background: '#eff6ff',
-                      color: '#1d4ed8',
-                      border: '1px solid #bfdbfe',
-                      borderRadius: '8px',
-                      padding: '3px 9px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🪄 דוגמה לגן (נועם)
-                  </button>
-                </div>
-              </div>
-              <div style={{ position: 'relative' }}>
-                <textarea
-                  rows={4}
-                  disabled={isReportLocked}
-                  className={activeOnboardingStep === 3 ? 'tour-highlight-input' : ''}
-                  value={formData.teacherFreeText || ''}
-                  onInput={handleTextareaAutoResize}
-                  onChange={(e) => handleFieldChange('teacherFreeText', e.target.value)}
-                  placeholder="הזיני כאן מידע גולמי וחופשי על התלמיד/ה... למשל: ילד נעים, חברותי וסקרן בעל יכולת ריכוז טובה, וורבלי ומלא אנרגיות. מתקשה במשחק משותף עם חברים ומשחק לידם באופן תבניתי, לא ניגש לשולחן הסדנא מיוזמתו ומתקשה בתכנון והתארגנות, וזקוק לתיווך בגמילה בשירותים ובוויסות רגשי..."
-                />
-              </div>
-
-              <div className="submit-summary-action-row" style={{ position: 'relative' }}>
-                {activeOnboardingStep === 3 && (
-                  <div className="onboarding-tour-arrow-box" style={{ top: '-46px', left: '0', zIndex: 60 }}>
-                    <span className="tour-arrow-anim">👈</span>
-                    <span>שלב 3: לחצי כאן על "עיבוד המידע" — ה-AI ינתח את התיאור ויבנה את כל המטרות והיעדים!</span>
-                  </div>
-                )}
-                <span className="submit-helper-text">
-                  {isTalaMode
-                    ? 'לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את הרקע והתמיכה, מטרות התלמיד/ה, טבלת הפרופיל התפקודי, תחומי המיקוד וטבלת תוכנית העבודה:'
-                    : 'לחיצה על "עיבוד המידע" תנתח ב-AI את הטקסט החופשי ותמלא אוטומטית את טבלת מוקדי הכוח, המטרות והיעדים ושאר סעיפי הטופס:'}
-                </span>
-                <button
-                  type="button"
-                  className={`btn-submit-generate-summary ${activeOnboardingStep === 3 ? 'tour-highlight-btn' : ''}`}
-                  onClick={() => {
-                    handleReverseEngineerFullReport();
-                  }}
-                  disabled={isReportLocked || isReverseEngineering}
-                >
-                  {isReverseEngineering ? (
-                    <Loader2 size={17} className="tala-spin-icon" />
-                  ) : (
-                    <Sparkles size={17} />
-                  )}
-                  <span>
-                    {isReverseEngineering ? 'מעבד ומנתח את המידע ב-AI...' : 'עיבוד המידע'}
-                  </span>
-                </button>
-              </div>
-            </>
+            <PedagogicalFeed
+              snippets={activeSnippets}
+              onAddSnippet={handleAddSnippet}
+              onRemoveSnippet={handleRemoveSnippet}
+              onOpenUploadModal={() => {
+                setSelectedIntakeDoc(null);
+                setShowDiagnosticIntakeModal(true);
+              }}
+              onSaveDraft={handleSaveDraft}
+              onTriggerAiAnalysis={() => handleReverseEngineerFullReport()}
+              isAnalyzing={isReverseEngineering}
+              isLocked={isReportLocked}
+              currentUserName={userPreferences?.fullName || currentUser?.name || ''}
+              onboardingStep={activeOnboardingStep}
+            />
           )}
 
           {isReverseEngineering && (
@@ -7096,6 +7086,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           formData={formData}
           initialText={selectedIntakeDoc?.fullText || ''}
           initialDocName={selectedIntakeDoc?.fileName || ''}
+          authorName={userPreferences?.fullName || currentUser?.name || ''}
           onApplyIntake={(updatedStudent) => {
             setFormData(updatedStudent);
             setIsDossierOpen(true);

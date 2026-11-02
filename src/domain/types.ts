@@ -42,6 +42,7 @@ export interface StudentProfile {
   birthDate?: string;
   educationalFramework?: string;
   teacherFreeText?: string;
+  pedagogicalSnippets?: PedagogicalSnippet[];
   stage?: EducationalStage;
   stageSource?: StageSource;
   stageReason?: string;
@@ -141,6 +142,16 @@ export interface SizedGoal {
   endYearEvaluation?: string;
   aiSnapshot?: GoalAiSnapshot | Record<string, unknown> | null;
   [key: string]: unknown;
+}
+
+export interface PedagogicalSnippet {
+  id: string;
+  sourceType: 'document' | 'teacher_note';
+  sourceTitle: string;
+  documentId?: string;
+  content: string;
+  authorName?: string;
+  createdAt: string;
 }
 
 export interface DurationTshirtOption {
