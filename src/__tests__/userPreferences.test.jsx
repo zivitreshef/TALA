@@ -518,7 +518,7 @@ describe('Teacher Profile in Reports and Exports', () => {
   });
 
   it('ensures TeacherPreferencesModal imports getObservationGaps and pedagogical helpers', () => {
-    const modalSource = fs.readFileSync(path.resolve(__dirname, '../components/modals/TeacherPreferencesModal.jsx'), 'utf8');
+    const modalSource = fs.readFileSync(path.resolve(__dirname, '../components/modals/TeacherPreferencesModal.tsx'), 'utf8');
     const firstLines = modalSource.slice(0, 500);
     expect(firstLines).toContain('getObservationGaps');
     expect(firstLines).toContain('getPedagogicalAccomplishmentsSummary');
@@ -538,7 +538,7 @@ describe('Teacher Profile in Reports and Exports', () => {
   });
 
   it('ensures TeacherPreferencesModal displays official group as read-only locked badge', () => {
-    const modalSource = fs.readFileSync(path.resolve(__dirname, '../components/modals/TeacherPreferencesModal.jsx'), 'utf8');
+    const modalSource = fs.readFileSync(path.resolve(__dirname, '../components/modals/TeacherPreferencesModal.tsx'), 'utf8');
     expect(modalSource).toContain('שיוך מוסדי / מתי"א רשמי (קבוצת שיתוף מאובטחת):');
     expect(modalSource).toContain('נקבע ע"י מנהל/ת המערכת');
     expect(modalSource).toContain('שם בית הספר / הגן (להדפסה ולדוחות בלבד):');

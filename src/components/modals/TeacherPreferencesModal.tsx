@@ -28,12 +28,15 @@ import {
   normalizeUserPreferences,
   addPrivateGoal,
   removePrivateGoal,
-  makeSignatureBackgroundTransparent
+  makeSignatureBackgroundTransparent,
+  UserPreferences,
+  ReportDateFormatPreference
 } from '../../domain/userPreferences';
 import {
   verifyUserPassword,
   validatePasswordPolicy
 } from '../../allowedUsers';
+import { StudentProfile } from '../../domain/types';
 
 const DAILY_DIGEST_TIME_SLOTS = [
   '07:30', '08:00', '08:15', '08:30', '08:45',
@@ -48,8 +51,15 @@ const DAILY_DIGEST_TIME_SLOTS = [
   '19:00', '19:30', '20:00'
 ];
 
-function PasswordPolicyChecklist({ password }) {
-  const { checks = [] } = validatePasswordPolicy(password || '');
+interface PasswordPolicyCheck {
+  id: string;
+  label: string;
+  passed: boolean;
+}
+
+function PasswordPolicyChecklist({ password }: { password?: string }): React.JSX.Element {
+  const policyResult = validatePasswordPolicy(password || '') as { checks?: PasswordPolicyCheck[] };
+  const checks = policyResult?.checks || [];
   return (
     <div
       style={{
@@ -87,6 +97,57 @@ function PasswordPolicyChecklist({ password }) {
   );
 }
 
+export interface SharedReportStudent {
+  id: string;
+  studentName?: string;
+  educationalFramework?: string;
+  isLocked?: boolean;
+  sharedByName?: string;
+  ownerEmail?: string;
+  schoolYear?: string;
+  teamMessages?: Array<{
+    text?: string;
+    type?: string;
+    recipientEmail?: string;
+    isDeleted?: boolean;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface AllowedUser {
+  email?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+export interface TeacherPreferencesCurrentUser {
+  name?: string;
+  email?: string;
+  title?: string;
+  group?: string;
+  notifyOnSharedReport?: boolean;
+  isTrialUser?: boolean;
+  [key: string]: unknown;
+}
+
+export interface TeacherPreferencesModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser?: TeacherPreferencesCurrentUser | null;
+  userPreferences?: UserPreferences;
+  students?: StudentProfile[];
+  onSavePreferences?: (prefs: UserPreferences) => void;
+  enforcePasswordPolicy?: boolean;
+  onChangeOwnPassword?: (password: string) => void;
+  isMandatoryFirstLogin?: boolean;
+  unreadSharedReports?: SharedReportStudent[];
+  allowedUsers?: AllowedUser[];
+  onOpenSharedReportNotification?: (student: SharedReportStudent) => void;
+  onToggleNotifySharedReport?: (enabled: boolean) => void;
+  onDismissSharedReportNotification?: (student: SharedReportStudent) => void;
+  onDismissAllSharedReports?: () => void;
+}
+
 export default function TeacherPreferencesModal({
   isOpen,
   onClose,
@@ -103,7 +164,7 @@ export default function TeacherPreferencesModal({
   onToggleNotifySharedReport,
   onDismissSharedReportNotification,
   onDismissAllSharedReports
-}) {
+}: TeacherPreferencesModalProps): React.JSX.Element | null {
   const [activeTab, setActiveTab] = useState(() => {
     if (Array.isArray(unreadSharedReports) && unreadSharedReports.length > 0) {
       return 2;
@@ -112,12 +173,12 @@ export default function TeacherPreferencesModal({
   });
 
   // Local draft state for preferences
-  const [draftPrefs, setDraftPrefs] = useState(() =>
+  const [draftPrefs, setDraftPrefs] = useState<UserPreferences>(() =>
     normalizeUserPreferences(userPreferences)
   );
   const [saveToast, setSaveToast] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
-  const [reminderStatusMessage, setReminderStatusMessage] = useState(null);
+  const [reminderStatusMessage, setReminderStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleSendPedagogicalReminderNow = async () => {
     const recipient = (currentUser?.email || '').trim();
@@ -130,9 +191,9 @@ export default function TeacherPreferencesModal({
     setReminderStatusMessage(null);
 
     try {
-      const gaps = getObservationGaps(students || [], 45, new Date());
-      const accomplishments = getPedagogicalAccomplishmentsSummary(students || [], 30, new Date());
-      await sendPedagogicalReminderEmailInBackground({
+      const gaps = getObservationGaps((students || []) as unknown as Record<string, unknown>[], 45, new Date());
+      const accomplishments = getPedagogicalAccomplishmentsSummary((students || []) as unknown as Record<string, unknown>[], 30, new Date());
+      await (sendPedagogicalReminderEmailInBackground as unknown as (options: Record<string, unknown>) => Promise<unknown>)({
         toEmail: recipient,
         teacherName: draftPrefs.fullName || currentUser?.name || 'צוות חינוכי',
         gaps,
@@ -148,7 +209,7 @@ export default function TeacherPreferencesModal({
     } catch (err) {
       setReminderStatusMessage({
         type: 'error',
-        text: err.message || 'שגיאה בשליחת התזכורת הפדגוגית למייל.'
+        text: (err as Error)?.message || 'שגיאה בשליחת התזכורת הפדגוגית למייל.'
       });
     } finally {
       setIsSendingReminder(false);
@@ -183,17 +244,17 @@ export default function TeacherPreferencesModal({
 
   const notificationsEnabled = currentUser.notifyOnSharedReport !== false;
 
-  const resolveOwnerDisplayName = (studentObj) => {
+  const resolveOwnerDisplayName = (studentObj?: SharedReportStudent): string => {
     if (studentObj?.sharedByName) return studentObj.sharedByName;
     const ownerEmail = (studentObj?.ownerEmail || '').trim().toLowerCase();
     if (!ownerEmail) return 'עמית/ה לצוות';
     const found = (allowedUsers || []).find(
       (u) => (u.email || '').trim().toLowerCase() === ownerEmail
     );
-    return found?.name || studentObj.ownerEmail;
+    return found?.name || studentObj?.ownerEmail || 'עמית/ה לצוות';
   };
 
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = <K extends keyof UserPreferences>(field: K, value: UserPreferences[K]) => {
     setDraftPrefs((prev) => ({
       ...prev,
       [field]: value
@@ -211,7 +272,7 @@ export default function TeacherPreferencesModal({
     }, 800);
   };
 
-  const handleAddGoal = (e) => {
+  const handleAddGoal = (e?: React.FormEvent) => {
     e?.preventDefault?.();
     if (!newGoalText.trim()) return;
     const updated = addPrivateGoal(draftPrefs, {
@@ -226,7 +287,7 @@ export default function TeacherPreferencesModal({
     setNewGoalText('');
   };
 
-  const handleDeleteGoal = (goalId) => {
+  const handleDeleteGoal = (goalId: string) => {
     const updated = removePrivateGoal(draftPrefs, goalId);
     setDraftPrefs(updated);
     if (onSavePreferences) {
@@ -234,7 +295,7 @@ export default function TeacherPreferencesModal({
     }
   };
 
-  const handleSignatureUpload = (e) => {
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -255,7 +316,7 @@ export default function TeacherPreferencesModal({
     reader.readAsDataURL(file);
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordErrorMsg('');
     const trimmed = newPassword.trim();
@@ -270,14 +331,16 @@ export default function TeacherPreferencesModal({
     }
 
     if (enforcePasswordPolicy) {
-      const check = validatePasswordPolicy(trimmed);
+      const check = validatePasswordPolicy(trimmed) as { valid?: boolean; errorMessage?: string };
       if (!check.valid) {
-        setPasswordErrorMsg(check.errorMessage);
+        setPasswordErrorMsg(check.errorMessage || 'הסיסמה אינה עומדת בדרישות האבטחה.');
         return;
       }
     }
 
-    onChangeOwnPassword(trimmed);
+    if (onChangeOwnPassword) {
+      onChangeOwnPassword(trimmed);
+    }
     setPasswordSavedSuccess(true);
     setTimeout(() => {
       setPasswordSavedSuccess(false);
@@ -651,9 +714,9 @@ export default function TeacherPreferencesModal({
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 {[
-                  { id: 'both', label: 'משולב (עברי + לועזי)', desc: 'למשל: כ״ח בתשרי תשפ״ז | 28.10.2026' },
-                  { id: 'gregorian', label: 'לועזי בלבד', desc: 'למשל: 28.10.2026' },
-                  { id: 'hebrew', label: 'עברי בלבד', desc: 'למשל: כ״ח בתשרי תשפ״ז' }
+                  { id: 'both' as ReportDateFormatPreference, label: 'משולב (עברי + לועזי)', desc: 'למשל: כ״ח בתשרי תשפ״ז | 28.10.2026' },
+                  { id: 'gregorian' as ReportDateFormatPreference, label: 'לועזי בלבד', desc: 'למשל: 28.10.2026' },
+                  { id: 'hebrew' as ReportDateFormatPreference, label: 'עברי בלבד', desc: 'למשל: כ״ח בתשרי תשפ״ז' }
                 ].map((df) => (
                   <button
                     key={df.id}
@@ -889,7 +952,7 @@ export default function TeacherPreferencesModal({
                   טרם נשמרו מטרות פרטיות. הוסיפי מטרות למעלה כדי שיהיו זמינות עבורך בלבד בכל דוח.
                 </div>
               ) : (
-                draftPrefs.privateGoals.map((g) => (
+                draftPrefs.privateGoals?.map((g) => (
                   <div
                     key={g.id}
                     style={{
@@ -1191,9 +1254,9 @@ export default function TeacherPreferencesModal({
                   </label>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     {[
-                      { id: 'instant', label: 'מיידי (בכל הודעה)' },
-                      { id: 'daily_digest', label: 'סיכום יומי מרוכז' },
-                      { id: 'in_app_only', label: 'בתוך המערכת בלבד' }
+                      { id: 'instant' as const, label: 'מיידי (בכל הודעה)' },
+                      { id: 'daily_digest' as const, label: 'סיכום יומי מרוכז' },
+                      { id: 'in_app_only' as const, label: 'בתוך המערכת בלבד' }
                     ].map((opt) => (
                       <button
                         key={opt.id}
@@ -1337,7 +1400,7 @@ export default function TeacherPreferencesModal({
                         </span>
                         <select
                           value={draftPrefs.pedagogicalReminderWeeklyDay || 'sunday'}
-                          onChange={(e) => handleFieldChange('pedagogicalReminderWeeklyDay', e.target.value)}
+                          onChange={(e) => handleFieldChange('pedagogicalReminderWeeklyDay', e.target.value as UserPreferences['pedagogicalReminderWeeklyDay'])}
                           data-testid="reminder-weekly-day-select"
                           style={{
                             padding: '5px 12px',
@@ -1365,7 +1428,7 @@ export default function TeacherPreferencesModal({
                           שעת שליחה:
                         </span>
                         <div style={{ display: 'flex', gap: '6px' }}>
-                          {['09:00', '12:00', '17:00'].map((time) => (
+                          {(['09:00', '12:00', '17:00'] as const).map((time) => (
                             <button
                               key={time}
                               type="button"
@@ -1425,7 +1488,7 @@ export default function TeacherPreferencesModal({
                           שעת שליחה:
                         </span>
                         <div style={{ display: 'flex', gap: '6px' }}>
-                          {['09:00', '12:00', '17:00'].map((time) => (
+                          {(['09:00', '12:00', '17:00'] as const).map((time) => (
                             <button
                               key={time}
                               type="button"

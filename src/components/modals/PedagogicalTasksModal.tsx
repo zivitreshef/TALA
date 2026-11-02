@@ -7,18 +7,64 @@ import {
   X,
   RefreshCw,
   AlertCircle,
-  Calendar,
-  ClipboardList
+  Calendar
 } from 'lucide-react';
 import { callAiProxyEndpoint } from '../../services/aiProxyClient';
 
+export interface PedagogicalModalStudentGoal {
+  title?: string;
+  domain?: string;
+  environment?: string;
+  observations?: unknown[];
+}
+
+export interface PedagogicalModalStudent {
+  id: string;
+  name: string;
+  educationalFramework?: string;
+  goals?: PedagogicalModalStudentGoal[];
+}
+
+export interface PedagogicalModalEvent {
+  studentId?: string;
+  studentName?: string;
+  date?: string;
+  title?: string;
+  startTime?: string;
+}
+
+export interface GeneratedPedagogicalTask {
+  id: string;
+  studentId: string;
+  studentName: string;
+  text: string;
+  date: string;
+  selected: boolean;
+}
+
+export interface AddedPedagogicalTask {
+  text: string;
+  date: string;
+  studentId: string;
+  isAiGenerated: boolean;
+}
+
+export interface PedagogicalTasksModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  students?: PedagogicalModalStudent[];
+  events?: PedagogicalModalEvent[];
+  selectedDate?: string;
+  onAddTasks: (tasks: AddedPedagogicalTask[]) => void;
+}
+
 // Pure heuristic generator guaranteeing offline & fallback reliability
 export const generatePedagogicalTasksHeuristic = (
-  targetStudents = [],
-  events = [],
+  targetStudents: PedagogicalModalStudent[] = [],
+  events: PedagogicalModalEvent[] = [],
   selectedDate = '',
   focusInstruction = ''
-) => {
+): GeneratedPedagogicalTask[] => {
   return targetStudents.map((student) => {
     const goals = student.goals || [];
     const scheduledMeeting = (events || []).find(
@@ -26,7 +72,7 @@ export const generatePedagogicalTasksHeuristic = (
     );
 
     // Prioritize goal without recent observations or lowest progress
-    let targetGoal = null;
+    let targetGoal: PedagogicalModalStudentGoal | null = null;
     if (goals.length > 0) {
       targetGoal = goals.find((g) => !g.observations || g.observations.length === 0) || goals[0];
     }
@@ -66,22 +112,22 @@ export default function PedagogicalTasksModal({
   events = [],
   selectedDate = '',
   onAddTasks
-}) {
-  const [selectedStudentIds, setSelectedStudentIds] = useState(() => {
+}: PedagogicalTasksModalProps): React.JSX.Element | null {
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(() => {
     // Pre-select students who have events scheduled on selectedDate, or all if none
     const todayIds = (events || [])
       .filter((ev) => ev.date === selectedDate && ev.studentId)
-      .map((ev) => ev.studentId);
+      .map((ev) => ev.studentId as string);
     return new Set(todayIds.length > 0 ? todayIds : students.map((s) => s.id));
   });
 
   const [focusInstruction, setFocusInstruction] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [step, setStep] = useState('select'); // 'select' | 'review'
+  const [step, setStep] = useState<'select' | 'review'>('select');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [generatedTasks, setGeneratedTasks] = useState([]);
+  const [generatedTasks, setGeneratedTasks] = useState<GeneratedPedagogicalTask[]>([]);
   const [generationError, setGenerationError] = useState('');
 
   if (!isOpen) return null;
@@ -91,7 +137,7 @@ export default function PedagogicalTasksModal({
     (events || []).some((ev) => (ev.studentId === s.id || ev.studentName === s.name) && ev.date === selectedDate)
   );
 
-  const handleToggleStudent = (studentId) => {
+  const handleToggleStudent = (studentId: string) => {
     const next = new Set(selectedStudentIds);
     if (next.has(studentId)) {
       next.delete(studentId);
@@ -159,31 +205,39 @@ ${studentsContext}
   }
 ]`;
 
-      const response = await callAiProxyEndpoint({
+      const response = (await callAiProxyEndpoint({
         operation: 'rawPrompt',
         payload: { prompt },
         hints: { model: 'gemini-2.5-flash' }
-      });
+      })) as
+        | { tasks?: Array<{ studentId: string; studentName?: string; task?: string }>; raw?: string }
+        | Array<{ studentId: string; studentName?: string; task?: string }>
+        | string
+        | null;
 
-      let parsed = [];
+      let parsed: Array<{ studentId: string; studentName?: string; task?: string }> = [];
       if (Array.isArray(response)) {
-        parsed = response;
-      } else if (response && typeof response === 'object' && Array.isArray(response.tasks)) {
-        parsed = response.tasks;
-      } else if (response?.raw) {
-        const cleaned = response.raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+        parsed = response as Array<{ studentId: string; studentName?: string; task?: string }>;
+      } else if (response && typeof response === 'object' && Array.isArray((response as { tasks?: unknown[] }).tasks)) {
+        parsed = (response as { tasks: Array<{ studentId: string; studentName?: string; task?: string }> }).tasks;
+      } else if ((response as { raw?: string })?.raw) {
+        const cleaned = (response as { raw: string }).raw.replace(/```json/gi, '').replace(/```/g, '').trim();
         try {
           parsed = JSON.parse(cleaned);
-        } catch (_) {}
+        } catch {
+          // Fallback to heuristic
+        }
       } else if (typeof response === 'string') {
-        const cleaned = response.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const cleaned = (response as string).replace(/```json/gi, '').replace(/```/g, '').trim();
         try {
           parsed = JSON.parse(cleaned);
-        } catch (_) {}
+        } catch {
+          // Fallback to heuristic
+        }
       }
 
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const formatted = parsed.map((item, idx) => ({
+        const formatted: GeneratedPedagogicalTask[] = parsed.map((item, idx) => ({
           id: `task_${item.studentId || idx}_${Date.now()}`,
           studentId: item.studentId,
           studentName: item.studentName || 'תלמיד/ה',
@@ -205,19 +259,19 @@ ${studentsContext}
     }
   };
 
-  const handleToggleGeneratedTask = (taskId) => {
+  const handleToggleGeneratedTask = (taskId: string) => {
     setGeneratedTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, selected: !t.selected } : t))
     );
   };
 
-  const handleEditTaskText = (taskId, newText) => {
+  const handleEditTaskText = (taskId: string, newText: string) => {
     setGeneratedTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, text: newText } : t))
     );
   };
 
-  const handleDeleteTask = (taskId) => {
+  const handleDeleteTask = (taskId: string) => {
     setGeneratedTasks((prev) => prev.filter((t) => t.id !== taskId));
   };
 
@@ -227,7 +281,7 @@ ${studentsContext}
 
     setIsSubmitting(true);
 
-    const tasksToAdd = generatedTasks
+    const tasksToAdd: AddedPedagogicalTask[] = generatedTasks
       .filter((t) => t.selected && t.text.trim())
       .map((t) => ({
         text: t.text.trim(),

@@ -1,7 +1,50 @@
 import React, { useState } from 'react';
 import { Star, MessageSquareHeart, X, Send, Clock, EyeOff } from 'lucide-react';
 
-const SURVEY_CATEGORIES = [
+export interface SurveyCategory {
+  key: keyof SurveyRatings;
+  title: string;
+  subtitle: string;
+}
+
+export interface SurveyRatings {
+  easeOfWebsite: number;
+  createStudent: number;
+  generateGoals: number;
+  createReport: number;
+  collaborateWithColleagues: number;
+}
+
+export interface UserFeedbackSurveyUser {
+  name: string;
+  email: string;
+  title?: string;
+  group?: string;
+  isTrialUser?: boolean;
+}
+
+export interface UserFeedbackSurveyData {
+  userName: string;
+  userEmail: string;
+  userTitle?: string;
+  userGroup?: string;
+  isTrialUser: boolean;
+  ratings: SurveyRatings;
+  recommendToColleaguesAndManager: string;
+  overallFeedback: string;
+  improvementSuggestions: string;
+  submittedAt: string;
+}
+
+export interface UserFeedbackSurveyModalProps {
+  isOpen: boolean;
+  currentUser?: UserFeedbackSurveyUser | null;
+  onSubmitSurvey?: (data: UserFeedbackSurveyData) => void;
+  onSnoozeSurvey?: () => void;
+  onDismissSurveyPermanently?: () => void;
+}
+
+const SURVEY_CATEGORIES: SurveyCategory[] = [
   {
     key: 'easeOfWebsite',
     title: '1. קלות ונוחות השימוש באתר (Ease of Website)',
@@ -29,7 +72,7 @@ const SURVEY_CATEGORIES = [
   }
 ];
 
-const RATING_LABELS = {
+const RATING_LABELS: Record<number, string> = {
   1: '1 – טעון שיפור',
   2: '2 – בינוני',
   3: '3 – טוב',
@@ -37,7 +80,7 @@ const RATING_LABELS = {
   5: '5 – מצוין!'
 };
 
-const RECOMMENDATION_OPTIONS = [
+const RECOMMENDATION_OPTIONS: string[] = [
   'בהחלט כן – אמליץ בחום לקולגות ולמנהל/ת לרכוש גישה להמשך שימוש',
   'כן, סביר שאמליץ לקולגות ולמנהל/ת',
   'אולי / עדיין מתלבט/ת',
@@ -50,15 +93,15 @@ export default function UserFeedbackSurveyModal({
   onSubmitSurvey,
   onSnoozeSurvey,
   onDismissSurveyPermanently
-}) {
-  const [ratings, setRatings] = useState({
+}: UserFeedbackSurveyModalProps): React.JSX.Element | null {
+  const [ratings, setRatings] = useState<SurveyRatings>({
     easeOfWebsite: 5,
     createStudent: 5,
     generateGoals: 5,
     createReport: 5,
     collaborateWithColleagues: 5
   });
-  const [recommendToColleaguesAndManager, setRecommendToColleaguesAndManager] = useState(
+  const [recommendToColleaguesAndManager, setRecommendToColleaguesAndManager] = useState<string>(
     RECOMMENDATION_OPTIONS[0]
   );
   const [overallFeedback, setOverallFeedback] = useState('');
@@ -67,11 +110,11 @@ export default function UserFeedbackSurveyModal({
 
   if (!isOpen || !currentUser) return null;
 
-  const handleSetRating = (key, val) => {
+  const handleSetRating = (key: keyof SurveyRatings, val: number) => {
     setRatings((prev) => ({ ...prev, [key]: val }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const submittedAt = new Date().toLocaleString('he-IL', {
       dateStyle: 'short',
