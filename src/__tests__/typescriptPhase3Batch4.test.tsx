@@ -26,11 +26,11 @@ describe('TypeScript Migration Phase 3 Batch 4 Gate', () => {
       };
 
       const html = renderToStaticMarkup(<DiagnosticIntakeModal {...props} />);
-      expect(html).toContain('קליטת אבחון וסיכום ועדת זכאות');
+      expect(html).toContain('קליטת מסמך ושמירה בתיק התלמיד/ה');
       expect(html).toContain('העלאת קובץ אבחון');
       expect(html).toContain('לחצי כאן להעלאת קובץ או גררי לכאן');
-      expect(html).toContain('תוספת הערות, דגשים מפגישות הצוות');
-      expect(html).toContain('נתח ב-AI וגזור תוכנית');
+      expect(html).not.toContain('תוספת הערות');
+      expect(html).toContain('שמור בתיק והוסף לתובנות');
     });
 
     it('renders highlighter mode when initial lines are provided', () => {
@@ -52,7 +52,7 @@ describe('TypeScript Migration Phase 3 Batch 4 Gate', () => {
       expect(html).toContain('מרקר שורות (3/3)');
       expect(html).toContain('התלמיד מגלה הבנה טובה במתמטיקה.');
       expect(html).toContain('מתקשה בהתארגנות וניהול זמן.');
-      expect(html).toContain('נתח ב-AI (3 שורות מסומנות)');
+      expect(html).toContain('שמור בתיק והוסף לתובנות');
     });
   });
 
