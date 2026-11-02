@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import {
   MAX_ANSWER_LENGTH,
   getInviteQuestions,
-  hasAnyAnswer
+  hasAnyAnswer,
+  InviteDoc
 } from '../../domain/parentInvite';
 import { fetchInviteForRespondent, submitInviteResponses } from '../../services/inviteService';
 import './publicInput.css';
 
-const TERMINAL_MESSAGES = {
+const TERMINAL_MESSAGES: Record<string, { title: string; body: string }> = {
   missing: {
     title: 'הקישור אינו תקין',
     body: 'ייתכן שהקישור הועתק באופן חלקי. אפשר לבקש מהצוות החינוכי קישור חדש.'
@@ -26,13 +27,17 @@ const TERMINAL_MESSAGES = {
   }
 };
 
-function PageShell({ children }) {
+interface PageShellProps {
+  children: React.ReactNode;
+}
+
+function PageShell({ children }: PageShellProps): React.JSX.Element {
   return (
     <div className="pi-page" dir="rtl" lang="he">
       <main className="pi-card">
         <img
           className="pi-logo"
-          src={`${import.meta.env.BASE_URL}tala-logo.png`}
+          src={`${(import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL || '/'}tala-logo.png`}
           alt="TALA"
           width="56"
           height="56"
@@ -43,7 +48,13 @@ function PageShell({ children }) {
   );
 }
 
-function Message({ title, body, onRetry }) {
+interface MessageProps {
+  title: string;
+  body: string;
+  onRetry?: () => void;
+}
+
+function Message({ title, body, onRetry }: MessageProps): React.JSX.Element {
   return (
     <PageShell>
       <h1 className="pi-title">{title}</h1>
@@ -57,12 +68,16 @@ function Message({ title, body, onRetry }) {
   );
 }
 
-export default function ParentStudentInputView({ token }) {
-  const [phase, setPhase] = useState('loading'); // loading | form | sending | error | missing | expired | submitted | done
-  const [invite, setInvite] = useState(null);
-  const [answers, setAnswers] = useState({});
-  const [loadAttempt, setLoadAttempt] = useState(0);
-  const [submitError, setSubmitError] = useState('');
+export interface ParentStudentInputViewProps {
+  token: string;
+}
+
+export default function ParentStudentInputView({ token }: ParentStudentInputViewProps): React.JSX.Element {
+  const [phase, setPhase] = useState<string>('loading'); // loading | form | sending | error | missing | expired | submitted | done
+  const [invite, setInvite] = useState<InviteDoc | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [loadAttempt, setLoadAttempt] = useState<number>(0);
+  const [submitError, setSubmitError] = useState<string>('');
 
   useEffect(() => {
     document.title = 'TALA - שאלון קצר';
@@ -71,7 +86,7 @@ export default function ParentStudentInputView({ token }) {
     fetchInviteForRespondent(token)
       .then(({ state, invite: loaded }) => {
         if (cancelled) return;
-        setInvite(loaded);
+        setInvite(loaded as InviteDoc | null);
         setPhase(state === 'pending' ? 'form' : state);
       })
       .catch(() => {
@@ -114,7 +129,7 @@ export default function ParentStudentInputView({ token }) {
   });
   const sending = phase === 'sending';
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     if (sending || !hasAnyAnswer(answers)) return;
     setSubmitError('');

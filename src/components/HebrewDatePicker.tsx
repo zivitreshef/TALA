@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { getIsraeliHolidayInfo } from '../domain/dailyPedagogicalTracking';
+import type { IsraeliHolidayInfo } from '../domain/types';
 import './HebrewDatePicker.css';
 
-const HEBREW_WEEKDAYS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+const HEBREW_WEEKDAYS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'] as const;
+
+export interface HebrewDatePickerProps {
+  value: string;
+  onChange: (date: string) => void;
+  showDayNav?: boolean;
+  compact?: boolean;
+  ariaLabel?: string;
+}
 
 export default function HebrewDatePicker({
   value,
@@ -11,15 +20,15 @@ export default function HebrewDatePicker({
   showDayNav = false,
   compact = false,
   ariaLabel = 'בחירת תאריך'
-}) {
+}: HebrewDatePickerProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const selectedDateStr = value || todayStr;
 
   // Month currently displayed in the picker popup
-  const [viewDate, setViewDate] = useState(() => {
+  const [viewDate, setViewDate] = useState<Date>(() => {
     const parts = selectedDateStr.split('-').map(Number);
     return new Date(parts[0], parts[1] - 1, parts[2] || 1);
   });
@@ -37,7 +46,7 @@ export default function HebrewDatePicker({
   // Handle escape key
   useEffect(() => {
     if (!isOpen) return;
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') setIsOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -50,21 +59,21 @@ export default function HebrewDatePicker({
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay(); // 0 = Sun
 
-  const handlePrevMonth = () => {
+  const handlePrevMonth = (): void => {
     setViewDate(new Date(viewYear, viewMonth - 1, 1));
   };
 
-  const handleNextMonth = () => {
+  const handleNextMonth = (): void => {
     setViewDate(new Date(viewYear, viewMonth + 1, 1));
   };
 
-  const handleSelectDay = (dayNum) => {
+  const handleSelectDay = (dayNum: number): void => {
     const nextStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
     onChange(nextStr);
     setIsOpen(false);
   };
 
-  const handleShiftDay = (deltaDays) => {
+  const handleShiftDay = (deltaDays: number): void => {
     try {
       const parts = selectedDateStr.split('-').map(Number);
       const curr = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -73,7 +82,7 @@ export default function HebrewDatePicker({
       const m = String(curr.getMonth() + 1).padStart(2, '0');
       const d = String(curr.getDate()).padStart(2, '0');
       onChange(`${y}-${m}-${d}`);
-    } catch {}
+    } catch (_) {}
   };
 
   const formattedDisplayDate = useMemo(() => {
@@ -84,12 +93,15 @@ export default function HebrewDatePicker({
         return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' });
       }
       return d.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
-    } catch {
+    } catch (_) {
       return selectedDateStr;
     }
   }, [selectedDateStr, compact]);
 
-  const activeHoliday = useMemo(() => getIsraeliHolidayInfo(selectedDateStr), [selectedDateStr]);
+  const activeHoliday = useMemo<IsraeliHolidayInfo | null>(
+    () => getIsraeliHolidayInfo(selectedDateStr),
+    [selectedDateStr]
+  );
 
   return (
     <div className={`hdp-root ${compact ? 'hdp-compact' : ''}`} ref={containerRef} dir="rtl">
