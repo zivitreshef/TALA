@@ -10,7 +10,7 @@ import {
   addSnippet,
   removeSnippet
 } from '../domain/pedagogicalFeed';
-import PedagogicalFeed from '../components/form/PedagogicalFeed';
+import PedagogicalFeed, { SNIPPET_COLOR_PALETTES } from '../components/form/PedagogicalFeed';
 import DiagnosticIntakeModal from '../components/form/DiagnosticIntakeModal';
 import type { PedagogicalSnippet } from '../domain/types';
 
@@ -149,21 +149,20 @@ describe('PedagogicalFeed Component UI Tests', () => {
     {
       id: 's1',
       sourceType: 'document',
-      sourceTitle: 'סיכום ועדת אפיון תשפ״ו.docx',
+      sourceTitle: 'יהלי.docx',
       content: 'קושי בוויסות רגשי במעברים פתוחים.',
       createdAt: '2026-11-02T10:00:00Z'
     },
     {
       id: 's2',
-      sourceType: 'teacher_note',
-      sourceTitle: 'תצפית (מוטי)',
-      authorName: 'מוטי',
+      sourceType: 'document',
+      sourceTitle: 'יוגב פרץ-2.docx',
       content: 'בשיעור ספורט הצליח להמתין לתורו יפה.',
       createdAt: '2026-11-02T12:00:00Z'
     }
   ];
 
-  it('renders active sources count and snippet cards', () => {
+  it('renders active sources count and snippet cards with distinct rotating color palettes', () => {
     const html = renderToStaticMarkup(
       <PedagogicalFeed
         snippets={sampleSnippets}
@@ -176,14 +175,18 @@ describe('PedagogicalFeed Component UI Tests', () => {
     );
 
     expect(html).toContain('2 מקורות פעילים');
-    expect(html).toContain('סיכום ועדת אפיון תשפ״ו.docx');
+    expect(html).toContain('יהלי.docx');
+    expect(html).toContain('יוגב פרץ-2.docx');
     expect(html).toContain('מסמך רקע');
     expect(html).toContain('קושי בוויסות רגשי במעברים פתוחים.');
-    expect(html).toContain('תצפית מורה');
     expect(html).toContain('בשיעור ספורט הצליח להמתין לתורו יפה.');
     expect(html).toContain('שמור טיוטה');
     expect(html).toContain('העלאת מסמך נוסף');
     expect(html).toContain('ניתוח כל המקורות ב-AI ✨');
+
+    // Distinct palettes: Card 0 uses indigo (#4f46e5), Card 1 uses teal (#0d9488)
+    expect(html).toContain(SNIPPET_COLOR_PALETTES[0].avatarBg);
+    expect(html).toContain(SNIPPET_COLOR_PALETTES[1].avatarBg);
   });
 
   it('renders empty state when no snippets are present', () => {
@@ -201,6 +204,38 @@ describe('PedagogicalFeed Component UI Tests', () => {
     expect(html).toContain('0 מקורות פעילים');
     expect(html).toContain('ציר התובנות ריק כרגע');
     expect(html).toContain('הוסיפי תובנה, תצפית או עדכון חדש:');
+  });
+
+  it('hides sample description buttons outside the user journey (onboardingStep <= 0)', () => {
+    const html = renderToStaticMarkup(
+      <PedagogicalFeed
+        snippets={sampleSnippets}
+        onAddSnippet={vi.fn()}
+        onRemoveSnippet={vi.fn()}
+        onOpenUploadModal={vi.fn()}
+        onTriggerAiAnalysis={vi.fn()}
+        onboardingStep={0}
+      />
+    );
+
+    expect(html).not.toContain('דוגמה לבי"ס');
+    expect(html).not.toContain('דוגמה לגן');
+  });
+
+  it('shows sample description buttons only when inside the user journey (onboardingStep > 0)', () => {
+    const html = renderToStaticMarkup(
+      <PedagogicalFeed
+        snippets={sampleSnippets}
+        onAddSnippet={vi.fn()}
+        onRemoveSnippet={vi.fn()}
+        onOpenUploadModal={vi.fn()}
+        onTriggerAiAnalysis={vi.fn()}
+        onboardingStep={3}
+      />
+    );
+
+    expect(html).toContain('דוגמה לבי');
+    expect(html).toContain('דוגמה לגן');
   });
 });
 
