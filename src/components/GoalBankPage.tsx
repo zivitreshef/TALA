@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { usageTelemetryService } from '../services/usageTelemetryService';
+import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import {
   TrendingUp,
   Plus,
@@ -115,6 +117,20 @@ export default function GoalBankPage({
   const filteredGoals = useMemo(() => {
     const effectiveEnvFilter = selectedHlDomain || goalBankEnvFilter;
     const query = goalBankSearch.trim().toLowerCase();
+
+  useEffect(() => {
+    const trimmed = goalBankSearch.trim();
+    if (trimmed.length >= 2 && filteredGoals.length === 0) {
+      const timer = setTimeout(() => {
+        try {
+          usageTelemetryService.track(TELEMETRY_EVENTS.SEARCH_ZERO_RESULTS, {
+            context: 'goal_bank'
+          });
+        } catch (_) {}
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [goalBankSearch, filteredGoals.length]);
 
     return sortedBank.filter((g: any) => {
       if (!isGoalRelevantForStage(g, activeStage)) return false;

@@ -16,7 +16,7 @@ import {
   TelemetryEnvelope,
   UserContext
 } from '../domain/telemetryPrivacy';
-import { isValidEventName, CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
+import { isValidEventName, CURRENT_APP_VERSION, TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 
 export const OFFLINE_STORAGE_KEY = 'tala_telemetry_offline_queue';
 export const RING_BUFFER_CAPACITY = 100;

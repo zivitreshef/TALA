@@ -520,9 +520,23 @@ export default function EcologicalWorkPlanForm({
   }, [student?.teamMessages, student?.sharedReadBy, student?.sharedWith]);
 
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
+  const isDirtyRef = useRef(false);
+  useEffect(() => {
+    return () => {
+      if (isDirtyRef.current) {
+        try {
+          usageTelemetryService.track(TELEMETRY_EVENTS.FORM_DIRTY_ABANDONED, {
+            formId: 'work_plan'
+          });
+        } catch (_) {}
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const syncedDraft = syncActiveReportSnapshot(formData);
     const isDirty = JSON.stringify(syncedDraft) !== savedSnapshotRef.current;
+    isDirtyRef.current = isDirty;
     if (onDraftStateChange) {
       onDraftStateChange({
         isDirty,
