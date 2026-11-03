@@ -391,8 +391,8 @@ describe('TeacherPreferencesModal Rendering & UX (Bugs 1-5)', () => {
     expect(emailHtmlFullName).toContain('נקודות מפתח להצגה בישיבת צוות');
 
     // Continuity gaps
-    expect(emailHtmlFullName).toContain('מוקדים מומלצים לתצפית בימים הקרובים');
-    expect(emailHtmlFullName).toContain('52 ימים');
+    expect(emailHtmlFullName).not.toContain('נספח תצפיות שטח ומוקדים מומלצים לתצפית בימים הקרובים');
+    expect(emailHtmlFullName).toContain('לרציפות (45+)');
 
     // Test acronym mode
     const emailHtmlAcronym = buildPedagogicalReminderEmailHtml({
