@@ -3,6 +3,8 @@ import type {
   ObservationGap,
   PedagogicalAccomplishmentsSummary,
   RecentObservationSummary,
+  CompletedTaskSummary,
+  PendingTaskSummary,
   AdvancedGoalSummary,
   CalendarEventUrlOptions,
   CalendarEvent,
@@ -152,6 +154,23 @@ export function getObservationGaps(
         }
       }
 
+      // Completed pedagogical tasks also reflect meaningful active contact and continuity
+      const studentTasks = Array.isArray(student.pedagogicalTasks)
+        ? (student.pedagogicalTasks as Record<string, unknown>[])
+        : Array.isArray(student.dailyTasks)
+        ? (student.dailyTasks as Record<string, unknown>[])
+        : [];
+      for (const t of studentTasks) {
+        if (t.completed && (t.completedAt || t.date)) {
+          const tMs = new Date(String(t.completedAt || t.date)).getTime();
+          if (!Number.isNaN(tMs) && (latestObservationMs === null || tMs > latestObservationMs)) {
+            if (!t.goalId || t.goalId === goal.id) {
+              latestObservationMs = tMs;
+            }
+          }
+        }
+      }
+
       // If no observations yet, or latest observation is older than threshold
       const daysSince = latestObservationMs
         ? Math.floor((nowMs - latestObservationMs) / (24 * 60 * 60 * 1000))
@@ -195,10 +214,51 @@ export function getPedagogicalAccomplishmentsSummary(
 
   const recentObservations: RecentObservationSummary[] = [];
   const advancedGoals: AdvancedGoalSummary[] = [];
+  const completedTasks: CompletedTaskSummary[] = [];
+  const pendingTasks: PendingTaskSummary[] = [];
   let totalGoals = 0;
   let onTrackGoalsCount = 0;
 
   for (const student of students) {
+    const studentTasks = Array.isArray(student.pedagogicalTasks)
+      ? (student.pedagogicalTasks as Record<string, unknown>[])
+      : Array.isArray(student.dailyTasks)
+      ? (student.dailyTasks as Record<string, unknown>[])
+      : [];
+
+    for (const task of studentTasks) {
+      if (!task.text || !String(task.text).trim()) continue;
+      const isCompleted = Boolean(task.completed);
+      const taskDate = String(task.date || '');
+      const completedAt = task.completedAt ? String(task.completedAt) : undefined;
+      const dateToCompare = completedAt || taskDate;
+      const taskMs = dateToCompare ? new Date(dateToCompare).getTime() : NaN;
+
+      const taskItem: CompletedTaskSummary = {
+        id: typeof task.id === 'string' ? task.id : undefined,
+        studentId: typeof student.id === 'string' ? student.id : undefined,
+        studentName: String(student.name || 'תלמיד/ה'),
+        framework: String(student.educationalFramework || ''),
+        text: String(task.text).trim(),
+        date: taskDate,
+        time: task.time ? String(task.time) : undefined,
+        completedAt,
+        isAiGenerated: Boolean(task.isAiGenerated)
+      };
+
+      if (isCompleted) {
+        if (!Number.isNaN(taskMs)) {
+          if (nowMs - taskMs <= windowMs) {
+            completedTasks.push(taskItem);
+          }
+        } else {
+          completedTasks.push(taskItem);
+        }
+      } else {
+        pendingTasks.push(taskItem);
+      }
+    }
+
     const goals = Array.isArray(student.goals) ? student.goals : [];
     for (const goal of goals) {
       if (!goal.title || !goal.title.trim()) continue;
@@ -244,15 +304,22 @@ export function getPedagogicalAccomplishmentsSummary(
     }
   }
 
-  // Sort recent observations by newest first
+  // Sort recent observations and completed tasks by newest first
   recentObservations.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  completedTasks.sort((a, b) => {
+    const timeA = new Date(a.completedAt || a.date).getTime() || 0;
+    const timeB = new Date(b.completedAt || b.date).getTime() || 0;
+    return timeB - timeA;
+  });
 
   return {
     totalStudents: students.length,
     totalGoals,
     onTrackGoalsCount,
     recentObservations,
-    advancedGoals
+    advancedGoals,
+    completedTasks,
+    pendingTasks
   };
 }
 

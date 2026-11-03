@@ -3614,6 +3614,7 @@ export default function App() {
         }}
         currentUser={effectiveCurrentUser}
         userPreferences={userPreferences}
+        students={userStudents}
         onSavePreferences={handleSaveUserPreferences}
         enforcePasswordPolicy={enforcePasswordPolicy}
         onChangeOwnPassword={handleChangeOwnPassword}

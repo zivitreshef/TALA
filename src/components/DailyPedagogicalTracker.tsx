@@ -181,12 +181,45 @@ export default function DailyPedagogicalTracker({
   // Calendar Month Navigation
   const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date());
 
-  // Tasks (TODO) State
+  const [targetStudentId, setTargetBankStudentId] = useState(() => students[0]?.id || '');
+  const targetStudent = useMemo(() => {
+    return students.find((s: any) => s.id === targetStudentId) || students[0] || null;
+  }, [students, targetStudentId]);
+
+  // Tasks (TODO) State - Synced across cloud and local storage
   const [todos, setTodos] = useState(() => {
+    const cloudTasks: any[] = [];
+    (students || []).forEach((st: any) => {
+      const stTasks = Array.isArray(st.pedagogicalTasks)
+        ? st.pedagogicalTasks
+        : Array.isArray(st.dailyTasks)
+        ? st.dailyTasks
+        : [];
+      stTasks.forEach((t: any) => {
+        cloudTasks.push({
+          ...t,
+          studentId: t.studentId || st.id,
+          studentName: t.studentName || st.name
+        });
+      });
+    });
+
+    let localTasks: any[] = [];
     try {
       const saved = localStorage.getItem(STORAGE_TODOS_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) localTasks = JSON.parse(saved);
     } catch {}
+
+    const taskMap = new Map<string, any>();
+    cloudTasks.forEach((t) => { if (t && t.id) taskMap.set(t.id, t); });
+    localTasks.forEach((t) => {
+      if (t && t.id && !taskMap.has(t.id)) taskMap.set(t.id, t);
+    });
+
+    if (taskMap.size > 0) {
+      return Array.from(taskMap.values());
+    }
+
     return [
       {
         id: 'todo_1',
@@ -195,6 +228,7 @@ export default function DailyPedagogicalTracker({
         time: '09:30',
         completed: false,
         studentId: students[0]?.id || null,
+        studentName: students[0]?.name || '',
         priority: 'high'
       },
       {
@@ -204,6 +238,7 @@ export default function DailyPedagogicalTracker({
         time: '11:15',
         completed: false,
         studentId: students[1]?.id || null,
+        studentName: students[1]?.name || '',
         priority: 'medium'
       }
     ];
@@ -222,43 +257,125 @@ export default function DailyPedagogicalTracker({
   const handleAddTodo = (e: any) => {
     e.preventDefault();
     if (!newTodoText.trim()) return;
+    const currentStudent = students.find((s: any) => s.id === targetStudentId) || students[0];
     const newTask = {
       id: `todo_${Date.now()}`,
       text: newTodoText.trim(),
       date: newTodoDate || todayStr,
       time: newTodoTime || '',
-      completed: false
+      completed: false,
+      studentId: currentStudent?.id || null,
+      studentName: currentStudent?.name || ''
     };
     setTodos((prev: any) => [newTask, ...prev]);
     setNewTodoText('');
+
+    if (currentStudent && onUpdateStudent) {
+      const existing = Array.isArray(currentStudent.pedagogicalTasks)
+        ? currentStudent.pedagogicalTasks
+        : [];
+      onUpdateStudent({
+        ...currentStudent,
+        pedagogicalTasks: [newTask, ...existing]
+      });
+    }
   };
 
   const handleToggleTodo = (id: any) => {
-    setTodos((prev: any) =>
-      prev.map((t: any) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
+    let toggledTask: any = null;
+    const nextTodos = todos.map((t: any) => {
+      if (t.id === id) {
+        const nextCompleted = !t.completed;
+        toggledTask = {
+          ...t,
+          completed: nextCompleted,
+          completedAt: nextCompleted ? new Date().toISOString() : undefined
+        };
+        return toggledTask;
+      }
+      return t;
+    });
+    setTodos(nextTodos);
+
+    if (toggledTask && toggledTask.studentId && onUpdateStudent) {
+      const currentStudent = students.find((s: any) => s.id === toggledTask.studentId);
+      if (currentStudent) {
+        const existing = Array.isArray(currentStudent.pedagogicalTasks)
+          ? currentStudent.pedagogicalTasks
+          : [];
+        const taskExists = existing.some((t: any) => t.id === id);
+        const updatedTasks = taskExists
+          ? existing.map((t: any) => (t.id === id ? toggledTask : t))
+          : [toggledTask, ...existing];
+        onUpdateStudent({
+          ...currentStudent,
+          pedagogicalTasks: updatedTasks
+        });
+      }
+    }
   };
 
   const handleDeleteTodo = (id: any) => {
+    const taskToDelete = todos.find((t: any) => t.id === id);
     setTodos((prev: any) => prev.filter((t: any) => t.id !== id));
+    if (taskToDelete && taskToDelete.studentId && onUpdateStudent) {
+      const currentStudent = students.find((s: any) => s.id === taskToDelete.studentId);
+      if (currentStudent && Array.isArray(currentStudent.pedagogicalTasks)) {
+        onUpdateStudent({
+          ...currentStudent,
+          pedagogicalTasks: currentStudent.pedagogicalTasks.filter((t: any) => t.id !== id)
+        });
+      }
+    }
   };
 
   const [showAiTasksModal, setShowAiTasksModal] = useState(false);
   const [taskToast, setTaskToast] = useState('');
 
   const handleAddAiTasks = (tasksToAdd: any[]) => {
-    const formatted = tasksToAdd.map((t: any, idx: any) => ({
-      id: `todo_ai_${Date.now()}_${idx}`,
-      text: t.text,
-      date: t.date || selectedDate,
-      time: '',
-      completed: false,
-      studentId: t.studentId || null,
-      isAiGenerated: true
-    }));
+    const defaultStudent = students.find((s: any) => s.id === targetStudentId) || students[0];
+    const formatted = tasksToAdd.map((t: any, idx: any) => {
+      const stId = t.studentId || defaultStudent?.id || null;
+      const stObj = students.find((s: any) => s.id === stId);
+      return {
+        id: `todo_ai_${Date.now()}_${idx}`,
+        text: t.text,
+        date: t.date || selectedDate,
+        time: '',
+        completed: false,
+        studentId: stId,
+        studentName: stObj?.name || t.studentName || defaultStudent?.name || '',
+        isAiGenerated: true
+      };
+    });
+
     setTodos((prev: any) => [...formatted, ...prev]);
     setTaskToast(`✨ ${tasksToAdd.length} משימות פדגוגיות נוספו בהצלחה לרשימת היום!`);
     setTimeout(() => setTaskToast(''), 4500);
+
+    if (onUpdateStudent) {
+      const tasksByStudentId = new Map<string, any[]>();
+      formatted.forEach((task: any) => {
+        if (task.studentId) {
+          const arr = tasksByStudentId.get(task.studentId) || [];
+          arr.push(task);
+          tasksByStudentId.set(task.studentId, arr);
+        }
+      });
+
+      tasksByStudentId.forEach((newStudentTasks, stId) => {
+        const currentStudent = students.find((s: any) => s.id === stId);
+        if (currentStudent) {
+          const existing = Array.isArray(currentStudent.pedagogicalTasks)
+            ? currentStudent.pedagogicalTasks
+            : [];
+          onUpdateStudent({
+            ...currentStudent,
+            pedagogicalTasks: [...newStudentTasks, ...existing]
+          });
+        }
+      });
+    }
   };
 
   // Calendar Scheduled Meetings/Events State
@@ -414,10 +531,7 @@ export default function DailyPedagogicalTracker({
 
   // Dual-Mode Goal Updating State
   const [updaterMode, setUpdaterMode] = useState('ai'); // 'ai' | 'manual'
-  const [targetStudentId, setTargetBankStudentId] = useState(() => students[0]?.id || '');
-  const targetStudent = useMemo(() => {
-    return students.find((s: any) => s.id === targetStudentId) || students[0] || null;
-  }, [students, targetStudentId]);
+// targetStudent declared above
 
   // AI Free-text Note Mode State
   const [aiNoteText, setAiNoteText] = useState('');
@@ -1301,6 +1415,11 @@ export default function DailyPedagogicalTracker({
                         <span className={`todo-text ${todo.completed ? 'completed' : ''}`}>
                           {todo.text}
                         </span>
+                        {todo.studentName && (
+                          <span style={{ fontSize: '11px', color: '#1e3a5f', fontWeight: '700', marginTop: '2px' }}>
+                            👤 {todo.studentName}
+                          </span>
+                        )}
                         {todo.isAiGenerated && (
                           <span style={{ fontSize: '10.5px', color: '#8b6fc0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
                             <Sparkles size={10} />

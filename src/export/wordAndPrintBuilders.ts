@@ -1045,6 +1045,46 @@ export function buildEvalWordDocumentHtml(formData: any = {}, hideDetails = fals
           ${evalGoalsRowsHtml}
         </table>
 
+        ${(() => {
+          const completedTasks = (Array.isArray(formData.pedagogicalTasks)
+            ? formData.pedagogicalTasks
+            : (Array.isArray(formData.dailyTasks) ? formData.dailyTasks : []))
+            .filter((t: any) => t && t.completed);
+
+          const allObservations: any[] = [];
+          (formData.goals || []).forEach((g: any) => {
+            (g.observations || []).forEach((obs: any) => {
+              if (obs && (obs.note || obs.timestamp || obs.date)) {
+                allObservations.push({
+                  ...obs,
+                  goalTitle: g.title,
+                  environment: g.environment
+                });
+              }
+            });
+          });
+
+          if (completedTasks.length === 0 && allObservations.length === 0) return '';
+
+          return `
+            <div style="background-color:#f0fdfa; border:1px solid #99f6e4; padding:8pt 12pt; margin-top:12pt; margin-bottom:12pt; font-size:10pt; text-align:right;">
+              <strong style="color:#0f766e;">📌 ראיות מעקב שוטף – משימות ממוקדות ותצפיות שבוצעו לאורך התקופה:</strong>
+              ${completedTasks.length > 0 ? `
+                <div style="margin-top:4pt; font-weight:bold; color:#134e4a;">משימות פדגוגיות שהושלמו (${completedTasks.length}):</div>
+                <ul style="margin:4pt 0 6pt 16pt; padding:0; color:#334155;">
+                  ${completedTasks.slice(0, 10).map((t: any) => `<li style="margin-bottom:2pt;">${getRedactedText(t.text, formData, hideDetails)} <span style="color:#64748b; font-size:9pt;">(${t.date || ''}${t.isAiGenerated ? ' • מיקוד AI' : ''})</span></li>`).join('')}
+                </ul>
+              ` : ''}
+              ${allObservations.length > 0 ? `
+                <div style="margin-top:4pt; font-weight:bold; color:#134e4a;">תצפיות שטח ומשובי ליווי (${allObservations.length}):</div>
+                <ul style="margin:4pt 0 6pt 16pt; padding:0; color:#334155;">
+                  ${allObservations.slice(0, 8).map((o: any) => `<li style="margin-bottom:2pt;">[${o.environment || 'כללי'}] ${o.note ? `"${getRedactedText(o.note, formData, hideDetails)}"` : 'תצפית שטח'} <span style="color:#64748b; font-size:9pt;">(${o.date || o.timestamp ? new Date(o.date || o.timestamp).toLocaleDateString('he-IL') : ''}${o.supportLevel ? ` - ${o.supportLevel}` : ''})</span></li>`).join('')}
+                </ul>
+              ` : ''}
+            </div>
+          `;
+        })()}
+
         ${
           recommendationsHtml
             ? `
@@ -1266,6 +1306,46 @@ export function buildEvalReportPrintHtml(formData: any = {}, hideDetails = false
             ${evalRowsHtml}
           </tbody>
         </table>
+
+        ${(() => {
+          const completedTasks = (Array.isArray(formData.pedagogicalTasks)
+            ? formData.pedagogicalTasks
+            : (Array.isArray(formData.dailyTasks) ? formData.dailyTasks : []))
+            .filter((t: any) => t && t.completed);
+
+          const allObservations: any[] = [];
+          (formData.goals || []).forEach((g: any) => {
+            (g.observations || []).forEach((obs: any) => {
+              if (obs && (obs.note || obs.timestamp || obs.date)) {
+                allObservations.push({
+                  ...obs,
+                  goalTitle: g.title,
+                  environment: g.environment
+                });
+              }
+            });
+          });
+
+          if (completedTasks.length === 0 && allObservations.length === 0) return '';
+
+          return `
+            <div style="background-color:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:10px 14px; margin-top:14px; margin-bottom:14px; font-size:12.5px; text-align:right;">
+              <strong style="color:#0f766e; font-size:13px;">📌 ראיות מעקב שוטף – משימות ממוקדות ותצפיות שבוצעו לאורך התקופה:</strong>
+              ${completedTasks.length > 0 ? `
+                <div style="margin-top:6px; font-weight:bold; color:#134e4a;">משימות פדגוגיות שהושלמו (${completedTasks.length}):</div>
+                <ul style="margin:4px 0 6px 18px; padding:0; color:#334155;">
+                  ${completedTasks.slice(0, 10).map((t: any) => `<li style="margin-bottom:2px;">${getRedactedText(t.text, formData, hideDetails)} <span style="color:#64748b; font-size:11px;">(${t.date || ''}${t.isAiGenerated ? ' • מיקוד AI' : ''})</span></li>`).join('')}
+                </ul>
+              ` : ''}
+              ${allObservations.length > 0 ? `
+                <div style="margin-top:6px; font-weight:bold; color:#134e4a;">תצפיות שטח ומשובי ליווי (${allObservations.length}):</div>
+                <ul style="margin:4px 0 6px 18px; padding:0; color:#334155;">
+                  ${allObservations.slice(0, 8).map((o: any) => `<li style="margin-bottom:2px;">[${o.environment || 'כללי'}] ${o.note ? `"${getRedactedText(o.note, formData, hideDetails)}"` : 'תצפית שטח'} <span style="color:#64748b; font-size:11px;">(${o.date || o.timestamp ? new Date(o.date || o.timestamp).toLocaleDateString('he-IL') : ''}${o.supportLevel ? ` - ${o.supportLevel}` : ''})</span></li>`).join('')}
+                </ul>
+              ` : ''}
+            </div>
+          `;
+        })()}
 
         <div class="recommendations-box">
           <strong>המלצות להמשך:</strong><br/>
