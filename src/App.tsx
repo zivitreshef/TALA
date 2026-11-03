@@ -343,7 +343,8 @@ export default function App() {
     hasUpdate: hasAppUpdate,
     dismissed: isAppUpdateDismissed,
     dismiss: dismissAppUpdate,
-    refreshNow: refreshAppNow
+    refreshNow: refreshAppNow,
+    checkNow: checkAppVersionNow
   } = useAppVersionCheck({ currentVersion: CURRENT_APP_VERSION });
 
   const handleUpdateUpgradeBanner = (nextBanner: any) => {
@@ -1612,9 +1613,11 @@ export default function App() {
       signOutFirebaseAuthSession();
     });
 
-    // 2-minute presence & session heartbeat
+    // 2-minute presence, session heartbeat & version check
+    checkAppVersionNow();
     sendSessionHeartbeat(email, sessionId);
     const heartbeatInterval = setInterval(() => {
+      checkAppVersionNow();
       sendSessionHeartbeat(email, sessionId);
     }, 2 * 60 * 1000);
 
