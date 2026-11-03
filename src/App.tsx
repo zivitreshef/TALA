@@ -56,6 +56,9 @@ import {
 } from './domain/userPreferences';
 import AdminAllowlistModal from './components/modals/AdminAllowlistModal';
 import UpgradeBanner from './components/UpgradeBanner';
+import NewVersionBanner from './components/NewVersionBanner';
+import { useAppVersionCheck } from './services/versionChecker';
+import { reloadApplication } from './services/appRefresh';
 import SessionEvictedModal from './components/modals/SessionEvictedModal';
 import {
   subscribeToSession,
@@ -333,6 +336,15 @@ export default function App() {
     } catch (_) {}
     return null;
   });
+
+  // Automated new version detection & banner
+  const {
+    latestVersion: newPublishedVersion,
+    hasUpdate: hasAppUpdate,
+    dismissed: isAppUpdateDismissed,
+    dismiss: dismissAppUpdate,
+    refreshNow: refreshAppNow
+  } = useAppVersionCheck({ currentVersion: CURRENT_APP_VERSION });
 
   const handleUpdateUpgradeBanner = (nextBanner: any) => {
     setUpgradeBanner(nextBanner);
@@ -1639,6 +1651,7 @@ export default function App() {
       }
     }
     await signOutFirebaseAuthSession();
+    reloadApplication();
   };
 
   const handleLogout = () => {
@@ -2240,6 +2253,14 @@ export default function App() {
             onAcknowledge={() => setEvictionModalInfo(null)}
           />
         )}
+        <NewVersionBanner
+          latestVersion={newPublishedVersion}
+          hasUpdate={hasAppUpdate}
+          dismissed={isAppUpdateDismissed}
+          onRefresh={refreshAppNow}
+          onDismiss={dismissAppUpdate}
+          isDirty={false}
+        />
         <AllowlistAuthGate
           allowedUsers={allowedUsers}
           onLoginSuccess={handleLoginSuccess}
@@ -2386,6 +2407,14 @@ export default function App() {
         isDirty={Boolean(unsavedDraftState?.isDirty)}
       />
       {/* Top Stained-Glass Accent Strip */}
+      <NewVersionBanner
+        latestVersion={newPublishedVersion}
+        hasUpdate={hasAppUpdate}
+        dismissed={isAppUpdateDismissed}
+        onRefresh={refreshAppNow}
+        onDismiss={dismissAppUpdate}
+        isDirty={Boolean(unsavedDraftState?.isDirty)}
+      />
       <div className="stained-glass-top-strip" />
       {/* Top Header */}
       <header className="tala-header">
