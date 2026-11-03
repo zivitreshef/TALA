@@ -10,29 +10,29 @@ import NewVersionBanner from '../components/NewVersionBanner';
 describe('Version Checker, Notification Banner & Application Reload Protocol', () => {
   describe('isNewerVersion semantic comparison', () => {
     it('correctly identifies newer patch versions', () => {
-      expect(isNewerVersion('2.6.3', '2.6.2')).toBe(true);
-      expect(isNewerVersion('2.6.10', '2.6.2')).toBe(true);
-      expect(isNewerVersion('2.6.2', '2.6.2')).toBe(false);
-      expect(isNewerVersion('2.6.1', '2.6.2')).toBe(false);
+      expect(isNewerVersion('2.6.4', '2.6.3')).toBe(true);
+      expect(isNewerVersion('2.6.10', '2.6.3')).toBe(true);
+      expect(isNewerVersion('2.6.3', '2.6.3')).toBe(false);
+      expect(isNewerVersion('2.6.2', '2.6.3')).toBe(false);
     });
 
     it('correctly identifies newer minor and major versions', () => {
-      expect(isNewerVersion('2.7.0', '2.6.2')).toBe(true);
-      expect(isNewerVersion('3.0.0', '2.6.2')).toBe(true);
-      expect(isNewerVersion('1.9.9', '2.6.2')).toBe(false);
+      expect(isNewerVersion('2.7.0', '2.6.3')).toBe(true);
+      expect(isNewerVersion('3.0.0', '2.6.3')).toBe(true);
+      expect(isNewerVersion('1.9.9', '2.6.3')).toBe(false);
     });
 
     it('handles extra segment lengths and sub-patches', () => {
-      expect(isNewerVersion('2.6.2.1', '2.6.2')).toBe(true);
-      expect(isNewerVersion('2.6.2', '2.6.2.1')).toBe(false);
+      expect(isNewerVersion('2.6.3.1', '2.6.3')).toBe(true);
+      expect(isNewerVersion('2.6.3', '2.6.3.1')).toBe(false);
     });
 
     it('gracefully returns false for missing, empty, or invalid versions', () => {
-      expect(isNewerVersion(null, '2.6.2')).toBe(false);
-      expect(isNewerVersion(undefined, '2.6.2')).toBe(false);
-      expect(isNewerVersion('', '2.6.2')).toBe(false);
-      expect(isNewerVersion('invalid', '2.6.2')).toBe(false);
-      expect(isNewerVersion('2.6.2', '')).toBe(false);
+      expect(isNewerVersion(null, '2.6.3')).toBe(false);
+      expect(isNewerVersion(undefined, '2.6.3')).toBe(false);
+      expect(isNewerVersion('', '2.6.3')).toBe(false);
+      expect(isNewerVersion('invalid', '2.6.3')).toBe(false);
+      expect(isNewerVersion('2.6.3', '')).toBe(false);
     });
   });
 
@@ -44,7 +44,7 @@ describe('Version Checker, Notification Banner & Application Reload Protocol', (
     });
 
     it('fetches version.json with cache-busting headers and parses json', async () => {
-      const mockManifest = { version: '2.6.3', builtAt: '2026-11-03T11:00:00Z' };
+      const mockManifest = { version: '2.6.4', builtAt: '2026-11-03T11:00:00Z' };
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => mockManifest
@@ -146,14 +146,14 @@ describe('Version Checker, Notification Banner & Application Reload Protocol', (
   describe('NewVersionBanner UI Component', () => {
     it('returns empty HTML when hasUpdate is false', () => {
       const html = renderToStaticMarkup(
-        <NewVersionBanner latestVersion="2.6.3" hasUpdate={false} />
+        <NewVersionBanner latestVersion="2.6.4" hasUpdate={false} />
       );
       expect(html).toBe('');
     });
 
     it('returns empty HTML when dismissed is true', () => {
       const html = renderToStaticMarkup(
-        <NewVersionBanner latestVersion="2.6.3" hasUpdate={true} dismissed={true} />
+        <NewVersionBanner latestVersion="2.6.4" hasUpdate={true} dismissed={true} />
       );
       expect(html).toBe('');
     });
@@ -167,13 +167,13 @@ describe('Version Checker, Notification Banner & Application Reload Protocol', (
 
     it('renders banner with version announcement in RTL and proper classes', () => {
       const html = renderToStaticMarkup(
-        <NewVersionBanner latestVersion="2.6.3" hasUpdate={true} isDirty={false} />
+        <NewVersionBanner latestVersion="2.6.4" hasUpdate={true} isDirty={false} />
       );
 
       expect(html).toContain('tala-new-version-banner');
       expect(html).toContain('dir="rtl"');
       expect(html).toContain('role="status"');
-      expect(html).toContain('גרסה חדשה של טל״א זמינה (2.6.3)!');
+      expect(html).toContain('גרסה חדשה של טל״א זמינה (2.6.4)!');
       expect(html).toContain('הגרסה העדכנית כוללת שיפורים ותיקונים');
       expect(html).toContain('btn-version-refresh');
       expect(html).toContain('btn-version-dismiss');
@@ -182,7 +182,7 @@ describe('Version Checker, Notification Banner & Application Reload Protocol', (
 
     it('shows unsaved work hint when isDirty is true', () => {
       const html = renderToStaticMarkup(
-        <NewVersionBanner latestVersion="2.6.3" hasUpdate={true} isDirty={true} />
+        <NewVersionBanner latestVersion="2.6.4" hasUpdate={true} isDirty={true} />
       );
 
       expect(html).toContain('שימו לב: מומלץ לשמור את השינויים לפני הרענון');
@@ -193,7 +193,7 @@ describe('Version Checker, Notification Banner & Application Reload Protocol', (
       const onDismiss = vi.fn();
 
       const element = NewVersionBanner({
-        latestVersion: '2.6.3',
+        latestVersion: '2.6.4',
         hasUpdate: true,
         onRefresh,
         onDismiss

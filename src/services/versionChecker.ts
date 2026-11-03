@@ -75,7 +75,7 @@ export async function fetchLatestVersion(
 
 export interface UseAppVersionCheckOptions {
   currentVersion?: string;
-  checkIntervalMs?: number;
+  checkIntervalMs?: number | null;
   initialDelayMs?: number;
   minVisibilityIntervalMs?: number;
   enabled?: boolean;
@@ -90,13 +90,12 @@ export interface UseAppVersionCheckReturn {
   checkNow: () => Promise<void>;
 }
 
-const DEFAULT_CHECK_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const DEFAULT_INITIAL_DELAY_MS = 3 * 1000; // 3 seconds after boot
 const DEFAULT_VISIBILITY_THROTTLE_MS = 5 * 60 * 1000; // 5 minutes
 
 export function useAppVersionCheck({
   currentVersion = CURRENT_APP_VERSION,
-  checkIntervalMs = DEFAULT_CHECK_INTERVAL_MS,
+  checkIntervalMs = null,
   initialDelayMs = DEFAULT_INITIAL_DELAY_MS,
   minVisibilityIntervalMs = DEFAULT_VISIBILITY_THROTTLE_MS,
   enabled = true
@@ -138,10 +137,13 @@ export function useAppVersionCheck({
       checkNow();
     }, initialDelayMs);
 
-    // 2. Periodic interval
-    const intervalId = setInterval(() => {
-      checkNow();
-    }, checkIntervalMs);
+    // 2. Periodic interval (only if explicitly configured)
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+    if (checkIntervalMs && checkIntervalMs > 0) {
+      intervalId = setInterval(() => {
+        checkNow();
+      }, checkIntervalMs);
+    }
 
     // 3. Visibility check when user returns to tab
     const handleVisibilityChange = () => {
@@ -158,7 +160,7 @@ export function useAppVersionCheck({
     return () => {
       isMountedRef.current = false;
       clearTimeout(initialTimer);
-      clearInterval(intervalId);
+      if (intervalId) clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [enabled, checkNow, initialDelayMs, checkIntervalMs, minVisibilityIntervalMs]);
