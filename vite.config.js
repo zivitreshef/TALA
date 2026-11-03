@@ -9,8 +9,28 @@ function resolveSiteVersionFromGit() {
   return pkg.version || '2.0.3';
 }
 
+function versionJsonPlugin() {
+  return {
+    name: 'generate-version-json',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify(
+          {
+            version: resolveSiteVersionFromGit(),
+            builtAt: new Date().toISOString()
+          },
+          null,
+          2
+        )
+      });
+    }
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), versionJsonPlugin()],
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(resolveSiteVersionFromGit())

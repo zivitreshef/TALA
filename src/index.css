@@ -227,6 +227,112 @@ input, textarea, select, button {
   background: rgba(255, 255, 255, 0.15);
 }
 
+/* === NEW VERSION NOTIFICATION BANNER === */
+.tala-new-version-banner {
+  background: linear-gradient(90deg, #065f46 0%, #059669 45%, #047857 100%);
+  color: #ffffff;
+  border-bottom: 2px solid #34d399;
+  padding: 8px 16px;
+  position: relative;
+  z-index: 9998;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+  font-family: inherit;
+  animation: bannerFadeIn 0.3s ease-out;
+}
+
+.tala-new-version-banner-content {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tala-new-version-msg-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.tala-new-version-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  padding: 6px;
+  flex-shrink: 0;
+}
+
+.tala-new-version-sparkle-icon {
+  color: #a7f3d0;
+  animation: alertPulse 2s infinite ease-in-out;
+}
+
+.tala-new-version-text {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #ffffff;
+}
+
+.tala-new-version-title {
+  font-weight: 800;
+  color: #a7f3d0;
+  margin-left: 6px;
+}
+
+.tala-new-version-desc {
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.tala-new-version-dirty-hint {
+  color: #fef08a;
+  font-size: 12px;
+}
+
+.tala-new-version-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.btn-version-refresh {
+  background: #ffffff;
+  color: #065f46;
+}
+
+.btn-version-refresh:hover {
+  background: #ecfdf5;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn-banner-dismiss {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-banner-dismiss:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
 /* === AUTH GATE (EXECUTIVE SPLIT LANDING PAGE) === */
 .auth-page-wrapper {
   min-height: 100vh;
