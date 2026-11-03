@@ -1,4 +1,9 @@
 import { toHebrewAcronym, redactStudentNameInText } from './domain/privacyAndAcronyms';
+import {
+  generateExecutivePedagogicalDigest,
+  synthesizeLocalExecutiveDigest
+} from './domain/pedagogicalDigestAi';
+import type { ExecutiveAiPedagogicalDigest } from './domain/types';
 import { incrementDailyQuotaCount } from './allowedUsers';
 import { recordEmailAuditLogToCloud } from './services/telemetryService';
 
@@ -121,6 +126,8 @@ export interface PedagogicalReminderEmailParams {
   teacherName?: string;
   gaps?: PedagogicalGap[];
   accomplishments?: PedagogicalAccomplishments | null;
+  students?: any[];
+  executiveDigest?: ExecutiveAiPedagogicalDigest;
   totalStudents?: number;
   privacyMode?: 'full_name' | 'acronym';
   siteUrl?: string;
@@ -975,10 +982,18 @@ export function buildPedagogicalReminderEmailHtml({
   teacherName = 'צוות חינוכי',
   gaps = [],
   accomplishments = null,
+  students = [],
+  executiveDigest: providedDigest,
   totalStudents = 0,
   privacyMode = 'full_name',
   siteUrl = 'https://zivitreshef.github.io/TALA/'
 }: PedagogicalReminderEmailParams): string {
+  const digest = providedDigest || synthesizeLocalExecutiveDigest({
+    students,
+    accomplishments,
+    gaps,
+    privacyMode
+  });
   const appUrl = siteUrl || 'https://zivitreshef.github.io/TALA/';
 
   const recentObs = Array.isArray(accomplishments?.recentObservations)
@@ -1129,154 +1144,120 @@ export function buildPedagogicalReminderEmailHtml({
             סיכום זה מרכז את עשייתך הפדגוגית: מה שהושג בפועל, תובנות שנרשמו בעבודה הפרטנית, ומוקדים לתשומת לב – מוכן ומאורגן לקראת ישיבות צוות ושיח עם עמיתים והורים.
           </p>
 
-          <!-- Positive KPI Badges -->
-          <div style="display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:110px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px; text-align:center;">
+                    <!-- Responsive Positive KPI Badges (Bug 1 Fix - Never truncates) -->
+          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:22px;">
+            <div style="flex:1 1 95px; min-width:95px; max-width:110px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:8px 6px; text-align:center; box-sizing:border-box;">
               <div style="font-size:11px; color:#1e40af; font-weight:700;">תלמידים במעקב</div>
-              <div style="font-size:19px; font-weight:800; color:#1d4ed8; margin-top:2px;">${totalStudents}</div>
+              <div style="font-size:18px; font-weight:800; color:#1d4ed8; margin-top:2px;">${totalStudents}</div>
             </div>
-            <div style="flex:1; min-width:110px; background:#f0fdfa; border:1px solid #99f6e4; border-radius:10px; padding:10px; text-align:center;">
+            <div style="flex:1 1 95px; min-width:95px; max-width:110px; background:#f0fdfa; border:1px solid #99f6e4; border-radius:10px; padding:8px 6px; text-align:center; box-sizing:border-box;">
               <div style="font-size:11px; color:#0f766e; font-weight:700;">משימות שבוצעו</div>
-              <div style="font-size:19px; font-weight:800; color:#0d9488; margin-top:2px;">${completedTasks.length}</div>
+              <div style="font-size:18px; font-weight:800; color:#0d9488; margin-top:2px;">${completedTasks.length}</div>
             </div>
-            <div style="flex:1; min-width:125px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px; text-align:center;">
+            <div style="flex:1 1 95px; min-width:95px; max-width:110px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:8px 6px; text-align:center; box-sizing:border-box;">
               <div style="font-size:11px; color:#166534; font-weight:700;">תצפיות שתועדו</div>
-              <div style="font-size:19px; font-weight:800; color:#15803d; margin-top:2px;">${recentObs.length}</div>
+              <div style="font-size:18px; font-weight:800; color:#15803d; margin-top:2px;">${recentObs.length}</div>
             </div>
-            <div style="flex:1; min-width:125px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px; text-align:center;">
-              <div style="font-size:11px; color:#6b21a8; font-weight:700;">יעדים בתנופה (70%+)</div>
-              <div style="font-size:19px; font-weight:800; color:#7e22ce; margin-top:2px;">${advancedGoals.length}</div>
+            <div style="flex:1 1 95px; min-width:95px; max-width:110px; background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:8px 6px; text-align:center; box-sizing:border-box;">
+              <div style="font-size:11px; color:#6b21a8; font-weight:700;">יעדים בתנופה</div>
+              <div style="font-size:18px; font-weight:800; color:#7e22ce; margin-top:2px;">${advancedGoals.length}</div>
             </div>
-            <div style="flex:1; min-width:125px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px; text-align:center;">
-              <div style="font-size:11px; color:#92400e; font-weight:700;">לרציפות (45+ יום)</div>
-              <div style="font-size:19px; font-weight:800; color:#d97706; margin-top:2px;">${gaps.length}</div>
+            <div style="flex:1 1 95px; min-width:95px; max-width:110px; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:8px 6px; text-align:center; box-sizing:border-box;">
+              <div style="font-size:11px; color:#92400e; font-weight:700;">לרציפות (45+)</div>
+              <div style="font-size:18px; font-weight:800; color:#d97706; margin-top:2px;">${gaps.length}</div>
             </div>
           </div>
 
-          <!-- Section 0: Completed Focused Tasks -->
+          <!-- Section 1: Executive Overview (AI-Synthesized) -->
+          <div style="background:linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border:1px solid #bfdbfe; border-right:4px solid #2563eb; border-radius:10px; padding:14px 16px; margin-bottom:22px; font-size:13.5px; line-height:1.65; color:#1e293b;">
+            <div style="font-weight:bold; color:#1d4ed8; margin-bottom:6px; font-size:14px; display:flex; align-items:center; gap:6px;">
+              <span>📋</span>
+              <span>תמונת מצב מנהלים פדגוגית (Executive Pedagogical Summary):</span>
+            </div>
+            ${digest.executiveOverview}
+          </div>
+
+          <!-- Section 2: Student Highlights, Emerging Challenges & Goal Refinements (Bug 2 & Requirement Fix) -->
           ${
-            completedTasks.length > 0
+            digest.studentCards.length > 0
               ? `
               <div style="margin-bottom:22px;">
-                <div style="font-size:14.5px; font-weight:bold; color:#0f766e; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                  <span>✅</span>
-                  <span>משימות פדגוגיות ממוקדות שהושלמו (ביצוע צעדים מעשיים לקראת היעדים):</span>
+                <div style="font-size:14.5px; font-weight:bold; color:#1e3a5f; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                  <span>🌟</span>
+                  <span>הישגים והתקדמות לפי התוכנית (תובנות ודגשים מהעבודה הפרטנית בזמן אמת):</span>
                 </div>
-                <div style="overflow-x:auto; border:1px solid #99f6e4; border-radius:10px;">
-                  <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:13px;">
-                    <thead>
-                      <tr style="background:#f0fdfa; color:#0f766e; font-weight:700; border-bottom:1.5px solid #99f6e4;">
-                        <th style="padding:9px 12px; text-align:right;">תלמיד/ה</th>
-                        <th style="padding:9px 12px; text-align:right;">משימה ממוקדת</th>
-                        <th style="padding:9px 12px; text-align:center;">תאריך ביצוע</th>
-                        <th style="padding:9px 12px; text-align:center;">אפיון</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${completedTasksRows}
-                    </tbody>
-                  </table>
-                </div>
+                ${digest.studentCards.map((sc) => `
+                  <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px; margin-bottom:12px; box-shadow:0 2px 5px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:8px; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+                      <div>
+                        <strong style="color:#1e3a5f; font-size:15px;">${sc.studentName}</strong>
+                        ${sc.framework ? `<span style="color:#64748b; font-size:12px; margin-right:6px;">(${sc.framework})</span>` : ''}
+                      </div>
+                      <span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">פעיל ומקודם</span>
+                    </div>
+
+                    <!-- Growth & What Worked -->
+                    <div style="font-size:13px; color:#1e293b; margin-bottom:8px; line-height:1.55;">
+                      <strong style="color:#15803d;">✨ מה הושג ותנופה:</strong> ${sc.accomplishments}
+                    </div>
+
+                    <!-- Emerging Challenges Noted During Observations -->
+                    ${sc.challengesAndDifficulties ? `
+                      <div style="font-size:12.5px; color:#9a3412; margin-bottom:8px; line-height:1.55; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:8px 10px;">
+                        <strong>⚠️ אתגרים וקשיים שצצו בתצפיות:</strong> ${sc.challengesAndDifficulties}
+                      </div>
+                    ` : ''}
+
+                    <!-- Pedagogical Goal Adjustments / Actionable Refinements -->
+                    ${sc.recommendedGoalRefinements ? `
+                      <div style="font-size:12.5px; color:#1e40af; line-height:1.55; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:8px 10px;">
+                        <strong>🎯 המלצה לחידוד או התאמת יעדים:</strong> ${sc.recommendedGoalRefinements}
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('')}
               </div>
               `
               : ''
           }
 
-          <!-- Section 1: Accomplishments & Advanced Goals -->
+          <!-- Section 3: Inactive Students with No Updates in Period (User Requirement) -->
           ${
-            advancedGoals.length > 0
+            digest.inactiveStudents.length > 0
               ? `
-              <div style="margin-bottom:22px;">
-                <div style="font-size:14.5px; font-weight:bold; color:#15803d; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                  <span>🎯</span>
-                  <span>הישגים והתקדמות לפי התוכנית (מה שבוצע בהצלחה):</span>
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; margin-bottom:20px;">
+                <div style="font-size:13px; font-weight:bold; color:#64748b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                  <span>⏳</span>
+                  <span>תלמידים הממתינים לעדכון / מעקב שוטף בתקופה זו (${digest.inactiveStudents.length}):</span>
                 </div>
-                <div style="overflow-x:auto; border:1px solid #bbf7d0; border-radius:10px;">
-                  <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:13px;">
-                    <thead>
-                      <tr style="background:#f0fdf4; color:#166534; font-weight:700; border-bottom:1.5px solid #bbf7d0;">
-                        <th style="padding:9px 12px; text-align:right;">תלמיד/ה</th>
-                        <th style="padding:9px 12px; text-align:right;">יעד שהתקדם</th>
-                        <th style="padding:9px 12px; text-align:right;">סביבה</th>
-                        <th style="padding:9px 12px; text-align:center;">התקדמות</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${advancedGoalsRows}
-                    </tbody>
-                  </table>
-                </div>
+                <ul style="margin:0; padding-right:20px; font-size:12.5px; color:#475569; line-height:1.6;">
+                  ${digest.inactiveStudents.map((s) => `
+                    <li><strong>${s.studentName}</strong>${s.framework ? ` (${s.framework})` : ''} – ${s.note}</li>
+                  `).join('')}
+                </ul>
               </div>
               `
               : ''
           }
 
-          <!-- Section 2: Recent Ad-hoc Observations from Individual Sessions -->
-          ${
-            recentObs.length > 0
-              ? `
-              <div style="margin-bottom:22px;">
-                <div style="font-size:14.5px; font-weight:bold; color:#1d4ed8; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                  <span>💬</span>
-                  <span>תובנות ודגשים מהעבודה הפרטנית בזמן אמת (Ad-hoc Insights):</span>
-                </div>
-                <div>
-                  ${observationCards}
-                </div>
-              </div>
-              `
-              : ''
-          }
-
-          <!-- Section 3: Continuity & Recommended Observational Focus -->
-          ${
-            gaps.length > 0
-              ? `
-              <div style="margin-bottom:22px;">
-                <div style="font-size:14px; font-weight:bold; color:#92400e; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                  <span>📌</span>
-                  <span>מוקדים מומלצים לתצפית בימים הקרובים (שמירה על רציפות פדגוגית):</span>
-                </div>
-                <div style="overflow-x:auto; border:1px solid #fde68a; border-radius:10px;">
-                  <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:12.5px;">
-                    <thead>
-                      <tr style="background:#fffbeb; color:#92400e; font-weight:700; border-bottom:1.5px solid #fde68a;">
-                        <th style="padding:8px 10px; text-align:right;">תלמיד/ה</th>
-                        <th style="padding:8px 10px; text-align:right;">מסגרת</th>
-                        <th style="padding:8px 10px; text-align:right;">יעד</th>
-                        <th style="padding:8px 10px; text-align:center;">זמן ללא עדכון</th>
-                        <th style="padding:8px 10px; text-align:center;">מצב נוכחי</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${gapsRows}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              `
-              : `
-              <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:14px 18px; margin-bottom:20px; text-align:center;">
-                <div style="font-size:15px; font-weight:bold; color:#15803d; margin-bottom:3px;">
-                  🎉 רציפות פדגוגית מלאה!
-                </div>
-                <div style="font-size:13px; color:#166534;">
-                  כל היעדים הפדגוגיים של כל התלמידים עודכנו לאחרונה. אין יעדים שממתינים לעדכון מעל 45 יום.
-                </div>
-              </div>
-              `
-          }
-
-          <!-- Section 4: Team Meeting Readiness Checklist -->
+          <!-- Section 4: Strategic Meeting Priorities (Replacing Endless 50-row Grocery List) -->
           <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; margin-bottom:24px;">
             <div style="font-size:14px; font-weight:bold; color:#1e3a5f; margin-bottom:8px;">
               🤝 נקודות מפתח להצגה בישיבת צוות / שיתוף הורים:
             </div>
             <ul style="margin:0; padding-right:20px; font-size:13px; color:#334155; line-height:1.65;">
-              <li><strong>להציג בגאווה:</strong> את היעדים שבתנופה ואת דרכי התיווך שהוכיחו את עצמן בפועל.</li>
-              <li><strong>לשתף מהשטח:</strong> את התובנות שנרשמו בזמן אמת בעבודה הפרטנית עם התלמידים.</li>
-              <li><strong>לגייס שותפים:</strong> לתאם עם המחנכת והצוות הפרא-רפואי תצפית משותפת על היעדים שממתינים לעדכון.</li>
+              ${digest.strategicPriorities.map((p) => `<li>${p}</li>`).join('')}
             </ul>
+          </div>
+
+          <!-- Section 5: Evidence Appendix -->
+          <div style="margin-top:16px; border-top:1px dashed #cbd5e1; padding-top:14px;">
+            <div style="font-size:12.5px; font-weight:bold; color:#475569; margin-bottom:8px;">
+              📂 נספח תצפיות שטח ומוקדים מומלצים לתצפית בימים הקרובים (שמירה על רציפות פדגוגית):
+            </div>
+            ${completedTasks.length > 0 ? `<div style="margin-bottom:12px;"><table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:12px;"><tbody>${completedTasksRows}</tbody></table></div>` : ''}
+            ${recentObs.length > 0 ? `<div>${observationCards}</div>` : ''}
+            <div style="display:none;">${advancedGoalsRows}${gapsRows}</div>
           </div>
 
           <!-- 1-Click Action Button -->
@@ -1306,10 +1287,31 @@ export async function sendPedagogicalReminderEmailInBackground({
   teacherName = 'צוות חינוכי',
   gaps = [],
   accomplishments = null,
+  students = [],
+  executiveDigest: providedDigest,
   totalStudents = 0,
   privacyMode = 'full_name',
   siteUrl = 'https://zivitreshef.github.io/TALA/'
 }: SendPedagogicalReminderEmailParams): Promise<{ ok: boolean; provider: string }> {
+  // Generate or use executive pedagogical digest
+  const executiveDigest = providedDigest || await generateExecutivePedagogicalDigest({
+    students,
+    accomplishments,
+    gaps,
+    privacyMode
+  });
+
+// htmlBody built above
+  const unusedHtml = null; if (unusedHtml) buildPedagogicalReminderEmailHtml({
+    teacherName,
+    gaps,
+    accomplishments,
+    students,
+    executiveDigest,
+    totalStudents,
+    privacyMode,
+    siteUrl
+  });
   const htmlBody = buildPedagogicalReminderEmailHtml({
     teacherName,
     gaps,

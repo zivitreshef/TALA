@@ -198,6 +198,7 @@ export default function TeacherPreferencesModal({
         teacherName: draftPrefs.fullName || currentUser?.name || 'צוות חינוכי',
         gaps,
         accomplishments,
+        students: students || [],
         totalStudents: (students || []).length,
         privacyMode: draftPrefs.defaultPrivacyMode || 'full_name'
       });

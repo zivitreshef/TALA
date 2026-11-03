@@ -3,6 +3,7 @@ import {
   getPedagogicalAccomplishmentsSummary,
   getObservationGaps
 } from '../domain/dailyPedagogicalTracking';
+import { synthesizeLocalExecutiveDigest } from '../domain/pedagogicalDigestAi';
 import { buildPedagogicalReminderEmailHtml } from '../emailService';
 import {
   buildEvalWordDocumentHtml,
@@ -130,5 +131,117 @@ describe('Pedagogical Tasks Cloud Sync, Digest & Mid-Year Evaluation (Bugs 1-4)'
     expect(printHtml).toContain('ראיות מעקב שוטף – משימות ממוקדות ותצפיות');
     expect(printHtml).toContain('תרגול פנייה יזומה לחבר');
     expect(printHtml).toContain('איתי שיתף פעולה עם חבר בבנייה בחול');
+  });
+  it('6. Executive Digest captures emerging challenges and formulates actionable goal adjustments', () => {
+    const studentWithChallenge = {
+      id: 'st_challenge',
+      name: 'ארבל חנה',
+      educationalFramework: 'גן דקלים',
+      goals: [
+        {
+          id: 'g_lang',
+          title: 'הרחבת אוצר המילים והבעה שפתית',
+          environment: 'מפגש גן',
+          currentProgress: 40,
+          targetProgress: 80,
+          observations: [
+            {
+              id: 'obs_c1',
+              timestamp: new Date().toISOString(),
+              date: new Date().toISOString().slice(0, 10),
+              note: 'הילדה מתקשה במושגי סדר ורצף, שליפת מילים וארגון משפט גם עם תמיכה',
+              supportLevel: 'ליווי והדגמה מלאה',
+              progress: 40
+            }
+          ]
+        }
+      ]
+    };
+
+    const accomplishments = getPedagogicalAccomplishmentsSummary([studentWithChallenge], 30, new Date());
+    const digest = synthesizeLocalExecutiveDigest({
+      students: [studentWithChallenge],
+      accomplishments,
+      gaps: [],
+      privacyMode: 'full_name'
+    });
+
+    expect(digest.studentCards.length).toBe(1);
+    const card = digest.studentCards[0];
+    expect(card.studentName).toBe('ארבל חנה');
+    expect(card.challengesAndDifficulties).toBeDefined();
+    expect(card.challengesAndDifficulties).toContain('מתקשה');
+    expect(card.recommendedGoalRefinements).toBeDefined();
+    expect(card.recommendedGoalRefinements).toContain('לחדד את המדדים');
+    expect(digest.executiveOverview).toContain('1 תלמידים');
+  });
+
+  it('7. Executive Digest identifies inactive students and outputs concise no-progress notes', () => {
+    const activeStudent = {
+      id: 'st_active',
+      name: 'איתי לוי',
+      goals: [],
+      pedagogicalTasks: [
+        { id: 't_act', text: 'משימה פעילה', completed: true, date: new Date().toISOString().slice(0, 10) }
+      ]
+    };
+    const inactiveStudent = {
+      id: 'st_inactive',
+      name: 'עידן אבוהב',
+      educationalFramework: 'גן יובלים',
+      goals: []
+    };
+
+    const accomplishments = getPedagogicalAccomplishmentsSummary([activeStudent, inactiveStudent], 30, new Date());
+    const digest = synthesizeLocalExecutiveDigest({
+      students: [activeStudent, inactiveStudent],
+      accomplishments,
+      gaps: [],
+      privacyMode: 'full_name'
+    });
+
+    expect(digest.studentCards.some((c) => c.studentName === 'איתי לוי')).toBe(true);
+    expect(digest.inactiveStudents.some((s) => s.studentName === 'עידן אבוהב')).toBe(true);
+    expect(digest.inactiveStudents[0].note).toContain('טרם תועדה התקדמות בתקופה זו');
+  });
+
+  it('8. Executive Digest strictly enforces acronym privacy mode', () => {
+    const student = {
+      id: 'st_priv',
+      name: 'עתי שתיים',
+      educationalFramework: 'גן רקפת',
+      goals: [
+        {
+          id: 'g_p',
+          title: 'עתי שתיים ישפר שיום פריטים',
+          environment: 'חצר',
+          observations: [
+            {
+              id: 'obs_p',
+              note: 'עתי שתיים מתקשה בשיום',
+              timestamp: new Date().toISOString()
+            }
+          ]
+        }
+      ]
+    };
+
+    const accomplishments = getPedagogicalAccomplishmentsSummary([student], 30, new Date());
+    const digest = synthesizeLocalExecutiveDigest({
+      students: [student],
+      accomplishments,
+      gaps: [],
+      privacyMode: 'acronym'
+    });
+
+    expect(digest.studentCards[0].studentName).toBe('ע.ש.');
+    expect(digest.studentCards[0].accomplishments).not.toContain('עתי שתיים');
+    expect(digest.studentCards[0].challengesAndDifficulties).not.toContain('עתי שתיים');
+  });
+
+  it('9. EcologicalWorkPlanForm JSX interpolation does not output literal dollar signs', () => {
+    const formSource = fs.readFileSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx'), 'utf8');
+    expect(formSource).toContain('נצברו {obsCount} תצפיות שטח ו-{tasksCount} משימות ממוקדות');
+    expect(formSource).not.toContain('נצברו ' + String.fromCharCode(36) + '{obsCount}');
   });
 });
