@@ -7,7 +7,12 @@ import { fetchTelemetryEvents } from '../../services/telemetryStorage';
 import { computeTelemetryAnalytics } from '../../domain/telemetryAggregator';
 import { safeGetStorageJson, safeSetStorageJson } from '../../services/storage';
 import { usageTelemetryService } from '../../services/usageTelemetryService';
-import { saveSettingsToCloud } from '../../firebaseBackend';
+import { saveSettingsToCloud, subscribeToHealthEvents, clearHealthEventsInCloud, type HealthEvent } from '../../firebaseBackend';
+import {
+  summarizeHealthEvents,
+  normalizeHealthEvents,
+  HEALTH_CATEGORY_LABELS_HE
+} from '../../domain/healthEvents';
 
 
 export const TELEMETRY_SETTINGS_KEY = 'tala_telemetry_settings';
@@ -167,6 +172,40 @@ export default function AdminAnalyticsDashboard({
   }, [settings]);
 
   const isAdmin = useMemo(() => isUserAdmin(currentUser), [currentUser]);
+
+  const [healthEvents, setHealthEvents] = useState<HealthEvent[]>([]);
+  const [isClearingHealth, setIsClearingHealth] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    const unsubscribe = subscribeToHealthEvents((evts) => {
+      setHealthEvents(evts || []);
+    }, 100);
+    return () => {
+      unsubscribe();
+    };
+  }, [isAdmin]);
+
+  const healthSummary = useMemo(() => {
+    return summarizeHealthEvents(healthEvents);
+  }, [healthEvents]);
+
+  const normalizedHealthList = useMemo(() => {
+    return normalizeHealthEvents(healthEvents);
+  }, [healthEvents]);
+
+  const handleClearHealthEvents = async () => {
+    if (!window.confirm('האם לאפס את יומן אירועי הבריאות וה-AI?')) return;
+    setIsClearingHealth(true);
+    try {
+      await clearHealthEventsInCloud();
+      setHealthEvents([]);
+    } catch (err) {
+      console.warn('Failed to clear health events:', err);
+    } finally {
+      setIsClearingHealth(false);
+    }
+  };
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
@@ -1218,6 +1257,99 @@ export default function AdminAnalyticsDashboard({
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Operational AI Health & Resilience Section (Option 2) */}
+            <div style={panelStyle} data-testid="operational-ai-health-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>🤖</span>
+                  <h3 style={{ ...panelTitleStyle, margin: 0 }}>בריאות ותקינות מנוע ה-AI ורשת (tala_health_events)</h3>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                      background: healthSummary.severity === 'critical' ? '#fee2e2' : healthSummary.severity === 'warn' ? '#fef3c7' : '#dcfce7',
+                      color: healthSummary.severity === 'critical' ? '#991b1b' : healthSummary.severity === 'warn' ? '#92400e' : '#166534'
+                    }}
+                  >
+                    {healthSummary.severity === 'critical' ? 'דורש טיפול' : healthSummary.severity === 'warn' ? 'תקין עם אזהרות' : 'תקין לחלוטין'}
+                  </span>
+                </div>
+                {normalizedHealthList.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearHealthEvents}
+                    disabled={isClearingHealth}
+                    style={{
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      color: '#475569'
+                    }}
+                  >
+                    {isClearingHealth ? 'מאפס...' : 'איפוס יומן AI'}
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>סך כל כשלונות / אירועים</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b' }}>{healthSummary.total}</div>
+                </div>
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>מעברי חירום למנוע מקומי</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: healthSummary.fallbackCount > 0 ? '#b45309' : '#166534' }}>
+                    {healthSummary.fallbackCount}
+                  </div>
+                </div>
+                <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>משתמשים שהושפעו</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b' }}>{healthSummary.affectedUsers}</div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>אירועי AI אחרונים:</div>
+                {normalizedHealthList.length === 0 ? (
+                  <div style={{ fontSize: '13px', color: '#15803d', fontWeight: 500 }}>✓ לא נרשמו תקלות או מעקפי AI ביומן!</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
+                    {normalizedHealthList.slice(0, 10).map((evt, idx) => (
+                      <div
+                        key={String(evt.id || idx)}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: '12px',
+                          padding: '6px 10px',
+                          background: '#f8fafc',
+                          borderRadius: '6px',
+                          borderRight: '3px solid ' + (evt.category === 'rate_limit' ? '#eab308' : '#ef4444')
+                        }}
+                      >
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 600, color: '#334155' }}>
+                            {HEALTH_CATEGORY_LABELS_HE[evt.category] || evt.category}
+                          </span>
+                          <span style={{ color: '#64748b' }}>({evt.operation || 'AI call'})</span>
+                          {evt.message && <span style={{ color: '#94a3b8', fontSize: '11px' }}>— {evt.message}</span>}
+                        </div>
+                        <div style={{ color: '#64748b', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                          {evt.createdAtMs ? new Date(evt.createdAtMs).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
