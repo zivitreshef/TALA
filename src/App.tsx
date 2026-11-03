@@ -270,6 +270,35 @@ export function trackReportGenerated({ reportType = 'tala', email }: any = {}) {
   );
 }
 
+export function trackSessionStart(userContext?: any) {
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.SESSION_START,
+    {},
+    userContext ? { userContext } : {}
+  );
+}
+
+export function trackSessionEnd({ durationSec = 0, email }: any = {}) {
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.SESSION_END,
+    {
+      durationSec: Math.max(0, Math.round(durationSec))
+    },
+    email ? { userContext: { email } } : {}
+  );
+}
+
+export function trackNavigateScreen(screen: string, userContext?: any) {
+  if (!screen || typeof screen !== 'string') return false;
+  return usageTelemetryService.track(
+    TELEMETRY_EVENTS.NAVIGATE_SCREEN,
+    {
+      screen
+    },
+    userContext ? { userContext } : {}
+  );
+}
+
 export default function App() {
   // Allowed users list
   const [allowedUsers, setAllowedUsers] = useState<any[]>(() => loadAllowedUsers());
@@ -550,6 +579,46 @@ export default function App() {
       // ignore storage errors
     }
   };
+
+  // User Session & Screen Navigation Telemetry Tracking
+  const sessionStartTimeRef = React.useRef<number>(Date.now());
+  const lastTrackedScreenRef = React.useRef<string | null>(null);
+
+  useEffect(() => {
+    if (currentUser?.email) {
+      usageTelemetryService.setUserContext(currentUser);
+      trackSessionStart(currentUser);
+      sessionStartTimeRef.current = Date.now();
+    }
+  }, [currentUser?.email]);
+
+  const currentScreen = useMemo(() => {
+    if (showAdminModal) return 'admin_dashboard';
+    if (showDailyTracker) return 'daily_tracker';
+    if (showGoalBankOverview) return 'goal_bank';
+    if (selectedStudentId) return 'student_form';
+    return 'student_roster';
+  }, [showAdminModal, showDailyTracker, showGoalBankOverview, selectedStudentId]);
+
+  useEffect(() => {
+    if (currentUser && currentScreen !== lastTrackedScreenRef.current) {
+      lastTrackedScreenRef.current = currentScreen;
+      trackNavigateScreen(currentScreen, currentUser);
+    }
+  }, [currentUser, currentScreen]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (currentUser?.email) {
+        const durationSec = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000));
+        trackSessionEnd({ durationSec, email: currentUser.email });
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [currentUser?.email]);
 
   // Pedagogical Chat Session Telemetry Tracking
   const chatSessionStartRef = React.useRef<any>(null);
@@ -1640,6 +1709,12 @@ export default function App() {
 
   async function performLogout() {
     const userToClear = currentUser;
+    if (userToClear?.email) {
+      try {
+        const durationSec = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000));
+        trackSessionEnd({ durationSec, email: userToClear.email });
+      } catch (_) {}
+    }
     setShowLogoutUnsavedModal(false);
     setShowFeedbackSurveyModal(false);
     setUnsavedDraftState({ isDirty: false, draftData: null });
