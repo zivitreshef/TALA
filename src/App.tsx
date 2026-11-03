@@ -1615,6 +1615,7 @@ export default function App() {
             teacherName: userPreferences?.fullName || currentUser.name || 'צוות חינוכי',
             gaps: gaps as any,
             accomplishments,
+            students: userStudents || [],
             totalStudents: (userStudents || []).length,
             privacyMode: userPreferences?.defaultPrivacyMode || 'full_name'
           });

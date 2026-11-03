@@ -6714,7 +6714,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     }}>
                       <span>💡</span>
                       <span>
-                        נצברו ${obsCount} תצפיות שטח ו-${tasksCount} משימות ממוקדות ממעקב יומי – ה-AI ישקלל אותן אוטומטית בהערכה.
+                        נצברו {obsCount} תצפיות שטח ו-{tasksCount} משימות ממוקדות ממעקב יומי – ה-AI ישקלל אותן אוטומטית בהערכה.
                       </span>
                     </div>
                   )}

@@ -261,7 +261,26 @@ export interface PendingTaskSummary {
   isAiGenerated?: boolean;
 }
 
+export interface StudentExecutiveDigestCard {
+  studentId?: string;
+  studentName: string;
+  framework?: string;
+  accomplishments: string;
+  challengesAndDifficulties?: string;
+  recommendedGoalRefinements?: string;
+  hasActivity: boolean;
+  noUpdateNote?: string;
+}
+
+export interface ExecutiveAiPedagogicalDigest {
+  executiveOverview: string;
+  studentCards: StudentExecutiveDigestCard[];
+  strategicPriorities: string[];
+  inactiveStudents: Array<{ studentName: string; framework?: string; note: string }>;
+}
+
 export interface PedagogicalAccomplishmentsSummary {
+  executiveDigest?: ExecutiveAiPedagogicalDigest;
   completedTasks?: CompletedTaskSummary[];
   pendingTasks?: PendingTaskSummary[];
   totalStudents: number;
