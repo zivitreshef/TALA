@@ -1693,13 +1693,7 @@ ${rawText}
           errorMessage: err?.message || String(err)
         }
       });
-      try {
-        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
-          errorType: err?.name || 'Error',
-          operation: 'reverseEngineerFullReport'
-        });
-      } catch (_) {}
-      try {
+            try {
         const localEngineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
         if (localEngineered && Array.isArray(localEngineered.goals) && localEngineered.goals.length > 0) {
           applyEngineeredPlan(localEngineered, true);
@@ -2002,13 +1996,7 @@ ${goalsContext}
           errorMessage: err?.message || String(err)
         }
       });
-      try {
-        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
-          errorType: err?.name || 'Error',
-          operation: 'processFullEvalReportAi'
-        });
-      } catch (_) {}
-    } finally {
+          } finally {
       setIsProcessingFullEvalAi(false);
     }
   };
@@ -2185,13 +2173,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           errorMessage: err?.message || String(err)
         }
       });
-      try {
-        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
-          errorType: err?.name || 'Error',
-          operation: 'generateStatusReport'
-        });
-      } catch (_) {}
-    } finally {
+          } finally {
       setIsGeneratingStatusReport(false);
     }
     setStatusReportBanner(

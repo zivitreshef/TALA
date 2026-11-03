@@ -626,20 +626,19 @@ export default function App() {
     if (isSupportChatOpen) {
       chatSessionStartRef.current = Date.now();
       try {
-        usageTelemetryService.track(
-          TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_STARTED,
-          { triggerSource: selectedStudentId ? 'student_form' : 'floating_dock' },
-          currentUser?.email ? { userContext: { email: currentUser.email } } : {}
-        );
+        trackPedagogicalChatSessionStarted({
+          triggerSource: selectedStudentId ? 'student_form' : 'floating_dock',
+          email: currentUser?.email
+        });
       } catch (_) {}
     } else if (chatSessionStartRef.current) {
       const durationSec = Math.max(1, Math.round((Date.now() - chatSessionStartRef.current) / 1000));
       try {
-        usageTelemetryService.track(
-          TELEMETRY_EVENTS.PEDAGOGICAL_CHAT_SESSION_ENDED,
-          { durationSec, turnsCount: 1 },
-          currentUser?.email ? { userContext: { email: currentUser.email } } : {}
-        );
+        trackPedagogicalChatSessionEnded({
+          durationSec,
+          turnsCount: 1,
+          email: currentUser?.email
+        });
       } catch (_) {}
       chatSessionStartRef.current = null;
     }
