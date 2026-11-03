@@ -520,9 +520,23 @@ export default function EcologicalWorkPlanForm({
   }, [student?.teamMessages, student?.sharedReadBy, student?.sharedWith]);
 
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
+  const isDirtyRef = useRef(false);
+  useEffect(() => {
+    return () => {
+      if (isDirtyRef.current) {
+        try {
+          usageTelemetryService.track(TELEMETRY_EVENTS.FORM_DIRTY_ABANDONED, {
+            formId: 'work_plan'
+          });
+        } catch (_) {}
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const syncedDraft = syncActiveReportSnapshot(formData);
     const isDirty = JSON.stringify(syncedDraft) !== savedSnapshotRef.current;
+    isDirtyRef.current = isDirty;
     if (onDraftStateChange) {
       onDraftStateChange({
         isDirty,
@@ -956,6 +970,13 @@ export default function EcologicalWorkPlanForm({
     setOpenPickerGoalId(newId);
     setPickerSearch('');
     setPickerEnvFilter('הכל');
+    try {
+      usageTelemetryService.track(TELEMETRY_EVENTS.GOAL_CREATED, {
+        stage: currentStage,
+        isTalaMode,
+        source: 'manual'
+      });
+    } catch (_) {}
     setTimeout(() => {
       const el = document.getElementById(newId) || document.querySelector('.ecological-goal-card:last-child');
       if (el?.scrollIntoView) {
@@ -1015,6 +1036,12 @@ export default function EcologicalWorkPlanForm({
     }));
     setActiveAiGoalId(goalRowId);
     setOpenPickerGoalId(null);
+    try {
+      usageTelemetryService.track(TELEMETRY_EVENTS.GOAL_CREATED, {
+        stage: currentStage,
+        source: 'goal_bank'
+      });
+    } catch (_) {}
   };
 
   // Define a brand new custom Goal and trigger AI Facilitating Questions
@@ -1032,6 +1059,12 @@ export default function EcologicalWorkPlanForm({
     // Save to global Goal Bank for future usage
     recordGoalInBank(goalRow);
     setOpenPickerGoalId(null);
+    try {
+      usageTelemetryService.track(TELEMETRY_EVENTS.GOAL_UPDATED, {
+        stage: currentStage,
+        isCustom: true
+      });
+    } catch (_) {}
 
     // Open AI Facilitating Questions panel and generate up to 3 tailored questions
     setActiveAiGoalId(goalRow.id);
@@ -1660,13 +1693,7 @@ ${rawText}
           errorMessage: err?.message || String(err)
         }
       });
-      try {
-        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
-          errorType: err?.name || 'Error',
-          operation: 'reverseEngineerFullReport'
-        });
-      } catch (_) {}
-      try {
+            try {
         const localEngineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
         if (localEngineered && Array.isArray(localEngineered.goals) && localEngineered.goals.length > 0) {
           applyEngineeredPlan(localEngineered, true);
@@ -1706,6 +1733,14 @@ ${rawText}
         recordGoalInBank(g);
       }
     });
+    if ((updated.goals || []).length > 0) {
+      try {
+        usageTelemetryService.track(TELEMETRY_EVENTS.GOAL_UPDATED, {
+          goalsCount: updated.goals.length,
+          stage: currentStage
+        });
+      } catch (_) {}
+    }
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 2500);
   };
@@ -1961,13 +1996,7 @@ ${goalsContext}
           errorMessage: err?.message || String(err)
         }
       });
-      try {
-        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
-          errorType: err?.name || 'Error',
-          operation: 'processFullEvalReportAi'
-        });
-      } catch (_) {}
-    } finally {
+          } finally {
       setIsProcessingFullEvalAi(false);
     }
   };
@@ -2144,13 +2173,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           errorMessage: err?.message || String(err)
         }
       });
-      try {
-        usageTelemetryService.track(TELEMETRY_EVENTS.CLIENT_JS_ERROR, {
-          errorType: err?.name || 'Error',
-          operation: 'generateStatusReport'
-        });
-      } catch (_) {}
-    } finally {
+          } finally {
       setIsGeneratingStatusReport(false);
     }
     setStatusReportBanner(

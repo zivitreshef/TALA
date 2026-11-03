@@ -14,6 +14,8 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { getFirebaseAuth } from '../../firebaseBackend';
+import { usageTelemetryService } from '../../services/usageTelemetryService';
+import { TELEMETRY_EVENTS } from '../../domain/telemetryTaxonomy';
 import {
   buildInviteUrl,
   buildVoiceMergeText,
@@ -190,6 +192,13 @@ export default function ParentVoiceControl({
         customQuestions: isCustomized ? finalQuestions : [],
         overrideDefaults: isCustomized
       });
+      try {
+        usageTelemetryService.track(
+          TELEMETRY_EVENTS.PARENT_VOICE_LINK_CREATED,
+          { isCustomized },
+          ownerEmail ? { userContext: { email: ownerEmail } } : {}
+        );
+      } catch (_) {}
       setQuestionsList(null);
       setIsCustomExpanded(false);
     });

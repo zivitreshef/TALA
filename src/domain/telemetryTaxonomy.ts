@@ -5,7 +5,7 @@
  * onboarding, friction, and technical health.
  */
 
-export const CURRENT_APP_VERSION = '2.6.4';
+export const CURRENT_APP_VERSION = '2.6.5';
 
 export const TELEMETRY_CATEGORIES = Object.freeze({
   ENGAGEMENT: 'engagement',
@@ -135,6 +135,9 @@ export interface PropertyRule {
  * Property schemas defining expected types and constraints for key events.
  */
 export const EVENT_SCHEMAS: Readonly<Record<string, Record<string, PropertyRule>>> = Object.freeze({
+  [TELEMETRY_EVENTS.SESSION_END]: {
+    durationSec: { type: 'number', min: 0 }
+  },
   [TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_STARTED]: {
     mode: { type: 'string', enum: ['text', 'voice'] },
     isEdit: { type: 'boolean' }
