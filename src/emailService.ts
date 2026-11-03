@@ -102,6 +102,19 @@ export interface PedagogicalAdvancedGoal {
 export interface PedagogicalAccomplishments {
   recentObservations?: PedagogicalObservation[];
   advancedGoals?: PedagogicalAdvancedGoal[];
+  completedTasks?: Array<{
+    id?: string;
+    studentId?: string;
+    studentName?: string;
+    framework?: string;
+    text?: string;
+    date?: string;
+    time?: string;
+    completedAt?: string;
+    isAiGenerated?: boolean;
+    [key: string]: any;
+  }>;
+  pendingTasks?: any[];
 }
 
 export interface PedagogicalReminderEmailParams {
@@ -975,6 +988,32 @@ export function buildPedagogicalReminderEmailHtml({
     ? accomplishments.advancedGoals
     : [];
 
+  const completedTasks = Array.isArray(accomplishments?.completedTasks)
+    ? accomplishments.completedTasks
+    : [];
+
+  const completedTasksRows = completedTasks.slice(0, 10).map((t: any, idx: number) => {
+    const studentName = privacyMode === 'acronym'
+      ? toHebrewAcronym(t.studentName || '')
+      : (t.studentName || 'תלמיד/ה');
+    const safeText = privacyMode === 'acronym'
+      ? redactStudentNameInText(t.text || '', t.studentName, true)
+      : (t.text || '');
+    const dateFormatted = t.date ? new Date(t.date).toLocaleDateString('he-IL') : '';
+    const originBadge = t.isAiGenerated
+      ? '<span style="display:inline-block; background:#ede9fe; color:#6d28d9; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">מיקוד AI</span>'
+      : '<span style="display:inline-block; background:#e2e8f0; color:#334155; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">ידני</span>';
+
+    return `
+      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f0fdfa'}; border-bottom:1px solid #ccfbf1;">
+        <td style="padding:9px 12px; font-weight:700; color:#115e59;">${studentName}</td>
+        <td style="padding:9px 12px; color:#134e4a; font-size:13px;">${safeText}</td>
+        <td style="padding:9px 12px; text-align:center; color:#64748b; font-size:12px;">${dateFormatted}</td>
+        <td style="padding:9px 12px; text-align:center;">${originBadge}</td>
+      </tr>
+    `;
+  }).join('');
+
   const observationCards = recentObs.slice(0, 8).map((obs) => {
     const studentName = privacyMode === 'acronym'
       ? toHebrewAcronym(obs.studentName || '')
@@ -1092,9 +1131,13 @@ export function buildPedagogicalReminderEmailHtml({
 
           <!-- Positive KPI Badges -->
           <div style="display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:125px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px; text-align:center;">
+            <div style="flex:1; min-width:110px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px; text-align:center;">
               <div style="font-size:11px; color:#1e40af; font-weight:700;">תלמידים במעקב</div>
               <div style="font-size:19px; font-weight:800; color:#1d4ed8; margin-top:2px;">${totalStudents}</div>
+            </div>
+            <div style="flex:1; min-width:110px; background:#f0fdfa; border:1px solid #99f6e4; border-radius:10px; padding:10px; text-align:center;">
+              <div style="font-size:11px; color:#0f766e; font-weight:700;">משימות שבוצעו</div>
+              <div style="font-size:19px; font-weight:800; color:#0d9488; margin-top:2px;">${completedTasks.length}</div>
             </div>
             <div style="flex:1; min-width:125px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px; text-align:center;">
               <div style="font-size:11px; color:#166534; font-weight:700;">תצפיות שתועדו</div>
@@ -1109,6 +1152,35 @@ export function buildPedagogicalReminderEmailHtml({
               <div style="font-size:19px; font-weight:800; color:#d97706; margin-top:2px;">${gaps.length}</div>
             </div>
           </div>
+
+          <!-- Section 0: Completed Focused Tasks -->
+          ${
+            completedTasks.length > 0
+              ? `
+              <div style="margin-bottom:22px;">
+                <div style="font-size:14.5px; font-weight:bold; color:#0f766e; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                  <span>✅</span>
+                  <span>משימות פדגוגיות ממוקדות שהושלמו (ביצוע צעדים מעשיים לקראת היעדים):</span>
+                </div>
+                <div style="overflow-x:auto; border:1px solid #99f6e4; border-radius:10px;">
+                  <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                      <tr style="background:#f0fdfa; color:#0f766e; font-weight:700; border-bottom:1.5px solid #99f6e4;">
+                        <th style="padding:9px 12px; text-align:right;">תלמיד/ה</th>
+                        <th style="padding:9px 12px; text-align:right;">משימה ממוקדת</th>
+                        <th style="padding:9px 12px; text-align:center;">תאריך ביצוע</th>
+                        <th style="padding:9px 12px; text-align:center;">אפיון</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${completedTasksRows}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              `
+              : ''
+          }
 
           <!-- Section 1: Accomplishments & Advanced Goals -->
           ${
@@ -1253,6 +1325,9 @@ export async function sendPedagogicalReminderEmailInBackground({
   const advancedCount = Array.isArray(accomplishments?.advancedGoals)
     ? accomplishments.advancedGoals.length
     : 0;
+  const completedCount = Array.isArray(accomplishments?.completedTasks)
+    ? accomplishments.completedTasks.length
+    : 0;
 
   const textBody = [
     `שלום ${teacherName},`,
@@ -1269,7 +1344,7 @@ export async function sendPedagogicalReminderEmailInBackground({
   return sendReportEmailInBackground({
     config,
     toEmail,
-    subject: `🌟 סיכום פדגוגי שבועי ומוכנות לישיבות צוות (${advancedCount} יעדים בתנופה, ${recentObsCount} תצפיות)`,
+    subject: `🌟 סיכום פדגוגי שבועי ומוכנות לישיבות צוות (${advancedCount} יעדים בתנופה, ${recentObsCount} תצפיות, ${completedCount} משימות שבוצעו)`,
     htmlBody,
     textBody,
     filename: 'PedagogicalSummary.html',

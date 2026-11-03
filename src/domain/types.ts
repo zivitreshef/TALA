@@ -238,7 +238,32 @@ export interface AdvancedGoalSummary {
   targetProgress: number;
 }
 
+export interface CompletedTaskSummary {
+  id?: string;
+  studentId?: string;
+  studentName: string;
+  framework?: string;
+  text: string;
+  date: string;
+  time?: string;
+  completedAt?: string;
+  isAiGenerated?: boolean;
+}
+
+export interface PendingTaskSummary {
+  id?: string;
+  studentId?: string;
+  studentName: string;
+  framework?: string;
+  text: string;
+  date: string;
+  time?: string;
+  isAiGenerated?: boolean;
+}
+
 export interface PedagogicalAccomplishmentsSummary {
+  completedTasks?: CompletedTaskSummary[];
+  pendingTasks?: PendingTaskSummary[];
   totalStudents: number;
   totalGoals: number;
   onTrackGoalsCount: number;
