@@ -10,10 +10,10 @@ import NewVersionBanner from '../components/NewVersionBanner';
 describe('Version Checker, Notification Banner & Application Reload Protocol', () => {
   describe('isNewerVersion semantic comparison', () => {
     it('correctly identifies newer patch versions', () => {
-      expect(isNewerVersion('2.6.4', '2.6.3')).toBe(true);
-      expect(isNewerVersion('2.6.10', '2.6.3')).toBe(true);
-      expect(isNewerVersion('2.6.3', '2.6.3')).toBe(false);
-      expect(isNewerVersion('2.6.2', '2.6.3')).toBe(false);
+      expect(isNewerVersion('2.6.5', '2.6.4')).toBe(true);
+      expect(isNewerVersion('2.6.10', '2.6.4')).toBe(true);
+      expect(isNewerVersion('2.6.4', '2.6.4')).toBe(false);
+      expect(isNewerVersion('2.6.3', '2.6.4')).toBe(false);
     });
 
     it('correctly identifies newer minor and major versions', () => {

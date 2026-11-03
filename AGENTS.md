@@ -1,6 +1,6 @@
 ## Mandatory Engineering Pillars (Zero Exceptions)
 
-All agent tasks in this repository must proactively adhere to these 5 non-negotiable baselines:
+All agent tasks in this repository must proactively adhere to these 6 non-negotiable baselines:
 1. **KISS Implementation**: Cleanest, minimal architecture. Progressive disclosure (collapsible secondary items, minimal cognitive load for teachers).
 2. **Security-First Coding**: Non-negotiable zero-trust boundaries at all ingestion/storage points (strict size limits, binary magic-byte inspection, allowlists, zero-trust cloud rules, student PII masking).
 3. **High Performance**: Lean bundle, fast (<100ms) UI response, minimal re-renders, clean memory and timer lifecycles.
@@ -8,7 +8,14 @@ All agent tasks in this repository must proactively adhere to these 5 non-negoti
 5. **Zero Uncovered Code (Mandatory Test Authorship)**: Every new feature or bug fix must include new unit tests in `src/__tests__/` covering edge cases and regressions before opening a PR.
 6. **Mandatory Version Bump**: Every PR (feature, bugfix, or chore) MUST bump the application version in `package.json`, `src/domain/telemetryTaxonomy.ts`, and version test suites so the site watermark visibly reflects the update.
 
-See full specification in `GEMINI.md`.
+## Streamlined Deployment Protocol & Red Banner Policy
+
+- **Red Warning Banner Gate (`npm run upgrade:start`)**:
+  - **Required ONLY for**:
+    1. **Breaking Firestore Security Rules**: If new Firestore rules reject writes from older client tokens or schemas.
+    2. **Database / Collection Migrations**: If existing fields are deleted or restructured in Firestore while teachers may be editing.
+  - **NOT Required for**: Routine deployments (bug fixes, UI features, styling, copy updates). For routine updates, the automated client version banner (`NewVersionBanner`) and logout auto-refresh safely guide users to update with zero disruption to active work.
+- See full 7-step lifecycle specification in `GEMINI.md`.
 
 ## Agent skills
 

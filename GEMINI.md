@@ -36,7 +36,12 @@ For ANY feature, enhancement, or modification in TALA, you MUST proactively desi
 # Mandatory Upgrade & Deployment Protocol (TALA)
 
 For ANY enhancement or bug fix, ALWAYS strictly follow this 7-step lifecycle:
-1. **Red Banner (2 min)**: Trigger the live red warning banner in Firestore so active teachers know to save their work: `npm run upgrade:start`. Wait 2 minutes (or ensure banner is live) before deploying.
+1. **Red Banner (Conditional Emergency Gate)**:
+   - **REQUIRED ONLY IN THESE TWO CASES**:
+     - **Breaking Firestore Security Rules**: If new Firestore rules reject writes from older client tokens or schemas.
+     - **Database / Collection Migrations**: If existing fields are deleted or restructured in Firestore while teachers are editing.
+   - **NOT REQUIRED (NO GATE)**: Routine deployments (bug fixes, UI features, styling, copy updates, client enhancements). For routine updates, the automated client version banner (`NewVersionBanner`) and logout auto-refresh safely guide users to update with zero disruption to active work.
+   - When required: Trigger `npm run upgrade:start` and wait 2 minutes before deploying.
 2. **Branch & Mandatory Test Authorship**:
    - Develop on a dedicated feature/bugfix branch.
    - **Zero Uncovered Code**: Every new feature MUST include new unit tests covering its behavior and edge cases in `src/__tests__/`; every bug fix MUST include a regression test reproducing the issue and proving the fix.
@@ -54,4 +59,4 @@ For ANY enhancement or bug fix, ALWAYS strictly follow this 7-step lifecycle:
    - Squash and merge via `gh pr merge --squash` or `node scripts/github-pr.js merge --pr <number> --squash`.
    - **STRICT PROHIBITION**: NEVER push directly to `main` (`git push origin main` is blocked by `.git/hooks/pre-push`). If a PR cannot be opened or merged, the task is BLOCKED — stop immediately, report the failure, and do NOT bypass the gate.
 6. **Deploy Web**: Confirm that the GitHub Actions deployment workflow to GitHub Pages starts and finishes successfully.
-7. **Disable Banner**: Once the deployment is live, turn off the red warning banner: `npm run upgrade:end`.
+7. **Disable Banner (If Activated)**: If the red warning banner was triggered in Step 1, turn it off once the deployment is live: `npm run upgrade:end`.
