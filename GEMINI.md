@@ -4,6 +4,12 @@ Whenever you write responses or sections in Hebrew to the user:
 1. Always align the Hebrew text to the right (`dir="rtl"` and right-aligned) by wrapping your Hebrew response content in `<div dir="rtl" align="right">` ... `</div>`.
 2. Ensure lists, headings, and paragraphs in Hebrew are inside the `<div dir="rtl" align="right">` container so they render right-to-left and aligned to the right.
 
+# Hebrew-Only Titles Rule (Zero English in Parentheses)
+
+Whenever adding, updating, or displaying ANY title, heading, label, tab, card header, or modal title ANYWHERE in the application or documentation:
+1. **Hebrew Only**: Write purely and exclusively in clean, natural Hebrew.
+2. **Strict Prohibition on English in Parentheses**: NEVER append English translations, acronyms, or phrases in parentheses (e.g. STRICTLY FORBIDDEN: `גילוי כלי עזר בצ'אט (Tool Discovery)`, `משתמשים פעילים (MAU)`, `בדיקות מוכנות (Checklists)`, `שימור (Retention)`). Always use clean, professional Hebrew phrasing without parenthetical English clutter.
+
 # Mandatory Engineering Pillars (Zero-Exception Baselines)
 
 For ANY feature, enhancement, or modification in TALA, you MUST proactively design and implement according to these 4 foundational pillars without waiting for user prompting:

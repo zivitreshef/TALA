@@ -1,12 +1,13 @@
 ## Mandatory Engineering Pillars (Zero Exceptions)
 
-All agent tasks in this repository must proactively adhere to these 6 non-negotiable baselines:
+All agent tasks in this repository must proactively adhere to these 7 non-negotiable baselines:
 1. **KISS Implementation**: Cleanest, minimal architecture. Progressive disclosure (collapsible secondary items, minimal cognitive load for teachers).
 2. **Security-First Coding**: Non-negotiable zero-trust boundaries at all ingestion/storage points (strict size limits, binary magic-byte inspection, allowlists, zero-trust cloud rules, student PII masking).
 3. **High Performance**: Lean bundle, fast (<100ms) UI response, minimal re-renders, clean memory and timer lifecycles.
 4. **Professional Look & Feel**: Consistent visual standards (unified 32x32px `+`/`-` buttons, RTL alignment, harmonious theme, zero layout shifts).
 5. **Zero Uncovered Code (Mandatory Test Authorship)**: Every new feature or bug fix must include new unit tests in `src/__tests__/` covering edge cases and regressions before opening a PR.
 6. **Mandatory Version Bump**: Every PR (feature, bugfix, or chore) MUST bump the application version in `package.json`, `src/domain/telemetryTaxonomy.ts`, and version test suites so the site watermark visibly reflects the update.
+7. **Hebrew-Only Titles (Zero English Parentheses)**: Whenever adding or modifying ANY title, heading, tab, card, modal, or UI label anywhere in the system, write it strictly in clean Hebrew. NEVER append English translations or phrases in parentheses (e.g. strictly avoid `כותרת (English Translation)`).
 
 ## Streamlined Deployment Protocol & Red Banner Policy
 
