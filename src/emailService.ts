@@ -1,4 +1,3 @@
-import { toHebrewAcronym, redactStudentNameInText } from './domain/privacyAndAcronyms';
 import {
   generateExecutivePedagogicalDigest,
   synthesizeLocalExecutiveDigest
@@ -1007,111 +1006,6 @@ export function buildPedagogicalReminderEmailHtml({
     ? accomplishments.completedTasks
     : [];
 
-  const completedTasksRows = completedTasks.slice(0, 10).map((t: any, idx: number) => {
-    const studentName = privacyMode === 'acronym'
-      ? toHebrewAcronym(t.studentName || '')
-      : (t.studentName || 'תלמיד/ה');
-    const safeText = privacyMode === 'acronym'
-      ? redactStudentNameInText(t.text || '', t.studentName, true)
-      : (t.text || '');
-    const dateFormatted = t.date ? new Date(t.date).toLocaleDateString('he-IL') : '';
-    const originBadge = t.isAiGenerated
-      ? '<span style="display:inline-block; background:#ede9fe; color:#6d28d9; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">מיקוד AI</span>'
-      : '<span style="display:inline-block; background:#e2e8f0; color:#334155; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px;">ידני</span>';
-
-    return `
-      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f0fdfa'}; border-bottom:1px solid #ccfbf1;">
-        <td style="padding:9px 12px; font-weight:700; color:#115e59;">${studentName}</td>
-        <td style="padding:9px 12px; color:#134e4a; font-size:13px;">${safeText}</td>
-        <td style="padding:9px 12px; text-align:center; color:#64748b; font-size:12px;">${dateFormatted}</td>
-        <td style="padding:9px 12px; text-align:center;">${originBadge}</td>
-      </tr>
-    `;
-  }).join('');
-
-  const observationCards = recentObs.slice(0, 8).map((obs) => {
-    const studentName = privacyMode === 'acronym'
-      ? toHebrewAcronym(obs.studentName || '')
-      : (obs.studentName || 'תלמיד/ה');
-
-    const supportBadge = obs.supportLevel
-      ? `<span style="display:inline-block; background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; margin-right:6px;">${obs.supportLevel}</span>`
-      : '';
-
-    const dateStr = obs.timestamp ? new Date(obs.timestamp).toLocaleDateString('he-IL') : '';
-
-    const safeGoalTitle = privacyMode === 'acronym'
-      ? redactStudentNameInText(obs.goalTitle || '', obs.studentName, true)
-      : (obs.goalTitle || '');
-    const safeNote = privacyMode === 'acronym'
-      ? redactStudentNameInText(obs.note || '', obs.studentName, true)
-      : (obs.note || '');
-
-    return `
-      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-right:4px solid #3b82f6; border-radius:8px; padding:12px 14px; margin-bottom:10px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
-          <div>
-            <strong style="color:#1e3a5f; font-size:13.5px;">${studentName}</strong>
-            <span style="color:#64748b; font-size:12px; margin-right:6px;">(${obs.framework || 'מסגרת'})</span>
-            ${supportBadge}
-          </div>
-          <div style="color:#94a3b8; font-size:11.5px;">${dateStr}</div>
-        </div>
-        <div style="font-size:12.5px; color:#334155; margin-bottom:4px;">
-          <strong>יעד:</strong> ${safeGoalTitle} <span style="color:#64748b; font-size:11.5px;">[${obs.environment || 'כללי'}]</span>
-        </div>
-        ${safeNote ? `<div style="background:#ffffff; border:1px dashed #cbd5e1; border-radius:6px; padding:8px 10px; font-size:12.5px; color:#1e293b; line-height:1.5;">
-          💬 <em>"${safeNote}"</em>
-        </div>` : ''}
-      </div>
-    `;
-  }).join('');
-
-  const advancedGoalsRows = advancedGoals.slice(0, 8).map((goal, idx) => {
-    const studentName = privacyMode === 'acronym'
-      ? toHebrewAcronym(goal.studentName || '')
-      : (goal.studentName || 'תלמיד/ה');
-
-    const safeGoalTitle = privacyMode === 'acronym'
-      ? redactStudentNameInText(goal.goalTitle || '', goal.studentName, true)
-      : (goal.goalTitle || '');
-
-    return `
-      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f0fdf4'}; border-bottom:1px solid #dcfce7;">
-        <td style="padding:10px 12px; font-weight:700; color:#14532d;">${studentName}</td>
-        <td style="padding:10px 12px; color:#166534; font-size:13px;">${safeGoalTitle}</td>
-        <td style="padding:10px 12px; color:#475569; font-size:12px;">${goal.environment || 'כללי'}</td>
-        <td style="padding:10px 12px; text-align:center;">
-          <span style="display:inline-block; background:#dcfce7; color:#15803d; font-weight:800; font-size:12.5px; padding:3px 10px; border-radius:999px;">
-            ${goal.currentProgress ?? 0}%
-          </span>
-        </td>
-      </tr>
-    `;
-  }).join('');
-
-  const gapsRows = gaps.map((gap, idx) => {
-    const studentDisplayName = privacyMode === 'acronym'
-      ? toHebrewAcronym(gap.studentName || '')
-      : (gap.studentName || 'תלמיד/ה');
-
-    const daysText = gap.neverObserved ? 'טרם נרשמה תצפית' : `${gap.daysSinceObservation} ימים`;
-    const progressText = `${gap.currentProgress ?? 0}%`;
-    const safeGoalTitle = privacyMode === 'acronym'
-      ? redactStudentNameInText(gap.goalTitle || 'יעד ללא כותרת', gap.studentName, true)
-      : (gap.goalTitle || 'יעד ללא כותרת');
-
-    return `
-      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#fffbeb'}; border-bottom:1px solid #fef3c7;">
-        <td style="padding:9px 12px; font-weight:700; color:#1e3a5f;">${studentDisplayName}</td>
-        <td style="padding:9px 12px; color:#475569; font-size:12.5px;">${gap.framework || '—'}</td>
-        <td style="padding:9px 12px; color:#334155; font-size:12.5px;">${safeGoalTitle} <span style="font-size:11px; color:#64748b;">(${gap.environment || 'כללי'})</span></td>
-        <td style="padding:9px 12px; text-align:center; font-weight:700; color:#d97706; font-size:12px;">${daysText}</td>
-        <td style="padding:9px 12px; text-align:center; color:#2563eb; font-weight:700; font-size:12px;">${progressText}</td>
-      </tr>
-    `;
-  }).join('');
-
   return `
     <!DOCTYPE html>
     <html lang="he" dir="rtl">
@@ -1172,7 +1066,7 @@ export function buildPedagogicalReminderEmailHtml({
           <div style="background:linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border:1px solid #bfdbfe; border-right:4px solid #2563eb; border-radius:10px; padding:14px 16px; margin-bottom:22px; font-size:13.5px; line-height:1.65; color:#1e293b;">
             <div style="font-weight:bold; color:#1d4ed8; margin-bottom:6px; font-size:14px; display:flex; align-items:center; gap:6px;">
               <span>📋</span>
-              <span>תמונת מצב מנהלים פדגוגית (Executive Pedagogical Summary):</span>
+              <span>תמונת מצב פדגוגית מרוכזת:</span>
             </div>
             ${digest.executiveOverview}
           </div>
@@ -1210,7 +1104,7 @@ export function buildPedagogicalReminderEmailHtml({
 
                     <!-- Pedagogical Goal Adjustments / Actionable Refinements -->
                     ${sc.recommendedGoalRefinements ? `
-                      <div style="font-size:12.5px; color:#1e40af; line-height:1.55; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:8px 10px;">
+                      <div style="font-size:12.5px; color:#1e40af; line-height:1.55; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:8px 10px; white-space:pre-line;">
                         <strong>🎯 המלצה לחידוד או התאמת יעדים:</strong> ${sc.recommendedGoalRefinements}
                       </div>
                     ` : ''}
@@ -1223,13 +1117,16 @@ export function buildPedagogicalReminderEmailHtml({
 
           <!-- Section 3: Inactive Students with No Updates in Period (User Requirement) -->
           ${
-            digest.inactiveStudents.length > 0
+            digest.inactiveStudents && digest.inactiveStudents.length > 0
               ? `
-              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; margin-bottom:20px;">
-                <div style="font-size:13px; font-weight:bold; color:#64748b; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <div style="background:#fff7ed; border:1px solid #fed7aa; border-right:4px solid #f97316; border-radius:10px; padding:14px 16px; margin-bottom:22px;">
+                <div style="font-size:13.5px; font-weight:bold; color:#9a3412; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
                   <span>⏳</span>
-                  <span>תלמידים הממתינים לעדכון / מעקב שוטף בתקופה זו (${digest.inactiveStudents.length}):</span>
+                  <span>רשימת תלמידים שלא חלה לגביהם התקדמות בתקופה זו (${digest.inactiveStudents.length}):</span>
                 </div>
+                <p style="margin:0 0 8px 0; font-size:12.5px; color:#7c2d12; line-height:1.5;">
+                  עבור התלמידים הבאים לא נרשמו תצפיות שטח, משימות או התקדמות ביעדים:
+                </p>
                 <ul style="margin:0; padding-right:20px; font-size:12.5px; color:#475569; line-height:1.6;">
                   ${digest.inactiveStudents.map((s) => `
                     <li><strong>${s.studentName}</strong>${s.framework ? ` (${s.framework})` : ''} – ${s.note}</li>
@@ -1240,25 +1137,21 @@ export function buildPedagogicalReminderEmailHtml({
               : ''
           }
 
-          <!-- Section 4: Strategic Meeting Priorities (Replacing Endless 50-row Grocery List) -->
-          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; margin-bottom:24px;">
-            <div style="font-size:14px; font-weight:bold; color:#1e3a5f; margin-bottom:8px;">
-              🤝 נקודות מפתח להצגה בישיבת צוות / שיתוף הורים:
-            </div>
-            <ul style="margin:0; padding-right:20px; font-size:13px; color:#334155; line-height:1.65;">
-              ${digest.strategicPriorities.map((p) => `<li>${p}</li>`).join('')}
-            </ul>
-          </div>
-
-          <!-- Section 5: Evidence Appendix -->
-          <div style="margin-top:16px; border-top:1px dashed #cbd5e1; padding-top:14px;">
-            <div style="font-size:12.5px; font-weight:bold; color:#475569; margin-bottom:8px;">
-              📂 נספח תצפיות שטח ומוקדים מומלצים לתצפית בימים הקרובים (שמירה על רציפות פדגוגית):
-            </div>
-            ${completedTasks.length > 0 ? `<div style="margin-bottom:12px;"><table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; font-size:12px;"><tbody>${completedTasksRows}</tbody></table></div>` : ''}
-            ${recentObs.length > 0 ? `<div>${observationCards}</div>` : ''}
-            <div style="display:none;">${advancedGoalsRows}${gapsRows}</div>
-          </div>
+          <!-- Section 4: Strategic Meeting Priorities (Conditional) -->
+          ${
+            digest.strategicPriorities && digest.strategicPriorities.length > 0
+              ? `
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; margin-bottom:24px;">
+                <div style="font-size:14px; font-weight:bold; color:#1e3a5f; margin-bottom:8px;">
+                  🤝 נקודות מפתח להצגה בישיבת צוות / שיתוף הורים:
+                </div>
+                <ul style="margin:0; padding-right:20px; font-size:13px; color:#334155; line-height:1.65;">
+                  ${digest.strategicPriorities.map((p) => `<li>${p}</li>`).join('')}
+                </ul>
+              </div>
+              `
+              : ''
+          }
 
           <!-- 1-Click Action Button -->
           <div style="text-align:center; margin:24px 0 16px 0;">
@@ -1301,22 +1194,13 @@ export async function sendPedagogicalReminderEmailInBackground({
     privacyMode
   });
 
-// htmlBody built above
-  const unusedHtml = null; if (unusedHtml) buildPedagogicalReminderEmailHtml({
+  const htmlBody = buildPedagogicalReminderEmailHtml({
     teacherName,
     gaps,
     accomplishments,
     students,
     executiveDigest,
-    totalStudents,
-    privacyMode,
-    siteUrl
-  });
-  const htmlBody = buildPedagogicalReminderEmailHtml({
-    teacherName,
-    gaps,
-    accomplishments,
-    totalStudents,
+    totalStudents: totalStudents || (students ? students.length : 0),
     privacyMode,
     siteUrl
   });

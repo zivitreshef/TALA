@@ -170,9 +170,11 @@ describe('Pedagogical Tasks Cloud Sync, Digest & Mid-Year Evaluation (Bugs 1-4)'
     const card = digest.studentCards[0];
     expect(card.studentName).toBe('ארבל חנה');
     expect(card.challengesAndDifficulties).toBeDefined();
-    expect(card.challengesAndDifficulties).toContain('מתקשה');
+    expect(card.challengesAndDifficulties).toContain('שליפת מילים');
     expect(card.recommendedGoalRefinements).toBeDefined();
-    expect(card.recommendedGoalRefinements).toContain('לחדד את המדדים');
+    expect(card.recommendedGoalRefinements).toContain('המלצה יישומית וממוקדת שטח');
+    expect(card.recommendedGoalRefinements).not.toContain('המורה תתווך');
+    expect(card.recommendedGoalRefinements).not.toContain('המורה תציב גבולות');
     expect(digest.executiveOverview).toContain('1 תלמידים');
   });
 
@@ -243,5 +245,40 @@ describe('Pedagogical Tasks Cloud Sync, Digest & Mid-Year Evaluation (Bugs 1-4)'
     const formSource = fs.readFileSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx'), 'utf8');
     expect(formSource).toContain('נצברו {obsCount} תצפיות שטח ו-{tasksCount} משימות ממוקדות');
     expect(formSource).not.toContain('נצברו ' + String.fromCharCode(36) + '{obsCount}');
+  });
+  it('10. Email HTML removes English title, omits verbose appendix, and formats inactive students cleanly', () => {
+    const student1 = { id: 's1', name: 'איתי כהן', educationalFramework: 'גן רקפת', goals: [] };
+    const student2 = { id: 's2', name: 'דניאל ישראלי', educationalFramework: 'גן צבעוני', goals: [] };
+    const emailHtml = buildPedagogicalReminderEmailHtml({
+      teacherName: 'זיוית רשף',
+      students: [student1, student2],
+      accomplishments: { recentObservations: [], advancedGoals: [], completedTasks: [] },
+      totalStudents: 2,
+      privacyMode: 'full_name'
+    });
+
+    // English title removed
+    expect(emailHtml).not.toContain('(Executive Pedagogical Summary)');
+    expect(emailHtml).toContain('תמונת מצב פדגוגית מרוכזת');
+
+    // Verbose appendix removed
+    expect(emailHtml).not.toContain('נספח תצפיות שטח ומוקדים מומלצים לתצפית בימים הקרובים');
+
+    // Inactive students shown with updated header
+    expect(emailHtml).toContain('רשימת תלמידים שלא חלה לגביהם התקדמות בתקופה זו (2)');
+    expect(emailHtml).toContain('איתי כהן');
+    expect(emailHtml).toContain('דניאל ישראלי');
+  });
+
+  it('11. Strategic meeting priorities is conditional and omitted when no active agenda points exist', () => {
+    const emailHtmlEmpty = buildPedagogicalReminderEmailHtml({
+      teacherName: 'זיוית רשף',
+      students: [],
+      accomplishments: { recentObservations: [], advancedGoals: [], completedTasks: [] },
+      totalStudents: 0
+    });
+
+    // When there are no strategic priorities, the section should NOT render
+    expect(emailHtmlEmpty).not.toContain('נקודות מפתח להצגה בישיבת צוות / שיתוף הורים:');
   });
 });
