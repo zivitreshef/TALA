@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { usageTelemetryService } from '../services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import { trackPedagogicalChatSessionStarted } from '../App';

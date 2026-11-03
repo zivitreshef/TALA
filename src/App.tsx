@@ -592,20 +592,7 @@ export default function App() {
     }
   }, [currentUser?.email]);
 
-  const currentScreen = useMemo(() => {
-    if (showAdminModal) return 'admin_dashboard';
-    if (showDailyTracker) return 'daily_tracker';
-    if (showGoalBankOverview) return 'goal_bank';
-    if (selectedStudentId) return 'student_form';
-    return 'student_roster';
-  }, [showAdminModal, showDailyTracker, showGoalBankOverview, selectedStudentId]);
 
-  useEffect(() => {
-    if (currentUser && currentScreen !== lastTrackedScreenRef.current) {
-      lastTrackedScreenRef.current = currentScreen;
-      trackNavigateScreen(currentScreen, currentUser);
-    }
-  }, [currentUser, currentScreen]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -745,6 +732,21 @@ export default function App() {
   const [showGoalBankOverview, setShowGoalBankOverview] = useState(false);
         const [targetBankStudentId, setTargetBankStudentId] = useState('');
     const [externalGoalsRevision, setExternalGoalsRevision] = useState(0);
+
+  const currentScreen = useMemo(() => {
+    if (showAdminModal) return 'admin_dashboard';
+    if (showDailyTracker) return 'daily_tracker';
+    if (showGoalBankOverview) return 'goal_bank';
+    if (selectedStudentId) return 'student_form';
+    return 'student_roster';
+  }, [showAdminModal, showDailyTracker, showGoalBankOverview, selectedStudentId]);
+
+  useEffect(() => {
+    if (currentUser && currentScreen !== lastTrackedScreenRef.current) {
+      lastTrackedScreenRef.current = currentScreen;
+      trackNavigateScreen(currentScreen, currentUser);
+    }
+  }, [currentUser, currentScreen]);
 
 
 

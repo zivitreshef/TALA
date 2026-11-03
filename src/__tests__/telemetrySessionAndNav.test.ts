@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { usageTelemetryService } from '../services/usageTelemetryService';
 import {
   TELEMETRY_EVENTS,
-  validateEventProperties,
-  CURRENT_APP_VERSION
+  validateEventProperties
 } from '../domain/telemetryTaxonomy';
 import {
   trackSessionStart,
