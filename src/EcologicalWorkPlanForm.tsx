@@ -956,6 +956,13 @@ export default function EcologicalWorkPlanForm({
     setOpenPickerGoalId(newId);
     setPickerSearch('');
     setPickerEnvFilter('הכל');
+    try {
+      usageTelemetryService.track(TELEMETRY_EVENTS.GOAL_CREATED, {
+        stage: currentStage,
+        isTalaMode,
+        source: 'manual'
+      });
+    } catch (_) {}
     setTimeout(() => {
       const el = document.getElementById(newId) || document.querySelector('.ecological-goal-card:last-child');
       if (el?.scrollIntoView) {
@@ -1015,6 +1022,12 @@ export default function EcologicalWorkPlanForm({
     }));
     setActiveAiGoalId(goalRowId);
     setOpenPickerGoalId(null);
+    try {
+      usageTelemetryService.track(TELEMETRY_EVENTS.GOAL_CREATED, {
+        stage: currentStage,
+        source: 'goal_bank'
+      });
+    } catch (_) {}
   };
 
   // Define a brand new custom Goal and trigger AI Facilitating Questions
@@ -1032,6 +1045,12 @@ export default function EcologicalWorkPlanForm({
     // Save to global Goal Bank for future usage
     recordGoalInBank(goalRow);
     setOpenPickerGoalId(null);
+    try {
+      usageTelemetryService.track(TELEMETRY_EVENTS.GOAL_UPDATED, {
+        stage: currentStage,
+        isCustom: true
+      });
+    } catch (_) {}
 
     // Open AI Facilitating Questions panel and generate up to 3 tailored questions
     setActiveAiGoalId(goalRow.id);
@@ -1706,6 +1725,14 @@ ${rawText}
         recordGoalInBank(g);
       }
     });
+    if ((updated.goals || []).length > 0) {
+      try {
+        usageTelemetryService.track(TELEMETRY_EVENTS.GOAL_UPDATED, {
+          goalsCount: updated.goals.length,
+          stage: currentStage
+        });
+      } catch (_) {}
+    }
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 2500);
   };
