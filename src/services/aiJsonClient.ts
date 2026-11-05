@@ -54,9 +54,14 @@ export const callAiJson = async (
       educationalFramework: student?.educationalFramework
     };
 
+    const effectivePrompt =
+      typeof maskedPromptClientSide === 'string' && maskedPromptClientSide.length > 14200
+        ? maskedPromptClientSide.slice(0, 14200)
+        : maskedPromptClientSide;
+
     const result = await callAiProxyEndpoint({
       operation: 'rawPrompt',
-      payload: { prompt: maskedPromptClientSide },
+      payload: { prompt: effectivePrompt },
       hints,
       model: undefined
     });

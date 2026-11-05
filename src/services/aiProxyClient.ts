@@ -115,9 +115,23 @@ export async function callAiProxyEndpoint({
     headers['Authorization'] = `Bearer ${idToken}`;
   }
 
+  let safePayload = payload;
+  if (
+    safePayload &&
+    typeof safePayload.prompt === 'string' &&
+    (operation === 'rawPrompt' || operation === 'goalMatch') &&
+    safePayload.prompt.length > 14500
+  ) {
+    console.warn(`[aiProxyClient] Prompt length (${safePayload.prompt.length}) exceeded 14,500. Trimming safely to prevent HTTP 400.`);
+    safePayload = {
+      ...safePayload,
+      prompt: safePayload.prompt.slice(0, 14500)
+    };
+  }
+
   const bodyString = JSON.stringify({
     operation,
-    payload,
+    payload: safePayload,
     hints,
     model
   });
@@ -243,7 +257,7 @@ export async function callAiProxyEndpoint({
       operation,
       error: err,
       extra: {
-        promptLength: typeof payload?.prompt === 'string' ? payload.prompt.length : undefined,
+        promptLength: typeof safePayload?.prompt === 'string' ? safePayload.prompt.length : (typeof payload?.prompt === 'string' ? payload.prompt.length : undefined),
         viaDirectKey: Boolean(localApiKey)
       }
     });
