@@ -412,16 +412,18 @@ export function buildAiGoalMatchPrompt({
   note?: string;
   student?: Record<string, unknown>;
 } = {}): string {
+  const boundedNote = String(note || '').trim().slice(0, 5000);
   const goals = Array.isArray(student.goals) ? (student.goals as Record<string, unknown>[]) : [];
   const goalsSummary = goals
     .filter((g) => g.title && String(g.title).trim())
+    .slice(0, 25)
     .map((g, idx) => `[יעד ${idx + 1}] מזהה: ${g.id} | סביבה: ${g.environment || 'כללי'} | כותרת: ${g.title} | התקדמות נוכחית: ${g.currentProgress ?? 0}% מתוך ${g.targetProgress ?? 80}%`)
     .join('\n');
 
   return `אתה מומחה לפדגוגיה ולחינוך מיוחד עבור מערכת תל"א (תוכנית לימודים אישית / תוכנית עבודה אקולוגית).
 גננת או מורת שילוב כתבה את הערת התצפית החופשית הבאה על התלמיד/ה ${student.name || 'התלמיד/ה'}:
 """
-${note.trim()}
+${boundedNote}
 """
 
 להלן רשימת היעדים הפעילים של התלמיד/ה בתוכנית העבודה:

@@ -10,6 +10,7 @@ import {
   Pencil,
   Trash2,
   Sparkles,
+  Loader2,
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
@@ -33,6 +34,7 @@ import {
   getEventBarThickness
 } from '../domain/dailyPedagogicalTracking';
 import { callAiProxyEndpoint } from '../services/aiProxyClient';
+import { maskPromptForAi } from '../goalBankData';
 import { usageTelemetryService } from '../services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import HebrewDatePicker from './HebrewDatePicker';
@@ -629,11 +631,12 @@ export default function DailyPedagogicalTracker({
     setAiAnalysisResult(null);
 
     const prompt = buildAiGoalMatchPrompt({ note: aiNoteText, student: targetStudent });
+    const maskedPrompt = maskPromptForAi(prompt, targetStudent);
 
     try {
       const response = await callAiProxyEndpoint({
         operation: 'rawPrompt',
-        payload: { prompt },
+        payload: { prompt: maskedPrompt },
         hints: { gender: targetStudent?.gender || 'boy', name: targetStudent?.name, model: 'gemini-2.5-flash' }
       });
 
@@ -1539,10 +1542,11 @@ export default function DailyPedagogicalTracker({
                     <button
                       type="button"
                       disabled={isAnalyzingAi}
+                      aria-busy={isAnalyzingAi}
                       onClick={handleRunAiAnalysis}
                       className={`btn-ai-analyze ${activeOnboardingStep === 5 ? 'tour-highlight-btn' : ''}`}
                     >
-                      <Sparkles size={14} />
+                      {isAnalyzingAi ? <Loader2 size={14} className="tala-spin-icon" /> : <Sparkles size={14} />}
                       <span>{isAnalyzingAi ? 'מנתח ב-AI...' : 'נתח ושייך ליעד ב-AI'}</span>
                     </button>
                   </div>

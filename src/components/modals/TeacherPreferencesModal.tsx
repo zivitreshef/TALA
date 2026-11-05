@@ -21,7 +21,8 @@ import {
   Trash2,
   Plus,
   PenTool,
-  Send
+  Send,
+  Loader2
 } from 'lucide-react';
 import {
   DEFAULT_USER_PREFERENCES,
@@ -1522,6 +1523,7 @@ export default function TeacherPreferencesModal({
                   type="button"
                   data-testid="send-pedagogical-reminder-now-btn"
                   disabled={isSendingReminder}
+                  aria-busy={isSendingReminder}
                   onClick={handleSendPedagogicalReminderNow}
                   style={{
                     display: 'inline-flex',
@@ -1538,7 +1540,7 @@ export default function TeacherPreferencesModal({
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <Send size={14} />
+                  {isSendingReminder ? <Loader2 size={14} className="tala-spin-icon" /> : <Send size={14} />}
                   <span>{isSendingReminder ? 'שולח סיכום כעת...' : 'שלח סיכום פדגוגי כעת למייל'}</span>
                 </button>
                 {reminderStatusMessage && (

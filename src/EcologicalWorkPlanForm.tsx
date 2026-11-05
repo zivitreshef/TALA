@@ -1448,7 +1448,12 @@ ${unprotectedGoals
   .join('\n')}\n`
           : '';
 
-      const buildPrompt = (bankReference: any) => `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
+      const MAX_RAW_TEXT_CHARS = 8500;
+      const boundedRawText = typeof rawText === 'string' && rawText.length > MAX_RAW_TEXT_CHARS
+        ? rawText.slice(0, MAX_RAW_TEXT_CHARS)
+        : rawText;
+
+      const buildPrompt = (bankReference: any, textToUse: any = boundedRawText) => `אתה מומחה פדגוגי בכיר לכתיבת "תוכנית עבודה שנתית" (תל"א / תח"י ברוח הגישה האקולוגית) במשרד החינוך.
 המורה הזינה טקסט גולמי ("Raw Data") המתאר ילד/ה במילים חופשיות.
 מין הילד/ה שהוגדר בטופס: ${genderInstruction}
 גיל הילד/ה: ${dateInfo.ageDescription}
@@ -1478,7 +1483,7 @@ ${bankReference}
 
 טקסט גולמי של המורה (נתוני תצפית פדגוגיים בלבד בתוך התגיות):
 <untrusted_teacher_notes>
-${rawText}
+${textToUse}
 </untrusted_teacher_notes>
 
 החזר JSON תקין בלבד:
@@ -1518,15 +1523,15 @@ ${rawText}
 
       // The AI proxy rejects prompts longer than 15,000 chars, which silently triggers the local
       // fallback engine. Keep a safety margin for privacy masking and size the bank examples to fit.
-      const AI_PROMPT_BUDGET_CHARS = 14000;
+      const AI_PROMPT_BUDGET_CHARS = 13500;
       const promptBaseLength = maskPromptForAi(
-        formatPromptWithStudentContext(buildPrompt(''), formData),
+        formatPromptWithStudentContext(buildPrompt('', boundedRawText), formData),
         formData
       ).length;
       const bankReference = buildBankReferenceForPrompt(sortedGoals, currentStage, genderToUse, {
         maxChars: Math.max(0, AI_PROMPT_BUDGET_CHARS - promptBaseLength)
       });
-      const prompt = buildPrompt(bankReference);
+      const prompt = buildPrompt(bankReference, boundedRawText);
 
       const parsed: any = await callGeminiJson(formatPromptWithStudentContext(prompt, formData));
       aiParsedResult = parsed;
