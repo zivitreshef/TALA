@@ -29,6 +29,9 @@ describe('TypeScript Migration Phase 3 Batch 4 Gate', () => {
       expect(html).toContain('קליטת מסמך ושמירה בתיק התלמיד/ה');
       expect(html).toContain('העלאת קובץ אבחון');
       expect(html).toContain('לחצי כאן להעלאת קובץ או גררי לכאן');
+      expect(html).toContain('privacy-sensitive-info-note');
+      expect(html).toContain('שמירה על פרטיות:');
+      expect(html).toContain('נא להימנע מחשיפת מידע אישי רגיש או פרטים מזהים של התלמיד/ה');
       expect(html).not.toContain('תוספת הערות');
       expect(html).toContain('שמור בתיק והוסף לתובנות');
     });

@@ -281,6 +281,10 @@ export default function DiagnosticIntakeModal({
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="privacy-sensitive-info-note" style={{ margin: 0 }}>
+              🔒 <strong>שמירה על פרטיות:</strong> בעת העלאת קבצים או הזנת טקסט, נא להימנע מחשיפת מידע אישי רגיש או פרטים מזהים של התלמיד/ה ובני המשפחה (כגון שמות מלאים, מספרי תעודת זהות, טלפונים או כתובות). מומלץ להסיר פרטים מזהים לפני ההעלאה ולהשתמש בראשי תיבות בלבד.
+            </div>
+
             {/* Step 1: Upload File */}
             <div>
               <label style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e3a5f', display: 'block', marginBottom: '6px' }}>
