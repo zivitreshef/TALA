@@ -118,20 +118,6 @@ export default function GoalBankPage({
     const effectiveEnvFilter = selectedHlDomain || goalBankEnvFilter;
     const query = goalBankSearch.trim().toLowerCase();
 
-  useEffect(() => {
-    const trimmed = goalBankSearch.trim();
-    if (trimmed.length >= 2 && filteredGoals.length === 0) {
-      const timer = setTimeout(() => {
-        try {
-          usageTelemetryService.track(TELEMETRY_EVENTS.SEARCH_ZERO_RESULTS, {
-            context: 'goal_bank'
-          });
-        } catch (_) {}
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [goalBankSearch, filteredGoals.length]);
-
     return sortedBank.filter((g: any) => {
       if (!isGoalRelevantForStage(g, activeStage)) return false;
 
@@ -154,6 +140,21 @@ export default function GoalBankPage({
       return titleMatch || envMatch || objMatch;
     });
   }, [sortedBank, activeStage, selectedHlDomain, goalBankEnvFilter, goalBankSearch]);
+
+  useEffect(() => {
+    const trimmed = goalBankSearch.trim();
+    if (trimmed.length >= 2 && filteredGoals.length === 0) {
+      const timer = setTimeout(() => {
+        try {
+          usageTelemetryService.track(TELEMETRY_EVENTS.SEARCH_ZERO_RESULTS, {
+            context: 'goal_bank'
+          });
+        } catch (_) {}
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [goalBankSearch, filteredGoals.length]);
+
 
   const handleStartAddGoal = () => {
     setEditingBankGoal({
