@@ -151,7 +151,8 @@ describe('Admin AI Quotas & Support Diagnostics (Features 3 & 5)', () => {
     });
 
     it('renders diagnostic strip and quota reset button in AdminAllowlistModal', () => {
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       const users = [
         {
           id: 'u_t1',

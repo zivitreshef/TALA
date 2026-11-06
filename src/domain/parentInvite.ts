@@ -448,6 +448,31 @@ export function buildStaffObservationNote(invite?: Partial<InviteDoc> | null): {
   return { authorName: authorName.slice(0, 80), note };
 }
 
+function splitOutsideParentheses(raw: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let depth = 0;
+  for (let i = 0; i < raw.length; i += 1) {
+    const ch = raw[i];
+    if (ch === '(') {
+      depth += 1;
+      current += ch;
+    } else if (ch === ')') {
+      if (depth > 0) depth -= 1;
+      current += ch;
+    } else if ((ch === ',' || ch === ';') && depth === 0) {
+      const trimmed = current.trim();
+      if (trimmed) result.push(trimmed);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  const tail = current.trim();
+  if (tail) result.push(tail);
+  return result;
+}
+
 /**
  * Extracts structured, clickable staff recipient candidates directly from the student's
  * populated team fields so the teacher can select them with 1 click without typing errors.
@@ -476,10 +501,10 @@ export function extractStaffRecipientsFromStudent(
     if (!rawVal) continue;
 
     // For multi-person fields (paraMedicalTeam, additionalPartners, emotionalTherapist),
-    // split cleanly by comma/semicolon ONLY outside of parentheses
+    // split cleanly by comma/semicolon ONLY outside of parentheses in O(n) time
     const segments =
       key === 'paraMedicalTeam' || key === 'additionalPartners' || key === 'emotionalTherapist'
-        ? rawVal.split(/[,;]+(?![^(]*\))/).map((s) => s.trim()).filter(Boolean)
+        ? splitOutsideParentheses(rawVal)
         : [rawVal];
 
     segments.forEach((seg, idx) => {

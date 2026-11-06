@@ -102,12 +102,15 @@ export default function ParentVoiceControl({
   useEffect(() => {
     const auth = getFirebaseAuth();
     if (!auth) return undefined;
-    return onAuthStateChanged(auth, (user: User | null) => setAuthedEmail(user?.email || ''));
+    return onAuthStateChanged(auth, (user: User | null) => {
+      const nextEmail = user?.email || '';
+      setAuthedEmail((prev) => (prev === nextEmail ? prev : nextEmail));
+    });
   }, []);
 
   useEffect(() => {
     if (initialInvites) return undefined;
-    setInvites([]);
+    setInvites((prev) => (prev.length === 0 ? prev : []));
     if (!ownerEmail || !studentId) return undefined;
     return subscribeToStudentInvites(
       ownerEmail,

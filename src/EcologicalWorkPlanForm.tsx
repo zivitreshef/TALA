@@ -523,6 +523,15 @@ export default function EcologicalWorkPlanForm({
 
   // Report whether current formData has unsaved changes & perform quiet debounced Auto-Save (Option E)
   const isDirtyRef = useRef(false);
+  const onDraftStateChangeRef = useRef(onDraftStateChange);
+  const onSaveStudentPlanRef = useRef(onSaveStudentPlan);
+  const lastReportedDraftSigRef = useRef<string>('');
+
+  useEffect(() => {
+    onDraftStateChangeRef.current = onDraftStateChange;
+    onSaveStudentPlanRef.current = onSaveStudentPlan;
+  });
+
   useEffect(() => {
     return () => {
       if (isDirtyRef.current) {
@@ -537,10 +546,13 @@ export default function EcologicalWorkPlanForm({
 
   useEffect(() => {
     const syncedDraft = syncActiveReportSnapshot(formData);
-    const isDirty = JSON.stringify(syncedDraft) !== savedSnapshotRef.current;
+    const serializedDraft = JSON.stringify(syncedDraft);
+    const isDirty = serializedDraft !== savedSnapshotRef.current;
     isDirtyRef.current = isDirty;
-    if (onDraftStateChange) {
-      onDraftStateChange({
+    const reportSig = `${isDirty ? '1' : '0'}:${serializedDraft}`;
+    if (onDraftStateChangeRef.current && lastReportedDraftSigRef.current !== reportSig) {
+      lastReportedDraftSigRef.current = reportSig;
+      onDraftStateChangeRef.current({
         isDirty,
         draftData: syncedDraft
       });
@@ -572,20 +584,22 @@ export default function EcologicalWorkPlanForm({
           ];
         }
       }
-      savedSnapshotRef.current = JSON.stringify(updated);
+      const serializedUpdated = JSON.stringify(updated);
+      savedSnapshotRef.current = serializedUpdated;
+      lastReportedDraftSigRef.current = `0:${serializedUpdated}`;
       setFormData(updated);
-      onSaveStudentPlan(updated);
+      onSaveStudentPlanRef.current?.(updated);
       setTimeout(() => {
         section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       }, 300);
       setAutoSavedTime(nowTime);
-      if (onDraftStateChange) {
-        onDraftStateChange({ isDirty: false, draftData: updated });
+      if (onDraftStateChangeRef.current) {
+        onDraftStateChangeRef.current({ isDirty: false, draftData: updated });
       }
     }, 2500);
 
     return () => clearTimeout(autoSaveTimer);
-  }, [formData, onDraftStateChange, onSaveStudentPlan]);
+  }, [formData]);
 
   // Automatically expand all textareas to their full scrollHeight so NO scrollbar ever appears
   useEffect(() => {
