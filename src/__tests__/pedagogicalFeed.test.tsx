@@ -263,5 +263,8 @@ describe('DiagnosticIntakeModal Simplified Workflow', () => {
     expect(html).toContain('מרקר שורות (2/2)');
     expect(html).toContain('שורה ראשונה חשובה');
     expect(html).toContain('שורה שנייה שאינה רלוונטית');
+    expect(html).toContain('privacy-sensitive-info-note');
+    expect(html).toContain('שמירה על פרטיות:');
+    expect(html).toContain('נא להימנע מחשיפת מידע אישי רגיש או פרטים מזהים של התלמיד/ה');
   });
 });
