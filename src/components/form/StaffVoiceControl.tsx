@@ -106,12 +106,15 @@ export default function StaffVoiceControl({
   useEffect(() => {
     const auth = getFirebaseAuth();
     if (!auth) return undefined;
-    return onAuthStateChanged(auth, (user: User | null) => setAuthedEmail(user?.email || ''));
+    return onAuthStateChanged(auth, (user: User | null) => {
+      const nextEmail = user?.email || '';
+      setAuthedEmail((prev) => (prev === nextEmail ? prev : nextEmail));
+    });
   }, []);
 
   useEffect(() => {
     if (initialInvites) return undefined;
-    setInvites([]);
+    setInvites((prev) => (prev.length === 0 ? prev : []));
     if (!ownerEmail || !studentId) return undefined;
     return subscribeToStudentInvites(
       ownerEmail,
@@ -121,16 +124,51 @@ export default function StaffVoiceControl({
     );
   }, [ownerEmail, studentId, authedEmail, initialInvites]);
 
+  const homeroomTeacher = String(student?.homeroomTeacher || '');
+  const integrationTeacher = String(student?.integrationTeacher || '');
+  const learningSupportAssistant = String(student?.learningSupportAssistant || '');
+  const counselorName = String(student?.counselorName || '');
+  const psychologistName = String(student?.psychologistName || '');
+  const matyaCoordinator = String(student?.matyaCoordinator || '');
+  const emotionalTherapist = String(student?.emotionalTherapist || '');
+  const paraMedicalTeam = String(student?.paraMedicalTeam || '');
+  const additionalPartners = String(student?.additionalPartners || '');
+
   const candidates = useMemo(
-    () => extractStaffRecipientsFromStudent(student || {}, isKindergarten),
-    [student, isKindergarten]
+    () =>
+      extractStaffRecipientsFromStudent(
+        {
+          homeroomTeacher,
+          integrationTeacher,
+          learningSupportAssistant,
+          counselorName,
+          psychologistName,
+          matyaCoordinator,
+          emotionalTherapist,
+          paraMedicalTeam,
+          additionalPartners
+        },
+        isKindergarten
+      ),
+    [
+      homeroomTeacher,
+      integrationTeacher,
+      learningSupportAssistant,
+      counselorName,
+      psychologistName,
+      matyaCoordinator,
+      emotionalTherapist,
+      paraMedicalTeam,
+      additionalPartners,
+      isKindergarten
+    ]
   );
 
   // Automatically select first candidate if none selected
   useEffect(() => {
     if (candidates.length > 0 && !candidates.some((c) => c.id === selectedCandidateId)) {
       setSelectedCandidateId(candidates[0].id);
-    } else if (candidates.length === 0) {
+    } else if (candidates.length === 0 && selectedCandidateId !== '') {
       setSelectedCandidateId('');
     }
   }, [candidates, selectedCandidateId]);

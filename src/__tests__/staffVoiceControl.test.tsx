@@ -212,4 +212,29 @@ describe('StaffVoiceControl & Multi-Disciplinary Team Feedback Domain', () => {
     expect(html).toContain('שלבי בתיק התלמיד, במטרות וביומן התצפיות');
     expect(PREDEFINED_STAFF_ROLES).toContain('מנתחת התנהגות');
   });
+
+  it('prevents 100% CPU infinite render loop in EcologicalWorkPlanForm and parses complex parenthesis strings in O(n) time', async () => {
+    // 1. Regression test for linear O(n) parenthesis splitting (zero regex backtracking)
+    const pathologicalInput = 'א'.repeat(50) + ' (' + ', '.repeat(250) + 'ללא סגירה';
+    const t0 = performance.now();
+    const parsed = extractStaffRecipientsFromStudent(
+      {
+        paraMedicalTeam: `${pathologicalInput}, יעל רז (מרפאה בעיסוק, מתי"א), דנה כץ (מנתחת התנהגות)`
+      },
+      false
+    );
+    const elapsedMs = performance.now() - t0;
+    expect(elapsedMs).toBeLessThan(50);
+    expect(parsed.length).toBeGreaterThanOrEqual(1);
+
+    // 2. Regression test for EcologicalWorkPlanForm draft-state useEffect dependency stability
+    const fs = await import('fs');
+    const path = await import('path');
+    const formSource = fs.readFileSync(
+      path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx'),
+      'utf8'
+    );
+    expect(formSource).toContain('lastReportedDraftSigRef');
+    expect(formSource).not.toContain('}, [formData, onDraftStateChange, onSaveStudentPlan]);');
+  });
 });
