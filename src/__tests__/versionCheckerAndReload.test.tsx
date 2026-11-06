@@ -2,8 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   isNewerVersion,
-  fetchLatestVersion
+  fetchLatestVersion,
+  DEFAULT_CHECK_INTERVAL_MS,
+  DEFAULT_VISIBILITY_THROTTLE_MS
 } from '../services/versionChecker';
+import GoalBankPage from '../components/GoalBankPage';
 import { reloadApplication } from '../services/appRefresh';
 import NewVersionBanner from '../components/NewVersionBanner';
 
@@ -210,6 +213,17 @@ describe('Version Checker, Notification Banner & Application Reload Protocol', (
 
       dismissBtn.props.onClick();
       expect(onDismiss).toHaveBeenCalledTimes(1);
+      expect(DEFAULT_CHECK_INTERVAL_MS).toBe(60 * 1000);
+      expect(DEFAULT_VISIBILITY_THROTTLE_MS).toBe(15 * 1000);
+      const bankHtml = renderToStaticMarkup(
+        <GoalBankPage
+          goalBank={[{ id: 'g1', title: 'מטרה לדוגמה', environment: 'מפגש בגן', stages: ['kindergarten'], usageCount: 3 }]}
+          currentUser={{ email: 'teacher@tala.org', role: 'user' }}
+          userStudents={[{ id: 's1', name: 'דניאל', gender: 'boy', goals: [] }]}
+          targetBankStudentId="s1"
+        />
+      );
+      expect(bankHtml).toContain('מאגר מטרות ויעדים אקולוגי חכם');
     });
   });
 });

@@ -90,12 +90,13 @@ export interface UseAppVersionCheckReturn {
   checkNow: () => Promise<void>;
 }
 
-const DEFAULT_INITIAL_DELAY_MS = 3 * 1000; // 3 seconds after boot
-const DEFAULT_VISIBILITY_THROTTLE_MS = 5 * 60 * 1000; // 5 minutes
+export const DEFAULT_INITIAL_DELAY_MS = 3 * 1000; // 3 seconds after boot
+export const DEFAULT_CHECK_INTERVAL_MS = 60 * 1000; // 60 seconds periodic check
+export const DEFAULT_VISIBILITY_THROTTLE_MS = 15 * 1000; // 15 seconds throttle on focus/visibility
 
 export function useAppVersionCheck({
   currentVersion = CURRENT_APP_VERSION,
-  checkIntervalMs = null,
+  checkIntervalMs = DEFAULT_CHECK_INTERVAL_MS,
   initialDelayMs = DEFAULT_INITIAL_DELAY_MS,
   minVisibilityIntervalMs = DEFAULT_VISIBILITY_THROTTLE_MS,
   enabled = true
@@ -134,34 +135,42 @@ export function useAppVersionCheck({
 
     // 1. Initial delayed check
     const initialTimer = setTimeout(() => {
-      checkNow();
+      void checkNow();
     }, initialDelayMs);
 
-    // 2. Periodic interval (only if explicitly configured)
+    // 2. Periodic interval while tab is visible (defaults to 60s)
     let intervalId: ReturnType<typeof setInterval> | undefined;
     if (checkIntervalMs && checkIntervalMs > 0) {
       intervalId = setInterval(() => {
-        checkNow();
+        if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+          void checkNow();
+        }
       }, checkIntervalMs);
     }
 
-    // 3. Visibility check when user returns to tab
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+    // 3. Visibility and window focus check when user returns to tab/window
+    const handleVisibilityOrFocus = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
         const elapsedSinceLastCheck = Date.now() - lastCheckedAtRef.current;
         if (elapsedSinceLastCheck >= minVisibilityIntervalMs) {
-          checkNow();
+          void checkNow();
         }
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleVisibilityOrFocus);
+    }
 
     return () => {
       isMountedRef.current = false;
       clearTimeout(initialTimer);
       if (intervalId) clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleVisibilityOrFocus);
+      }
     };
   }, [enabled, checkNow, initialDelayMs, checkIntervalMs, minVisibilityIntervalMs]);
 
