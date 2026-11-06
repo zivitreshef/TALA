@@ -41,6 +41,10 @@ import {
   computeGroupStats,
   getDailyQuotaCount,
   DAILY_AI_QUOTA_LIMIT,
+  getUserEffectiveDailyAiQuota,
+  getUserDailyAiUsage,
+  resetUserDailyAiQuotaInList,
+  setGroupDailyAiQuotaInList,
   classifyUserGroup,
   sortUsersList
 } from '../../allowedUsers';
@@ -233,6 +237,7 @@ export default function AdminAllowlistModal({
         resolvedAt: thread.resolvedAt || null,
         schoolGroup: matchedUser?.group || '',
         userRole: matchedUser?.role || '',
+        diagnostics: thread.diagnostics || null,
         isChatThread: true
       });
     });
@@ -443,15 +448,18 @@ export default function AdminAllowlistModal({
     group: '',
     role: 'teacher',
     isTrialUser: false,
-    trialDays: DEFAULT_TRIAL_DAYS
+    trialDays: DEFAULT_TRIAL_DAYS,
+    dailyAiQuotaLimit: '' as string | number
   });
   
   const [detailsSavedToastId, setDetailsSavedToastId] = useState(null);
   const [userPresenceMap, setUserPresenceMap] = useState<Record<string, any>>({});
 
-  // Group bulk rename state
+  // Group bulk rename & quota state
   const [renamingGroup, setRenamingGroup] = useState<string | null>(null);
   const [newGroupNameInput, setNewGroupNameInput] = useState('');
+  const [editingQuotaGroup, setEditingQuotaGroup] = useState<string | null>(null);
+  const [groupQuotaInput, setGroupQuotaInput] = useState<string>('100');
 
   // Live Daily Quota Stats
   const dailyAiCount = useMemo(() => getDailyQuotaCount('ai'), []);
@@ -789,6 +797,29 @@ export default function AdminAllowlistModal({
     setTimeout(() => setInviteStatusBanner(''), 4000);
   };
 
+  const handleSaveBulkGroupQuota = () => {
+    if (!editingQuotaGroup) return;
+    const parsed = parseInt(String(groupQuotaInput).trim(), 10);
+    const limitVal = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    const nextList = setGroupDailyAiQuotaInList(allowedUsers, editingQuotaGroup, limitVal);
+    onUpdateAllowedUsers?.(nextList);
+    setInviteStatusBanner(
+      limitVal
+        ? `✅ מכסת ה-AI היומית לצוות "${editingQuotaGroup}" הוגדרה ל-${limitVal} בקשות ליום לכל מורה!`
+        : `✅ מכסת ה-AI היומית לצוות "${editingQuotaGroup}" הוחזרה לברירת המחדל!`
+    );
+    setEditingQuotaGroup(null);
+    setTimeout(() => setInviteStatusBanner(''), 4000);
+  };
+
+  const handleResetUserDailyQuota = (userObj: any) => {
+    if (!userObj?.id && !userObj?.email) return;
+    const nextList = resetUserDailyAiQuotaInList(allowedUsers, userObj.id || userObj.email);
+    onUpdateAllowedUsers?.(nextList);
+    setInviteStatusBanner(`✅ המכסה היומית של ${userObj.name} אופסה ל-0 להיום!`);
+    setTimeout(() => setInviteStatusBanner(''), 3500);
+  };
+
   const handleUnlockUser = (userId: any) => {
     onUpdateAllowedUsers?.(
       allowedUsers.map((u) =>
@@ -843,7 +874,8 @@ export default function AdminAllowlistModal({
       group: userObj.group || '',
       role: userObj.role || 'teacher',
       isTrialUser: Boolean(userObj.isTrialUser),
-      trialDays: userObj.trialDays || DEFAULT_TRIAL_DAYS
+      trialDays: userObj.trialDays || DEFAULT_TRIAL_DAYS,
+      dailyAiQuotaLimit: userObj.dailyAiQuotaLimit || ''
     });
   };
 
@@ -877,6 +909,12 @@ export default function AdminAllowlistModal({
       Math.min(365, parseInt(String(editUserForm.trialDays), 10) || DEFAULT_TRIAL_DAYS)
     );
 
+    const parsedCustomQuota = parseInt(String(editUserForm.dailyAiQuotaLimit || '').trim(), 10);
+    const nextCustomQuota =
+      !isMainAdmin && Number.isFinite(parsedCustomQuota) && parsedCustomQuota > 0
+        ? Math.max(1, Math.min(5000, parsedCustomQuota))
+        : null;
+
     let updatedUserRef = null;
     const updatedList = (allowedUsers || []).map((u) => {
       if (u.id !== userObj.id) return u;
@@ -888,6 +926,7 @@ export default function AdminAllowlistModal({
         title: cleanTitle,
         group: cleanGroup,
         role: nextRole,
+        dailyAiQuotaLimit: nextCustomQuota,
         isTrialUser: isTrial,
         trialDays: isTrial ? parsedTrialDays : null,
         trialStartedAt: isTrial
@@ -1834,20 +1873,82 @@ export default function AdminAllowlistModal({
                             </div>
                           </td>
 
-                          {/* Capacity Metrics */}
+                          {/* Capacity & Daily AI Quota Metrics */}
                           <td>
-                            <span
-                              style={{
-                                fontWeight: 700,
-                                color: studentCount > 0 ? '#1e293b' : '#94a3b8',
-                                fontSize: '12px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              🎒 {studentCount} {studentCount === 1 ? 'תלמיד/ה' : 'תלמידים'}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  color: studentCount > 0 ? '#1e293b' : '#94a3b8',
+                                  fontSize: '12px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                🎒 {studentCount} {studentCount === 1 ? 'תלמיד/ה' : 'תלמידים'}
+                              </span>
+
+                              {u.role !== 'admin' && !isMainAdmin && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                  {isEditingThisUser ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}>
+                                      <span>מכסת AI:</span>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        max={5000}
+                                        value={editUserForm.dailyAiQuotaLimit}
+                                        onChange={(e: any) =>
+                                          setEditUserForm({ ...editUserForm, dailyAiQuotaLimit: e.target.value })
+                                        }
+                                        placeholder={String(u.isTrialUser ? 50 : 100)}
+                                        style={{
+                                          width: '58px',
+                                          padding: '2px 5px',
+                                          borderRadius: '4px',
+                                          border: '1px solid #2563eb',
+                                          fontSize: '11px'
+                                        }}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span
+                                        style={{
+                                          fontSize: '11px',
+                                          fontWeight: 600,
+                                          color:
+                                            getUserDailyAiUsage(u) >= getUserEffectiveDailyAiQuota(u)
+                                              ? '#dc2626'
+                                              : '#475569'
+                                        }}
+                                        title="שימוש יומי בבינה מלאכותית מתוך המכסה היומית של המורה"
+                                      >
+                                        🤖 היום: {getUserDailyAiUsage(u)}/{getUserEffectiveDailyAiQuota(u)}
+                                      </span>
+                                      {getUserDailyAiUsage(u) > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleResetUserDailyQuota(u)}
+                                          className="btn-secondary-sm"
+                                          style={{
+                                            fontSize: '10px',
+                                            padding: '1px 5px',
+                                            background: '#fffbeb',
+                                            color: '#b45309',
+                                            borderColor: '#fde68a'
+                                          }}
+                                          title="אפס את מונה בקשות ה-AI היומי של מורה זו"
+                                        >
+                                          אפס מכסה
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </td>
 
                           {/* Password Management */}
@@ -2062,6 +2163,41 @@ export default function AdminAllowlistModal({
                 </div>
               )}
 
+              {/* Group Quota Dialog */}
+              {editingQuotaGroup && (
+                <div
+                  style={{
+                    background: '#f5f3ff',
+                    border: '1.5px solid #c4b5fd',
+                    borderRadius: '12px',
+                    padding: '14px 18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    flexWrap: 'wrap'
+                  }}
+                >
+                  <strong style={{ fontSize: '13px', color: '#5b21b6' }}>
+                    הגדרת מכסת AI יומית לכל מורה במתי"א "{editingQuotaGroup}":
+                  </strong>
+                  <input
+                    type="number"
+                    min={1}
+                    max={5000}
+                    value={groupQuotaInput}
+                    onChange={(e: any) => setGroupQuotaInput(e.target.value)}
+                    placeholder="בקשות ליום..."
+                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #8b5cf6', fontSize: '13px', width: '110px' }}
+                  />
+                  <button type="button" onClick={handleSaveBulkGroupQuota} className="btn-primary-sm">
+                    שמור מכסה קבוצתית
+                  </button>
+                  <button type="button" onClick={() => setEditingQuotaGroup(null)} className="btn-secondary-sm">
+                    ביטול
+                  </button>
+                </div>
+              )}
+
               {/* Groups Table */}
               <div className="allowed-users-table-wrap">
                 <table className="allowed-users-table">
@@ -2103,6 +2239,19 @@ export default function AdminAllowlistModal({
                             >
                               <Edit2 size={12} />
                               <span>שנה שם גורף</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingQuotaGroup(grp.name);
+                                setGroupQuotaInput('150');
+                              }}
+                              className="btn-secondary-sm"
+                              style={{ padding: '3px 8px', fontSize: '11.5px', color: '#5b21b6', borderColor: '#ddd6fe', background: '#f5f3ff' }}
+                              title="הגדר מכסת שאילתות AI יומית מותאמת לכל המורות במתי״א זו"
+                            >
+                              <Sparkles size={12} />
+                              <span>הגדר מכסת AI</span>
                             </button>
                             <button
                               type="button"
@@ -2711,6 +2860,107 @@ export default function AdminAllowlistModal({
                                 הערת מורה: "{inq.feedbackNote}"
                               </div>
                             )}
+
+                            {/* Zero-PII Teacher Technical Diagnostic Strip */}
+                            {(() => {
+                              const diag = matchedThread?.diagnostics || inq.diagnostics || null;
+                              const teacherErrorsCount = (healthEvents || []).filter(
+                                (ev: any) =>
+                                  ev &&
+                                  typeof ev.userEmail === 'string' &&
+                                  ev.userEmail.trim().toLowerCase() === (inq.email || '').trim().toLowerCase()
+                              ).length;
+                              const teacherUserObj = (allowedUsers || []).find(
+                                (u) => (u.email || '').trim().toLowerCase() === (inq.email || '').trim().toLowerCase()
+                              );
+                              const dailyUsed = teacherUserObj ? getUserDailyAiUsage(teacherUserObj) : 0;
+                              const dailyLimit = teacherUserObj ? getUserEffectiveDailyAiQuota(teacherUserObj) : 0;
+
+                              if (!diag && teacherErrorsCount === 0 && !teacherUserObj) return null;
+
+                              return (
+                                <div
+                                  data-testid={`inquiry-diagnostics-${inq.id}`}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: '6px',
+                                    marginTop: '6px',
+                                    fontSize: '11px',
+                                    color: '#475569'
+                                  }}
+                                >
+                                  <span style={{ fontWeight: 700, color: '#334155' }}>🔍 אבחון טכני:</span>
+                                  {diag?.appVersion && (
+                                    <span
+                                      style={{
+                                        background: '#f1f5f9',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '4px',
+                                        padding: '1px 6px'
+                                      }}
+                                    >
+                                      גרסה: <strong>{diag.appVersion}</strong>
+                                    </span>
+                                  )}
+                                  {diag?.browser && (
+                                    <span
+                                      style={{
+                                        background: '#f1f5f9',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '4px',
+                                        padding: '1px 6px'
+                                      }}
+                                    >
+                                      דפדפן: {diag.browser}
+                                    </span>
+                                  )}
+                                  {diag && (
+                                    <span
+                                      style={{
+                                        background: diag.cloudConnected ? '#f0fdf4' : '#fef2f2',
+                                        color: diag.cloudConnected ? '#15803d' : '#b91c1c',
+                                        border: `1px solid ${diag.cloudConnected ? '#bbf7d0' : '#fecaca'}`,
+                                        borderRadius: '4px',
+                                        padding: '1px 6px',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      {diag.cloudConnected ? '☁️ ענן מחובר' : '⚠️ מצב מקומי'}
+                                    </span>
+                                  )}
+                                  {teacherUserObj && teacherUserObj.role !== 'admin' && (
+                                    <span
+                                      style={{
+                                        background: dailyUsed >= dailyLimit ? '#fef2f2' : '#f5f3ff',
+                                        color: dailyUsed >= dailyLimit ? '#b91c1c' : '#5b21b6',
+                                        border: `1px solid ${dailyUsed >= dailyLimit ? '#fecaca' : '#ddd6fe'}`,
+                                        borderRadius: '4px',
+                                        padding: '1px 6px',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      🤖 מכסה יומית: {dailyUsed}/{dailyLimit}
+                                    </span>
+                                  )}
+                                  <span
+                                    style={{
+                                      background: teacherErrorsCount > 0 ? '#fffbeb' : '#f8fafc',
+                                      color: teacherErrorsCount > 0 ? '#b45309' : '#64748b',
+                                      border: `1px solid ${teacherErrorsCount > 0 ? '#fde68a' : '#e2e8f0'}`,
+                                      borderRadius: '4px',
+                                      padding: '1px 6px',
+                                      fontWeight: teacherErrorsCount > 0 ? 700 : 500
+                                    }}
+                                  >
+                                    {teacherErrorsCount > 0
+                                      ? `⚠️ ${teacherErrorsCount} שגיאות אחרונות`
+                                      : '✓ 0 שגיאות מדווחות'}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
