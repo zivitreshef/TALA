@@ -4692,7 +4692,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               : '#f8fafc',
             border: !isFreeTextCollapsed ? '1.5px solid #cbd5e1' : '1px solid #e2e8f0',
             borderRadius: '10px',
-            padding: !isFreeTextCollapsed ? '14px 18px' : '10px 16px',
+            padding: !isFreeTextCollapsed ? '10px 14px' : '10px 16px',
             marginBottom: '18px',
             boxShadow: !isFreeTextCollapsed ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
             transition: 'all 0.2s ease'

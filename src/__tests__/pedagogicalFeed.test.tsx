@@ -202,7 +202,10 @@ describe('PedagogicalFeed Component UI Tests', () => {
     );
 
     expect(html).toContain('0 מקורות פעילים');
+    expect(html).toContain('pedagogical-feed-empty-strip');
     expect(html).toContain('ציר התובנות ריק כרגע');
+    expect(html).not.toContain('📝');
+    expect(html).not.toContain('🔒');
     expect(html).toContain('הוסיפי תובנה, תצפית או עדכון חדש:');
   });
 
