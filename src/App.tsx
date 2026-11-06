@@ -156,6 +156,7 @@ import {
 } from './domain/userEngagement';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
 import GoalBankPage from './components/GoalBankPage';
+import ClassReadinessOverview from './components/ClassReadinessOverview';
 import OnboardingNavigatorModal from './components/onboarding/OnboardingNavigatorModal';
 import OnboardingGuidedWorkspace from './components/onboarding/OnboardingGuidedWorkspace';
 import {
@@ -558,6 +559,7 @@ export default function App() {
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState<any>(null);
   const [showDailyTracker, setShowDailyTracker] = useState(false);
+  const [showClassOverview, setShowClassOverview] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [_insideLandingSearch, setInsideLandingSearch] = useState('');
     // Clustered by educationalFramework — collapsed by default
@@ -735,11 +737,12 @@ export default function App() {
 
   const currentScreen = useMemo(() => {
     if (showAdminModal) return 'admin_dashboard';
+    if (showClassOverview) return 'class_overview';
     if (showDailyTracker) return 'daily_tracker';
     if (showGoalBankOverview) return 'goal_bank';
     if (selectedStudentId) return 'student_form';
     return 'student_roster';
-  }, [showAdminModal, showDailyTracker, showGoalBankOverview, selectedStudentId]);
+  }, [showAdminModal, showClassOverview, showDailyTracker, showGoalBankOverview, selectedStudentId]);
 
   useEffect(() => {
     if (currentUser && currentScreen !== lastTrackedScreenRef.current) {
@@ -2533,9 +2536,10 @@ export default function App() {
           >
             <button
               type="button"
-              className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker && !showGoalBankOverview ? 'active' : ''}`}
+              className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker && !showGoalBankOverview && !showClassOverview ? 'active' : ''}`}
               onClick={() => {
                 setSelectedStudentId(null);
+                setShowClassOverview(false);
                 setShowDailyTracker(false);
                 setShowGoalBankOverview(false);
               }}
@@ -2547,9 +2551,25 @@ export default function App() {
 
             <button
               type="button"
-              className={`header-nav-btn ${showDailyTracker && selectedStudentId === null && !showGoalBankOverview ? 'active' : ''} ${activeOnboardingStep === 5 && !showDailyTracker ? 'tour-highlight-btn' : ''}`}
+              className={`header-nav-btn ${showClassOverview && selectedStudentId === null && !showDailyTracker && !showGoalBankOverview ? 'active' : ''}`}
               onClick={() => {
                 setSelectedStudentId(null);
+                setShowClassOverview(true);
+                setShowDailyTracker(false);
+                setShowGoalBankOverview(false);
+              }}
+              title="מבט-על כיתתי על עמידה ביעדים ומועדי דיווח"
+            >
+              <UserCheck size={15} />
+              <span>מבט-על</span>
+            </button>
+
+            <button
+              type="button"
+              className={`header-nav-btn ${showDailyTracker && selectedStudentId === null && !showGoalBankOverview && !showClassOverview ? 'active' : ''} ${activeOnboardingStep === 5 && !showDailyTracker ? 'tour-highlight-btn' : ''}`}
+              onClick={() => {
+                setSelectedStudentId(null);
+                setShowClassOverview(false);
                 setShowDailyTracker(true);
                 setShowGoalBankOverview(false);
               }}
@@ -2568,10 +2588,11 @@ export default function App() {
 
             <button
               type="button"
-              className={`header-nav-btn ${showGoalBankOverview && selectedStudentId === null ? 'active' : ''}`}
+              className={`header-nav-btn ${showGoalBankOverview && selectedStudentId === null && !showClassOverview ? 'active' : ''}`}
               onClick={() => {
                 setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
                 setSelectedStudentId(null);
+                setShowClassOverview(false);
                 setShowDailyTracker(false);
                 setShowGoalBankOverview(true);
               }}
@@ -3218,6 +3239,19 @@ export default function App() {
                 activeOnboardingStep={activeOnboardingStep as any}
                 onboardingSpotlightTick={onboardingSpotlightTick}
                 onGoHome={() => setSelectedStudentId(null)}
+              />
+            </ErrorBoundary>
+          ) : showClassOverview ? (
+            <ErrorBoundary componentName="ClassReadinessOverview">
+              <ClassReadinessOverview
+                students={baseStudentsForView}
+                onSelectStudent={(studentId) => {
+                  setSelectedStudentId(studentId);
+                  setShowClassOverview(false);
+                  setShowDailyTracker(false);
+                  setShowGoalBankOverview(false);
+                }}
+                onClose={() => setShowClassOverview(false)}
               />
             </ErrorBoundary>
           ) : showDailyTracker ? (
