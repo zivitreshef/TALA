@@ -23,7 +23,7 @@ const TERMINAL_MESSAGES: Record<string, { title: string; body: string }> = {
   },
   done: {
     title: 'תודה רבה!',
-    body: 'התשובות נשלחו לצוות החינוכי. הן ישמשו אותנו בבניית התוכנית.'
+    body: 'התשובות נשלחו לצוות החינוכי. הן ישמשו אותנו בבניית התוכנית ובמעקב.'
   }
 };
 
@@ -121,9 +121,12 @@ export default function ParentStudentInputView({ token }: ParentStudentInputView
     return <Message {...TERMINAL_MESSAGES[phase]} />;
   }
 
+  const isStaff = invite?.inviteType === 'staff';
   const questions = getInviteQuestions({
     childName: invite?.childFirstName,
     gender: invite?.gender,
+    inviteType: isStaff ? 'staff' : 'parent',
+    recipientRole: invite?.recipientRole,
     customQuestions: invite?.customQuestions,
     overrideDefaults: !!invite?.overrideDefaults
   });
@@ -144,12 +147,34 @@ export default function ParentStudentInputView({ token }: ParentStudentInputView
     }
   };
 
+  const staffHeader = [invite?.recipientName, invite?.recipientRole].filter(Boolean).join(' · ');
+
   return (
     <PageShell>
+      {isStaff && staffHeader && (
+        <div
+          style={{
+            display: 'inline-block',
+            background: '#ede9fe',
+            color: '#5b21b6',
+            borderRadius: '999px',
+            padding: '4px 12px',
+            fontSize: '13px',
+            fontWeight: 700,
+            marginBottom: '8px'
+          }}
+        >
+          התייחסות צוות מקצועי: {staffHeader}
+        </div>
+      )}
       <h1 className="pi-title">
-        {invite?.childFirstName
-          ? `נשמח לשמוע אתכם על ${invite.childFirstName}`
-          : 'נשמח לשמוע אתכם'}
+        {isStaff
+          ? invite?.childFirstName
+            ? `התייחסות מקצועית עבור ${invite.childFirstName}`
+            : 'התייחסות מקצועית עבור התלמיד/ה'
+          : invite?.childFirstName
+            ? `נשמח לשמוע אתכם על ${invite.childFirstName}`
+            : 'נשמח לשמוע אתכם'}
       </h1>
       <p className="pi-text">
         {questions.length === 3 ? 'שלוש שאלות קצרות, כמה דקות בלבד.' : 'שאלות קצרות, מספר דקות בלבד.'} אפשר לענות רק על חלק מהן.

@@ -109,6 +109,7 @@ import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
 import TeamChatDrawer from './components/form/TeamChatDrawer';
 import ParentVoiceControl from './components/form/ParentVoiceControl';
+import StaffVoiceControl, { type StaffMergePayload } from './components/form/StaffVoiceControl';
 import MinistryCopyModal from './components/form/MinistryCopyModal';
 import QuickObservationModal from './components/form/QuickObservationModal';
 import DiagnosticIntakeModal from './components/form/DiagnosticIntakeModal';
@@ -118,7 +119,8 @@ import {
   aggregateSnippetsForAiPrompt,
   syncSnippetsToCombinedText,
   addSnippet,
-  removeSnippet
+  removeSnippet,
+  createTeacherNoteSnippet
 } from './domain/pedagogicalFeed';
 import type { PedagogicalSnippet } from './domain/types';
 import { removeDiagnosticDocumentFromStudent } from './domain/diagnosticIntake';
@@ -908,6 +910,67 @@ export default function EcologicalWorkPlanForm({
     handleFieldChange('teacherFreeText', appendToFreeText(formData.teacherFreeText, block));
     setIsFreeTextCollapsed(false);
     setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
+  // Merge multi-disciplinary staff feedback into both:
+  // 1) Pre-plan / AI goal generation feed (pedagogicalSnippets + teacherFreeText)
+  // 2) Post-plan continuous tracking observations & mid/end-year evaluation on active goals
+  const handleMergeStaffVoice = (payload: StaffMergePayload) => {
+    if (!payload?.mergedText) return;
+    const currentList =
+      formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+        ? formData.pedagogicalSnippets
+        : activeSnippets;
+    const staffSnippet = createTeacherNoteSnippet(payload.mergedText, payload.authorName);
+    const nextSnippets = addSnippet(currentList, staffSnippet);
+    const combinedText = syncSnippetsToCombinedText(nextSnippets);
+
+    // If the student already has goals, also log this feedback as a field observation
+    // so it appears in the Daily Pedagogical Tracker, weekly/monthly digest, and mid/end-year eval
+    const existingGoals = Array.isArray(formData.goals) ? formData.goals : [];
+    const hasPopulatedGoal = existingGoals.some((g: any) => String(g?.title || g?.objectives || '').trim().length > 0);
+    let nextGoals = existingGoals;
+    if (hasPopulatedGoal && payload.observationNote) {
+      let attached = false;
+      nextGoals = existingGoals.map((g: any) => {
+        if (attached) return g;
+        const isPopulated = String(g?.title || g?.objectives || '').trim().length > 0;
+        if (!isPopulated) return g;
+        attached = true;
+        const { updatedGoal } = addObservationToGoal(g, {
+          supportLevel: 'תיווך חלקי',
+          note: payload.observationNote,
+          authorName: payload.authorName,
+          targetEvalField: 'midYearEvaluation'
+        });
+        return updatedGoal;
+      });
+    }
+
+    const nextData = {
+      ...formData,
+      isLocked: false,
+      lockedAt: '',
+      lockedBy: '',
+      pedagogicalSnippets: nextSnippets,
+      teacherFreeText: combinedText || appendToFreeText(formData.teacherFreeText, payload.mergedText),
+      goals: nextGoals,
+      lastSavedAt: new Date().toISOString()
+    };
+    setFormData(nextData);
+    onSaveStudentPlan?.(nextData);
+    setIsFreeTextCollapsed(false);
+    setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  };
+
+  const handleQuickAddPartnerToCard = (role: string, name: string) => {
+    if (formData.isLocked) return;
+    const formatted = `${name.trim()} (${role.trim()})`;
+    const isPara = ['מרפאה בעיסוק', 'קלינאית תקשורת', 'פיזיותרפיסט/ית'].includes(role);
+    const targetField = isPara ? 'paraMedicalTeam' : 'additionalPartners';
+    const currentVal = String(formData[targetField] || '').trim();
+    const nextVal = currentVal ? `${currentVal}, ${formatted}` : formatted;
+    handleFieldChange(targetField, nextVal);
   };
 
   // Update a row in the 8-row functional profile table (for תל"א)
@@ -4370,6 +4433,31 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     ))}
                   </datalist>
                 </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: '14px',
+                  paddingTop: '12px',
+                  borderTop: '1px dashed #cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ fontSize: '12.5px', color: '#475569' }}>
+                  <strong>איסוף התייחסות מהצוות שברשימה:</strong> שלחי קישור מותאם אישית לכל איש מקצוע ליצירת מטרות ולמעקב שוטף
+                </div>
+                <StaffVoiceControl
+                  student={formData}
+                  currentUser={currentUser}
+                  disabled={isReportLocked}
+                  isKindergarten={isKindergarten}
+                  onMergeStaffFeedback={handleMergeStaffVoice}
+                  onAddPartnerToStudentCard={handleQuickAddPartnerToCard}
+                />
               </div>
             </div>
           )}

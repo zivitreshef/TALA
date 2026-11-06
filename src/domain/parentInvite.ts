@@ -1,5 +1,5 @@
 /**
- * Domain module for Parent Voice Capability Invitations (TALA Parent Voice).
+ * Domain module for Parent & Educational Team Voice Capability Invitations (TALA Voice).
  * Zero UI / Firebase dependencies – pure, deterministic and testable.
  *
  * The public link is a capability URL: the 128-bit random token is also the document
@@ -32,6 +32,34 @@ const MERGE_LABELS: Record<InviteAnswerKey, string> = {
   goal: 'מה חשוב להשיג השנה'
 };
 
+const STAFF_MERGE_LABELS: Record<InviteAnswerKey, string> = {
+  strengths: 'חוזקות ותפקוד חיובי שנצפו',
+  challenges: 'אתגרים ומוקדי קושי בתפקוד',
+  goal: 'המלצות, התאמות ויעדים להמשך'
+};
+
+export const PREDEFINED_STAFF_ROLES: readonly string[] = [
+  'מרפאה בעיסוק',
+  'קלינאית תקשורת',
+  'מנתחת התנהגות',
+  'מטפלת רגשית / באומנויות',
+  'פסיכולוג/ית',
+  'יועצ/ת חינוכי/ת',
+  'מורת שילוב / גננת שילוב',
+  'מורה מקצועי/ת',
+  'תומכת למידה',
+  'מתכללת מתי"א',
+  'פיזיותרפיסט/ית'
+];
+
+export interface StaffRecipientCandidate {
+  id: string;
+  role: string;
+  name: string;
+  fieldKey: string;
+  label: string;
+}
+
 export interface InviteQuestion {
   key: string;
   label: string;
@@ -43,6 +71,9 @@ export interface BuildInviteDocParams {
   studentId: string | number;
   childFirstName?: string;
   gender?: 'boy' | 'girl' | string;
+  inviteType?: 'parent' | 'staff';
+  recipientRole?: string;
+  recipientName?: string;
   customQuestions?: string[];
   overrideDefaults?: boolean;
   now?: Date;
@@ -53,6 +84,9 @@ export interface InviteDoc {
   studentId: string;
   childFirstName: string;
   gender: 'boy' | 'girl';
+  inviteType?: 'parent' | 'staff';
+  recipientRole?: string;
+  recipientName?: string;
   status: 'pending' | 'submitted' | string;
   createdAt: Date;
   expiresAt: Date;
@@ -102,9 +136,25 @@ export function buildInviteUrl(baseHref: string, token: string): string {
 
 export function buildWhatsAppShareUrl(
   inviteUrl: string,
-  { childFirstName = '' }: { childFirstName?: string } = {}
+  {
+    childFirstName = '',
+    inviteType = 'parent',
+    recipientName = '',
+    recipientRole = ''
+  }: {
+    childFirstName?: string;
+    inviteType?: 'parent' | 'staff';
+    recipientName?: string;
+    recipientRole?: string;
+  } = {}
 ): string {
   const name = String(childFirstName || '').trim();
+  if (inviteType === 'staff') {
+    const greeting = recipientName ? `שלום ${recipientName.trim()}` : 'שלום';
+    const rolePart = recipientRole ? ` (${recipientRole.trim()})` : '';
+    const text = `${greeting}${rolePart}, לקראת בניית או עדכון תוכנית העבודה${name ? ' של ' + name : ''} נשמח לקבל את ההתייחסות המקצועית שלך בקישור הקצר הבא (כ-2 דקות):\n${inviteUrl}`;
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  }
   const text = `שלום, לקראת בניית תוכנית העבודה${name ? ' של ' + name : ''} נשמח לשמוע את דעתכם. זה לוקח כ-3 דקות:\n${inviteUrl}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
@@ -143,14 +193,44 @@ export function getDefaultQuestions({
   ];
 }
 
+export function getDefaultStaffQuestions({
+  childName = '',
+  gender = 'boy',
+  recipientRole = ''
+}: {
+  childName?: string;
+  gender?: 'boy' | 'girl' | string;
+  recipientRole?: string;
+} = {}): string[] {
+  const name = String(childName || '').trim() || pick(gender, 'התלמיד', 'התלמידה');
+  const roleContext = recipientRole ? ` במפגשי ${recipientRole.trim()}` : ' במפגשים ובשיעורים איתך';
+  return [
+    pick(
+      gender,
+      `מהן החוזקות ומוקדי הכוח של ${name} כפי שבאים לידי ביטוי${roleContext}?`,
+      `מהן החוזקות ומוקדי הכוח של ${name} כפי שבאים לידי ביטוי${roleContext}?`
+    ),
+    pick(
+      gender,
+      `באילו אתגרים או קשיים ${name} מתמודד, ומה עוזר לו להתווסת ולהצליח?`,
+      `באילו אתגרים או קשיים ${name} מתמודדת, ומה עוזר לה להתווסת ולהצליח?`
+    ),
+    `אילו מטרות, יעדים או התאמות חשוב בעיניך לשלב בתוכנית ובמעקב של ${name}?`
+  ];
+}
+
 export function getInviteQuestions({
   childName = '',
   gender = 'boy',
+  inviteType = 'parent',
+  recipientRole = '',
   customQuestions = [],
   overrideDefaults = false
 }: {
   childName?: string;
   gender?: 'boy' | 'girl' | string;
+  inviteType?: 'parent' | 'staff';
+  recipientRole?: string;
   customQuestions?: string[];
   overrideDefaults?: boolean;
 } = {}): InviteQuestion[] {
@@ -162,6 +242,21 @@ export function getInviteQuestions({
       label,
       isCustom: true
     }));
+  }
+
+  if (inviteType === 'staff') {
+    const staffDefaults = getDefaultStaffQuestions({ childName, gender, recipientRole });
+    const baseStaff: InviteQuestion[] = [
+      { key: 'strengths', label: staffDefaults[0] },
+      { key: 'challenges', label: staffDefaults[1] },
+      { key: 'goal', label: staffDefaults[2] }
+    ];
+    const custom: InviteQuestion[] = cleanCustom.map((label, idx) => ({
+      key: `custom_${idx}`,
+      label,
+      isCustom: true
+    }));
+    return [...baseStaff, ...custom];
   }
 
   const name = String(childName || '').trim() || pick(gender, 'הילד', 'הילדה');
@@ -192,6 +287,9 @@ export function buildInviteDoc({
   studentId,
   childFirstName = '',
   gender = 'boy',
+  inviteType = 'parent',
+  recipientRole = '',
+  recipientName = '',
   customQuestions = [],
   overrideDefaults = false,
   now = new Date()
@@ -203,13 +301,21 @@ export function buildInviteDoc({
   const docData: InviteDoc = {
     ownerEmail: owner,
     studentId: String(studentId),
-    // שם פרטי בלבד - מוצג להורה בדף הציבורי
+    // שם פרטי בלבד - מוצג בדף הציבורי
     childFirstName: String(childFirstName || '').trim().split(/\s+/)[0] || '',
     gender: gender === 'girl' ? 'girl' : 'boy',
     status: 'pending',
     createdAt: now,
     expiresAt: new Date(now.getTime() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000)
   };
+
+  if (inviteType === 'staff') {
+    docData.inviteType = 'staff';
+    const cleanRole = String(recipientRole || '').replace(/<[^>]*>/g, '').trim().slice(0, 80);
+    const cleanName = String(recipientName || '').replace(/<[^>]*>/g, '').trim().slice(0, 80);
+    if (cleanRole) docData.recipientRole = cleanRole;
+    if (cleanName) docData.recipientName = cleanName;
+  }
 
   if (cleanQuestions.length > 0) {
     docData.customQuestions = cleanQuestions;
@@ -264,9 +370,15 @@ export function getInviteState(invite?: Partial<InviteDoc> | null, now: number =
 
 export function summarizeInvites(
   invites: Array<Partial<InviteDoc>> = [],
-  now: number = Date.now()
+  now: number = Date.now(),
+  filterType: 'parent' | 'staff' | 'all' = 'parent'
 ): InvitesSummary {
-  const list = [...invites].sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0));
+  const filtered = invites.filter((i) => {
+    if (filterType === 'all') return true;
+    const iType = i.inviteType === 'staff' ? 'staff' : 'parent';
+    return iType === filterType;
+  });
+  const list = [...filtered].sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0));
   const unreviewed = list.filter(
     (i) => i.status === 'submitted' && !i.reviewedAction && hasAnyAnswer(i.responses, i.customQuestions)
   );
@@ -281,11 +393,13 @@ export function summarizeInvites(
 export function buildVoiceMergeText(invite?: Partial<InviteDoc> | null): string {
   const responses = sanitizeResponses(invite?.responses, invite?.customQuestions);
   const lines: string[] = [];
+  const isStaff = invite?.inviteType === 'staff';
+  const labelsMap = isStaff ? STAFF_MERGE_LABELS : MERGE_LABELS;
 
   if (!invite?.overrideDefaults) {
     INVITE_ANSWER_KEYS.forEach((key) => {
       if (responses[key]) {
-        lines.push(`• ${MERGE_LABELS[key]}: ${responses[key].replace(/\s*\n\s*/g, ' ')}`);
+        lines.push(`• ${labelsMap[key]}: ${responses[key].replace(/\s*\n\s*/g, ' ')}`);
       }
     });
   }
@@ -299,7 +413,95 @@ export function buildVoiceMergeText(invite?: Partial<InviteDoc> | null): string 
   });
 
   if (lines.length === 0) return '';
+  if (isStaff) {
+    const role = String(invite?.recipientRole || '').trim();
+    const name = String(invite?.recipientName || '').trim();
+    const who = [name, role].filter(Boolean).join(' – ') || 'איש/אשת צוות';
+    return [`— התייחסות צוות מקצועי (${who}) —`, ...lines].join('\n');
+  }
   return ['— קול ההורים (כפי שנמסר על ידי ההורים) —', ...lines].join('\n');
+}
+
+export function buildStaffObservationNote(invite?: Partial<InviteDoc> | null): {
+  authorName: string;
+  note: string;
+} {
+  const responses = sanitizeResponses(invite?.responses, invite?.customQuestions);
+  const role = String(invite?.recipientRole || '').trim();
+  const name = String(invite?.recipientName || '').trim();
+  const authorName = [name, role].filter(Boolean).join(' · ') || 'צוות רב-מקצועי';
+
+  const parts: string[] = [];
+  if (responses.strengths) parts.push(`חוזקות: ${responses.strengths.replace(/\s*\n\s*/g, ' ')}`);
+  if (responses.challenges) parts.push(`אתגרים ומענים: ${responses.challenges.replace(/\s*\n\s*/g, ' ')}`);
+  if (responses.goal) parts.push(`המלצות להמשך: ${responses.goal.replace(/\s*\n\s*/g, ' ')}`);
+
+  const customQuestions = sanitizeCustomQuestions(invite?.customQuestions);
+  CUSTOM_ANSWER_KEYS.forEach((key, idx) => {
+    if (responses[key]) {
+      const qLabel = customQuestions[idx] || `הערה ${idx + 1}`;
+      parts.push(`${qLabel}: ${responses[key].replace(/\s*\n\s*/g, ' ')}`);
+    }
+  });
+
+  const note = parts.join(' | ').slice(0, 400);
+  return { authorName: authorName.slice(0, 80), note };
+}
+
+/**
+ * Extracts structured, clickable staff recipient candidates directly from the student's
+ * populated team fields so the teacher can select them with 1 click without typing errors.
+ */
+export function extractStaffRecipientsFromStudent(
+  formData: Record<string, unknown> = {},
+  isKindergarten = false
+): StaffRecipientCandidate[] {
+  const rawFields: Array<{ key: string; role: string }> = [
+    { key: 'homeroomTeacher', role: isKindergarten ? 'גננת' : 'מחנכת' },
+    { key: 'integrationTeacher', role: isKindergarten ? 'גננת שילוב' : 'מורת שילוב' },
+    { key: 'learningSupportAssistant', role: 'תומכת למידה' },
+    { key: 'counselorName', role: 'יועצת' },
+    { key: 'psychologistName', role: 'פסיכולוגית' },
+    { key: 'matyaCoordinator', role: 'מתכללת מטעם המתי"א' },
+    { key: 'emotionalTherapist', role: 'מטפלת רגשית / באומנויות' },
+    { key: 'paraMedicalTeam', role: 'צוות פרא רפואי' },
+    { key: 'additionalPartners', role: 'שותף/ה לתוכנית' }
+  ];
+
+  const candidates: StaffRecipientCandidate[] = [];
+  const seen = new Set<string>();
+
+  for (const { key, role } of rawFields) {
+    const rawVal = String(formData[key] || '').trim();
+    if (!rawVal) continue;
+
+    // For multi-person fields (paraMedicalTeam, additionalPartners, emotionalTherapist),
+    // split cleanly by comma/semicolon ONLY outside of parentheses
+    const segments =
+      key === 'paraMedicalTeam' || key === 'additionalPartners' || key === 'emotionalTherapist'
+        ? rawVal.split(/[,;]+(?![^(]*\))/).map((s) => s.trim()).filter(Boolean)
+        : [rawVal];
+
+    segments.forEach((seg, idx) => {
+      // Check if segment has role in parentheses e.g. "יעל רז (מרפאה בעיסוק)"
+      const parenMatch = seg.match(/^([^(]+)\(([^)]+)\)$/);
+      const parsedName = parenMatch ? parenMatch[1].trim() : seg.trim();
+      const parsedRole = parenMatch ? parenMatch[2].trim() : role;
+      const dedupeKey = `${parsedRole}::${parsedName}`.toLowerCase();
+      if (!parsedName || seen.has(dedupeKey)) return;
+      seen.add(dedupeKey);
+
+      candidates.push({
+        id: `${key}_${idx}_${parsedName}`,
+        role: parsedRole,
+        name: parsedName,
+        fieldKey: key,
+        label: `${parsedRole}: ${parsedName}`
+      });
+    });
+  }
+
+  return candidates;
 }
 
 export function appendToFreeText(
