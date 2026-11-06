@@ -57,6 +57,14 @@ export interface ChatMessage {
   attachment?: ChatAttachment | null;
 }
 
+export interface TeacherDiagnosticSnapshot {
+  appVersion: string;
+  browser: string;
+  cloudConnected: boolean;
+  online: boolean;
+  capturedAtIso: string;
+}
+
 export interface SupportThread {
   id?: string;
   userEmail?: string;
@@ -71,6 +79,7 @@ export interface SupportThread {
   unreadByAdmin?: boolean;
   unreadByUser?: boolean;
   resolutionFeedback?: ResolutionFeedback | string;
+  diagnostics?: TeacherDiagnosticSnapshot | null;
   [key: string]: unknown;
 }
 
@@ -225,9 +234,63 @@ export function createChatMessage({
 }
 
 /**
+ * Extracts a concise, human-readable browser + OS label from a User-Agent string (zero PII).
+ */
+export function parseBrowserSummary(userAgent?: string | null): string {
+  const ua = String(userAgent || '').trim();
+  if (!ua) return 'דפדפן לא מזוהה';
+
+  let browser = 'דפדפן';
+  if (/Edg\//i.test(ua)) browser = 'Edge';
+  else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) browser = 'Chrome';
+  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+  else if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) browser = 'Safari';
+
+  let os = '';
+  if (/Windows/i.test(ua)) os = 'Windows';
+  else if (/iPad|iPhone|iPod/i.test(ua)) os = 'iOS';
+  else if (/Mac OS X|Macintosh/i.test(ua)) os = 'Mac';
+  else if (/Android/i.test(ua)) os = 'Android';
+  else if (/Linux/i.test(ua)) os = 'Linux';
+
+  return os ? `${browser} (${os})` : browser;
+}
+
+/**
+ * Builds a sanitized, zero-PII technical diagnostic snapshot for a teacher's support thread.
+ */
+export function buildTeacherDiagnosticSnapshot({
+  appVersion = '',
+  userAgent = '',
+  cloudConnected = true,
+  online = true,
+  now = new Date()
+}: {
+  appVersion?: string;
+  userAgent?: string;
+  cloudConnected?: boolean;
+  online?: boolean;
+  now?: Date | string | number;
+} = {}): TeacherDiagnosticSnapshot {
+  const d = now instanceof Date ? now : new Date(now);
+  const safeVersion = String(appVersion || '').trim().slice(0, 32) || 'לא ידוע';
+  return {
+    appVersion: safeVersion,
+    browser: parseBrowserSummary(userAgent),
+    cloudConnected: Boolean(cloudConnected),
+    online: Boolean(online),
+    capturedAtIso: Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString()
+  };
+}
+
+/**
  * Appends a new message to a thread and updates metadata, maintaining bounds.
  */
-export function appendMessageToThread(thread?: SupportThread | null, newMessage?: ChatMessage | null): SupportThread {
+export function appendMessageToThread(
+  thread?: SupportThread | null,
+  newMessage?: ChatMessage | null,
+  diagnostics?: TeacherDiagnosticSnapshot | null
+): SupportThread {
   if (!newMessage || typeof newMessage !== 'object' || (!newMessage.text && !newMessage.attachment)) {
     return thread || {};
   }
@@ -241,7 +304,7 @@ export function appendMessageToThread(thread?: SupportThread | null, newMessage?
     ? (newMessage.text && newMessage.text !== '📷 [צילום מסך מצורף]' ? `📷 ${newMessage.text}` : '📷 צילום מסך מצורף')
     : newMessage.text;
 
-  return {
+  const nextThread: SupportThread = {
     ...validThread,
     id: validThread.id || sanitizeThreadKey(newMessage.senderEmail),
     userEmail: validThread.userEmail || (isFromAdmin ? '' : newMessage.senderEmail),
@@ -256,6 +319,12 @@ export function appendMessageToThread(thread?: SupportThread | null, newMessage?
     unreadByAdmin: isFromAdmin ? false : true,
     unreadByUser: isFromAdmin ? true : false
   };
+
+  if (!isFromAdmin && diagnostics && typeof diagnostics === 'object') {
+    nextThread.diagnostics = diagnostics;
+  }
+
+  return nextThread;
 }
 
 /**

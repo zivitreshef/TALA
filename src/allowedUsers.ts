@@ -252,6 +252,9 @@ export interface AllowedUserRecord {
   lockedOutAt?: string;
   failedLoginAttempts?: number;
   aiUsageCount?: number;
+  aiDailyCount?: number;
+  aiDailyDate?: string;
+  dailyAiQuotaLimit?: number | null;
   lastAiUsedAt?: string;
   notifyOnSharedReport?: boolean;
   sessionDate?: string;
@@ -788,7 +791,94 @@ export function computeGroupStats(
 // ============================================================================
 
 export const DAILY_AI_QUOTA_LIMIT = 1500;
+export const DEFAULT_USER_DAILY_AI_QUOTA = 50;
 export const DAILY_EMAIL_QUOTA_LIMIT = 100;
+
+/**
+ * Returns the effective daily AI quota limit for a given user.
+ * Admins have unlimited quota (Infinity); paying users default to 100/day; trial users to 50/day,
+ * unless overridden by `user.dailyAiQuotaLimit`.
+ */
+export function getUserEffectiveDailyAiQuota(user?: Partial<AllowedUserRecord> | null): number {
+  if (!user) return DEFAULT_USER_DAILY_AI_QUOTA;
+  if (user.role === 'admin' || user.email?.toLowerCase() === 'zivit.reshef@gmail.com') {
+    return Infinity;
+  }
+  const custom = Number(user.dailyAiQuotaLimit);
+  if (Number.isFinite(custom) && custom > 0) {
+    return Math.round(custom);
+  }
+  return user.isTrialUser ? DEFAULT_USER_DAILY_AI_QUOTA : 100;
+}
+
+/**
+ * Returns how many AI requests a user has performed on the given calendar day.
+ * Automatically returns 0 when `aiDailyDate` is from a previous calendar day.
+ */
+export function getUserDailyAiUsage(
+  user?: Partial<AllowedUserRecord> | null,
+  date: Date | string | number = new Date()
+): number {
+  if (!user) return 0;
+  const todayKey = getCurrentLocalDayKey(date);
+  if (user.aiDailyDate === todayKey) {
+    return Math.max(0, Number(user.aiDailyCount) || 0);
+  }
+  if (user.lastAiUsedAt && user.lastAiUsedAt.slice(0, 10) === todayKey) {
+    return Math.max(0, Number(user.aiDailyCount) || 0);
+  }
+  return 0;
+}
+
+/**
+ * Resets a specific user's daily AI usage counter in the users list (e.g. when a teacher hits their daily limit).
+ */
+export function resetUserDailyAiQuotaInList<T extends Partial<AllowedUserRecord>>(
+  usersList?: T[] | null,
+  userEmailOrId?: string,
+  date: Date | string | number = new Date()
+): T[] {
+  if (!Array.isArray(usersList) || !userEmailOrId) return usersList || [];
+  const cleanTarget = String(userEmailOrId).trim().toLowerCase();
+  const todayKey = getCurrentLocalDayKey(date);
+
+  return usersList.map((u) => {
+    const matchId = String(u.id || '').trim().toLowerCase() === cleanTarget;
+    const matchEmail = String(u.email || '').trim().toLowerCase() === cleanTarget;
+    if (matchId || matchEmail) {
+      return {
+        ...u,
+        aiDailyCount: 0,
+        aiDailyDate: todayKey
+      };
+    }
+    return u;
+  });
+}
+
+/**
+ * Sets a custom daily AI quota limit for a specific user or an entire Matya group.
+ */
+export function setGroupDailyAiQuotaInList<T extends Partial<AllowedUserRecord>>(
+  usersList?: T[] | null,
+  groupName?: string,
+  quotaLimit?: number | null
+): T[] {
+  if (!Array.isArray(usersList) || !groupName) return usersList || [];
+  const cleanGroup = String(groupName).trim().toLowerCase();
+  const parsedLimit = quotaLimit === null || quotaLimit === undefined ? null : Math.max(1, Math.min(5000, Math.round(Number(quotaLimit) || DEFAULT_USER_DAILY_AI_QUOTA)));
+
+  return usersList.map((u) => {
+    const uGroup = (String(u.group || '').trim() || 'ללא שיוך צוות / מתי"א').toLowerCase();
+    if (uGroup === cleanGroup && u.role !== 'admin') {
+      return {
+        ...u,
+        dailyAiQuotaLimit: parsedLimit
+      };
+    }
+    return u;
+  });
+}
 
 export function getDailyQuotaStorageKey(serviceName: string, date: Date | string | number = new Date()): string {
   const dayKey = getCurrentLocalDayKey(date);
@@ -818,18 +908,27 @@ export function incrementDailyQuotaCount(serviceName: string, amount: number = 1
   }
 }
 
-export function recordAiTelemetryForUser<T extends Partial<AllowedUserRecord>>(userEmail?: string, usersList?: T[]): T[] | undefined {
-  incrementDailyQuotaCount('ai');
+export function recordAiTelemetryForUser<T extends Partial<AllowedUserRecord>>(
+  userEmail?: string,
+  usersList?: T[],
+  date: Date | string | number = new Date()
+): T[] | undefined {
+  incrementDailyQuotaCount('ai', 1, date);
   if (!Array.isArray(usersList) || !userEmail) return usersList;
 
   const cleanEmail = userEmail.trim().toLowerCase();
-  const nowIso = new Date().toISOString();
+  const d = date instanceof Date ? date : new Date(date);
+  const nowIso = d.toISOString();
+  const todayKey = getCurrentLocalDayKey(d);
 
   return usersList.map((u) => {
     if ((u.email || '').trim().toLowerCase() === cleanEmail) {
+      const prevDaily = u.aiDailyDate === todayKey ? Number(u.aiDailyCount) || 0 : 0;
       return {
         ...u,
         aiUsageCount: (Number(u.aiUsageCount) || 0) + 1,
+        aiDailyCount: prevDaily + 1,
+        aiDailyDate: todayKey,
         lastAiUsedAt: nowIso
       };
     }

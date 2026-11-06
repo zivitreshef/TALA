@@ -17,13 +17,16 @@ import {
   sanitizeThreadKey,
   createChatMessage,
   appendMessageToThread,
+  buildTeacherDiagnosticSnapshot,
   SENDER_ROLES,
   THREAD_STATUS,
   SenderRole,
   ResolutionFeedback,
   SupportThread,
-  ChatAttachment
+  ChatAttachment,
+  TeacherDiagnosticSnapshot
 } from '../domain/supportChat';
+import { CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
 import { dispatchChatAlertToAdmins } from './alertDispatcher';
 
 export const SUPPORT_THREADS_COLLECTION = 'tala_support_threads';
@@ -42,6 +45,7 @@ export interface SendChatMessageParams {
   senderName?: string;
   admins?: unknown[];
   emailConfig?: unknown;
+  diagnostics?: TeacherDiagnosticSnapshot | null;
 }
 
 /**
@@ -128,7 +132,8 @@ export async function sendChatMessageToCloud({
   senderRole = SENDER_ROLES.USER,
   senderName = '',
   admins = [],
-  emailConfig = null
+  emailConfig = null,
+  diagnostics = null
 }: SendChatMessageParams): Promise<SupportThread> {
   const cleanEmail = String(userEmail || existingThread?.userEmail || '').trim().toLowerCase();
   const threadKey = existingThread?.id || sanitizeThreadKey(cleanEmail);
@@ -151,9 +156,19 @@ export async function sendChatMessageToCloud({
     messages: []
   };
 
-  const updatedThread = appendMessageToThread(baseThread, newMessage);
-
   const db = getFirestoreDb();
+  const effectiveDiagnostics: TeacherDiagnosticSnapshot | null =
+    senderRole === SENDER_ROLES.USER
+      ? diagnostics ||
+        buildTeacherDiagnosticSnapshot({
+          appVersion: CURRENT_APP_VERSION,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+          cloudConnected: Boolean(db),
+          online: typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean' ? navigator.onLine : true
+        })
+      : null;
+
+  const updatedThread = appendMessageToThread(baseThread, newMessage, effectiveDiagnostics);
   let savedToCloud = false;
   if (db) {
     try {
