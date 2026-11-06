@@ -8,7 +8,8 @@ import {
   Sparkles,
   Loader2,
   CheckCircle2,
-  Plus
+  Plus,
+  Lock
 } from 'lucide-react';
 import type { PedagogicalSnippet } from '../../domain/types';
 import { createTeacherNoteSnippet } from '../../domain/pedagogicalFeed';
@@ -176,85 +177,63 @@ export default function PedagogicalFeed({
       dir="rtl"
       style={{
         background: '#ffffff',
-        border: '1.5px solid #e2e8f0',
-        borderRadius: '12px',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+        border: '1px solid #e2e8f0',
+        borderRadius: '10px',
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
         overflow: 'hidden'
       }}
     >
-      {/* Feed Header */}
+      {/* Slim Feed Toolbar (eliminates duplicate icon/title row below parent accordion) */}
       <div
         style={{
           background: 'linear-gradient(90deg, #f8fafc 0%, #ffffff 50%, #f8fafc 100%)',
           borderBottom: '1px solid #e2e8f0',
-          padding: '14px 18px',
+          padding: '8px 14px',
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '12px'
+          gap: '8px'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+            תובנות ממסמכים ומהתצפית האישית שלך – מזינים יחד את ה-AI
+          </span>
+          <span
             style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '7px',
-              background: '#ede9fe',
-              color: '#6d28d9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '1px 8px',
+              borderRadius: '999px',
+              background: activeSourcesCount > 0 ? '#ecfdf5' : '#f1f5f9',
+              color: activeSourcesCount > 0 ? '#047857' : '#64748b',
+              border: activeSourcesCount > 0 ? '1px solid #a7f3d0' : '1px solid #e2e8f0'
             }}
           >
-            <Sparkles size={16} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>
-                תיאור הילד/ה, תובנות ומסמכי רקע
-              </h3>
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  padding: '1px 8px',
-                  borderRadius: '999px',
-                  background: activeSourcesCount > 0 ? '#ecfdf5' : '#f1f5f9',
-                  color: activeSourcesCount > 0 ? '#047857' : '#64748b',
-                  border: activeSourcesCount > 0 ? '1px solid #a7f3d0' : '1px solid #e2e8f0'
-                }}
-              >
-                {activeSourcesCount === 0
-                  ? '0 מקורות פעילים'
-                  : activeSourcesCount === 1
-                  ? 'מקור 1 פעיל'
-                  : `${activeSourcesCount} מקורות פעילים`}
-              </span>
-            </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-              תובנות שנאספו ממסמכים ומהתצפית האישית שלך – כולם מזינים יחד את ה-AI
-            </p>
-          </div>
+            {activeSourcesCount === 0
+              ? '0 מקורות פעילים'
+              : activeSourcesCount === 1
+              ? 'מקור 1 פעיל'
+              : `${activeSourcesCount} מקורות פעילים`}
+          </span>
         </div>
 
-        {/* Action Buttons in Header */}
+        {/* Action Buttons in Toolbar */}
         {!isLocked && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={onOpenUploadModal}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
                 background: '#f5f3ff',
                 color: '#6d28d9',
                 border: '1px solid #ddd6fe',
-                borderRadius: '8px',
-                padding: '6px 12px',
+                borderRadius: '7px',
+                padding: '5px 10px',
                 fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -272,12 +251,12 @@ export default function PedagogicalFeed({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
                 background: '#f8fafc',
                 color: '#334155',
                 border: '1px solid #cbd5e1',
-                borderRadius: '8px',
-                padding: '6px 12px',
+                borderRadius: '7px',
+                padding: '5px 10px',
                 fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -293,7 +272,7 @@ export default function PedagogicalFeed({
       </div>
 
       {/* Feed Body */}
-      <div style={{ padding: '14px 18px', background: '#fafafc', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ padding: '10px 14px', background: '#fafafc', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {/* Save Toast Notification */}
         {saveToastVisible && (
           <div
@@ -301,7 +280,7 @@ export default function PedagogicalFeed({
               background: '#059669',
               color: '#ffffff',
               borderRadius: '8px',
-              padding: '8px 14px',
+              padding: '6px 12px',
               fontSize: '12px',
               fontWeight: 700,
               display: 'flex',
@@ -321,25 +300,31 @@ export default function PedagogicalFeed({
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Option A: Slim Inline Empty State Strip */}
         {snippets.length === 0 && (
           <div
+            className="pedagogical-feed-empty-strip"
             style={{
               background: '#ffffff',
-              border: '1.5px dashed #cbd5e1',
-              borderRadius: '10px',
-              padding: '20px 16px',
-              textAlign: 'center',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '6px',
+              fontSize: '12px',
               color: '#64748b'
             }}
           >
-            <div style={{ fontSize: '24px', marginBottom: '4px' }}>📝</div>
-            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#334155' }}>
+            <FileText size={15} style={{ color: '#6366f1', flexShrink: 0 }} aria-hidden="true" />
+            <span style={{ fontWeight: 700, color: '#334155' }}>
               ציר התובנות ריק כרגע
-            </div>
-            <div style={{ fontSize: '0.8rem', marginTop: '3px', maxWidth: '480px', margin: '3px auto 0 auto' }}>
-              תוכלי ללחוץ על ״העלאת מסמך נוסף״ כדי לצרף אבחון, או להקליד למטה תצפית אישית שלך.
-            </div>
+            </span>
+            <span style={{ color: '#cbd5e1' }} aria-hidden="true">•</span>
+            <span>
+              ניתן ללחוץ על ״העלאת מסמך נוסף״ למעלה או להקליד תצפית אישית למטה.
+            </span>
           </div>
         )}
 
@@ -354,8 +339,8 @@ export default function PedagogicalFeed({
               style={{
                 background: '#ffffff',
                 border: `1.5px solid ${theme.cardBorder}`,
-                borderRadius: '10px',
-                padding: '12px 14px',
+                borderRadius: '9px',
+                padding: '10px 12px',
                 boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
                 transition: 'all 0.15s ease'
               }}
@@ -365,35 +350,35 @@ export default function PedagogicalFeed({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  paddingBottom: '8px',
+                  paddingBottom: '6px',
                   borderBottom: `1px solid ${theme.headerBorder}`,
-                  marginBottom: '8px'
+                  marginBottom: '6px'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div
                     style={{
-                      width: '28px',
-                      height: '28px',
+                      width: '26px',
+                      height: '26px',
                       borderRadius: isDoc ? '6px' : '999px',
                       background: theme.avatarBg,
                       color: '#ffffff',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '13px',
+                      fontSize: '12px',
                       fontWeight: 'bold',
                       flexShrink: 0
                     }}
                   >
-                    {isDoc ? <FileText size={15} /> : <User size={15} />}
+                    {isDoc ? <FileText size={14} /> : <User size={14} />}
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <span
                         style={{
                           fontWeight: 700,
-                          fontSize: '0.88rem',
+                          fontSize: '0.86rem',
                           color: theme.titleColor
                         }}
                       >
@@ -416,7 +401,7 @@ export default function PedagogicalFeed({
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {snippet.createdAt && (
                     <span style={{ fontSize: '11px', color: '#94a3b8' }}>
                       {formatSnippetTime(snippet.createdAt)}
@@ -457,12 +442,12 @@ export default function PedagogicalFeed({
               {/* Snippet Content */}
               <div
                 style={{
-                  fontSize: '0.86rem',
-                  lineHeight: 1.5,
+                  fontSize: '0.85rem',
+                  lineHeight: 1.45,
                   color: '#1e293b',
                   background: theme.quoteBg,
-                  padding: '9px 12px',
-                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  borderRadius: '7px',
                   border: `1px solid ${theme.quoteBorder}`,
                   whiteSpace: 'pre-wrap'
                 }}
@@ -473,15 +458,15 @@ export default function PedagogicalFeed({
           );
         })}
 
-        {/* Add New Observation Box */}
+        {/* Compact Add New Observation Box */}
         {!isLocked && (
           <div
             style={{
               background: '#ffffff',
-              border: '1.5px solid #cbd5e1',
-              borderRadius: '10px',
-              padding: '12px 14px',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)'
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
             }}
           >
             <div
@@ -490,7 +475,7 @@ export default function PedagogicalFeed({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: '8px',
-                marginBottom: '8px',
+                marginBottom: '6px',
                 flexWrap: 'wrap'
               }}
             >
@@ -507,92 +492,100 @@ export default function PedagogicalFeed({
                 <span>הוסיפי תובנה, תצפית או עדכון חדש:</span>
               </label>
 
-              {/* Sample descriptions ONLY shown inside onboarding user journey */}
-              {Boolean(onboardingStep && onboardingStep > 0) && (
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewNoteText(
-                        'יונתן לומד בכיתה רגילה ומקבל תמיכה שבועית מסל שילוב. מאובחן עם הפרעת קשב ופעלתנות יתר (ADHD) וקשיי ויסות חושי. מפגין סקרנות יוצאת דופן ואינטליגנציה תקינה, אך מתקשה להתמיד במשימות כתיבה ממושכות, מגלה מוסחות גבוהה ברעש כיתתי, ונזקק לתיווך במעברים בין שיעור להפסקה.'
-                      );
-                    }}
-                    style={{
-                      background: '#f0fdf4',
-                      color: '#15803d',
-                      border: '1px solid #86efac',
-                      borderRadius: '6px',
-                      padding: '2px 8px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🪄 דוגמה לבי"ס
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewNoteText(
-                        'נועם ילד מתוק, סקרן וחברותי בן 5.5 בגן חובה. מתקשה במעברים בין חצר למפגש, זקוק לתיווך בפתרון קונפליקטים ובמשחק משותף במוקדי הגן, ומתקשה באחיזת מספריים ועפרון. מגלה חוזקות רבות במוזיקה, יצירתיות בקוביות ואמפתיה רבה לחבריו לגן.'
-                      );
-                    }}
-                    style={{
-                      background: '#eff6ff',
-                      color: '#1d4ed8',
-                      border: '1px solid #bfdbfe',
-                      borderRadius: '6px',
-                      padding: '2px 8px',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🪄 דוגמה לגן
-                  </button>
-                </div>
-              )}
-            </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                {/* Sample descriptions ONLY shown inside onboarding user journey */}
+                {Boolean(onboardingStep && onboardingStep > 0) && (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewNoteText(
+                          'יונתן לומד בכיתה רגילה ומקבל תמיכה שבועית מסל שילוב. מאובחן עם הפרעת קשב ופעלתנות יתר (ADHD) וקשיי ויסות חושי. מפגין סקרנות יוצאת דופן ואינטליגנציה תקינה, אך מתקשה להתמיד במשימות כתיבה ממושכות, מגלה מוסחות גבוהה ברעש כיתתי, ונזקק לתיווך במעברים בין שיעור להפסקה.'
+                        );
+                      }}
+                      style={{
+                        background: '#f0fdf4',
+                        color: '#15803d',
+                        border: '1px solid #86efac',
+                        borderRadius: '6px',
+                        padding: '2px 8px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🪄 דוגמה לבי"ס
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewNoteText(
+                          'נועם ילד מתוק, סקרן וחברותי בן 5.5 בגן חובה. מתקשה במעברים בין חצר למפגש, זקוק לתיווך בפתרון קונפליקטים ובמשחק משותף במוקדי הגן, ומתקשה באחיזת מספריים ועפרון. מגלה חוזקות רבות במוזיקה, יצירתיות בקוביות ואמפתיה רבה לחבריו לגן.'
+                        );
+                      }}
+                      style={{
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '6px',
+                        padding: '2px 8px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🪄 דוגמה לגן
+                    </button>
+                  </div>
+                )}
 
-            <textarea
-              rows={2}
-              value={newNoteText}
-              onChange={(e) => setNewNoteText(e.target.value)}
-              placeholder="לדוגמה: במפגש בוקר היום הצליח להמתין לתורו יפה, בשיעור ספורט נזקק לעידוד..."
-              style={{
-                width: '100%',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                padding: '9px 12px',
-                fontSize: '0.86rem',
-                fontFamily: 'inherit',
-                lineHeight: 1.45,
-                outline: 'none',
-                resize: 'vertical'
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  handleManualAddNote();
-                }
-              }}
-            />
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: '#94a3b8',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Lock size={12} aria-hidden="true" />
+                  <span>ללא שמות מלאים או פרטים מזהים</span>
+                </span>
+              </div>
+            </div>
 
             <div
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginTop: '8px',
-                paddingTop: '8px',
-                borderTop: '1px solid #f1f5f9',
-                flexWrap: 'wrap',
-                gap: '8px'
+                alignItems: 'flex-end',
+                gap: '8px',
+                flexWrap: 'wrap'
               }}
             >
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                🔒 ללא שמות מלאים או פרטים מזהים
-              </span>
+              <textarea
+                rows={2}
+                value={newNoteText}
+                onChange={(e) => setNewNoteText(e.target.value)}
+                placeholder="לדוגמה: במפגש בוקר היום הצליח להמתין לתורו יפה, בשיעור ספורט נזקק לעידוד..."
+                style={{
+                  flex: '1 1 240px',
+                  width: '100%',
+                  borderRadius: '7px',
+                  border: '1px solid #cbd5e1',
+                  padding: '7px 10px',
+                  fontSize: '0.84rem',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.4,
+                  outline: 'none',
+                  resize: 'vertical'
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    handleManualAddNote();
+                  }
+                }}
+              />
 
               <button
                 type="button"
@@ -605,10 +598,11 @@ export default function PedagogicalFeed({
                   background: newNoteText.trim() ? '#0f172a' : '#cbd5e1',
                   color: '#ffffff',
                   border: 'none',
-                  borderRadius: '8px',
-                  padding: '6px 14px',
+                  borderRadius: '7px',
+                  padding: '8px 12px',
                   fontSize: '12px',
                   fontWeight: 600,
+                  flexShrink: 0,
                   cursor: newNoteText.trim() ? 'pointer' : 'not-allowed',
                   transition: 'background 0.15s ease'
                 }}
@@ -621,17 +615,17 @@ export default function PedagogicalFeed({
         )}
       </div>
 
-      {/* Card Footer: Unified AI Generation Trigger */}
+      {/* Slim Card Footer: Unified AI Generation Trigger */}
       <div
         style={{
           background: 'linear-gradient(180deg, #f8faff 0%, #f1f5f9 100%)',
           borderTop: '1px solid #e2e8f0',
           color: '#1e293b',
-          padding: '14px 18px',
+          padding: '10px 14px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'stretch',
-          gap: '10px',
+          gap: '8px',
           position: 'relative'
         }}
       >
@@ -652,34 +646,28 @@ export default function PedagogicalFeed({
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '12px'
+            gap: '10px'
           }}
         >
-          <div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
             <h4
               style={{
                 margin: 0,
-                fontSize: '0.94rem',
+                fontSize: '0.88rem',
                 fontWeight: 700,
-                color: '#1e293b',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
+                color: '#1e293b'
               }}
             >
-              <span>מוכנה להפיק מטרות ויעדים?</span>
+              מוכנה להפיק מטרות ויעדים?
             </h4>
-            <p
+            <span
               style={{
-                margin: '3px 0 0 0',
-                fontSize: '12.5px',
-                color: '#64748b',
-                maxWidth: '540px',
-                lineHeight: 1.5
+                fontSize: '12px',
+                color: '#64748b'
               }}
             >
               ה-AI יסכם יחד את כל המסמכים שהעלית ואת התצפיות שלך לכדי מטרות ויעדים מותאמים.
-            </p>
+            </span>
           </div>
 
           <button
@@ -694,24 +682,24 @@ export default function PedagogicalFeed({
               background: '#4f46e5',
               color: '#ffffff',
               border: '1px solid #4338ca',
-              borderRadius: '8px',
-              padding: '8px 18px',
-              fontSize: '13px',
+              borderRadius: '7px',
+              padding: '6px 14px',
+              fontSize: '12.5px',
               fontWeight: 600,
               cursor: isLocked || isAnalyzing || snippets.length === 0 ? 'not-allowed' : 'pointer',
               opacity: isLocked || isAnalyzing || snippets.length === 0 ? 0.6 : 1,
-              boxShadow: '0 1px 3px rgba(79, 70, 229, 0.2)',
+              boxShadow: '0 1px 2px rgba(79, 70, 229, 0.18)',
               transition: 'background-color 0.15s ease, box-shadow 0.15s ease'
             }}
           >
             {isAnalyzing ? (
               <>
-                <Loader2 size={15} className="tala-spin-icon" />
+                <Loader2 size={14} className="tala-spin-icon" />
                 <span>מעבד את כל המקורות ב-AI...</span>
               </>
             ) : (
               <>
-                <Sparkles size={15} />
+                <Sparkles size={14} />
                 <span>ניתוח כל המקורות ב-AI</span>
               </>
             )}
