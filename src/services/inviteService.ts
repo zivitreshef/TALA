@@ -29,6 +29,9 @@ export interface CreateInviteParams {
   studentId: string;
   childFirstName: string;
   gender?: string;
+  inviteType?: 'parent' | 'staff';
+  recipientRole?: string;
+  recipientName?: string;
   customQuestions?: string[];
   overrideDefaults?: boolean;
 }
@@ -56,6 +59,9 @@ export async function createInvite({
   studentId,
   childFirstName,
   gender = 'boy',
+  inviteType = 'parent',
+  recipientRole = '',
+  recipientName = '',
   customQuestions = [],
   overrideDefaults = false
 }: CreateInviteParams): Promise<CreateInviteResult> {
@@ -67,6 +73,9 @@ export async function createInvite({
     studentId,
     childFirstName,
     gender,
+    inviteType,
+    recipientRole,
+    recipientName,
     customQuestions,
     overrideDefaults
   });
