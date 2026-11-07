@@ -193,12 +193,12 @@ service cloud.firestore {
         (
           'studentId' in data &&
           data.studentId != null &&
-          firestore.exists(/databases/(default)/documents/tala_students/$(data.studentId)) &&
+          exists(/databases/(default)/documents/tala_students/$(data.studentId)) &&
           (
-            firestore.get(/databases/(default)/documents/tala_students/$(data.studentId)).data.ownerEmail.lower() == currentEmail() ||
+            get(/databases/(default)/documents/tala_students/$(data.studentId)).data.ownerEmail.lower() == currentEmail() ||
             (
-              firestore.get(/databases/(default)/documents/tala_students/$(data.studentId)).data.sharedWith is list &&
-              currentEmail() in firestore.get(/databases/(default)/documents/tala_students/$(data.studentId)).data.sharedWith
+              get(/databases/(default)/documents/tala_students/$(data.studentId)).data.sharedWith is list &&
+              currentEmail() in get(/databases/(default)/documents/tala_students/$(data.studentId)).data.sharedWith
             )
           )
         )
@@ -217,14 +217,14 @@ service cloud.firestore {
           (
             'studentId' in request.resource.data &&
             request.resource.data.studentId != null &&
-            firestore.exists(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)) &&
+            exists(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)) &&
             (
-              firestore.get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.ownerEmail.lower() == request.resource.data.ownerEmail.lower() &&
+              get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.ownerEmail.lower() == request.resource.data.ownerEmail.lower() &&
               (
-                firestore.get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.ownerEmail.lower() == currentEmail() ||
+                get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.ownerEmail.lower() == currentEmail() ||
                 (
-                  firestore.get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.sharedWith is list &&
-                  currentEmail() in firestore.get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.sharedWith
+                  get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.sharedWith is list &&
+                  currentEmail() in get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.sharedWith
                 )
               )
             )
