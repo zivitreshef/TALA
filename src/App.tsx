@@ -2883,8 +2883,9 @@ export default function App() {
       )}
 
       {/* Main Workspace: Student Roster Sidebar + Interactive Ecological Form */}
-      <div className={`tala-workspace-layout ${selectedStudent ? 'has-selected-student' : 'no-selected-student'}`}>
+      <div className={`tala-workspace-layout ${selectedStudent ? 'has-selected-student' : 'no-selected-student'} ${showClassOverview ? 'overview-workspace-layout' : ''}`}>
         {/* Right Sidebar: Students List */}
+        {!showClassOverview && (
         <aside className="tala-students-sidebar">
           <div className="sidebar-top-row">
             <div className="sidebar-title-group">
@@ -3177,6 +3178,7 @@ export default function App() {
             )}
           </div>
         </aside>
+        )}
 
         {/* Main Form Area */}
         <main className="tala-main-form-area">
