@@ -188,7 +188,21 @@ service cloud.firestore {
     }
 
     function isInviteOwner(data) {
-      return isAdmin() || (isSignedIn() && data.ownerEmail == currentEmail());
+      return isAdmin() || (isSignedIn() && (
+        data.ownerEmail == currentEmail() ||
+        (
+          'studentId' in data &&
+          data.studentId != null &&
+          firestore.exists(/databases/(default)/documents/tala_students/$(data.studentId)) &&
+          (
+            firestore.get(/databases/(default)/documents/tala_students/$(data.studentId)).data.ownerEmail.lower() == currentEmail() ||
+            (
+              firestore.get(/databases/(default)/documents/tala_students/$(data.studentId)).data.sharedWith is list &&
+              currentEmail() in firestore.get(/databases/(default)/documents/tala_students/$(data.studentId)).data.sharedWith
+            )
+          )
+        )
+      ));
     }
 
     match /tala_invites/{token} {
@@ -198,7 +212,24 @@ service cloud.firestore {
 
       allow create: if isSignedIn() &&
         token.size() == 22 &&
-        request.resource.data.ownerEmail == currentEmail() &&
+        (
+          request.resource.data.ownerEmail == currentEmail() ||
+          (
+            'studentId' in request.resource.data &&
+            request.resource.data.studentId != null &&
+            firestore.exists(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)) &&
+            (
+              firestore.get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.ownerEmail.lower() == request.resource.data.ownerEmail.lower() &&
+              (
+                firestore.get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.ownerEmail.lower() == currentEmail() ||
+                (
+                  firestore.get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.sharedWith is list &&
+                  currentEmail() in firestore.get(/databases/(default)/documents/tala_students/$(request.resource.data.studentId)).data.sharedWith
+                )
+              )
+            )
+          )
+        ) &&
         request.resource.data.status == 'pending' &&
         request.resource.data.expiresAt is timestamp &&
         request.resource.data.expiresAt <= request.time + duration.value(8, 'd') &&

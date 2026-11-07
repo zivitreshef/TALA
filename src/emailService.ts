@@ -283,6 +283,20 @@ export async function generatePdfBlobFromHtml(htmlString: string, filename = 're
 }
 
 /**
+ * Validates email dispatch parameters to prevent CRLF header injection and malformed recipient addresses.
+ */
+export function validateEmailDispatchParams(toEmail?: string, subject?: string): void {
+  const email = String(toEmail || '').trim();
+  if (!email || !email.includes('@') || /[\r\n]/.test(email) || email.length > 320) {
+    throw new Error('כתובת דוא"ל נמען אינה תקינה או מכילה תווים אסורים');
+  }
+  const subj = String(subject || '').trim();
+  if (/[\r\n]/.test(subj) || subj.length > 500) {
+    throw new Error('נושא ההודעה מכיל תווים אסורים או חורג מהאורך המותר');
+  }
+}
+
+/**
  * Dispatch an email with the attached DOCX or PDF file in the background
  * using either Google Apps Script Relay (recommended) or EmailJS REST API.
  */
@@ -296,6 +310,7 @@ export async function sendReportEmailInBackground({
   filename,
   mimeType
 }: SendReportEmailParams): Promise<{ ok: boolean; provider: string }> {
+  validateEmailDispatchParams(toEmail, subject);
   const cfg = config || loadEmailEngineConfig();
   const base64Data = attachmentBlob ? await blobToBase64(attachmentBlob) : '';
 
