@@ -41,6 +41,7 @@ import HebrewDatePicker from './HebrewDatePicker';
 import PedagogicalTasksModal from './modals/PedagogicalTasksModal';
 import VoiceObservationRecorder from './voice/VoiceObservationRecorder';
 import { saveAudioRecordBlob, uploadAudioRecordToCloud } from '../services/dossierFileStorage';
+import { transcribeAudioWithGemini } from '../services/audioTranscriptionService';
 import './DailyPedagogicalTracker.css';
 
 /**
@@ -628,8 +629,30 @@ export default function DailyPedagogicalTracker({
 
   // Handle AI Analysis Execution
   const handleRunAiAnalysis = async () => {
-    if (!aiNoteText.trim()) {
-      setAiAnalysisError('נא להזין הערת תצפית חופשית לפני הניתוח');
+    let noteToAnalyze = aiNoteText.trim();
+
+    if (!noteToAnalyze && pendingVoiceBlob) {
+      setIsAnalyzingAi(true);
+      setAiAnalysisError('');
+      try {
+        const transcript = await transcribeAudioWithGemini(pendingVoiceBlob);
+        if (transcript) {
+          noteToAnalyze = transcript;
+          setAiNoteText(transcript);
+        } else {
+          setAiAnalysisError('לא זוהה דיבור ברור בהקלטה. ניתן להקליד תצפית ידנית.');
+          setIsAnalyzingAi(false);
+          return;
+        }
+      } catch (_) {
+        setAiAnalysisError('שגיאה בתמלול ההקלטה ב-AI. יש לוודא חיבור רשת תקין.');
+        setIsAnalyzingAi(false);
+        return;
+      }
+    }
+
+    if (!noteToAnalyze) {
+      setAiAnalysisError('נא להקליט או להזין הערת תצפית לפני הניתוח');
       return;
     }
     if (!targetStudent) {
@@ -641,7 +664,7 @@ export default function DailyPedagogicalTracker({
     setAiAnalysisError('');
     setAiAnalysisResult(null);
 
-    const prompt = buildAiGoalMatchPrompt({ note: aiNoteText, student: targetStudent });
+    const prompt = buildAiGoalMatchPrompt({ note: noteToAnalyze, student: targetStudent });
     const maskedPrompt = maskPromptForAi(prompt, targetStudent);
 
     try {

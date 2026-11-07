@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { saveAudioRecordBlob, getAudioRecordBlob, uploadAudioRecordToCloud } from '../../services/dossierFileStorage';
+import { transcribeAudioWithGemini } from '../../services/audioTranscriptionService';
 import VoiceObservationRecorder from '../voice/VoiceObservationRecorder';
 import {
   FileText,
@@ -214,9 +215,20 @@ export default function PedagogicalFeed({
     }
   };
 
-  const handleManualAddNote = (): void => {
-    const text = newNoteText.trim();
-    if (!text) return;
+  const handleManualAddNote = async (): Promise<void> => {
+    let text = newNoteText.trim();
+    if (!text && pendingAudioBlob) {
+      try {
+        const transcript = await transcribeAudioWithGemini(pendingAudioBlob);
+        if (transcript) {
+          text = transcript;
+        }
+      } catch (_) {}
+    }
+    if (!text && !pendingAudioBlob) return;
+    if (!text) {
+      text = 'הקלטת תצפית קולית';
+    }
     const author = currentUserName ? `${currentUserName} (אני)` : 'אני';
     const snippet = createTeacherNoteSnippet(text, author);
     if (pendingAudioBlob) {

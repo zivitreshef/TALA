@@ -8,8 +8,11 @@ import {
   Trash2,
   Volume2,
   AlertCircle,
-  WifiOff
+  WifiOff,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
+import { transcribeAudioWithGemini } from '../../services/audioTranscriptionService';
 import './VoiceObservationRecorder.css';
 
 export interface VoiceObservationRecorderProps {
@@ -60,12 +63,14 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isTranscribingAi, setIsTranscribingAi] = useState(false);
   const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' && !navigator.onLine);
   const [networkNotice, setNetworkNotice] = useState<string | null>(null);
 
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const lastAudioBlobRef = useRef<Blob | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const timerIntervalRef = useRef<any>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -86,7 +91,9 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    return () => {
+
+
+  return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
@@ -171,6 +178,7 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
             if (audioUrlRef.current) {
               URL.revokeObjectURL(audioUrlRef.current);
             }
+            lastAudioBlobRef.current = blob;
             setAudioUrl(url);
             setHasAudio(true);
             if (onAudioReady) {
@@ -212,9 +220,11 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
           };
 
           recognition.onerror = (event: any) => {
-            // If offline or network error, inform the user while audio recording continues safely!
-            if (event && (event.error === 'network' || !navigator.onLine)) {
-              setNetworkNotice('החיבור נותק. ההקלטה ממשיכה להישמר מקומית במכשיר!');
+            if (event?.error === 'no-speech' || event?.error === 'aborted') {
+              return;
+            }
+            if (event?.error === 'network' || !navigator.onLine) {
+              setNetworkNotice('תמלול ישיר בדפדפן נחסם ברשת זו (חומת אש או VPN). ניתן ללחוץ על "תמלל ב-AI" בסיום ההקלטה.');
             }
           };
 
@@ -309,6 +319,27 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
     }
   };
 
+  const handleAiTranscribe = async () => {
+    if (!lastAudioBlobRef.current || isTranscribingAi) return;
+    setIsTranscribingAi(true);
+    setErrorMessage(null);
+    try {
+      const transcript = await transcribeAudioWithGemini(lastAudioBlobRef.current);
+      if (transcript) {
+        const combined = initialBaseTextRef.current
+          ? `${initialBaseTextRef.current} ${transcript}`
+          : transcript;
+        onTranscript(combined);
+      } else {
+        setErrorMessage('לא זוהה דיבור ברור בקובץ ההקלטה.');
+      }
+    } catch (err: any) {
+      setErrorMessage('שגיאה בתמלול ה-AI. יש לוודא חיבור אינטרנט תקין.');
+    } finally {
+      setIsTranscribingAi(false);
+    }
+  };
+
   return (
     <div className="voice-obs-container" dir="rtl">
       {errorMessage && (
@@ -374,6 +405,18 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
           </div>
 
           <div className="voice-obs-player-controls">
+            <button
+              type="button"
+              onClick={handleAiTranscribe}
+              disabled={isTranscribingAi}
+              className="voice-obs-btn-ai-transcribe"
+              title="תמלול הקלטה בעברית באמצעות AI"
+              aria-label="תמלול הקלטה בעברית באמצעות AI"
+            >
+              {isTranscribingAi ? <Loader2 size={13} className="tala-spin-icon" /> : <Sparkles size={13} />}
+              <span>{isTranscribingAi ? 'מתמלל ב-AI...' : 'תמלל ב-AI'}</span>
+            </button>
+
             <button
               type="button"
               onClick={handleTogglePlay}
