@@ -119,7 +119,7 @@ export default function ClassReadinessOverview({
     <section
       className="class-readiness-overview-card"
       dir="rtl"
-      aria-label="מבט-על כיתתי על עמידה ביעדים ומועדי דיווח"
+      aria-label="מבט על כיתתי על עמידה ביעדים ומועדי דיווח"
       style={{
         background: '#ffffff',
         border: '1px solid #e2e8f0',
@@ -163,7 +163,7 @@ export default function ClassReadinessOverview({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0, fontSize: '19px', fontWeight: 800, color: '#0f172a' }}>
-                מבט-על כיתתי על עמידה ביעדים ומועדי דיווח
+                מבט על כיתתי על עמידה ביעדים ומועדי דיווח
               </h2>
               <span
                 style={{
@@ -205,7 +205,7 @@ export default function ClassReadinessOverview({
               placeholder="חיפוש לפי שם או מסגרת..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="חיפוש במבט-על כיתתי"
+              aria-label="חיפוש במבט על כיתתי"
               style={{
                 border: 'none',
                 background: 'transparent',

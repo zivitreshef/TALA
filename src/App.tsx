@@ -2551,21 +2551,6 @@ export default function App() {
 
             <button
               type="button"
-              className={`header-nav-btn ${showClassOverview && selectedStudentId === null && !showDailyTracker && !showGoalBankOverview ? 'active' : ''}`}
-              onClick={() => {
-                setSelectedStudentId(null);
-                setShowClassOverview(true);
-                setShowDailyTracker(false);
-                setShowGoalBankOverview(false);
-              }}
-              title="מבט-על כיתתי על עמידה ביעדים ומועדי דיווח"
-            >
-              <UserCheck size={15} />
-              <span>מבט-על</span>
-            </button>
-
-            <button
-              type="button"
               className={`header-nav-btn ${showDailyTracker && selectedStudentId === null && !showGoalBankOverview && !showClassOverview ? 'active' : ''} ${activeOnboardingStep === 5 && !showDailyTracker ? 'tour-highlight-btn' : ''}`}
               onClick={() => {
                 setSelectedStudentId(null);
@@ -2601,6 +2586,21 @@ export default function App() {
             >
               <TrendingUp size={15} />
               <span>מאגר מטרות</span>
+            </button>
+
+            <button
+              type="button"
+              className={`header-nav-btn ${showClassOverview && selectedStudentId === null && !showDailyTracker && !showGoalBankOverview ? 'active' : ''}`}
+              onClick={() => {
+                setSelectedStudentId(null);
+                setShowClassOverview(true);
+                setShowDailyTracker(false);
+                setShowGoalBankOverview(false);
+              }}
+              title="מבט על כיתתי על עמידה ביעדים ומועדי דיווח"
+            >
+              <UserCheck size={15} />
+              <span>מבט על</span>
             </button>
           </nav>
 
