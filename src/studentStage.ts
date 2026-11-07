@@ -129,6 +129,16 @@ export function parseDate(d?: unknown): Date | null {
     if (!isNaN(dt2.getTime())) return dt2;
   }
 
+  // Support 8 raw digits: DDMMYYYY (e.g. 10031976)
+  const rawDigits = s.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (rawDigits) {
+    const day = parseInt(rawDigits[1], 10);
+    const month = parseInt(rawDigits[2], 10) - 1;
+    const year = parseInt(rawDigits[3], 10);
+    const dtRaw = new Date(year, month, day);
+    if (!isNaN(dtRaw.getTime()) && dtRaw.getMonth() === month) return dtRaw;
+  }
+
   // Fallback to ISO / Standard Date parse
   const dt = new Date(s);
   if (!isNaN(dt.getTime())) return dt;

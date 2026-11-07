@@ -333,6 +333,14 @@ function parseFlexibleDate(dateStr?: unknown): Date | null {
     const d = new Date(year, month - 1, day);
     if (!isNaN(d.getTime()) && d.getMonth() === month - 1) return d;
   }
+  const raw8Match = trimmed.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (raw8Match) {
+    const day = parseInt(raw8Match[1], 10);
+    const month = parseInt(raw8Match[2], 10);
+    const year = parseInt(raw8Match[3], 10);
+    const d = new Date(year, month - 1, day);
+    if (!isNaN(d.getTime()) && d.getMonth() === month - 1) return d;
+  }
   return null;
 }
 

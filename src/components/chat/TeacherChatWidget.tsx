@@ -985,7 +985,7 @@ export default function TeacherChatWidget({
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder={attachment ? 'הוסף/י הערה לצילום המסך (אופציונלי)...' : "כתוב/י הודעה (ניתן להדביק צילום מסך ב-Ctrl+V)..."}
+              placeholder={attachment ? 'הוסף/י הערה לצילום המסך (אופציונלי)...' : "כתוב/י הודעה (ניתן להדביק צילום מסך)..."}
               disabled={isSending || isProcessingImg}
               maxLength={2000}
               style={{

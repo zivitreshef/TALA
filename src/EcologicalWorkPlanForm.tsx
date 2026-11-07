@@ -172,6 +172,7 @@ import {
 import { personalizeBankItem, fillGoalRowFromBank } from './domain/bankGoalApplication';
 import { callAiJson } from './services/aiJsonClient';
 import { isDemoStudent } from './domain/onboardingJourney';
+import { maskDateInput, normalizeDateOnBlur } from './utils/dateMask';
 import { advanceOnboardingStep } from './services/onboardingStorage';
 
 const DURATION_TSHIRT_OPTIONS = [
@@ -589,9 +590,6 @@ export default function EcologicalWorkPlanForm({
       lastReportedDraftSigRef.current = `0:${serializedUpdated}`;
       setFormData(updated);
       onSaveStudentPlanRef.current?.(updated);
-      setTimeout(() => {
-        section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-      }, 300);
       setAutoSavedTime(nowTime);
       if (onDraftStateChangeRef.current) {
         onDraftStateChangeRef.current({ isDirty: false, draftData: updated });
@@ -2861,8 +2859,18 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="text"
               value={formData.date || ''}
               disabled={isReportLocked}
-              onChange={(e) => handleFieldChange('date', e.target.value)}
+              onChange={(e) => {
+                const masked = maskDateInput(e.target.value, formData.date || '');
+                handleFieldChange('date', masked);
+              }}
+              onBlur={() => {
+                const normalized = normalizeDateOnBlur(formData.date || '');
+                if (normalized !== formData.date) {
+                  handleFieldChange('date', normalized);
+                }
+              }}
               placeholder="למשל: 01/10/2026"
+              maxLength={10}
             />
           </div>
           <div className="doc-banner-center-brand">
@@ -4094,8 +4102,18 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="text"
               disabled={isReportLocked}
               value={formData.birthDate || ''}
-              onChange={(e) => handleFieldChange('birthDate', e.target.value)}
+              onChange={(e) => {
+                const masked = maskDateInput(e.target.value, formData.birthDate || '');
+                handleFieldChange('birthDate', masked);
+              }}
+              onBlur={() => {
+                const normalized = normalizeDateOnBlur(formData.birthDate || '');
+                if (normalized !== formData.birthDate) {
+                  handleFieldChange('birthDate', normalized);
+                }
+              }}
               placeholder="DD/MM/YYYY"
+              maxLength={10}
             />
           </div>
 
