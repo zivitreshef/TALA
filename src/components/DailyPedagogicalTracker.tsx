@@ -40,6 +40,7 @@ import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import HebrewDatePicker from './HebrewDatePicker';
 import PedagogicalTasksModal from './modals/PedagogicalTasksModal';
 import VoiceObservationRecorder from './voice/VoiceObservationRecorder';
+import { saveAudioRecordBlob, uploadAudioRecordToCloud } from '../services/dossierFileStorage';
 import './DailyPedagogicalTracker.css';
 
 /**
@@ -546,6 +547,7 @@ export default function DailyPedagogicalTracker({
 
   // AI Free-text Note Mode State
   const [aiNoteText, setAiNoteText] = useState('');
+  const [pendingVoiceBlob, setPendingVoiceBlob] = useState<Blob | null>(null);
   const [isAnalyzingAi, setIsAnalyzingAi] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<any | null>(null);
   const [aiAnalysisError, setAiAnalysisError] = useState('');
@@ -680,7 +682,7 @@ export default function DailyPedagogicalTracker({
 
     const goalId = aiAnalysisResult.matchedGoalId;
     const delta = aiAnalysisResult.suggestedProgressDelta || 0;
-    const newObservation = {
+    const newObservation: any = {
       id: `obs_${Date.now()}`,
       timestamp: new Date().toISOString(),
       date: todayStr,
@@ -689,6 +691,20 @@ export default function DailyPedagogicalTracker({
       note: aiAnalysisResult.conciseObservationNote || aiNoteText,
       source: 'ai_daily_tracker'
     };
+
+    if (pendingVoiceBlob) {
+      newObservation.hasAudio = true;
+      const audioToSave = pendingVoiceBlob;
+      saveAudioRecordBlob(newObservation.id, audioToSave).catch(() => {});
+      if (targetStudent?.id) {
+        uploadAudioRecordToCloud(newObservation.id, audioToSave, targetStudent.id).then((cloudRes) => {
+          if (cloudRes?.storageUrl) {
+            newObservation.audioStorageUrl = cloudRes.storageUrl;
+          }
+        }).catch(() => {});
+      }
+      setPendingVoiceBlob(null);
+    }
 
     const updatedGoals = (targetStudent.goals || []).map((g: any) => {
       if (g.id === goalId) {
@@ -1534,6 +1550,8 @@ export default function DailyPedagogicalTracker({
                           return trimmed ? `${trimmed} ${transcript}` : transcript;
                         });
                       }}
+                      onAudioReady={(blob) => setPendingVoiceBlob(blob)}
+                      onClearAudio={() => setPendingVoiceBlob(null)}
                     />
                   </div>
 

@@ -279,3 +279,41 @@ export async function openDossierFilePreview(
   }
   return false;
 }
+
+
+/**
+ * Persists an audio recording blob to IndexedDB under a unique record identifier.
+ */
+export async function saveAudioRecordBlob(recordId: string, audioBlob: Blob): Promise<boolean> {
+  if (!recordId || !audioBlob) return false;
+  return saveDossierFileBlob(`audio_${recordId}`, audioBlob as any);
+}
+
+/**
+ * Retrieves a persisted audio recording blob from IndexedDB.
+ */
+export async function getAudioRecordBlob(recordId: string): Promise<Blob | null> {
+  if (!recordId) return null;
+  return getDossierFileBlob(`audio_${recordId}`);
+}
+
+/**
+ * Uploads an audio recording to Firebase Cloud Storage.
+ */
+export async function uploadAudioRecordToCloud(
+  recordId: string,
+  audioBlob: Blob,
+  studentId = 'general'
+): Promise<CloudUploadResult | null> {
+  if (!recordId || !audioBlob) return null;
+  const fileName = `voice_${recordId}.webm`;
+  let fileToUpload: any = audioBlob;
+  if (typeof File !== 'undefined') {
+    try {
+      fileToUpload = new File([audioBlob], fileName, { type: audioBlob.type || 'audio/webm' });
+    } catch (_) {
+      fileToUpload = audioBlob;
+    }
+  }
+  return uploadDossierFileToCloud(`audio_${recordId}`, fileToUpload, studentId);
+}
