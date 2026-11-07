@@ -41,7 +41,7 @@ describe('ClassReadinessOverview Component (Matrix Table)', () => {
       <ClassReadinessOverview students={sampleStudents} onSelectStudent={vi.fn()} />
     );
 
-    expect(html).toContain('מבט-על כיתתי על עמידה ביעדים ומועדי דיווח');
+    expect(html).toContain('מבט על כיתתי על עמידה ביעדים ומועדי דיווח');
     expect(html).toContain('תמונת מצב כיתתית:');
     expect(html).toContain('1 מוכנים לוועדה');
     expect(html).toContain('1 בתהליך');
