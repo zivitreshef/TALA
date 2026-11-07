@@ -57,6 +57,32 @@ describe('VoiceObservationRecorder Component & Logic Tests', () => {
     expect(capturedText).toBe('דניאל השתתף בריכוז והגיב בהתלהבות');
   });
 
+  it('guarantees streaming speech recognition updates in-place without exponential loop repetition', () => {
+    let currentInput = 'הערה קיימת:';
+    const baseTextAtStart = currentInput;
+
+    const onTranscript = (fullSessionText: string) => {
+      currentInput = fullSessionText;
+    };
+
+    // Simulate WebKit Web Speech accumulated interim stream
+    const events = [
+      'בדיקה',
+      'בדיקה על ילד',
+      'בדיקה על ילד מספר אחד שאני רוצה לבדוק'
+    ];
+
+    events.forEach((spoken) => {
+      const merged = baseTextAtStart ? `${baseTextAtStart} ${spoken}` : spoken;
+      onTranscript(merged);
+    });
+
+    // Verify it contains the exact text without any duplicated words
+    expect(currentInput).toBe('הערה קיימת: בדיקה על ילד מספר אחד שאני רוצה לבדוק');
+    expect(currentInput).not.toContain('בדיקה בדיקה');
+    expect(currentInput).not.toContain('ילד מספר אחד בדיקה');
+  });
+
   it('safely handles media stream cleanup by stopping all tracks', () => {
     const stopMock1 = vi.fn();
     const stopMock2 = vi.fn();

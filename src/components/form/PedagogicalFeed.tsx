@@ -596,11 +596,9 @@ export default function PedagogicalFeed({
                 </label>
                 <VoiceObservationRecorder
                   disabled={isLocked}
-                  onTranscript={(transcript) => {
-                    setNewNoteText((prev) => {
-                      const trimmed = prev.trim();
-                      return trimmed ? `${trimmed} ${transcript}` : transcript;
-                    });
+                  baseText={newNoteText}
+                  onTranscript={(fullText) => {
+                    setNewNoteText(fullText);
                   }}
                   onAudioReady={(blob) => setPendingAudioBlob(blob)}
                   onClearAudio={() => setPendingAudioBlob(null)}
