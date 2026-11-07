@@ -39,6 +39,7 @@ import { usageTelemetryService } from '../services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import HebrewDatePicker from './HebrewDatePicker';
 import PedagogicalTasksModal from './modals/PedagogicalTasksModal';
+import VoiceObservationRecorder from './voice/VoiceObservationRecorder';
 import './DailyPedagogicalTracker.css';
 
 /**
@@ -1522,9 +1523,18 @@ export default function DailyPedagogicalTracker({
                   <div className="ai-note-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <strong className="ai-note-title">תיעוד חופשי • ניתוח ושיוך אוטומטי ליעד</strong>
-                      <span className="ai-note-sub" style={{ display: 'block' }}>כתבי מה קרה במפגש, ה-AI ידאג לשאר</span>
+                      <span className="ai-note-sub" style={{ display: 'block' }}>הקליטי או כתבי מה קרה במפגש, ה-AI ידאג לשאר</span>
                     </div>
-                    
+                    <VoiceObservationRecorder
+                      disabled={isAnalyzingAi}
+                      onTranscript={(transcript) => {
+                        startObservationEntry('text', false);
+                        setAiNoteText((prev) => {
+                          const trimmed = prev.trim();
+                          return trimmed ? `${trimmed} ${transcript}` : transcript;
+                        });
+                      }}
+                    />
                   </div>
 
                   <textarea
