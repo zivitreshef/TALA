@@ -447,6 +447,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         );
 
         expect(modalContent).toContain('כל המשתמשים');
+        expect(modalContent).toContain('מחוברים כעת');
         expect(modalContent).toContain('מנהלי מערכת');
         expect(modalContent).toContain('מנויים משלמים');
         expect(modalContent).toContain('משתמשי ניסיון');

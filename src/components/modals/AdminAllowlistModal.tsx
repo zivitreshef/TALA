@@ -119,6 +119,8 @@ export interface AdminAllowlistModalProps {
   onClose: () => void;
   currentUser?: any;
   initialTab?: string;
+  initialUserGroupTab?: string;
+  initialPresenceMap?: Record<string, any>;
   allowedUsers?: any[];
   onUpdateAllowedUsers?: (users: any[], meta?: any) => void;
   enforcePasswordPolicy?: boolean;
@@ -148,6 +150,8 @@ export default function AdminAllowlistModal({
   onClose,
   currentUser = null,
   initialTab = 'users',
+  initialUserGroupTab = 'all',
+  initialPresenceMap = {},
   allowedUsers = [],
   onUpdateAllowedUsers,
   enforcePasswordPolicy,
@@ -407,7 +411,7 @@ export default function AdminAllowlistModal({
       setActiveTab(initialTab);
     }
   }, [isOpen, initialTab]);
-  const [userGroupTab, setUserGroupTab] = useState('all'); // 'all' | 'admins' | 'paying' | 'trials' | 'expired_disabled'
+  const [userGroupTab, setUserGroupTab] = useState(initialUserGroupTab || 'all'); // 'all' | 'online' | 'admins' | 'paying' | 'trials' | 'expired_disabled'
     const [sortField, setSortField] = useState('name'); // 'name' | 'email' | 'group' | 'status' | 'capacity'
     const [sortDirection, setSortDirection] = useState<any>('asc');
      // 'all' | 'paid' | 'trial_active' | 'trial_expired' | 'disabled'
@@ -453,7 +457,7 @@ export default function AdminAllowlistModal({
   });
   
   const [detailsSavedToastId, setDetailsSavedToastId] = useState(null);
-  const [userPresenceMap, setUserPresenceMap] = useState<Record<string, any>>({});
+  const [userPresenceMap, setUserPresenceMap] = useState<Record<string, any>>(initialPresenceMap || {});
 
   // Group bulk rename & quota state
   const [renamingGroup, setRenamingGroup] = useState<string | null>(null);
@@ -522,9 +526,27 @@ export default function AdminAllowlistModal({
   let payingCount = 0;
   let trialCount = 0;
   let expiredDisabledCount = 0;
+  let onlineCount = 0;
   const now = new Date();
 
+  const isUserOnline = (userEmail?: string) => {
+    if (!userEmail) return false;
+    const isSelf = Boolean(
+      currentUser?.email &&
+      userEmail.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+    );
+    if (isSelf) return true;
+    const userKey = userEmail.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+    const presenceData = userPresenceMap[userKey];
+    const lastActiveIso = presenceData?.lastActiveIso;
+    if (!lastActiveIso) return false;
+    const diffMs = Date.now() - new Date(lastActiveIso).getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    return diffMinutes < 5;
+  };
+
   for (const u of (allowedUsers || [])) {
+    if (isUserOnline(u.email)) onlineCount++;
     const g = classifyUserGroup(u, now);
     if (g === 'admins') adminCount++;
     else if (g === 'paying') payingCount++;
@@ -534,6 +556,7 @@ export default function AdminAllowlistModal({
 
   const userGroupCounts = {
     all: (allowedUsers || []).length,
+    online: onlineCount,
     admins: adminCount,
     paying: payingCount,
     trials: trialCount,
@@ -542,7 +565,9 @@ export default function AdminAllowlistModal({
 
   // Filtered and sorted users list (pure computation - no hook after early return)
   const filteredUsersList = (allowedUsers || []).filter((u) => {
-    if (userGroupTab !== 'all') {
+    if (userGroupTab === 'online') {
+      if (!isUserOnline(u.email)) return false;
+    } else if (userGroupTab !== 'all') {
       const g = classifyUserGroup(u, now);
       if (g !== userGroupTab) return false;
     }
@@ -1169,7 +1194,7 @@ export default function AdminAllowlistModal({
             }}
           >
             <Users size={16} />
-            <span>משתמשים ומנויים ({allowedUsers.length})</span>
+            <span>משתמשים ({allowedUsers.length})</span>
           </button>
 
           <button
@@ -1389,6 +1414,7 @@ export default function AdminAllowlistModal({
               >
                 {[
                   { id: 'all', label: 'כל המשתמשים', count: userGroupCounts.all, color: '#2563eb' },
+                  { id: 'online', label: 'מחוברים כעת', count: userGroupCounts.online, color: '#16a34a' },
                   { id: 'admins', label: 'מנהלי מערכת', count: userGroupCounts.admins, color: '#1e3a8a' },
                   { id: 'paying', label: 'מנויים משלמים', count: userGroupCounts.paying, color: '#166534' },
                   { id: 'trials', label: 'משתמשי ניסיון', count: userGroupCounts.trials, color: '#6d28d9' },
