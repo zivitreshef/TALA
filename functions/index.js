@@ -319,7 +319,7 @@ async function handleTalaLogin(req,res){
 exports.talaLogin=require("firebase-functions/v2/https").onRequest({region:"us-central1",cors:false},handleTalaLogin);
 
 // ---- onHealthEventCreated: Real-time Admin Alerts (Email, Telegram, WhatsApp) ----
-const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwp3HLCO9kErrN-vS2odXYcco1B5KMlbTw7qeJWrSSKg5nqZocfrsvyUOIO-LurJJtg/exec';
+const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbygVhGQbi4peK7Bzr4A5z1SuFD1uDbgtfSiNblQNtfVrvn5sAZaiVwDC2kaTBJ9m3L5/exec';
 const DEFAULT_TELEGRAM_BOT_TOKEN = '7774912239:AAHOkYkO6xLqQfLd80Zg3aR90pG7yG9mK10';
 const serverDedupeMap = new Map();
 
