@@ -298,7 +298,12 @@ export function classifyAccount(userContext?: UserContext | string | null): Acco
   const email = (ctx.email || '').toLowerCase().trim();
 
   // Demo account check
-  if (ctx.isDemo || role === 'demo' || email.includes('demo') || email.startsWith('demo@')) {
+  if (
+    ctx.isDemo ||
+    role === 'demo' ||
+    /(^|[._+-])demo([._+@-]|$)/.test(email) ||
+    email.endsWith('@demo.local')
+  ) {
     return 'demo';
   }
 
@@ -308,7 +313,8 @@ export function classifyAccount(userContext?: UserContext | string | null): Acco
     role === 'superadmin' ||
     ctx.isAdmin ||
     email.startsWith('admin@') ||
-    email === 'admin@tala.education'
+    email === 'admin@tala.education' ||
+    /(^|[._+-])admin([._+@-]|$)/.test(email)
   ) {
     return 'admin';
   }
@@ -318,10 +324,10 @@ export function classifyAccount(userContext?: UserContext | string | null): Acco
     ctx.isTest ||
     ctx.isInternalTest ||
     role === 'test' ||
-    email.includes('test') ||
-    email.includes('challenger') ||
+    /(^|[._+-])test([._+@-]|$)/.test(email) ||
     email.endsWith('@test.local') ||
-    email.endsWith('@example.com')
+    email.endsWith('@example.com') ||
+    email.includes('challenger')
   ) {
     return 'internal_test';
   }

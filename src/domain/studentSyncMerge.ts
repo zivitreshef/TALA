@@ -177,10 +177,14 @@ export function mergeStudentSnapshots<T extends StudentSnapshot>({
     }
   });
 
-  // Include any new goals created concurrently on the server by colleagues
+  // Include any new goals created concurrently on the server by colleagues.
+  // Do NOT resurrect goals that were present in baseSnapshot and explicitly deleted locally.
   serverGoals.forEach((sg) => {
     if (!seenIds.has(sg.id)) {
-      mergedGoals.push(sg);
+      const wasInBase = sg.id ? baseGoalMap.has(sg.id) : false;
+      if (!wasInBase) {
+        mergedGoals.push(sg);
+      }
     }
   });
 

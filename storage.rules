@@ -1,11 +1,45 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Authenticated teachers can upload and download student dossier files with strict security hardening
+    function currentEmail() {
+      return request.auth != null && request.auth.token.email != null
+        ? request.auth.token.email.lower()
+        : '';
+    }
+
+    function isAdmin() {
+      return currentEmail() == 'zivit.reshef@gmail.com' ||
+             currentEmail() == 'moti.reshef@gmail.com' ||
+             currentEmail() == 'moti_reshef@bmc.com' ||
+             (request.auth != null && (
+               request.auth.token.role == 'admin' ||
+               request.auth.token.isAdmin == true ||
+               request.auth.uid == 'tala_ccd05b8d703389243cd80ff9' ||
+               request.auth.uid == 'tala_5599a5e99afe3b3f4e1e8514'
+             ));
+    }
+
+    function canAccessStudentDossier(studentId) {
+      return request.auth != null && (
+        isAdmin() ||
+        studentId == 'general' ||
+        (
+          firestore.exists(/databases/(default)/documents/tala_students/$(studentId)) &&
+          (
+            firestore.get(/databases/(default)/documents/tala_students/$(studentId)).data.ownerEmail.lower() == currentEmail() ||
+            (
+              firestore.get(/databases/(default)/documents/tala_students/$(studentId)).data.sharedWith is list &&
+              currentEmail() in firestore.get(/databases/(default)/documents/tala_students/$(studentId)).data.sharedWith
+            )
+          )
+        )
+      );
+    }
+
+    // Authenticated teachers can upload and download student dossier files strictly within authorized boundaries
     match /dossier_files/{studentId}/{fileName} {
-      // Must be authenticated and file must strictly adhere to size and extension boundaries
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
+      allow read: if canAccessStudentDossier(studentId);
+      allow write: if canAccessStudentDossier(studentId)
                    && request.resource.size <= 20 * 1024 * 1024
                    && request.resource.size > 0
                    && request.resource.contentType.matches('application/pdf|application/vnd.openxmlformats-officedocument.wordprocessingml.document|application/msword|text/plain|text/csv|image/(png|jpeg|webp)')

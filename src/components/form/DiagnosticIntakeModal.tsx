@@ -110,6 +110,14 @@ export default function DiagnosticIntakeModal({
     setIsExtracting(true);
 
     try {
+      const fileCheck = await validateDossierFileUpload(file);
+      if (!fileCheck.valid) {
+        setErrorMessage(fileCheck.reason || 'הקובץ אינו תואם את מדיניות האבטחה.');
+        const inputEl = document.getElementById('diagnostic-file-input') as HTMLInputElement | null;
+        if (inputEl) inputEl.value = '';
+        setIsExtracting(false);
+        return;
+      }
       const extracted = await extractTextFromFile(file);
       const cleanExtracted = (extracted || '').trim();
 

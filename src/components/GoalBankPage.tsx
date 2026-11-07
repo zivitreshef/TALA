@@ -134,7 +134,7 @@ export default function GoalBankPage({
       const titleMatch = (g.title || '').toLowerCase().includes(query);
       const envMatch = (g.environment || '').toLowerCase().includes(query);
       const objMatch = (g.suggestedObjectives || []).some((o: any) =>
-        o.toLowerCase().includes(query)
+        typeof o === 'string' && o.toLowerCase().includes(query)
       );
 
       return titleMatch || envMatch || objMatch;
