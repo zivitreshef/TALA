@@ -1826,3 +1826,162 @@
   border-color: #fda4af;
   color: #be123c;
 }
+
+
+/* ========================================================
+   Mobile Responsiveness (iPhone & Mobile Touch Screens <= 640px)
+   ======================================================== */
+@media (max-width: 640px) {
+  .daily-tracker-container {
+    padding: 10px 8px 32px 8px;
+    gap: 12px;
+  }
+
+  /* --- Top Header & Fast Sync Toolbar --- */
+  .tracker-top-header {
+    padding: 16px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    border-radius: 16px;
+  }
+
+  .tracker-header-info {
+    width: 100%;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .tracker-header-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+
+  .tracker-header-title-box h1 {
+    font-size: 17px;
+    line-height: 1.3;
+    gap: 8px;
+  }
+
+  .tracker-ai-pill {
+    font-size: 11px;
+    padding: 2px 8px;
+  }
+
+  .tracker-header-date {
+    font-size: 12px;
+  }
+
+  /* Header action buttons (ייצוא ליומן + חזרה לניהול תלמידים) */
+  .tracker-header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    justify-content: stretch;
+  }
+
+  .btn-cal-sync,
+  .btn-cal-close {
+    flex: 1 1 0;
+    min-height: 42px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    justify-content: center;
+    text-align: center;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+
+  /* --- Card Containers & Headers --- */
+  .tracker-card {
+    padding: 14px 12px;
+    border-radius: 14px;
+  }
+
+  .tracker-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding-bottom: 10px;
+  }
+
+  .tracker-card-header-title {
+    font-size: 14px;
+    line-height: 1.3;
+  }
+
+  .tracker-card-subtitle {
+    font-size: 11.5px;
+  }
+
+  /* Dual mode switcher buttons */
+  .mode-toggle-group {
+    width: 100%;
+    display: flex;
+    box-sizing: border-box;
+  }
+
+  .btn-mode-toggle {
+    flex: 1 1 0;
+    justify-content: center;
+    text-align: center;
+    padding: 8px 6px;
+    font-size: 12px;
+    min-height: 38px;
+    white-space: nowrap;
+  }
+
+  /* Calendar Actions Header */
+  .cal-header-actions-group {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Student Selector Row */
+  .student-select-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .student-dropdown {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 13px;
+  }
+
+  /* AI Note Footer & Buttons */
+  .ai-note-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .btn-ai-analyze {
+    width: 100%;
+    justify-content: center;
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  /* Add Task Form */
+  .todo-add-form {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .todo-input-text {
+    width: 100%;
+    flex: 1 0 100%;
+  }
+
+  .btn-todo-add {
+    min-height: 38px;
+    padding: 8px 16px;
+  }
+}

@@ -237,7 +237,39 @@
 @media (max-width: 640px) {
   .voice-obs-playback-bar,
   .voice-obs-active-bar {
-    padding: 8px 10px;
+    padding: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .voice-obs-player-controls {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .voice-obs-btn-playback {
+    flex: 1 1 auto;
+    min-height: 38px;
+    justify-content: center;
+  }
+
+  .voice-obs-btn-action {
+    min-height: 38px;
+    padding: 6px 12px;
+  }
+
+  .voice-obs-btn-ai-transcribe {
+    width: 100%;
+    justify-content: center;
+    min-height: 38px;
+  }
+
+  .voice-obs-btn-start,
+  .voice-obs-btn-stop {
+    min-height: 38px;
   }
 }
 

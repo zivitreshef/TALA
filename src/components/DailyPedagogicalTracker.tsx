@@ -916,9 +916,11 @@ export default function DailyPedagogicalTracker({
             type="button"
             onClick={handleDownloadIcs}
             className="btn-cal-sync btn-cal-ics"
+            title="ייצוא אירועים ליומן חיצוני"
+            aria-label="ייצוא אירועים ליומן חיצוני"
           >
             <Download size={13} />
-            קובץ .ics
+            ייצוא ליומן
           </button>
 
           {onClose && (
