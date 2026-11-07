@@ -319,6 +319,11 @@ export interface AiGoalMatchResult {
   explanation: string;
 }
 
+export interface AiGoalMultiMatchResponse {
+  matches: AiGoalMatchResult[];
+  noMatchReason?: string | null;
+}
+
 export interface OnboardingStep {
   id: number;
   key: string;

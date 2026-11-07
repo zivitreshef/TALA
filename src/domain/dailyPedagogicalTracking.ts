@@ -8,7 +8,7 @@ import type {
   AdvancedGoalSummary,
   CalendarEventUrlOptions,
   CalendarEvent,
-  AiGoalMatchResult
+  AiGoalMatchResult,
 } from './types';
 
 /**
@@ -403,7 +403,8 @@ export function generateIcsFileContent(events: CalendarEvent[] = []): string {
 }
 
 /**
- * Formats AI Prompt to match a teacher's free-text observation note against a student's active goals.
+ * Formats AI Prompt to match a teacher's free-text observation or lesson feedback note against a student's active goals.
+ * Instructs the AI model to evaluate all active goals independently and distribute feedback across ALL addressed goals.
  */
 export function buildAiGoalMatchPrompt({
   note = '',
@@ -421,40 +422,175 @@ export function buildAiGoalMatchPrompt({
     .join('\n');
 
   return `אתה מומחה לפדגוגיה ולחינוך מיוחד עבור מערכת תל"א (תוכנית לימודים אישית / תוכנית עבודה אקולוגית).
-גננת או מורת שילוב כתבה את הערת התצפית החופשית הבאה על התלמיד/ה ${student.name || 'התלמיד/ה'}:
+גננת או מורת שילוב כתבה או הקליטה את הערת התצפית ומשוב השיעור הבא על התלמיד/ה ${student.name || 'התלמיד/ה'}:
 """
 ${boundedNote}
 """
 
-להלן רשימת היעדים הפעילים של התלמיד/ה בתוכנית העבודה:
+להלן רשימת כל היעדים הפעילים של התלמיד/ה בתוכנית העבודה:
 ${goalsSummary || 'אין עדיין יעדים מוגדרים'}
 
-עליך לנתח את הערת המורה ולהחזיר אך ורק אובייקט JSON חוקי במבנה הבא:
+הנחיות ניתוח פדגוגיות (חובה לפעול בדיוק לפיהן):
+1. קרא בעיון את כל משוב השיעור ובחן אותו באופן בלתי תלוי כנגד כל אחד מהיעדים הפעילים ברשימה.
+2. משוב שיעור כולל פעמים רבות התייחסות למספר יעדים שונים (למשל: הבנת הנקרא, תפקוד עצמאי, מיומנויות חברתיות, ויסות רגשי).
+3. אם המשוב נוגע ליותר מיעד אחד - חובה לפצל ולשייך את המידע לכל היעדים הרלוונטיים שנצפו! אל תגביל את הניתוח ליעד יחיד.
+4. עבור כל יעד שנצפה, חלץ באופן ממוקד אך ורק את התצפית הספציפית הרלוונטית אליו (במשפט תמציתי ומקצועי המנוסח לדוח מחצית). אין להעתיק את כל המשוב בשלמותו לכל יעד.
+5. קבע את רמת התיווך שנצפתה באופן ספציפי עבור יעד זה מתוך האפשרויות: עצמאי לחלוטין | תזכורת מילולית | תיווך חלקי | ליווי והדגמה מלאה.
+6. המלץ על תוספת התקדמות באחוזים (מספר שלם בין 0 ל-10) בהתאם לרמת השליטה שהופגנה ביעד הספציפי.
+7. אל תמציא, אל תנחש ואל תייחס תצפיות ליעדים שלא הוזכרו כלל במשוב.
+8. אם המשוב כללי לחלוטין או אינו מתייחס לאף אחד מהיעדים - החזר מערך ריק של matches והסבר קצר ב-noMatchReason.
+
+החזר אך ורק אובייקט JSON תקני במבנה הבא (ללא טקסט מקדים או מסכם):
 {
-  "matchedGoalId": "המזהה של היעד הרלוונטי ביותר, או null אם ההערה כללית ואינה שייכת ליעד ספציפי",
-  "matchedGoalTitle": "כותרת היעד שהותאם",
-  "environment": "סביבת התפקוד הרלוונטית (חצר, כיתה, מפגש, טיפולים וכו')",
-  "observedSupportLevel": "רמת התיווך שנצפתה: עצמאי לחלוטין | תזכורת מילולית | תיווך חלקי | ליווי והדגמה מלאה",
-  "conciseObservationNote": "סיכום תמציתי ומקצועי של התצפית (משפט אחד המנוסח פדגוגית עבור דוח מחצית)",
-  "suggestedProgressDelta": 5, // מספר בין 0 ל-10 המייצג תוספת התקדמות מומלצת באחוזים, או 0 אם אין שינוי
-  "confidenceScore": 0.95, // ציון ביטחון בין 0.0 ל-1.0
-  "explanation": "הסבר קצר בעברית מדוע ההערה הותאמה ליעד זה"
+  "matches": [
+    {
+      "matchedGoalId": "מזהה היעד המדויק מתוך הרשימה למעלה",
+      "matchedGoalTitle": "כותרת היעד שהותאם",
+      "environment": "סביבת התפקוד (חצר, כיתה, מפגש, טיפולים וכו')",
+      "observedSupportLevel": "עצמאי לחלוטין | תזכורת מילולית | תיווך חלקי | ליווי והדגמה מלאה",
+      "conciseObservationNote": "משפט תמציתי, מדויק ומקצועי המכיל אך ורק את המידע הרלוונטי ליעד זה לדוח מחצית",
+      "suggestedProgressDelta": 5,
+      "confidenceScore": 0.95,
+      "explanation": "הסבר פדגוגי קצר כיצד התצפית מעידה על יעד זה"
+    }
+  ],
+  "noMatchReason": null
 }`;
 }
 
 /**
- * Parses and validates the AI response for goal matching.
+ * Parses and validates the AI response for multi-goal matching.
+ * Returns an array of valid goal match results.
+ */
+export function parseAiGoalMultiMatchResponse(aiResult?: unknown): AiGoalMatchResult[] {
+  if (!aiResult) return [];
+
+  let parsed: unknown = aiResult;
+  if (typeof parsed === 'string') {
+    const rawStr = parsed.trim();
+    try {
+      parsed = JSON.parse(rawStr);
+    } catch (_) {
+      try {
+        const cleaned = rawStr.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const objMatch = cleaned.match(/\{[\s\S]*\}/);
+        const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+        if (objMatch && (!arrMatch || (objMatch.index ?? 0) <= (arrMatch.index ?? 0))) {
+          parsed = JSON.parse(objMatch[0]);
+        } else if (arrMatch) {
+          parsed = JSON.parse(arrMatch[0]);
+        }
+      } catch (_) {}
+    }
+  } else if (parsed && typeof parsed === 'object') {
+    const obj = parsed as Record<string, unknown>;
+    const rawContent = typeof obj.raw === 'string'
+      ? obj.raw
+      : typeof obj.text === 'string'
+      ? obj.text
+      : typeof obj.response === 'string'
+      ? obj.response
+      : null;
+
+    if (rawContent) {
+      try {
+        const cleaned = rawContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const objMatch = cleaned.match(/\{[\s\S]*\}/);
+        const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+        if (objMatch && (!arrMatch || (objMatch.index ?? 0) <= (arrMatch.index ?? 0))) {
+          parsed = JSON.parse(objMatch[0]);
+        } else if (arrMatch) {
+          parsed = JSON.parse(arrMatch[0]);
+        }
+      } catch (_) {}
+    }
+  }
+
+  // Extract candidate items array
+  let rawItems: unknown[] = [];
+  if (Array.isArray(parsed)) {
+    rawItems = parsed;
+  } else if (parsed && typeof parsed === 'object') {
+    const dict = parsed as Record<string, unknown>;
+    if (Array.isArray(dict.matches)) {
+      rawItems = dict.matches;
+    } else if (Array.isArray(dict.goals)) {
+      rawItems = dict.goals;
+    } else if (dict.matchedGoalId !== undefined && dict.matchedGoalId !== null && String(dict.matchedGoalId).trim() !== '' && String(dict.matchedGoalId).trim() !== 'null') {
+      // Legacy single object response format
+      rawItems = [dict];
+    }
+  }
+
+  const validSupportLevels = new Set([
+    'עצמאי לחלוטין',
+    'תזכורת מילולית',
+    'תיווך חלקי',
+    'ליווי והדגמה מלאה'
+  ]);
+
+  const uniqueMatchesMap = new Map<string, AiGoalMatchResult>();
+
+  for (const item of rawItems) {
+    if (!item || typeof item !== 'object') continue;
+    const raw = item as Record<string, unknown>;
+
+    const goalId = typeof raw.matchedGoalId === 'string' && raw.matchedGoalId.trim() !== '' && raw.matchedGoalId !== 'null'
+      ? raw.matchedGoalId.trim()
+      : typeof raw.goalId === 'string' && raw.goalId.trim() !== ''
+      ? raw.goalId.trim()
+      : typeof raw.id === 'string' && raw.id.trim() !== ''
+      ? raw.id.trim()
+      : null;
+
+    if (!goalId) continue;
+    if (uniqueMatchesMap.has(goalId)) continue; // avoid duplicates
+
+    const rawSupport = String(raw.observedSupportLevel || '').trim();
+    const supportLevel = validSupportLevels.has(rawSupport) ? rawSupport : 'תיווך חלקי';
+
+    const rawDelta = Number(raw.suggestedProgressDelta ?? raw.progressDelta);
+    const suggestedProgressDelta = !Number.isNaN(rawDelta)
+      ? Math.max(0, Math.min(15, Math.round(rawDelta)))
+      : 5;
+
+    const rawConfidence = Number(raw.confidenceScore);
+    const confidenceScore = !Number.isNaN(rawConfidence)
+      ? Math.max(0, Math.min(1, rawConfidence))
+      : 0.85;
+
+    uniqueMatchesMap.set(goalId, {
+      matchedGoalId: goalId,
+      matchedGoalTitle: String(raw.matchedGoalTitle || raw.goalTitle || '').trim(),
+      environment: String(raw.environment || 'כללי').trim(),
+      observedSupportLevel: supportLevel,
+      conciseObservationNote: String(raw.conciseObservationNote || raw.observation || raw.note || '').trim(),
+      suggestedProgressDelta,
+      confidenceScore,
+      explanation: String(raw.explanation || '').trim()
+    });
+  }
+
+  return Array.from(uniqueMatchesMap.values());
+}
+
+/**
+ * Parses and validates the AI response for goal matching (single match backwards compatibility).
  */
 export function parseAiGoalMatchResponse(aiResult?: unknown): AiGoalMatchResult | null {
   if (!aiResult) return null;
+  const multi = parseAiGoalMultiMatchResponse(aiResult);
+  if (multi.length > 0) {
+    return multi[0];
+  }
+  // Backwards compatibility for null / empty object tests
   let parsed: unknown = aiResult;
   if (typeof parsed === 'string') {
     try {
       parsed = JSON.parse(parsed);
     } catch (_) {
       try {
-        const rawStr = parsed as string;
-        const cleaned = rawStr.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const cleaned = (parsed as string).replace(/```json/gi, '').replace(/```/g, '').trim();
         const match = cleaned.match(/\{[\s\S]*\}/);
         if (match) parsed = JSON.parse(match[0]);
       } catch (_) {}
@@ -478,7 +614,6 @@ export function parseAiGoalMatchResponse(aiResult?: unknown): AiGoalMatchResult 
     explanation: String(raw.explanation || '')
   };
 }
-
 
 /**
  * Calculates meeting/event duration in minutes from HH:mm start and end strings.

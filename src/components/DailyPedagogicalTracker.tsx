@@ -28,7 +28,7 @@ import {
   createGoogleCalendarUrl,
   generateIcsFileContent,
   buildAiGoalMatchPrompt,
-  parseAiGoalMatchResponse,
+  parseAiGoalMultiMatchResponse,
   getIsraeliHolidayInfo,
   calculateDurationMinutes,
   getEventBarThickness
@@ -550,8 +550,10 @@ export default function DailyPedagogicalTracker({
   const [aiNoteText, setAiNoteText] = useState('');
   const [pendingVoiceBlob, setPendingVoiceBlob] = useState<Blob | null>(null);
   const [isAnalyzingAi, setIsAnalyzingAi] = useState(false);
-  const [aiAnalysisResult, setAiAnalysisResult] = useState<any | null>(null);
+  const [aiAnalysisResults, setAiAnalysisResults] = useState<any[] | null>(null);
+  const [selectedMatchGoalIds, setSelectedMatchGoalIds] = useState<Set<string>>(new Set());
   const [aiAnalysisError, setAiAnalysisError] = useState('');
+  const [aiNoMatchMessage, setAiNoMatchMessage] = useState('');
 
   // Manual Mode State
   const [selectedGoalId, setSelectedGoalId] = useState('');
@@ -634,6 +636,7 @@ export default function DailyPedagogicalTracker({
     if (!noteToAnalyze && pendingVoiceBlob) {
       setIsAnalyzingAi(true);
       setAiAnalysisError('');
+      setAiNoMatchMessage('');
       try {
         const transcript = await transcribeAudioWithGemini(pendingVoiceBlob);
         if (transcript) {
@@ -659,10 +662,16 @@ export default function DailyPedagogicalTracker({
       setAiAnalysisError('לא נבחר תלמיד/ה לניתוח');
       return;
     }
+    if (activeStudentGoals.length === 0) {
+      setAiAnalysisError('לתלמיד/ה זה אין עדיין יעדים פעילים בתוכנית העבודה');
+      return;
+    }
 
     setIsAnalyzingAi(true);
     setAiAnalysisError('');
-    setAiAnalysisResult(null);
+    setAiNoMatchMessage('');
+    setAiAnalysisResults(null);
+    setSelectedMatchGoalIds(new Set());
 
     const prompt = buildAiGoalMatchPrompt({ note: noteToAnalyze, student: targetStudent });
     const maskedPrompt = maskPromptForAi(prompt, targetStudent);
@@ -674,70 +683,83 @@ export default function DailyPedagogicalTracker({
         hints: { gender: targetStudent?.gender || 'boy', name: targetStudent?.name, model: 'gemini-2.5-flash' }
       });
 
-      const parsed: any = parseAiGoalMatchResponse(response);
-      if (parsed) {
-      if (!parsed.matchedGoalId && activeStudentGoals.length > 0) {
-        parsed.matchedGoalId = activeStudentGoals[0].id;
-        parsed.matchedGoalTitle = activeStudentGoals[0].title;
-      }
-      setAiAnalysisResult(parsed);
+      const parsedMatches: any[] = parseAiGoalMultiMatchResponse(response);
+      const validMatches = (parsedMatches || []).filter((m) =>
+        m.matchedGoalId && activeStudentGoals.some((g: any) => g.id === m.matchedGoalId)
+      );
+
+      if (validMatches.length > 0) {
+        setAiAnalysisResults(validMatches);
+        setSelectedMatchGoalIds(new Set(validMatches.map((m) => m.matchedGoalId)));
+      } else {
+        setAiNoMatchMessage('לא זוהתה התאמה מובהקת לאף אחד מיעדי התלמיד/ה. ניתן לנסח תצפית ממוקדת יותר או לבצע שיוך ישיר במצב ידני.');
       }
     } catch (err) {
-      const fallbackGoal = activeStudentGoals[0] || { id: 'g_default', title: 'התקדמות כללית' };
-      setAiAnalysisResult({
-        matchedGoalId: fallbackGoal.id,
-        matchedGoalTitle: fallbackGoal.title,
-        environment: fallbackGoal.environment || 'סביבת למידה',
-        observedSupportLevel: 'תיווך חלקי',
-        conciseObservationNote: aiNoteText.trim(),
-        suggestedProgressDelta: 5,
-        confidenceScore: 0.85,
-        explanation: 'שויך ליעד הפדגוגי הקרוב ביותר על בסיס הטקסט'
-      });
+      setAiAnalysisError('שגיאה בניתוח התצפית ב-AI. יש לוודא חיבור רשת תקין ולנסות שוב.');
     } finally {
       setIsAnalyzingAi(false);
     }
   };
 
-  // Commit AI Observation to Student Dossier
+  // Commit AI Observations to Student Dossier (Multiple Goals Supported)
   const handleApproveAiResult = () => {
-    if (!targetStudent || !aiAnalysisResult) return;
+    if (!targetStudent || !aiAnalysisResults || aiAnalysisResults.length === 0) return;
 
-    const goalId = aiAnalysisResult.matchedGoalId;
-    const delta = aiAnalysisResult.suggestedProgressDelta || 0;
-    const newObservation: any = {
-      id: `obs_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      date: todayStr,
-      authorName: currentUser.name || 'מורה משלבת',
-      supportLevel: aiAnalysisResult.observedSupportLevel || 'תיווך חלקי',
-      note: aiAnalysisResult.conciseObservationNote || aiNoteText,
-      source: 'ai_daily_tracker'
-    };
+    const matchesToApply = aiAnalysisResults.filter((m) =>
+      m.matchedGoalId && selectedMatchGoalIds.has(m.matchedGoalId)
+    );
 
-    if (pendingVoiceBlob) {
-      newObservation.hasAudio = true;
-      const audioToSave = pendingVoiceBlob;
-      saveAudioRecordBlob(newObservation.id, audioToSave).catch(() => {});
-      if (targetStudent?.id) {
-        uploadAudioRecordToCloud(newObservation.id, audioToSave, targetStudent.id).then((cloudRes) => {
-          if (cloudRes?.storageUrl) {
-            newObservation.audioStorageUrl = cloudRes.storageUrl;
-          }
-        }).catch(() => {});
+    if (matchesToApply.length === 0) {
+      setAiAnalysisError('יש לסמן לפחות יעד אחד לאישור ושמירה');
+      return;
+    }
+
+    const audioToSave = pendingVoiceBlob;
+    const baseTimestamp = Date.now();
+
+    // Map each approved match to its new observation
+    const matchObsMap = new Map<string, { obs: any; delta: number }>();
+    matchesToApply.forEach((m, idx) => {
+      const obsId = `obs_${baseTimestamp}_${idx}`;
+      const newObs: any = {
+        id: obsId,
+        timestamp: new Date().toISOString(),
+        date: todayStr,
+        authorName: currentUser.name || 'מורה משלבת',
+        supportLevel: m.observedSupportLevel || 'תיווך חלקי',
+        note: m.conciseObservationNote || aiNoteText,
+        source: 'ai_daily_tracker'
+      };
+      if (audioToSave) {
+        newObs.hasAudio = true;
+        saveAudioRecordBlob(obsId, audioToSave).catch(() => {});
+        if (targetStudent?.id) {
+          uploadAudioRecordToCloud(obsId, audioToSave, targetStudent.id)
+            .then((cloudRes) => {
+              if (cloudRes?.storageUrl) {
+                newObs.audioStorageUrl = cloudRes.storageUrl;
+              }
+            })
+            .catch(() => {});
+        }
       }
+      matchObsMap.set(m.matchedGoalId, { obs: newObs, delta: m.suggestedProgressDelta || 0 });
+    });
+
+    if (audioToSave) {
       setPendingVoiceBlob(null);
     }
 
     const updatedGoals = (targetStudent.goals || []).map((g: any) => {
-      if (g.id === goalId) {
+      const matchData = matchObsMap.get(g.id);
+      if (matchData) {
         const currentP = Number(g.currentProgress) || 0;
-        const newP = Math.min(100, currentP + delta);
+        const newP = Math.min(100, currentP + matchData.delta);
         const existingObs = Array.isArray(g.observations) ? g.observations : [];
         return {
           ...g,
           currentProgress: newP,
-          observations: [newObservation, ...existingObs]
+          observations: [matchData.obs, ...existingObs]
         };
       }
       return g;
@@ -779,9 +801,15 @@ export default function DailyPedagogicalTracker({
     entryStartTimeRef.current = null;
     hasDispatchedStartedRef.current = false;
 
-    setAiAnalysisResult(null);
+    setAiAnalysisResults(null);
+    setSelectedMatchGoalIds(new Set());
     setAiNoteText('');
-    setSaveToast(`התצפית נשמרה בתיק של ${targetStudent.name || 'התלמיד/ה'} ועודכנה בענן!`);
+    setAiNoMatchMessage('');
+    setSaveToast(
+      matchesToApply.length === 1
+        ? `התצפית נשמרה בתיק של ${targetStudent.name || 'התלמיד/ה'} ועודכנה בענן!`
+        : `נשמרו ${matchesToApply.length} תצפיות מפוצלות ביעדי ${targetStudent.name || 'התלמיד/ה'} ועודכנו בענן!`
+    );
     setTimeout(() => setSaveToast(''), 3500);
   };
 
@@ -1611,33 +1639,119 @@ export default function DailyPedagogicalTracker({
                   </div>
                 </div>
 
-                {/* AI Extracted Match Preview Card */}
-                {aiAnalysisResult && (
+                {/* No Match Info Notice */}
+                {aiNoMatchMessage && (
+                  <div className="ai-no-match-card">
+                    <div className="ai-no-match-header">
+                      <span className="ai-no-match-icon">ℹ️</span>
+                      <div>
+                        <strong className="ai-no-match-title">לא זוהתה התאמה מובהקת ליעדים</strong>
+                        <p className="ai-no-match-desc">{aiNoMatchMessage}</p>
+                      </div>
+                    </div>
+                    <div className="ai-no-match-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiNoMatchMessage('');
+                          setUpdaterMode('manual');
+                        }}
+                        className="btn-switch-manual"
+                      >
+                        מעבר לעדכון יעד ממוקד ידני
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Extracted Matches Preview (Multiple Goals Supported) */}
+                {aiAnalysisResults && aiAnalysisResults.length > 0 && (
                   <div className="ai-match-card">
                     <div className="ai-match-header">
                       <div className="ai-match-success-badge">
                         <span className="match-check-icon">✓</span>
                         <div>
                           <span style={{ fontSize: '11px', color: '#15803d', fontWeight: 700, display: 'block' }}>
-                            שויך בהצלחה ליעד:
+                            {aiAnalysisResults.length === 1
+                              ? 'שויך בהצלחה ליעד:'
+                              : `זוהו ${aiAnalysisResults.length} יעדים רלוונטיים לתצפית זו:`}
                           </span>
                           <strong className="match-title">
-                            {aiAnalysisResult.environment} • {aiAnalysisResult.matchedGoalTitle}
+                            {aiAnalysisResults.length === 1
+                              ? `${aiAnalysisResults[0].environment} • ${aiAnalysisResults[0].matchedGoalTitle}`
+                              : 'התצפית פוצלה והותאמה לכל יעד בנפרד'}
                           </strong>
                         </div>
                       </div>
                       <span className="match-confidence-badge">דיוק גבוה</span>
                     </div>
 
-                    <div className="ai-match-details-grid">
-                      <div>
-                        <span className="match-detail-label">רמת תיווך:</span>
-                        <strong className="match-detail-val">{aiAnalysisResult.observedSupportLevel}</strong>
-                      </div>
-                      <div>
-                        <span className="match-detail-label">המלצת התקדמות:</span>
-                        <strong className="match-detail-val delta">+{aiAnalysisResult.suggestedProgressDelta}%</strong>
-                      </div>
+                    {/* Matches List */}
+                    <div className="ai-matches-list">
+                      {aiAnalysisResults.map((match, idx) => {
+                        const isSelected = selectedMatchGoalIds.has(match.matchedGoalId);
+                        return (
+                          <div
+                            key={match.matchedGoalId || idx}
+                            className={`ai-match-item-card ${isSelected ? 'selected' : 'unselected'}`}
+                          >
+                            <div className="ai-match-item-top">
+                              <label className="ai-match-item-label">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    const next = new Set(selectedMatchGoalIds);
+                                    if (next.has(match.matchedGoalId)) {
+                                      next.delete(match.matchedGoalId);
+                                    } else {
+                                      next.add(match.matchedGoalId);
+                                    }
+                                    setSelectedMatchGoalIds(next);
+                                  }}
+                                  className="match-item-checkbox"
+                                />
+                                <span className="match-item-goal-title">
+                                  {match.environment ? `${match.environment} • ` : ''}{match.matchedGoalTitle}
+                                </span>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const filtered = aiAnalysisResults.filter((m) => m.matchedGoalId !== match.matchedGoalId);
+                                  setAiAnalysisResults(filtered.length > 0 ? filtered : null);
+                                  const next = new Set(selectedMatchGoalIds);
+                                  next.delete(match.matchedGoalId);
+                                  setSelectedMatchGoalIds(next);
+                                }}
+                                className="btn-match-item-remove"
+                                title="הסר יעד זה"
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
+
+                            {/* Extracted Goal-Specific Observation */}
+                            {match.conciseObservationNote && (
+                              <div className="ai-match-item-note">
+                                <span className="match-item-note-bullet">📝</span>
+                                <span>{match.conciseObservationNote}</span>
+                              </div>
+                            )}
+
+                            <div className="ai-match-details-grid">
+                              <div>
+                                <span className="match-detail-label">רמת תיווך:</span>
+                                <strong className="match-detail-val">{match.observedSupportLevel}</strong>
+                              </div>
+                              <div>
+                                <span className="match-detail-label">המלצת התקדמות:</span>
+                                <strong className="match-detail-val delta">+{match.suggestedProgressDelta}%</strong>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     <div className="ai-match-actions">
@@ -1645,7 +1759,8 @@ export default function DailyPedagogicalTracker({
                         type="button"
                         onClick={() => {
                           checkAndDispatchAbandonment();
-                          setAiAnalysisResult(null);
+                          setAiAnalysisResults(null);
+                          setSelectedMatchGoalIds(new Set());
                         }}
                         className="btn-match-cancel"
                       >
@@ -1654,9 +1769,12 @@ export default function DailyPedagogicalTracker({
                       <button
                         type="button"
                         onClick={handleApproveAiResult}
+                        disabled={selectedMatchGoalIds.size === 0}
                         className="btn-match-approve"
                       >
-                        אישור ושמירה בתיק התלמיד ✓
+                        {selectedMatchGoalIds.size > 1
+                          ? `אישור ושמירת ${selectedMatchGoalIds.size} יעדים בתיק התלמיד ✓`
+                          : 'אישור ושמירה בתיק התלמיד ✓'}
                       </button>
                     </div>
                   </div>
