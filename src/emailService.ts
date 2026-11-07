@@ -194,7 +194,7 @@ export const GOOGLE_APPS_SCRIPT_TEMPLATE = `function doPost(e) {
 }`;
 
 export const DEFAULT_APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwp3HLCO9kErrN-vS2odXYcco1B5KMlbTw7qeJWrSSKg5nqZocfrsvyUOIO-LurJJtg/exec';
+  'https://script.google.com/macros/s/AKfycbygVhGQbi4peK7Bzr4A5z1SuFD1uDbgtfSiNblQNtfVrvn5sAZaiVwDC2kaTBJ9m3L5/exec';
 
 export function loadEmailEngineConfig(): EmailEngineConfig {
   try {

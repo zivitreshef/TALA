@@ -15,7 +15,7 @@ const BASE_FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJE
 const ALLOWED_USERS_DOC_URL = `${BASE_FIRESTORE_URL}/tala_config/allowed_users`;
 const SETTINGS_DOC_URL = `${BASE_FIRESTORE_URL}/tala_config/settings`;
 const DEFAULT_APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbwp3HLCO9kErrN-vS2odXYcco1B5KMlbTw7qeJWrSSKg5nqZocfrsvyUOIO-LurJJtg/exec';
+  'https://script.google.com/macros/s/AKfycbygVhGQbi4peK7Bzr4A5z1SuFD1uDbgtfSiNblQNtfVrvn5sAZaiVwDC2kaTBJ9m3L5/exec';
 const SITE_URL = 'https://zivitreshef.github.io/TALA/';
 
 function getAccessToken() {
