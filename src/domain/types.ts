@@ -152,6 +152,8 @@ export interface PedagogicalSnippet {
   content: string;
   authorName?: string;
   createdAt: string;
+  hasAudio?: boolean;
+  audioStorageUrl?: string;
 }
 
 export interface DurationTshirtOption {

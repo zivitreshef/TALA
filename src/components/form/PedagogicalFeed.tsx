@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { saveAudioRecordBlob, getAudioRecordBlob, uploadAudioRecordToCloud } from '../../services/dossierFileStorage';
+import VoiceObservationRecorder from '../voice/VoiceObservationRecorder';
 import {
   FileText,
   User,
@@ -9,7 +11,10 @@ import {
   Loader2,
   CheckCircle2,
   Plus,
-  Lock
+  Lock,
+  Play,
+  Pause,
+
 } from 'lucide-react';
 import type { PedagogicalSnippet } from '../../domain/types';
 import { createTeacherNoteSnippet } from '../../domain/pedagogicalFeed';
@@ -129,6 +134,69 @@ export default function PedagogicalFeed({
   const [newNoteText, setNewNoteText] = useState('');
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<string>('');
+  const [pendingAudioBlob, setPendingAudioBlob] = useState<Blob | null>(null);
+  const [playingSnippetId, setPlayingSnippetId] = useState<string | null>(null);
+  const activeAudioRef = useRef<{ audio: HTMLAudioElement; urlToRevoke?: string } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.audio.pause();
+        if (activeAudioRef.current.urlToRevoke) {
+          URL.revokeObjectURL(activeAudioRef.current.urlToRevoke);
+        }
+      }
+    };
+  }, []);
+
+  const handlePlaySnippetAudio = async (snippet: PedagogicalSnippet) => {
+    if (playingSnippetId === snippet.id) {
+      if (activeAudioRef.current) {
+        activeAudioRef.current.audio.pause();
+      }
+      setPlayingSnippetId(null);
+      return;
+    }
+
+    if (activeAudioRef.current) {
+      activeAudioRef.current.audio.pause();
+      if (activeAudioRef.current.urlToRevoke) {
+        URL.revokeObjectURL(activeAudioRef.current.urlToRevoke);
+      }
+      activeAudioRef.current = null;
+    }
+
+    let srcUrl = snippet.audioStorageUrl;
+    let urlToRevoke: string | undefined;
+
+    const localBlob = await getAudioRecordBlob(snippet.id);
+    if (localBlob) {
+      srcUrl = URL.createObjectURL(localBlob);
+      urlToRevoke = srcUrl;
+    }
+
+    if (!srcUrl) return;
+
+    const audio = new Audio(srcUrl);
+    activeAudioRef.current = { audio, urlToRevoke };
+    audio.onended = () => {
+      setPlayingSnippetId(null);
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+      activeAudioRef.current = null;
+    };
+    audio.onerror = () => {
+      setPlayingSnippetId(null);
+      if (urlToRevoke) URL.revokeObjectURL(urlToRevoke);
+      activeAudioRef.current = null;
+    };
+
+    try {
+      await audio.play();
+      setPlayingSnippetId(snippet.id);
+    } catch (_) {
+      setPlayingSnippetId(null);
+    }
+  };
 
   const formatSnippetTime = (isoString?: string): string => {
     if (!isoString) return '';
@@ -151,6 +219,17 @@ export default function PedagogicalFeed({
     if (!text) return;
     const author = currentUserName ? `${currentUserName} (אני)` : 'אני';
     const snippet = createTeacherNoteSnippet(text, author);
+    if (pendingAudioBlob) {
+      snippet.hasAudio = true;
+      const audioToSave = pendingAudioBlob;
+      saveAudioRecordBlob(snippet.id, audioToSave).catch(() => {});
+      uploadAudioRecordToCloud(snippet.id, audioToSave).then((cloudRes) => {
+        if (cloudRes && cloudRes.storageUrl) {
+          snippet.audioStorageUrl = cloudRes.storageUrl;
+        }
+      }).catch(() => {});
+      setPendingAudioBlob(null);
+    }
     onAddSnippet(snippet);
     setNewNoteText('');
   };
@@ -402,6 +481,29 @@ export default function PedagogicalFeed({
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {Boolean(snippet.hasAudio || snippet.audioStorageUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => void handlePlaySnippetAudio(snippet)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: playingSnippetId === snippet.id ? '#15803d' : '#f0fdf4',
+                        color: playingSnippetId === snippet.id ? '#ffffff' : '#15803d',
+                        border: '1px solid #86efac',
+                        borderRadius: '6px',
+                        padding: '2px 8px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                      title="השמעת הקלטה קולית של התצפית"
+                    >
+                      {playingSnippetId === snippet.id ? <Pause size={12} /> : <Play size={12} />}
+                      <span>{playingSnippetId === snippet.id ? 'השהה' : 'השמעת הקלטה'}</span>
+                    </button>
+                  )}
                   {snippet.createdAt && (
                     <span style={{ fontSize: '11px', color: '#94a3b8' }}>
                       {formatSnippetTime(snippet.createdAt)}
@@ -479,18 +581,31 @@ export default function PedagogicalFeed({
                 flexWrap: 'wrap'
               }}
             >
-              <label
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  color: '#475569',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <span>הוסיפי תובנה, תצפית או עדכון חדש:</span>
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <label
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>הוסיפי תובנה, תצפית או עדכון חדש:</span>
+                </label>
+                <VoiceObservationRecorder
+                  disabled={isLocked}
+                  onTranscript={(transcript) => {
+                    setNewNoteText((prev) => {
+                      const trimmed = prev.trim();
+                      return trimmed ? `${trimmed} ${transcript}` : transcript;
+                    });
+                  }}
+                  onAudioReady={(blob) => setPendingAudioBlob(blob)}
+                  onClearAudio={() => setPendingAudioBlob(null)}
+                />
+              </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 {/* Sample descriptions ONLY shown inside onboarding user journey */}
