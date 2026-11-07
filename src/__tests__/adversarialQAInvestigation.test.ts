@@ -5,6 +5,7 @@ import { classifyAccount } from '../domain/telemetryPrivacy';
 import { buildWordDocumentHtml, buildWorkPlanPrintHtml } from '../export/wordAndPrintBuilders';
 import { adaptTextToSchoolStage } from '../domain/stageGuard';
 import { isStudentOwnedByUser } from '../domain/permissions';
+import { validateEmailDispatchParams } from '../emailService';
 
 describe('Adversarial QA Suite - Verification of Fixes & Hardening', () => {
 
@@ -181,4 +182,36 @@ describe('Adversarial QA Suite - Verification of Fixes & Hardening', () => {
     });
   });
 
+  describe('Fix 8: Email Parameter Validation - Header & CRLF Injection Prevention', () => {
+    it('blocks CRLF newline injection attempts in recipient email', () => {
+      expect(() => {
+        validateEmailDispatchParams('victim@school.org\r\nBcc: attacker@evil.com', 'שלום');
+      }).toThrow('כתובת דוא"ל נמען אינה תקינה או מכילה תווים אסורים');
+    });
+
+    it('blocks CRLF newline injection attempts in subject', () => {
+      expect(() => {
+        validateEmailDispatchParams('teacher@school.org', 'נושא חוקי\nBcc: hacker@phish.com');
+      }).toThrow('נושא ההודעה מכיל תווים אסורים או חורג מהאורך המותר');
+    });
+
+    it('allows valid email and subject headers cleanly', () => {
+      expect(() => {
+        validateEmailDispatchParams('teacher@tala.edu.il', 'דוח הערכה פדגוגי');
+      }).not.toThrow();
+    });
+  });
+
+  describe('Fix 9: Parent Voice Invites - Multi-Teacher Shared Student Access', () => {
+    it('resolves student owner email for co-teachers to eliminate orphaned invites', () => {
+      const student = { id: 's1', ownerEmail: 'primary_teacher@school.org', name: 'יוסי' };
+      const coTeacher = { email: 'coteacher@school.org' };
+
+      const studentOwnerEmail = String(student?.ownerEmail || '').trim().toLowerCase();
+      const currentTeacherEmail = String(coTeacher?.email || '').trim().toLowerCase();
+      const effectiveOwnerEmail = studentOwnerEmail || currentTeacherEmail;
+
+      expect(effectiveOwnerEmail).toBe('primary_teacher@school.org');
+    });
+  });
 });

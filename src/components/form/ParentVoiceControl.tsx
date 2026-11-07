@@ -94,7 +94,9 @@ export default function ParentVoiceControl({
   const [isCustomExpanded, setIsCustomExpanded] = useState<boolean>(false);
   const [historyExpanded, setHistoryExpanded] = useState<boolean>(false);
 
-  const ownerEmail = String(currentUser?.email || '').trim().toLowerCase();
+  const studentOwnerEmail = String(student?.ownerEmail || '').trim().toLowerCase();
+  const currentTeacherEmail = String(currentUser?.email || '').trim().toLowerCase();
+  const ownerEmail = studentOwnerEmail || currentTeacherEmail;
   const studentId = student?.id;
 
   // Re-subscribe once Firebase sign-in completes: a listener opened before sign-in is denied for good.
@@ -155,7 +157,7 @@ export default function ParentVoiceControl({
     setBusyKey(key);
     setError('');
     try {
-      await ensureTeacherSession(ownerEmail);
+      await ensureTeacherSession(currentTeacherEmail || ownerEmail);
       await action();
     } catch (err: unknown) {
       console.error('[ParentVoiceControl]', err);
@@ -199,7 +201,7 @@ export default function ParentVoiceControl({
         usageTelemetryService.track(
           TELEMETRY_EVENTS.PARENT_VOICE_LINK_CREATED,
           { isCustomized },
-          ownerEmail ? { userContext: { email: ownerEmail } } : {}
+          ownerEmail ? { userContext: { email: currentTeacherEmail || ownerEmail } } : {}
         );
       } catch (_) {}
       setQuestionsList(null);
@@ -237,7 +239,7 @@ export default function ParentVoiceControl({
       <button
         type="button"
         className={highlight ? 'tour-highlight-btn' : ''}
-        disabled={disabled || !studentId || !ownerEmail}
+        disabled={disabled || !studentId || (!ownerEmail && !currentTeacherEmail)}
         onClick={() => setOpen(true)}
         title="איסוף דעת ההורים בקישור קצר"
         style={{
