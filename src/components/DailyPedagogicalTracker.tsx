@@ -1543,12 +1543,10 @@ export default function DailyPedagogicalTracker({
                     </div>
                     <VoiceObservationRecorder
                       disabled={isAnalyzingAi}
-                      onTranscript={(transcript) => {
+                      baseText={aiNoteText}
+                      onTranscript={(fullText) => {
                         startObservationEntry('text', false);
-                        setAiNoteText((prev) => {
-                          const trimmed = prev.trim();
-                          return trimmed ? `${trimmed} ${transcript}` : transcript;
-                        });
+                        setAiNoteText(fullText);
                       }}
                       onAudioReady={(blob) => setPendingVoiceBlob(blob)}
                       onClearAudio={() => setPendingVoiceBlob(null)}

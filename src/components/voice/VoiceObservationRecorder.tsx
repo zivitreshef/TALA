@@ -14,6 +14,7 @@ import './VoiceObservationRecorder.css';
 
 export interface VoiceObservationRecorderProps {
   onTranscript: (text: string) => void;
+  baseText?: string;
   onAudioReady?: (audioBlob: Blob, audioUrl: string) => void;
   onClearAudio?: () => void;
   disabled?: boolean;
@@ -48,6 +49,7 @@ interface SpeechRecognitionLike extends EventTarget {
 
 export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> = ({
   onTranscript,
+  baseText = '',
   onAudioReady,
   onClearAudio,
   disabled = false
@@ -68,6 +70,7 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
   const timerIntervalRef = useRef<any>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const initialBaseTextRef = useRef('');
 
   // Monitor network status changes
   useEffect(() => {
@@ -129,6 +132,7 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
 
   const handleStartRecording = async () => {
     setErrorMessage(null);
+    initialBaseTextRef.current = (baseText || '').trim();
     setNetworkNotice(null);
     if (disabled) return;
 
@@ -200,7 +204,10 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
             }
             const clean = fullTranscript.trim();
             if (clean) {
-              onTranscript(clean);
+              const merged = initialBaseTextRef.current
+                ? `${initialBaseTextRef.current} ${clean}`
+                : clean;
+              onTranscript(merged);
             }
           };
 
