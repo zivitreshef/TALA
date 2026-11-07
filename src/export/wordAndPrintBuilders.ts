@@ -334,7 +334,7 @@ export function buildWorkPlanPrintHtml(formData: any = {}, hideDetails = false, 
         <tbody>
           ${(formData.goals || [])
             .map((g: any) => {
-              const envText = g.environment ? `תחום: ${g.environment}\n` : '';
+              const envText = g.environment ? `תחום: ${escapeHtml(g.environment)}\n` : '';
               const titleText = getRedactedText(g.title, formData, hideDetails);
               const objectivesText = getRedactedText(g.objectives, formData, hideDetails);
               const durationText = getRedactedText(g.duration, formData, hideDetails);
@@ -381,7 +381,7 @@ export function buildWorkPlanPrintHtml(formData: any = {}, hideDetails = false, 
               <tbody>
                 <tr class="env-header-row">
                   <td colspan="6">
-                    <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
+                    <div><strong>סביבה:</strong> ${escapeHtml(g.environment || '__________')}</div>
                     <div style="margin-top: 4px;">
                       <strong>פעילות והשתתפות:</strong>
                       <span class="sub-instruction">תיאור תוך התייחסות לפעילות הספציפית ולתחומי התפקוד השונים במהלך הפעילות:</span>
@@ -750,7 +750,7 @@ export function buildWordDocumentHtml(formData: any = {}, hideDetails = false) {
         </tr>
         ${(formData.goals || [])
           .map((g: any) => {
-            const envPrefix = g.environment ? `<div style="font-size:9pt; color:#1e3a5f; margin-bottom:2pt;">תחום: ${g.environment}</div>` : '';
+            const envPrefix = g.environment ? `<div style="font-size:9pt; color:#1e3a5f; margin-bottom:2pt;">תחום: ${escapeHtml(g.environment)}</div>` : '';
             const titleText = (getRedactedText(g.title, formData, hideDetails) || '').replace(/\n/g, '<br/>');
             const objectivesText = (getRedactedText(g.objectives, formData, hideDetails) || '').replace(/\n/g, '<br/>');
             const durationText = (getRedactedText(g.duration, formData, hideDetails) || '').replace(/\n/g, '<br/>');
@@ -797,7 +797,7 @@ export function buildWordDocumentHtml(formData: any = {}, hideDetails = false) {
             <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #7997be; margin-bottom:14pt; font-family: Arial, sans-serif; font-size: 10.5pt;">
               <tr style="background-color:#eef3fb;">
                 <td colspan="6" style="border:1px solid #7997be; padding:8pt; text-align:right;">
-                  <div><strong>סביבה:</strong> ${g.environment || '__________'}</div>
+                  <div><strong>סביבה:</strong> ${escapeHtml(g.environment || '__________')}</div>
                   <div style="margin-top:4pt;"><strong>פעילות והשתתפות:</strong> ${activityText}</div>
                 </td>
               </tr>

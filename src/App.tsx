@@ -1870,7 +1870,7 @@ export default function App() {
 
   const confirmDeleteStudent = (overrideStudent: any = null) => {
     const target = overrideStudent || studentToDelete;
-    if (!target || !isStudentOwnedByUser(studentToDelete, currentUser)) {
+    if (!target || !isStudentOwnedByUser(target, currentUser)) {
       setStudentToDelete(null);
       return;
     }

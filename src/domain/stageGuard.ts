@@ -93,7 +93,7 @@ const KINDERGARTEN_PREFIXABLE_MARKERS = [
 
 const KINDERGARTEN_BARE_MARKERS = ['בגן', 'ובגן', 'שבגן', 'לגן', 'מהגן'];
 const NOT_PUBLIC_GARDEN = '\\s+ה?(?:שעשועים|חיות|לאומי|ציבורי|בוטני|העירוני|עירוני)';
-const NOT_VERB_OR_PUBLIC_GARDEN = `(?:\\s+על|${NOT_PUBLIC_GARDEN})`;
+const NOT_VERB_OR_PUBLIC_GARDEN = `(?:\\s+(?:על|בפני|מפני|כנגד|מול|מיוזמתו|בעצמו)|${NOT_PUBLIC_GARDEN})`;
 
 export function textHasKindergartenMarker(text?: string | null): boolean {
   const s = String(text || '');

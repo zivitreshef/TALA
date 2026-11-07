@@ -55,10 +55,18 @@ export function calculateCurrentStreak(students: any[], todayStr = new Date().to
       });
     });
   });
-  datesSet.add(todayStr);
+  if (datesSet.size === 0) {
+    return 0;
+  }
 
   let streak = 0;
   const checkDate = new Date(todayStr);
+  const todayLogged = datesSet.has(todayStr);
+
+  if (!todayLogged) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
   while (true) {
     const dateStr = checkDate.toISOString().slice(0, 10);
     if (datesSet.has(dateStr)) {
@@ -68,7 +76,7 @@ export function calculateCurrentStreak(students: any[], todayStr = new Date().to
       break;
     }
   }
-  return Math.max(1, streak);
+  return streak;
 }
 
 const TIME_SLOTS = [

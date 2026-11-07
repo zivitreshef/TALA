@@ -82,21 +82,45 @@ service cloud.firestore {
     }
     match /tala_sessions/{key} {
       // Teachers can only read and manage their own session document; admins can inspect all
-      allow read: if isAdmin() || (isSignedIn() && key == currentEmail().replace('[^a-z0-9._-]', '_'));
-      allow write: if isAdmin() || (isSignedIn() && key == currentEmail().replace('[^a-z0-9._-]', '_'));
+      allow read: if isAdmin() || (isSignedIn() && (
+        key == currentEmail().replace('@', '_') ||
+        key == currentEmail() ||
+        (resource != null && resource.data.email == currentEmail())
+      ));
+      allow write: if isAdmin() || (isSignedIn() && (
+        key == currentEmail().replace('@', '_') ||
+        key == currentEmail() ||
+        request.resource.data.email == currentEmail()
+      ));
     }
     match /tala_user_preferences/{key} {
       // Teachers can only read and manage their own preferences document; admins can inspect all
-      allow read: if isAdmin() || (isSignedIn() && key == currentEmail().replace('[^a-z0-9._-]', '_'));
-      allow write: if isAdmin() || (isSignedIn() && key == currentEmail().replace('[^a-z0-9._-]', '_'));
+      allow read: if isAdmin() || (isSignedIn() && (
+        key == currentEmail().replace('@', '_') ||
+        key == currentEmail() ||
+        (resource != null && resource.data.userEmail == currentEmail())
+      ));
+      allow write: if isAdmin() || (isSignedIn() && (
+        key == currentEmail().replace('@', '_') ||
+        key == currentEmail() ||
+        request.resource.data.userEmail == currentEmail()
+      ));
     }
 
     // Live support chat threads between teachers and admins.
     // Admins can read, write, and delete all threads.
     // Signed-in teachers can read and write only their own thread matching their email.
     match /tala_support_threads/{threadId} {
-      allow read: if isAdmin() || (isSignedIn() && threadId == currentEmail().replace('[^a-z0-9._-]', '_'));
-      allow create, update: if isAdmin() || (isSignedIn() && threadId == currentEmail().replace('[^a-z0-9._-]', '_'));
+      allow read: if isAdmin() || (isSignedIn() && (
+        threadId == currentEmail().replace('@', '_') ||
+        threadId == currentEmail() ||
+        (resource != null && resource.data.userEmail == currentEmail())
+      ));
+      allow create, update: if isAdmin() || (isSignedIn() && (
+        threadId == currentEmail().replace('@', '_') ||
+        threadId == currentEmail() ||
+        request.resource.data.userEmail == currentEmail()
+      ));
       allow delete: if isAdmin();
     }
     match /tala_config/students_migration_meta {
