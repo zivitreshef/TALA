@@ -17,6 +17,13 @@ export interface EmailEngineConfig {
   senderName?: string;
 }
 
+export const GOOGLE_DRIVE_FOLDERS = Object.freeze({
+  ROOT_TALA: '19eZf0Fegvany9LPwrEcD3cw1o0MpN6Rw',
+  NDAS: '1DZSbsUrwRrz1W8RXR-cKC1xw5khoTsGT',
+  TEACHER_SURVEYS: '1UAX8HP6rWRPefcjZshjtANuu8834imOo',
+  CUSTOMER_RECEIPTS: '1EDehpLr_UXUdSTXEhXmsz_HexRvWtmoM'
+});
+
 export interface SendReportEmailParams {
   config?: EmailEngineConfig;
   toEmail: string;
@@ -26,6 +33,8 @@ export interface SendReportEmailParams {
   attachmentBlob?: Blob;
   filename?: string;
   mimeType?: string;
+  targetFolderId?: string;
+  keepAttachment?: boolean;
 }
 
 export interface OnboardingInvitationParams {
@@ -141,22 +150,42 @@ export interface SendPedagogicalReminderEmailParams extends PedagogicalReminderE
 export const GOOGLE_APPS_SCRIPT_TEMPLATE = `function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    var mailOptions = {
-      to: data.to,
-      subject: data.subject,
-      htmlBody: data.htmlBody,
-      name: data.senderName || 'מערכת TALA - תוכנית עבודה אקולוגית'
-    };
+    var driveFileUrl = '';
+    var fileBlob = null;
     if (data.attachmentBase64 && data.filename) {
-      var fileBlob = Utilities.newBlob(
+      fileBlob = Utilities.newBlob(
         Utilities.base64Decode(data.attachmentBase64),
         data.mimeType || 'application/octet-stream',
         data.filename
       );
+    }
+    if (fileBlob && data.targetFolderId) {
+      try {
+        var folder = DriveApp.getFolderById(data.targetFolderId);
+        var createdFile = folder.createFile(fileBlob);
+        driveFileUrl = createdFile.getUrl();
+      } catch (driveErr) {
+        // Fallback: If Drive saving fails, keep file as attachment
+      }
+    }
+    var mailHtml = data.htmlBody || '';
+    if (driveFileUrl) {
+      mailHtml += '<div dir="rtl" style="margin-top:20px; padding:14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; text-align:right; font-family:Arial,sans-serif;">' +
+        '📁 <strong>המסמך נשמר ב-Google Drive:</strong><br/>' +
+        '<a href="' + driveFileUrl + '" target="_blank" style="color:#1d4ed8; font-weight:bold; word-break:break-all;">צפייה במסמך בתיקיית TALA</a>' +
+        '</div>';
+    }
+    var mailOptions = {
+      to: data.to,
+      subject: data.subject,
+      htmlBody: mailHtml,
+      name: data.senderName || 'מערכת TALA - תוכנית עבודה אקולוגית'
+    };
+    if (fileBlob && (!driveFileUrl || data.keepAttachment)) {
       mailOptions.attachments = [fileBlob];
     }
     MailApp.sendEmail(mailOptions);
-    return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, driveUrl: driveFileUrl }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.toString() }))
@@ -308,7 +337,9 @@ export async function sendReportEmailInBackground({
   textBody,
   attachmentBlob,
   filename,
-  mimeType
+  mimeType,
+  targetFolderId,
+  keepAttachment
 }: SendReportEmailParams): Promise<{ ok: boolean; provider: string }> {
   validateEmailDispatchParams(toEmail, subject);
   const cfg = config || loadEmailEngineConfig();
@@ -343,7 +374,7 @@ export async function sendReportEmailInBackground({
   }
 
   if (cfg.appsScriptUrl && cfg.appsScriptUrl.trim().startsWith('https://script.google.com/')) {
-    const payload = {
+    const payload: any = {
       to: toEmail,
       subject,
       htmlBody,
@@ -353,6 +384,13 @@ export async function sendReportEmailInBackground({
       mimeType: mimeType || 'text/html',
       attachmentBase64: base64Data
     };
+
+    if (targetFolderId) {
+      payload.targetFolderId = targetFolderId;
+    }
+    if (keepAttachment !== undefined) {
+      payload.keepAttachment = keepAttachment;
+    }
 
     const response = await fetch(cfg.appsScriptUrl.trim(), {
       method: 'POST',
@@ -790,7 +828,8 @@ export async function sendSignedNdaEmailToAdmin({
     textBody,
     attachmentBlob,
     filename,
-    mimeType
+    mimeType,
+    targetFolderId: GOOGLE_DRIVE_FOLDERS.NDAS
   });
 }
 
@@ -985,7 +1024,8 @@ export async function sendUserSurveyEmailToAdmin({
     textBody,
     attachmentBlob: docBlob,
     filename: `TALA_User_Survey_${safeName}.doc`,
-    mimeType: 'application/msword'
+    mimeType: 'application/msword',
+    targetFolderId: GOOGLE_DRIVE_FOLDERS.TEACHER_SURVEYS
   });
 }
 
@@ -1250,5 +1290,125 @@ export async function sendPedagogicalReminderEmailInBackground({
     textBody,
     filename: 'PedagogicalSummary.html',
     mimeType: 'text/html'
+  });
+}
+
+export interface CustomerReceiptParams {
+  customerName?: string;
+  customerEmail?: string;
+  receiptNumber?: string;
+  amount?: number | string;
+  planName?: string;
+  billingPeriod?: string;
+  paymentMethod?: string;
+  invoiceDate?: string;
+  receiptHtml?: string;
+  receiptBlob?: Blob;
+}
+
+export interface SendCustomerReceiptEmailParams extends CustomerReceiptParams {
+  config?: EmailEngineConfig;
+  adminEmail?: string;
+}
+
+/**
+ * Builds standard Hebrew HTML for paying customer receipt notification.
+ */
+export function buildCustomerReceiptEmailHtml({
+  customerName = 'לקוח/ה משלמ/ת',
+  customerEmail = '',
+  receiptNumber = '',
+  amount = '',
+  planName = 'מנוי מלא למערכת TALA',
+  billingPeriod = 'שנתי',
+  paymentMethod = 'כרטיס אשראי',
+  invoiceDate
+}: CustomerReceiptParams): string {
+  const dateStr = invoiceDate || new Date().toLocaleDateString('he-IL');
+  return `
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+      <title>קבלה ותשלום – מערכת TALA</title>
+    </head>
+    <body dir="rtl" style="margin:0; padding:20px; background:#f0f4fa; font-family:Arial,Helvetica,sans-serif; color:#1e293b; text-align:right;">
+      <div dir="rtl" style="max-width:640px; margin:0 auto; background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden;">
+        <div style="background:linear-gradient(135deg, #1b365d 0%, #166534 100%); color:#ffffff; padding:22px 24px;">
+          <h1 style="margin:0; font-size:20px; font-weight:800;">🧾 אישור תשלום וקבלה – מנוי משלם</h1>
+          <div style="font-size:13px; opacity:0.9; margin-top:4px;">מערכת TALA • תוכנית עבודה שנתית בגישה האקולוגית</div>
+        </div>
+        <div style="padding:22px 24px; line-height:1.6; font-size:14px;">
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px; margin-bottom:16px;">
+            <div><strong>שם הלקוח/ה:</strong> ${customerName}</div>
+            <div><strong>דוא"ל:</strong> <span dir="ltr">${customerEmail}</span></div>
+            <div><strong>מספר קבלה:</strong> ${receiptNumber || '—'}</div>
+            <div><strong>תאריך:</strong> ${dateStr}</div>
+            <div><strong>מסלול:</strong> ${planName} (${billingPeriod})</div>
+            <div><strong>סכום ששולם:</strong> ₪${amount}</div>
+            <div><strong>אמצעי תשלום:</strong> ${paymentMethod}</div>
+          </div>
+          <p style="color:#475569; font-size:13px; margin:0;">
+            המסמך נשמר ישירות בתיקיית הקבלות ב-Google Drive של מערכת TALA.
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Dispatches customer receipt notification to admin with automatic saving into Google Drive Receipts folder.
+ */
+export async function sendCustomerReceiptEmailToAdmin({
+  config,
+  adminEmail = 'zivit.reshef@gmail.com',
+  customerName,
+  customerEmail,
+  receiptNumber,
+  amount,
+  planName,
+  billingPeriod,
+  paymentMethod,
+  invoiceDate,
+  receiptHtml,
+  receiptBlob
+}: SendCustomerReceiptEmailParams): Promise<{ ok: boolean; provider: string }> {
+  const htmlBody = receiptHtml || buildCustomerReceiptEmailHtml({
+    customerName,
+    customerEmail,
+    receiptNumber,
+    amount,
+    planName,
+    billingPeriod,
+    paymentMethod,
+    invoiceDate
+  });
+
+  const subject = `🧾 קבלה על תשלום חדש – ${customerName || 'לקוח'} (מס' ${receiptNumber || '0'})`;
+  const textBody = [
+    `שלום זיוית,`,
+    '',
+    `התקבל תשלום חדש במערכת TALA מאת ${customerName || ''} (${customerEmail || ''}).`,
+    `סכום: ₪${amount || '0'} | מסלול: ${planName || ''}`,
+    `הקבלה נשמרת אוטומטית בתיקיית TALA / Customer Receipts ב-Google Drive.`
+  ].join('\r\n');
+
+  const safeCustomer = String(customerName || 'Customer').replace(/[^א-תa-zA-Z0-9_-]/g, '_');
+  const blob = receiptBlob || new Blob(['\ufeff', htmlBody], {
+    type: 'application/msword;charset=utf-8'
+  });
+
+  return sendReportEmailInBackground({
+    config,
+    toEmail: adminEmail,
+    subject,
+    htmlBody,
+    textBody,
+    attachmentBlob: blob,
+    filename: `TALA_Receipt_${receiptNumber || safeCustomer}.doc`,
+    mimeType: receiptBlob ? 'application/pdf' : 'application/msword',
+    targetFolderId: GOOGLE_DRIVE_FOLDERS.CUSTOMER_RECEIPTS
   });
 }

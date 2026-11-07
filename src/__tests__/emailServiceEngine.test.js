@@ -2,13 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   EMAIL_ENGINE_STORAGE_KEY,
   DEFAULT_APPS_SCRIPT_URL,
+  GOOGLE_DRIVE_FOLDERS,
+  GOOGLE_APPS_SCRIPT_TEMPLATE,
   loadEmailEngineConfig,
   saveEmailEngineConfig,
   isDirectEmailEngineConfigured,
   sendReportEmailInBackground,
   sendUserInvitationEmailInBackground,
   sendSignedNdaEmailToAdmin,
-  sendUserSurveyEmailToAdmin
+  sendUserSurveyEmailToAdmin,
+  sendCustomerReceiptEmailToAdmin,
+  buildCustomerReceiptEmailHtml
 } from '../emailService';
 
 // Mock FileReader for Node environment to convert Blobs to Base64
@@ -110,6 +114,18 @@ describe('Email Service Configuration & Background Dispatch Engine', () => {
     expect(reloaded.senderName).toBe('צוות ניסוי');
   });
 
+  
+  it('exports valid Google Drive folder mappings and Google Apps Script archiving template', () => {
+    expect(GOOGLE_DRIVE_FOLDERS.ROOT_TALA).toBe('19eZf0Fegvany9LPwrEcD3cw1o0MpN6Rw');
+    expect(GOOGLE_DRIVE_FOLDERS.NDAS).toBe('1DZSbsUrwRrz1W8RXR-cKC1xw5khoTsGT');
+    expect(GOOGLE_DRIVE_FOLDERS.TEACHER_SURVEYS).toBe('1UAX8HP6rWRPefcjZshjtANuu8834imOo');
+    expect(GOOGLE_DRIVE_FOLDERS.CUSTOMER_RECEIPTS).toBe('1EDehpLr_UXUdSTXEhXmsz_HexRvWtmoM');
+
+    expect(GOOGLE_APPS_SCRIPT_TEMPLATE).toContain('DriveApp.getFolderById(data.targetFolderId)');
+    expect(GOOGLE_APPS_SCRIPT_TEMPLATE).toContain('folder.createFile(fileBlob)');
+    expect(GOOGLE_APPS_SCRIPT_TEMPLATE).toContain('data.keepAttachment');
+  });
+
   it('validates direct email engine configuration for Apps Script and EmailJS', () => {
     // Apps Script valid URL
     expect(
@@ -306,6 +322,7 @@ describe('Email Service Configuration & Background Dispatch Engine', () => {
     expect(ndaPayload.htmlBody).toContain('הסכם שמירת סודיות');
     expect(ndaPayload.filename).toContain('TALA_Signed_NDA');
     expect(ndaPayload.attachmentBase64).toBeTruthy();
+    expect(ndaPayload.targetFolderId).toBe(GOOGLE_DRIVE_FOLDERS.NDAS);
 
     // 3. User Experience Survey Email
     const surveyRes = await sendUserSurveyEmailToAdmin({
@@ -335,6 +352,28 @@ describe('Email Service Configuration & Background Dispatch Engine', () => {
     expect(surveyPayload.htmlBody).toContain('מערכת מצוינת החוסכת שעות רבות של עבודה');
     expect(surveyPayload.textBody).toContain('1. קלות ונוחות השימוש באתר: 5/5');
     expect(surveyPayload.filename).toBe('TALA_User_Survey_דנה_לוי.doc');
+    expect(surveyPayload.targetFolderId).toBe(GOOGLE_DRIVE_FOLDERS.TEACHER_SURVEYS);
+
+    // 4. Customer Receipt Email
+    const receiptRes = await sendCustomerReceiptEmailToAdmin({
+      config,
+      adminEmail: 'zivit.reshef@gmail.com',
+      customerName: 'יוסי כהן',
+      customerEmail: 'yossi@school.org',
+      receiptNumber: 'REC-2026-001',
+      amount: '450',
+      planName: 'מנוי שנתי מלא',
+      billingPeriod: 'שנתי'
+    });
+    expect(receiptRes.ok).toBe(true);
+
+    const receiptPayload = JSON.parse(globalThis.fetch.mock.calls[3][1].body);
+    expect(receiptPayload.to).toBe('zivit.reshef@gmail.com');
+    expect(receiptPayload.subject).toContain('REC-2026-001');
+    expect(receiptPayload.htmlBody).toContain('יוסי כהן');
+    expect(receiptPayload.htmlBody).toContain('REC-2026-001');
+    expect(receiptPayload.targetFolderId).toBe(GOOGLE_DRIVE_FOLDERS.CUSTOMER_RECEIPTS);
+    expect(receiptPayload.filename).toBe('TALA_Receipt_REC-2026-001.doc');
   });
 
   it('handles network failures, unconfigured engine, and proxy rejections gracefully', async () => {
