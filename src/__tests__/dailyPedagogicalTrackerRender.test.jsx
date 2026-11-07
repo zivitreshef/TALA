@@ -39,13 +39,21 @@ describe('DailyPedagogicalTracker Runtime Render & TDZ Resilience', () => {
             domain: 'התנהגותי',
             currentProgress: 60,
             observations: []
+          },
+          {
+            id: 'g_2',
+            title: 'קריאה שוטפת',
+            domain: 'לימודי',
+            currentProgress: 40,
+            observations: []
           }
         ]
       }
     ];
 
+    let html = '';
     expect(() => {
-      renderToStaticMarkup(
+      html = renderToStaticMarkup(
         <DailyPedagogicalTracker
           students={mockStudents}
           currentUser={{ email: 'test.teacher@school.gov.il' }}
@@ -56,6 +64,10 @@ describe('DailyPedagogicalTracker Runtime Render & TDZ Resilience', () => {
         />
       );
     }).not.toThrow();
+
+    expect(html).toContain('עדכון יעדים ומעקב תצפיות יומי');
+    expect(html).toContain('תיעוד חופשי ב-AI');
+    expect(html).toContain('נתח ושייך ליעד ב-AI');
   });
 
   it('renders properly when students list is empty', () => {
