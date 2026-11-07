@@ -74,7 +74,9 @@ export type ReadinessFilterKey =
   | 'missing_goals'
   | 'missing_parents'
   | 'missing_eval'
-  | 'ready';
+  | 'ready'
+  | 'partial'
+  | 'missing';
 
 export interface StudentReadinessInfo {
   goalsCount: number;
@@ -260,6 +262,10 @@ export const filterStudentsByReadiness = <T extends StudentListItem>(
         return !info.hasMidYearEval;
       case 'ready':
         return info.status === 'ready';
+      case 'partial':
+        return info.status === 'partial';
+      case 'missing':
+        return info.status === 'missing';
       default:
         return true;
     }

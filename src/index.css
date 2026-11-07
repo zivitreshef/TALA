@@ -1163,6 +1163,10 @@ input, textarea, select, button {
   min-height: calc(100vh - 80px);
 }
 
+.tala-workspace-layout.overview-workspace-layout {
+  grid-template-columns: 1fr;
+}
+
 .tala-students-sidebar {
   background: #f8faff;
   border-left: 1.5px solid var(--border);

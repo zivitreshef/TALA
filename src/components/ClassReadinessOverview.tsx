@@ -1,15 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import {
-  CheckCircle2,
-  XCircle,
   Search,
   ExternalLink,
   Users,
-  Lock,
-  Unlock
+  Check,
+  X,
+  Lock
 } from 'lucide-react';
 import {
   NO_FRAMEWORK_LABEL,
+  getFrameworkKey,
   computeStudentReadiness,
   computeClassReadinessSummary,
   filterStudentsByReadiness,
@@ -33,10 +33,10 @@ interface FilterOption {
 
 const FILTER_OPTIONS: readonly FilterOption[] = [
   { key: 'all', label: 'כל התלמידים', getCount: (s) => s.total },
-  { key: 'missing_goals', label: 'חסרות מטרות פעילות', getCount: (s) => s.missingGoalsCount },
   { key: 'missing_parents', label: 'חסר קול הורים', getCount: (s) => s.missingParentsCount },
   { key: 'missing_eval', label: 'חסרה הערכת אמצע', getCount: (s) => s.missingEvalCount },
-  { key: 'ready', label: 'מוכנים ונעולים', getCount: (s) => s.readyCount }
+  { key: 'missing_goals', label: 'חסרות מטרות פעילות', getCount: (s) => s.missingGoalsCount },
+  { key: 'ready', label: 'מוכנים לוועדה', getCount: (s) => s.readyCount }
 ];
 
 function getStatusVisuals(status: ReadinessStatus) {
@@ -77,98 +77,93 @@ export default function ClassReadinessOverview({
   );
 
   const [activeFilter, setActiveFilter] = useState<ReadinessFilterKey>('all');
+  const [selectedFramework, setSelectedFramework] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(true);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(
-    () => String(safeStudents[0]?.id || '')
-  );
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState<boolean>(true);
 
+  // Extract unique frameworks
+  const frameworksList = useMemo(() => {
+    const set = new Set<string>();
+    safeStudents.forEach((st) => {
+      const fw = getFrameworkKey(st);
+      if (fw) set.add(fw);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'he'));
+  }, [safeStudents]);
+
+  // Filter by framework first
+  const frameworkFilteredStudents = useMemo(() => {
+    if (selectedFramework === 'all') return safeStudents;
+    return safeStudents.filter((st) => getFrameworkKey(st) === selectedFramework);
+  }, [safeStudents, selectedFramework]);
+
+  // Then filter by search query
   const searchedStudents = useMemo(
-    () => filterStudentsBySearch(safeStudents, searchQuery),
-    [safeStudents, searchQuery]
+    () => filterStudentsBySearch(frameworkFilteredStudents, searchQuery),
+    [frameworkFilteredStudents, searchQuery]
   );
 
+  // Compute summary for the active search/framework scope
   const summary = useMemo(
     () => computeClassReadinessSummary(searchedStudents),
     [searchedStudents]
   );
 
+  // Finally filter by readiness status / issue
   const visibleStudents = useMemo(
     () => filterStudentsByReadiness(searchedStudents, activeFilter),
     [searchedStudents, activeFilter]
   );
 
-  const activeStudent = useMemo(() => {
-    if (visibleStudents.length === 0) return null;
-    return (
-      visibleStudents.find((s) => String(s.id) === String(selectedStudentId)) ||
-      visibleStudents[0]
-    );
-  }, [visibleStudents, selectedStudentId]);
-
-  const activeStudentReadiness = useMemo(
-    () => computeStudentReadiness(activeStudent),
-    [activeStudent]
-  );
-
-  const handleFilterClick = (key: ReadinessFilterKey) => {
-    setActiveFilter(key);
-    const nextVisible = filterStudentsByReadiness(searchedStudents, key);
-    if (
-      nextVisible.length > 0 &&
-      !nextVisible.some((s) => String(s.id) === String(selectedStudentId))
-    ) {
-      setSelectedStudentId(String(nextVisible[0].id || ''));
-    }
-  };
-
   return (
     <section
       className="class-readiness-overview-card"
       dir="rtl"
-      aria-label="מבט-על כיתתי על מוכנות תיקים ומועדי דיווח"
+      aria-label="מבט-על כיתתי על עמידה ביעדים ומועדי דיווח"
       style={{
         background: '#ffffff',
         border: '1px solid #e2e8f0',
         borderRadius: '16px',
-        padding: '22px 24px',
-        boxShadow: '0 4px 16px rgba(15, 23, 42, 0.05)',
-        maxWidth: '1080px',
+        padding: '24px 28px',
+        boxShadow: '0 4px 20px rgba(15, 23, 42, 0.04)',
+        width: '100%',
         margin: '0 auto'
       }}
     >
-      {/* Top Header */}
+      {/* Top Header: Title, Global Actions & Search */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '12px',
-          paddingBottom: '14px',
-          marginBottom: '16px',
+          gap: '14px',
+          paddingBottom: '16px',
+          marginBottom: '18px',
           borderBottom: '1px solid #e2e8f0'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
               background: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%)',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(29, 78, 216, 0.25)',
+              flexShrink: 0
             }}
           >
-            <Users size={19} />
+            <Users size={22} />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                רשימת תלמידים ומבט-על כיתתי
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: '19px', fontWeight: 800, color: '#0f172a' }}>
+                מבט-על כיתתי על עמידה ביעדים ומועדי דיווח
               </h2>
               <span
                 style={{
@@ -181,54 +176,85 @@ export default function ClassReadinessOverview({
                   background: '#f8fafc'
                 }}
               >
-                {summary.total} תלמידים
+                {visibleStudents.length} תלמידים מוצגים
               </span>
             </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-              תמונת מצב מרוכזת של עמידה ביעדים, שותפות הורים והערכות לקראת דיווח וועדות
+            <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+              סריקה מרוכזת במבט אחד של מוכנות כלל התיקים לקראת דיווחי אמצע, ועדות וסיכום שנה
             </p>
           </div>
         </div>
 
-        {/* Quick Search */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: '#f8fafc',
-            border: '1px solid #cbd5e1',
-            borderRadius: '10px',
-            padding: '6px 12px',
-            minWidth: '230px'
-          }}
-        >
-          <Search size={15} style={{ color: '#64748b', flexShrink: 0 }} />
-          <input
-            type="text"
-            placeholder="חיפוש תלמיד/ה או מסגרת..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="חיפוש במבט-על כיתתי"
+        {/* Global Controls: Search Input & Framework Filter Dropdown */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div
             style={{
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              fontSize: '13px',
-              color: '#0f172a',
-              width: '100%'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: '10px',
+              padding: '7px 12px',
+              minWidth: '220px'
             }}
-          />
+          >
+            <Search size={15} style={{ color: '#64748b', flexShrink: 0 }} />
+            <input
+              type="text"
+              placeholder="חיפוש לפי שם או מסגרת..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="חיפוש במבט-על כיתתי"
+              style={{
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                fontSize: '13px',
+                color: '#0f172a',
+                width: '100%'
+              }}
+            />
+          </div>
+
+          {frameworksList.length > 1 && (
+            <select
+              value={selectedFramework}
+              onChange={(e) => setSelectedFramework(e.target.value)}
+              aria-label="סינון לפי מסגרת חינוכית"
+              style={{
+                padding: '7px 12px',
+                borderRadius: '10px',
+                border: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                fontSize: '13px',
+                color: '#0f172a',
+                outline: 'none',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              <option value="all">כל המסגרות החינוכיות ({safeStudents.length})</option>
+              {frameworksList.map((fw) => {
+                const count = safeStudents.filter((s) => getFrameworkKey(s) === fw).length;
+                return (
+                  <option key={fw} value={fw}>
+                    {fw} ({count})
+                  </option>
+                );
+              })}
+            </select>
+          )}
         </div>
       </div>
 
-      {/* Collapsible Class Readiness Traffic-Light Bar */}
+      {/* Class Summary KPIs & Traffic-Light Progress Bar */}
       <div
         style={{
           border: '1px solid #cbd5e1',
           borderRadius: '12px',
-          padding: '14px 16px',
-          marginBottom: '18px',
+          padding: '14px 18px',
+          marginBottom: '20px',
           background: '#f8fafc'
         }}
       >
@@ -237,29 +263,35 @@ export default function ClassReadinessOverview({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '10px',
+            gap: '12px',
             flexWrap: 'wrap'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>
-              מוכנות כיתתית לדיווח
+              תמונת מצב כיתתית:
             </span>
 
-            {/* Traffic-Light Summary Pills */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <span
+            {/* Traffic-Light KPI Clickable Badges */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setActiveFilter(activeFilter === 'ready' ? 'all' : 'ready')}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '3px 10px',
+                  padding: '4px 12px',
                   borderRadius: '999px',
                   background: 'rgba(16, 185, 129, 0.14)',
                   color: '#047857',
+                  border: activeFilter === 'ready' ? '2px solid #10b981' : '1px solid rgba(16, 185, 129, 0.35)',
                   fontSize: '12px',
-                  fontWeight: 700
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
+                title="סינון תלמידים מוכנים לוועדה"
               >
                 <span
                   style={{
@@ -269,21 +301,27 @@ export default function ClassReadinessOverview({
                     background: '#10b981'
                   }}
                 />
-                {summary.readyCount} מוכנים
-              </span>
+                {summary.readyCount} מוכנים לוועדה
+              </button>
 
-              <span
+              <button
+                type="button"
+                onClick={() => setActiveFilter(activeFilter === 'partial' ? 'all' : 'partial')}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '3px 10px',
+                  padding: '4px 12px',
                   borderRadius: '999px',
                   background: 'rgba(245, 158, 11, 0.15)',
                   color: '#b45309',
+                  border: activeFilter === 'partial' ? '2px solid #f59e0b' : '1px solid rgba(245, 158, 11, 0.38)',
                   fontSize: '12px',
-                  fontWeight: 700
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
+                title="סינון תלמידים בתהליך"
               >
                 <span
                   style={{
@@ -294,20 +332,26 @@ export default function ClassReadinessOverview({
                   }}
                 />
                 {summary.partialCount} בתהליך
-              </span>
+              </button>
 
-              <span
+              <button
+                type="button"
+                onClick={() => setActiveFilter(activeFilter === 'missing' ? 'all' : 'missing')}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '3px 10px',
+                  padding: '4px 12px',
                   borderRadius: '999px',
                   background: 'rgba(244, 63, 94, 0.14)',
                   color: '#be123c',
+                  border: activeFilter === 'missing' ? '2px solid #f43f5e' : '1px solid rgba(244, 63, 94, 0.35)',
                   fontSize: '12px',
-                  fontWeight: 700
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
+                title="סינון תלמידים שדורשים השלמה"
               >
                 <span
                   style={{
@@ -318,17 +362,17 @@ export default function ClassReadinessOverview({
                   }}
                 />
                 {summary.missingCount} דורשים השלמה
-              </span>
+              </button>
             </div>
           </div>
 
           {/* Standard Unified 32x32px +/- Collapse Button */}
           <button
             type="button"
-            onClick={() => setIsDrawerOpen((prev) => !prev)}
-            aria-expanded={isDrawerOpen}
-            aria-label={isDrawerOpen ? 'סגירת פירוט מוכנות וסינון מהיר' : 'פתיחת פירוט מוכנות וסינון מהיר'}
-            title="פתיחה או סגירה של פירוט מוכנות וסינון מהיר"
+            onClick={() => setIsFilterDrawerOpen((prev) => !prev)}
+            aria-expanded={isFilterDrawerOpen}
+            aria-label={isFilterDrawerOpen ? 'סגירת סרגל סינון מהיר' : 'פתיחת סרגל סינון מהיר'}
+            title="פתיחה או סגירה של סרגל סינון מהיר"
             style={{
               width: '32px',
               height: '32px',
@@ -346,7 +390,7 @@ export default function ClassReadinessOverview({
               cursor: 'pointer'
             }}
           >
-            {isDrawerOpen ? '−' : '+'}
+            {isFilterDrawerOpen ? '−' : '+'}
           </button>
         </div>
 
@@ -354,40 +398,44 @@ export default function ClassReadinessOverview({
         <div
           style={{
             width: '100%',
-            height: '8px',
+            height: '9px',
             borderRadius: '999px',
             overflow: 'hidden',
             display: 'flex',
-            marginTop: '10px',
+            marginTop: '12px',
             background: '#e2e8f0'
           }}
         >
           <div
-            style={{ width: `${summary.readyPct}%`, background: '#10b981', height: '100%' }}
+            style={{ width: `${summary.readyPct}%`, background: '#10b981', height: '100%', transition: 'width 0.3s ease' }}
             title={`מוכנים לוועדה (${summary.readyCount})`}
           />
           <div
-            style={{ width: `${summary.partialPct}%`, background: '#f59e0b', height: '100%' }}
+            style={{ width: `${summary.partialPct}%`, background: '#f59e0b', height: '100%', transition: 'width 0.3s ease' }}
             title={`בתהליך (${summary.partialCount})`}
           />
           <div
-            style={{ width: `${summary.missingPct}%`, background: '#f43f5e', height: '100%' }}
+            style={{ width: `${summary.missingPct}%`, background: '#f43f5e', height: '100%', transition: 'width 0.3s ease' }}
             title={`דורשים השלמה (${summary.missingCount})`}
           />
         </div>
 
-        {/* Collapsible Filter Pills Drawer */}
-        {isDrawerOpen && (
+        {/* Collapsible Filter Chips Drawer */}
+        {isFilterDrawerOpen && (
           <div
             style={{
               marginTop: '12px',
               paddingTop: '10px',
-              borderTop: '1px solid #e2e8f0'
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap'
             }}
           >
-            <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
-              סינון מהיר לפי חוסר בתיק (לחיצה מסננת את הרשימה למטה):
-            </div>
+            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+              סינון מהיר לפי חוסר:
+            </span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {FILTER_OPTIONS.map((f) => {
                 const count = f.getCount(summary);
@@ -396,11 +444,11 @@ export default function ClassReadinessOverview({
                   <button
                     key={f.key}
                     type="button"
-                    onClick={() => handleFilterClick(f.key)}
+                    onClick={() => setActiveFilter(f.key)}
                     style={{
                       fontSize: '12px',
-                      padding: '5px 11px',
-                      borderRadius: '999px',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
                       border: isActive ? '1px solid #1d4ed8' : '1px solid #cbd5e1',
                       background: isActive ? '#1d4ed8' : '#ffffff',
                       color: isActive ? '#ffffff' : '#1e293b',
@@ -417,7 +465,7 @@ export default function ClassReadinessOverview({
                       style={{
                         padding: '1px 6px',
                         borderRadius: '999px',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         background: isActive ? 'rgba(255, 255, 255, 0.22)' : '#f1f5f9',
                         color: isActive ? '#ffffff' : '#475569'
                       }}
@@ -432,11 +480,11 @@ export default function ClassReadinessOverview({
         )}
       </div>
 
-      {/* Main Two-Column Content: Student Cards Roster (Right) + Readiness Inspector (Left) */}
+      {/* The Full-Width Pedagogical Matrix Table */}
       {visibleStudents.length === 0 ? (
         <div
           style={{
-            padding: '32px 16px',
+            padding: '36px 16px',
             textAlign: 'center',
             background: '#f8fafc',
             borderRadius: '12px',
@@ -450,308 +498,274 @@ export default function ClassReadinessOverview({
       ) : (
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '16px',
-            alignItems: 'start'
+            border: '1px solid #cbd5e1',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
           }}
         >
-          {/* Right Column: Student Cards List */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              maxHeight: '460px',
-              overflowY: 'auto',
-              paddingLeft: '4px'
-            }}
-          >
-            {visibleStudents.map((st) => {
-              const info = computeStudentReadiness(st);
-              const visuals = getStatusVisuals(info.status);
-              const isSelected = activeStudent && String(activeStudent.id) === String(st.id);
-              const frameworkLabel =
-                String(st.educationalFramework || '').trim() || NO_FRAMEWORK_LABEL;
-
-              return (
-                <div
-                  key={String(st.id || st.name)}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedStudentId(String(st.id || ''))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedStudentId(String(st.id || ''));
-                    }
-                  }}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    border: isSelected ? '2px solid #1d4ed8' : '1px solid #cbd5e1',
-                    background: isSelected ? '#eff6ff' : '#f8fafc',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span
-                        style={{
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '999px',
-                          background: visuals.dotColor,
-                          flexShrink: 0
-                        }}
-                        title={visuals.text}
-                      />
-                      <strong style={{ fontSize: '14px', color: '#0f172a' }}>
-                        {st.name || 'ללא שם'}
-                      </strong>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>
-                        ({frameworkLabel})
-                      </span>
-                      {info.isLocked ? (
-                        <Lock size={13} style={{ color: '#475569' }} />
-                      ) : (
-                        <Unlock size={13} style={{ color: '#94a3b8' }} />
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          padding: '1px 8px',
-                          borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          background: '#ffffff',
-                          color: '#475569'
-                        }}
-                      >
-                        {info.goalsCount} מטרות
-                      </span>
-
-                      {info.missingTags.length > 0 ? (
-                        info.missingTags.slice(0, 2).map((tag) => (
-                          <span
-                            key={tag}
-                            style={{
-                              fontSize: '12px',
-                              padding: '1px 8px',
-                              borderRadius: '6px',
-                              background: 'rgba(244, 63, 94, 0.1)',
-                              color: '#be123c',
-                              fontWeight: 600
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))
-                      ) : (
-                        <span
-                          style={{
-                            fontSize: '12px',
-                            padding: '1px 8px',
-                            borderRadius: '6px',
-                            background: 'rgba(16, 185, 129, 0.12)',
-                            color: '#047857',
-                            fontWeight: 600
-                          }}
-                        >
-                          התיק מלא
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      padding: '3px 10px',
-                      borderRadius: '999px',
-                      background: visuals.badgeBg,
-                      color: visuals.badgeColor,
-                      border: `1px solid ${visuals.badgeBorder}`,
-                      fontWeight: 700,
-                      flexShrink: 0
-                    }}
-                  >
-                    {visuals.text}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Left Column: Selected Student Readiness Breakdown Inspector */}
-          {activeStudent && (
-            <div
+          <div style={{ overflowX: 'auto' }}>
+            <table
               style={{
-                border: '1px solid #cbd5e1',
-                borderRadius: '12px',
-                padding: '16px 18px',
-                background: '#f8fafc',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                gap: '14px'
+                width: '100%',
+                borderCollapse: 'collapse',
+                textAlign: 'right',
+                fontSize: '13px'
               }}
             >
-              <div>
-                <div
+              <thead>
+                <tr
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingBottom: '10px',
-                    marginBottom: '12px',
-                    borderBottom: '1px solid #e2e8f0',
-                    gap: '8px'
+                    background: '#f8fafc',
+                    borderBottom: '2px solid #e2e8f0',
+                    color: '#475569',
+                    fontWeight: 700
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '15px', color: '#0f172a' }}>
-                      {activeStudent.name || 'ללא שם'}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      {String(activeStudent.educationalFramework || '').trim() ||
-                        NO_FRAMEWORK_LABEL}
-                    </div>
-                  </div>
-                  {(() => {
-                    const visuals = getStatusVisuals(activeStudentReadiness.status);
-                    return (
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          padding: '3px 10px',
-                          borderRadius: '999px',
-                          background: visuals.badgeBg,
-                          color: visuals.badgeColor,
-                          border: `1px solid ${visuals.badgeBorder}`,
-                          fontWeight: 700
-                        }}
-                      >
-                        {visuals.text}
-                      </span>
-                    );
-                  })()}
-                </div>
+                  <th style={{ padding: '12px 14px', width: '48px', textAlign: 'center' }}>#</th>
+                  <th style={{ padding: '12px 14px', minWidth: '180px' }}>שם התלמיד/ה ומסגרת</th>
+                  <th style={{ padding: '12px 14px', minWidth: '130px', textAlign: 'center' }}>
+                    מטרות פעילות (2+)
+                  </th>
+                  <th style={{ padding: '12px 14px', minWidth: '130px', textAlign: 'center' }}>
+                    קול הורים ושותפות
+                  </th>
+                  <th style={{ padding: '12px 14px', minWidth: '130px', textAlign: 'center' }}>
+                    הערכת אמצע שנה
+                  </th>
+                  <th style={{ padding: '12px 14px', minWidth: '130px', textAlign: 'center' }}>
+                    דו״ח מצב ונעילה
+                  </th>
+                  <th style={{ padding: '12px 14px', minWidth: '120px', textAlign: 'center' }}>
+                    סטטוס תיק
+                  </th>
+                  <th style={{ padding: '12px 14px', width: '120px', textAlign: 'center' }}>
+                    פעולה מהירה
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleStudents.map((st, idx) => {
+                  const info = computeStudentReadiness(st);
+                  const visuals = getStatusVisuals(info.status);
+                  const frameworkLabel = getFrameworkKey(st) || NO_FRAMEWORK_LABEL;
 
-                {/* 4 Readiness Indicators Checklist */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {[
-                    {
-                      label: 'מטרות פעילות בתוכנית (לפחות 2)',
-                      done: activeStudentReadiness.hasActiveGoals,
-                      detail: `${activeStudentReadiness.goalsCount} מטרות מוגדרות`
-                    },
-                    {
-                      label: 'תיעוד קול הורים ושותפות',
-                      done: activeStudentReadiness.hasParentVoice,
-                      detail: activeStudentReadiness.hasParentVoice
-                        ? 'התקבל ושולב בתיק'
-                        : 'טרם הוזן תיעוד הורים'
-                    },
-                    {
-                      label: 'הערכת אמצע שנה במטרות',
-                      done: activeStudentReadiness.hasMidYearEval,
-                      detail: activeStudentReadiness.hasMidYearEval
-                        ? 'הוזנה הערכת מחצית'
-                        : 'חסרה הערכה במטרות'
-                    },
-                    {
-                      label: 'דו"ח מצב עדכני ונעילת תיק',
-                      done:
-                        activeStudentReadiness.hasStatusReport ||
-                        activeStudentReadiness.isLocked,
-                      detail: activeStudentReadiness.isLocked
-                        ? 'הדו"ח הופק ונעול'
-                        : activeStudentReadiness.hasStatusReport
-                          ? 'דו"ח מצב הופק (פתוח לעריכה)'
-                          : 'פתוח לעריכה'
-                    }
-                  ].map((item) => (
-                    <div
-                      key={item.label}
+                  return (
+                    <tr
+                      key={String(st.id || st.name || idx)}
                       style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '8px',
-                        fontSize: '13px'
+                        borderBottom: '1px solid #e2e8f0',
+                        background: idx % 2 === 0 ? '#ffffff' : '#fafcff',
+                        transition: 'background 0.12s ease'
                       }}
                     >
-                      {item.done ? (
-                        <CheckCircle2
-                          size={16}
-                          style={{ color: '#059669', marginTop: '2px', flexShrink: 0 }}
-                        />
-                      ) : (
-                        <XCircle
-                          size={16}
-                          style={{ color: '#e11d48', marginTop: '2px', flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{item.label}</span>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>{item.detail}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                      {/* Row index */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center', color: '#94a3b8', fontWeight: 600 }}>
+                        {idx + 1}
+                      </td>
 
-              {/* Action CTA to jump directly into the student's work plan */}
-              <div
-                style={{
-                  paddingTop: '12px',
-                  borderTop: '1px solid #e2e8f0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '10px',
-                  flexWrap: 'wrap'
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (activeStudent?.id && onSelectStudent) {
-                      onSelectStudent(String(activeStudent.id));
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '9px 14px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    boxShadow: '0 2px 8px rgba(29, 78, 216, 0.25)'
-                  }}
-                >
-                  <span>פתיחת תיק התלמיד/ה להשלמה ולעריכה</span>
-                  <ExternalLink size={14} />
-                </button>
-              </div>
-            </div>
-          )}
+                      {/* Student Name + Framework */}
+                      <td style={{ padding: '12px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            style={{
+                              width: '9px',
+                              height: '9px',
+                              borderRadius: '999px',
+                              background: visuals.dotColor,
+                              flexShrink: 0
+                            }}
+                            title={visuals.text}
+                          />
+                          <strong style={{ fontSize: '14px', color: '#0f172a' }}>
+                            {st.name || 'ללא שם'}
+                          </strong>
+                          {info.isLocked && (
+                            <span title="התיק נעול לעריכה" style={{ color: '#64748b', display: 'inline-flex' }}>
+                              <Lock size={13} />
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#64748b', display: 'block', paddingRight: '17px' }}>
+                          {frameworkLabel}
+                        </span>
+                      </td>
+
+                      {/* Goals Column */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 10px',
+                            borderRadius: '6px',
+                            background: info.hasActiveGoals ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.1)',
+                            color: info.hasActiveGoals ? '#047857' : '#be123c',
+                            fontWeight: 600,
+                            fontSize: '12px'
+                          }}
+                        >
+                          {info.hasActiveGoals ? <Check size={14} /> : <X size={14} />}
+                          <span>{info.goalsCount} מטרות</span>
+                        </div>
+                      </td>
+
+                      {/* Parent Voice Column */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 10px',
+                            borderRadius: '6px',
+                            background: info.hasParentVoice ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.1)',
+                            color: info.hasParentVoice ? '#047857' : '#be123c',
+                            fontWeight: 600,
+                            fontSize: '12px'
+                          }}
+                        >
+                          {info.hasParentVoice ? <Check size={14} /> : <X size={14} />}
+                          <span>{info.hasParentVoice ? 'שולב בתיק' : 'חסר'}</span>
+                        </div>
+                      </td>
+
+                      {/* Mid-Year Eval Column */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 10px',
+                            borderRadius: '6px',
+                            background: info.hasMidYearEval ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.1)',
+                            color: info.hasMidYearEval ? '#047857' : '#be123c',
+                            fontWeight: 600,
+                            fontSize: '12px'
+                          }}
+                        >
+                          {info.hasMidYearEval ? <Check size={14} /> : <X size={14} />}
+                          <span>{info.hasMidYearEval ? 'הוזנה' : 'חסרה'}</span>
+                        </div>
+                      </td>
+
+                      {/* Status Report Column */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '3px 10px',
+                            borderRadius: '6px',
+                            background: info.isLocked
+                              ? 'rgba(99, 102, 241, 0.12)'
+                              : info.hasStatusReport
+                                ? 'rgba(16, 185, 129, 0.12)'
+                                : '#f1f5f9',
+                            color: info.isLocked ? '#4338ca' : info.hasStatusReport ? '#047857' : '#64748b',
+                            fontWeight: 600,
+                            fontSize: '12px'
+                          }}
+                        >
+                          <span>
+                            {info.isLocked ? 'נעול' : info.hasStatusReport ? 'הופק' : 'פתוח'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Final Status */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: '999px',
+                            background: visuals.badgeBg,
+                            color: visuals.badgeColor,
+                            border: `1px solid ${visuals.badgeBorder}`,
+                            fontWeight: 700,
+                            fontSize: '12px'
+                          }}
+                        >
+                          {visuals.text}
+                        </span>
+                      </td>
+
+                      {/* Direct Action */}
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (st.id && onSelectStudent) {
+                              onSelectStudent(String(st.id));
+                            }
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: '#1d4ed8',
+                            color: '#ffffff',
+                            fontWeight: 700,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            boxShadow: '0 1px 4px rgba(29, 78, 216, 0.2)',
+                            transition: 'background 0.15s ease'
+                          }}
+                          title="מעבר ישיר לתיק התלמיד/ה לעריכה ולהשלמה"
+                        >
+                          <span>מעבר לתיק</span>
+                          <ExternalLink size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      {/* Bottom Legend and Guidance */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          marginTop: '16px',
+          paddingTop: '12px',
+          borderTop: '1px solid #e2e8f0',
+          fontSize: '12px',
+          color: '#64748b'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: '#10b981' }} />
+            הושלם ותקין
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: '#f43f5e' }} />
+            טרם הוזן / חסר בתיק
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Lock size={12} style={{ color: '#4338ca' }} />
+            תיק נעול לעריכה
+          </span>
+        </div>
+        <div>
+          <span>לחיצה על "מעבר לתיק" פותחת את הגיליון ישירות בעריכה</span>
+        </div>
+      </div>
     </section>
   );
 }
