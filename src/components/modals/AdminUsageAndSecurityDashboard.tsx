@@ -16,7 +16,8 @@ import {
   ChevronUp,
   Layers,
   Search,
-  Sparkles
+  Sparkles,
+  Mic
 } from 'lucide-react';
 import {
   aggregateTelemetryData,
@@ -51,6 +52,9 @@ export default function AdminUsageAndSecurityDashboard({
   const [aiSearchEmail, setAiSearchEmail] = useState('');
   const [aiOperationFilter, setAiOperationFilter] = useState('all');
   const [showAllAiLogs, setShowAllAiLogs] = useState(false);
+  const [showVoiceStorage, setShowVoiceStorage] = useState(false);
+  const [voiceSearchTerm, setVoiceSearchTerm] = useState('');
+  const [voiceSourceFilter, setVoiceSourceFilter] = useState('all');
 
   const loadSnapshot = async () => {
     setLoading(true);
@@ -125,6 +129,23 @@ export default function AdminUsageAndSecurityDashboard({
 
     return list;
   }, [rawAiLogs, aiSearchEmail, aiOperationFilter]);
+
+  const filteredVoiceRecordings = useMemo(() => {
+    const list = data.voiceStorage?.recentRecordings || [];
+    return list.filter((rec) => {
+      if (voiceSourceFilter !== 'all' && rec.source !== voiceSourceFilter) {
+        return false;
+      }
+      if (voiceSearchTerm.trim()) {
+        const query = voiceSearchTerm.toLowerCase().trim();
+        const studentMatch = (rec.studentName || '').toLowerCase().includes(query);
+        const authorMatch = (rec.authorName || '').toLowerCase().includes(query);
+        const noteMatch = (rec.note || '').toLowerCase().includes(query);
+        if (!studentMatch && !authorMatch && !noteMatch) return false;
+      }
+      return true;
+    });
+  }, [data.voiceStorage, voiceSearchTerm, voiceSourceFilter]);
 
   const handleToggleAiFreeze = async () => {
     const nextFreeze = !data.isAiFrozen;
@@ -505,8 +526,8 @@ export default function AdminUsageAndSecurityDashboard({
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#166534', marginTop: '2px' }}>
-            <span>סה"כ קבצים: <strong>{data.storage.totalFiles}</strong></span>
-            <span>שימוש: <strong>{data.storage.usagePercent}% (חינמי)</strong></span>
+            <span>מסמכים: <strong>{data.storage.totalFiles}</strong> | הקלטות: <strong>{data.voiceStorage?.totalRecords || 0}</strong></span>
+            <span>שימוש: <strong>{data.storage.usagePercent}% — חינמי</strong></span>
           </div>
         </div>
 
@@ -851,6 +872,287 @@ export default function AdminUsageAndSecurityDashboard({
           )}
         </div>
       )}
+
+      {/* Row 4.5: Voice Recordings Storage Section */}
+      <div
+        data-testid="voice-recordings-storage-panel"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}
+      >
+        <div
+          onClick={() => setShowVoiceStorage(!showVoiceStorage)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Mic size={18} style={{ color: '#7c3aed' }} />
+            <strong style={{ fontSize: '14px', color: '#4c1d95' }}>
+              🎙️ ניהול ואחסון הקלטות קוליות
+            </strong>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: '#6d28d9',
+                background: '#ede9fe',
+                padding: '2px 8px',
+                borderRadius: '999px',
+                border: '1px solid #ddd6fe'
+              }}
+            >
+              {data.voiceStorage?.totalRecords || 0} הקלטות | {data.voiceStorage?.formattedMb || '0.0 MB'}
+            </span>
+          </div>
+          <button
+            type="button"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#7c3aed'
+            }}
+          >
+            {showVoiceStorage ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+        </div>
+
+        {showVoiceStorage && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
+            {/* Stat Mini-Cards */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '10px'
+              }}
+            >
+              <div
+                style={{
+                  background: '#faf5ff',
+                  border: '1px solid #e9d5ff',
+                  borderRadius: '10px',
+                  padding: '10px 14px'
+                }}
+              >
+                <div style={{ fontSize: '11.5px', color: '#7e22ce' }}>סה"כ הקלטות מתועדות</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#581c87' }}>
+                  {data.voiceStorage?.totalRecords || 0}
+                </div>
+              </div>
+              <div
+                style={{
+                  background: '#faf5ff',
+                  border: '1px solid #e9d5ff',
+                  borderRadius: '10px',
+                  padding: '10px 14px'
+                }}
+              >
+                <div style={{ fontSize: '11.5px', color: '#7e22ce' }}>נפח אחסון מוערך</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#581c87' }}>
+                  {data.voiceStorage?.formattedMb || '0.0 MB'}
+                </div>
+              </div>
+              <div
+                style={{
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '10px',
+                  padding: '10px 14px'
+                }}
+              >
+                <div style={{ fontSize: '11.5px', color: '#166534' }}>מגובות בענן</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#14532d' }}>
+                  {data.voiceStorage?.cloudAudioCount || 0}
+                </div>
+              </div>
+              <div
+                style={{
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '10px',
+                  padding: '10px 14px'
+                }}
+              >
+                <div style={{ fontSize: '11.5px', color: '#1e40af' }}>שמורות מקומית במכשיר</div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#1e3a8a' }}>
+                  {data.voiceStorage?.localAudioCount || 0}
+                </div>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '10px',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: '#f8fafc',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 240px' }}>
+                <Search size={16} style={{ color: '#64748b' }} />
+                <input
+                  type="text"
+                  placeholder="חיפוש לפי שם תלמיד/ה, מורה או תוכן תצפית..."
+                  value={voiceSearchTerm}
+                  onChange={(e) => setVoiceSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '6px 10px',
+                    fontSize: '12.5px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    outline: 'none',
+                    direction: 'rtl'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#475569' }}>מקור תצפית:</span>
+                <select
+                  value={voiceSourceFilter}
+                  onChange={(e) => setVoiceSourceFilter(e.target.value)}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: '12.5px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    background: '#ffffff',
+                    color: '#1e293b',
+                    direction: 'rtl'
+                  }}
+                >
+                  <option value="all">כל המקורות</option>
+                  <option value="daily_tracking">מעקב פדגוגי יומי</option>
+                  <option value="pedagogical_feed">יומן תצפיות פדגוגי</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table */}
+            {filteredVoiceRecordings.length === 0 ? (
+              <div
+                style={{
+                  padding: '24px',
+                  textAlign: 'center',
+                  background: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px dashed #cbd5e1',
+                  color: '#64748b',
+                  fontSize: '13px'
+                }}
+              >
+                לא נמצאו הקלטות קוליות תואמות לסינון הנוכחי.
+              </div>
+            ) : (
+              <div className="allowed-users-table-wrap">
+                <table className="allowed-users-table">
+                  <thead>
+                    <tr>
+                      <th>תלמיד/ה</th>
+                      <th>איש/אשת צוות</th>
+                      <th>מקור</th>
+                      <th>תאריך תצפית</th>
+                      <th>נפח מוערך</th>
+                      <th>תוכן תצפית / תמלול</th>
+                      <th>אחסון</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredVoiceRecordings.map((rec) => (
+                      <tr key={rec.id}>
+                        <td style={{ fontWeight: 600 }}>{rec.studentName}</td>
+                        <td style={{ fontSize: '12px', color: '#334155' }}>{rec.authorName}</td>
+                        <td>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              color: rec.source === 'daily_tracking' ? '#0369a1' : '#7c3aed',
+                              background: rec.source === 'daily_tracking' ? '#e0f2fe' : '#ede9fe',
+                              padding: '2px 8px',
+                              borderRadius: '999px'
+                            }}
+                          >
+                            {rec.source === 'daily_tracking' ? 'מעקב יומי' : 'יומן תצפית'}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '11.5px', color: '#64748b' }}>
+                          {rec.recordedAt ? new Date(rec.recordedAt).toLocaleDateString('he-IL') : '—'}
+                        </td>
+                        <td>
+                          <strong style={{ color: '#7c3aed', fontSize: '12px' }}>
+                            {rec.formattedSize}
+                          </strong>
+                        </td>
+                        <td style={{ fontSize: '12px', color: '#334155', maxWidth: '280px' }}>
+                          <span title={rec.note} style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {rec.note || 'הקלטה קולית ללא מלל'}
+                          </span>
+                        </td>
+                        <td>
+                          {rec.audioStorageUrl ? (
+                            <a
+                              href={rec.audioStorageUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: '#15803d',
+                                background: '#dcfce7',
+                                border: '1px solid #86efac',
+                                padding: '2px 8px',
+                                borderRadius: '999px',
+                                textDecoration: 'none'
+                              }}
+                            >
+                              ענן — האזנה
+                            </a>
+                          ) : (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: '#1e40af',
+                                background: '#dbeafe',
+                                padding: '2px 8px',
+                                borderRadius: '999px'
+                              }}
+                            >
+                              מקומי
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Row 5: Security Threat Watchdog (Injections & Rate Limits) */}
       <div

@@ -32,6 +32,29 @@ export interface StorageFootprintResult {
   largestFiles: StorageFileItem[];
 }
 
+export interface VoiceRecordingItem {
+  id: string;
+  studentName: string;
+  studentId: string;
+  recordedAt: string;
+  authorName: string;
+  note: string;
+  audioStorageUrl?: string;
+  hasAudio: boolean;
+  estimatedBytes: number;
+  formattedSize: string;
+  source: 'daily_tracking' | 'pedagogical_feed';
+}
+
+export interface VoiceStorageFootprintResult {
+  totalRecords: number;
+  totalBytes: number;
+  formattedMb: string;
+  cloudAudioCount: number;
+  localAudioCount: number;
+  recentRecordings: VoiceRecordingItem[];
+}
+
 export interface AnomalyItem {
   id: string;
   type: 'soft_quota' | 'user_spike' | 'volume_spike' | string;
@@ -83,6 +106,7 @@ export interface AggregatedTelemetryData {
   emailUsageRatio: number;
 
   storage: StorageFootprintResult;
+  voiceStorage: VoiceStorageFootprintResult;
   estimatedAiCostUsd: number;
   estimatedAiCostIls: number;
 
@@ -229,6 +253,157 @@ export function calculateStorageFootprint(students: Array<Record<string, unknown
     largestFiles
   };
 }
+
+/**
+ * Calculates total voice recording footprint and extracts individual audio records
+ * across all students' goals observations and pedagogical snippets.
+ */
+export function computeVoiceStorageFootprint(
+  students: Array<Record<string, unknown>> = []
+): VoiceStorageFootprintResult {
+  if (!Array.isArray(students)) {
+    return {
+      totalRecords: 0,
+      totalBytes: 0,
+      formattedMb: '0.0 MB',
+      cloudAudioCount: 0,
+      localAudioCount: 0,
+      recentRecordings: []
+    };
+  }
+
+  const allVoice: VoiceRecordingItem[] = [];
+  let totalBytes = 0;
+  let cloudAudioCount = 0;
+  let localAudioCount = 0;
+
+  students.forEach((student) => {
+    if (!student) return;
+    const studentName = String(student.name || 'תלמיד/ה ללא שם');
+    const studentId = String(student.id || '');
+
+    // 1. Check goal observations
+    const goals = Array.isArray(student.goals) ? (student.goals as Array<Record<string, unknown>>) : [];
+    goals.forEach((goal) => {
+      const observations = Array.isArray(goal?.observations)
+        ? (goal.observations as Array<Record<string, unknown>>)
+        : [];
+      observations.forEach((obs) => {
+        if (!obs) return;
+        const hasAudio = Boolean(obs.hasAudio || obs.audioStorageUrl);
+        if (hasAudio) {
+          const estimatedBytes = Number(obs.audioSizeBytes || obs.fileSize) || 150 * 1024;
+          totalBytes += estimatedBytes;
+          const isCloud = Boolean(obs.audioStorageUrl);
+          if (isCloud) cloudAudioCount += 1;
+          else localAudioCount += 1;
+
+          allVoice.push({
+            id: String(obs.id || `voice_${allVoice.length}`),
+            studentName,
+            studentId,
+            recordedAt: String(obs.date || obs.timestamp || ''),
+            authorName: String(obs.authorName || 'מורה'),
+            note: String(obs.note || ''),
+            audioStorageUrl: obs.audioStorageUrl ? String(obs.audioStorageUrl) : undefined,
+            hasAudio: true,
+            estimatedBytes,
+            formattedSize: estimatedBytes >= 1024 * 1024
+              ? (estimatedBytes / (1024 * 1024)).toFixed(1) + ' MB'
+              : Math.round(estimatedBytes / 1024) + ' KB',
+            source: 'daily_tracking'
+          });
+        }
+      });
+    });
+
+    // 2. Check general observations on student if present
+    const generalObservations = Array.isArray(student.observations)
+      ? (student.observations as Array<Record<string, unknown>>)
+      : [];
+    generalObservations.forEach((obs) => {
+      if (!obs) return;
+      const hasAudio = Boolean(obs.hasAudio || obs.audioStorageUrl);
+      if (hasAudio && !allVoice.some((v) => v.id === obs.id)) {
+        const estimatedBytes = Number(obs.audioSizeBytes || obs.fileSize) || 150 * 1024;
+        totalBytes += estimatedBytes;
+        const isCloud = Boolean(obs.audioStorageUrl);
+        if (isCloud) cloudAudioCount += 1;
+        else localAudioCount += 1;
+
+        allVoice.push({
+          id: String(obs.id || `voice_${allVoice.length}`),
+          studentName,
+          studentId,
+          recordedAt: String(obs.date || obs.timestamp || ''),
+          authorName: String(obs.authorName || 'מורה'),
+          note: String(obs.note || ''),
+          audioStorageUrl: obs.audioStorageUrl ? String(obs.audioStorageUrl) : undefined,
+          hasAudio: true,
+          estimatedBytes,
+          formattedSize: estimatedBytes >= 1024 * 1024
+            ? (estimatedBytes / (1024 * 1024)).toFixed(1) + ' MB'
+            : Math.round(estimatedBytes / 1024) + ' KB',
+          source: 'daily_tracking'
+        });
+      }
+    });
+
+    // 3. Check pedagogical snippets
+    const snippets = Array.isArray(student.pedagogicalSnippets)
+      ? (student.pedagogicalSnippets as Array<Record<string, unknown>>)
+      : Array.isArray(student.snippets)
+      ? (student.snippets as Array<Record<string, unknown>>)
+      : [];
+    snippets.forEach((snip) => {
+      if (!snip) return;
+      const hasAudio = Boolean(snip.hasAudio || snip.audioStorageUrl);
+      if (hasAudio && !allVoice.some((v) => v.id === snip.id)) {
+        const estimatedBytes = Number(snip.audioSizeBytes || snip.fileSize) || 150 * 1024;
+        totalBytes += estimatedBytes;
+        const isCloud = Boolean(snip.audioStorageUrl);
+        if (isCloud) cloudAudioCount += 1;
+        else localAudioCount += 1;
+
+        allVoice.push({
+          id: String(snip.id || `voice_${allVoice.length}`),
+          studentName,
+          studentId,
+          recordedAt: String(snip.createdAt || snip.date || ''),
+          authorName: String(snip.author || 'מורה'),
+          note: String(snip.text || ''),
+          audioStorageUrl: snip.audioStorageUrl ? String(snip.audioStorageUrl) : undefined,
+          hasAudio: true,
+          estimatedBytes,
+          formattedSize: estimatedBytes >= 1024 * 1024
+            ? (estimatedBytes / (1024 * 1024)).toFixed(1) + ' MB'
+            : Math.round(estimatedBytes / 1024) + ' KB',
+          source: 'pedagogical_feed'
+        });
+      }
+    });
+  });
+
+  const totalMb = totalBytes / (1024 * 1024);
+  const formattedMb = totalBytes === 0 ? '0.0 MB' : totalMb < 10 ? totalMb.toFixed(2) + ' MB' : totalMb.toFixed(1) + ' MB';
+
+  const recentRecordings = allVoice.sort((a, b) => {
+    const timeA = new Date(a.recordedAt).getTime() || 0;
+    const timeB = new Date(b.recordedAt).getTime() || 0;
+    return timeB - timeA;
+  });
+
+  return {
+    totalRecords: allVoice.length,
+    totalBytes,
+    formattedMb,
+    cloudAudioCount,
+    localAudioCount,
+    recentRecordings
+  };
+}
+
+export const calculateVoiceStorageFootprint = computeVoiceStorageFootprint;
 
 /**
  * Proactive Anomaly & Soft Quota Warning Detector.
@@ -444,8 +619,9 @@ export function aggregateTelemetryData({
     .sort((a, b) => b.aiCount + b.emailCount - (a.aiCount + a.emailCount))
     .slice(0, 10);
 
-  // 5. Storage Footprint
+  // 5. Storage Footprint (Diagnostic files and Voice records)
   const storage = calculateStorageFootprint(students);
+  const voiceStorage = computeVoiceStorageFootprint(students);
 
   // 6. Cost Estimation
   const estimatedAiCostUsd = aiMonthCount * ESTIMATED_USD_PER_AI_QUERY;
@@ -525,6 +701,7 @@ export function aggregateTelemetryData({
     emailUsageRatio: Math.min(1, emailTodayCount / DAILY_EMAIL_QUOTA_LIMIT),
 
     storage,
+    voiceStorage,
     estimatedAiCostUsd: Number(estimatedAiCostUsd.toFixed(4)),
     estimatedAiCostIls: Number(estimatedAiCostIls.toFixed(2)),
 
