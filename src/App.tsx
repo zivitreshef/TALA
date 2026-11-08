@@ -26,7 +26,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Calendar,
-    ClipboardList
+    ClipboardList,
+  Mic
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -155,6 +156,7 @@ import {
   buildSurveySummaryNotes
 } from './domain/userEngagement';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
+import MobileQuickActionsModal from './components/mobile/MobileQuickActionsModal';
 import GoalBankPage from './components/GoalBankPage';
 import ClassReadinessOverview from './components/ClassReadinessOverview';
 import OnboardingNavigatorModal from './components/onboarding/OnboardingNavigatorModal';
@@ -559,6 +561,7 @@ export default function App() {
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState<any>(null);
   const [showDailyTracker, setShowDailyTracker] = useState(false);
+  const [showMobileQuickActions, setShowMobileQuickActions] = useState(false);
   const [showClassOverview, setShowClassOverview] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [_insideLandingSearch, setInsideLandingSearch] = useState('');
@@ -2602,6 +2605,15 @@ export default function App() {
               <UserCheck size={15} />
               <span>מבט על</span>
             </button>
+            <button
+              type="button"
+              className="header-nav-btn mobile-only-nav-btn"
+              onClick={() => setShowMobileQuickActions(true)}
+              title="מוקד פעולות מהיר"
+            >
+              <Mic size={15} />
+              <span>תיעוד מהיר</span>
+            </button>
           </nav>
 
           {/* Zone 2: Secondary Utilities (Archive, Help, Trial) */}
@@ -4378,6 +4390,38 @@ export default function App() {
             onResumeJourney={() => {
               handleResumeOnboarding();
               setShowOnboardingNavigator(false);
+            }}
+          />
+        </>
+      )}
+
+      {/* Mobile Floating Action Button and Quick-Hub Sheet */}
+      {currentUser && (
+        <>
+          <button
+            type="button"
+            className="mobile-quick-fab"
+            onClick={() => setShowMobileQuickActions(true)}
+            aria-label="מוקד פעולות מהיר"
+            title="מוקד פעולות מהיר לתלמיד"
+          >
+            <span className="fab-icon-wrap">
+              <Mic size={16} />
+            </span>
+            <span>תיעוד מהיר</span>
+          </button>
+
+          <MobileQuickActionsModal
+            isOpen={showMobileQuickActions}
+            onClose={() => setShowMobileQuickActions(false)}
+            students={baseStudentsForView}
+            selectedStudentId={selectedStudentId || undefined}
+            onSelectStudent={(stId) => {
+              setSelectedStudentId(stId);
+            }}
+            currentUser={effectiveCurrentUser}
+            onUpdateStudent={(updatedStudent) => {
+              handleSaveStudentPlan(updatedStudent);
             }}
           />
         </>
