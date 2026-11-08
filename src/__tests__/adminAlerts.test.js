@@ -470,7 +470,8 @@ describe('Admin Real-Time Alerts Domain & Dispatcher', () => {
           React.createElement(AdminAlertsPanel, {
             allowedUsers,
             onUpdateAllowedUsers: vi.fn(),
-            emailEngineConfig: null
+            emailEngineConfig: null,
+            initialExpandedAdminId: 'u1'
           })
         );
         expect(html).toContain('התרעות מנהל בזמן אמת');

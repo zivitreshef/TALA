@@ -607,7 +607,7 @@ export default function DailyPedagogicalTracker({
       const timeSpentSec = entryStartTimeRef.current
         ? Math.max(1, Math.round((Date.now() - entryStartTimeRef.current) / 1000))
         : 5;
-      const mode = currentEntryModeRef.current || 'text';
+      const mode = (pendingVoiceBlob || currentEntryModeRef.current === 'voice') ? 'voice' : 'text';
       try {
         usageTelemetryService.track(
           TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_ABANDONED,
@@ -678,7 +678,7 @@ export default function DailyPedagogicalTracker({
 
     try {
       const response = await callAiProxyEndpoint({
-        operation: 'rawPrompt',
+        operation: 'goalMatch',
         payload: { prompt: maskedPrompt },
         hints: { gender: targetStudent?.gender || 'boy', name: targetStudent?.name, model: 'gemini-2.5-flash' }
       });
@@ -777,7 +777,8 @@ export default function DailyPedagogicalTracker({
       ? Math.max(1, Math.round((Date.now() - entryStartTimeRef.current) / 1000))
       : 10;
     const streakDays = calculateCurrentStreak(students, todayStr);
-    const mode = currentEntryModeRef.current || 'text';
+    const isVoice = Boolean(audioToSave || currentEntryModeRef.current === 'voice');
+    const mode = isVoice ? 'voice' : (currentEntryModeRef.current || 'text');
 
     try {
       usageTelemetryService.track(
@@ -790,6 +791,17 @@ export default function DailyPedagogicalTracker({
         },
         teacherEmail ? { userContext: { email: teacherEmail } } : {}
       );
+
+      if (isVoice) {
+        usageTelemetryService.track(
+          TELEMETRY_EVENTS.VOICE_OBSERVATION_RECORDED,
+          {
+            durationSec,
+            hasTranscript: Boolean(aiNoteText.trim())
+          },
+          teacherEmail ? { userContext: { email: teacherEmail } } : {}
+        );
+      }
 
       usageTelemetryService.track(
         TELEMETRY_EVENTS.DAILY_TRACKING_STREAK_RECORDED,
@@ -1597,11 +1609,19 @@ export default function DailyPedagogicalTracker({
                     <VoiceObservationRecorder
                       disabled={isAnalyzingAi}
                       baseText={aiNoteText}
+                      onRecordingStart={() => {
+                        currentEntryModeRef.current = 'voice';
+                        startObservationEntry('voice', false);
+                      }}
                       onTranscript={(fullText) => {
-                        startObservationEntry('text', false);
+                        currentEntryModeRef.current = 'voice';
+                        startObservationEntry('voice', false);
                         setAiNoteText(fullText);
                       }}
-                      onAudioReady={(blob) => setPendingVoiceBlob(blob)}
+                      onAudioReady={(blob) => {
+                        currentEntryModeRef.current = 'voice';
+                        setPendingVoiceBlob(blob);
+                      }}
                       onClearAudio={() => setPendingVoiceBlob(null)}
                     />
                   </div>

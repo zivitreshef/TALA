@@ -5,7 +5,7 @@
  * onboarding, friction, and technical health.
  */
 
-export const CURRENT_APP_VERSION = '2.6.33';
+export const CURRENT_APP_VERSION = '2.6.34';
 
 export const TELEMETRY_CATEGORIES = Object.freeze({
   ENGAGEMENT: 'engagement',
@@ -40,6 +40,7 @@ export const TELEMETRY_EVENTS = Object.freeze({
   DAILY_TRACKING_ENTRY_COMPLETED: 'daily_tracking_entry_completed',
   DAILY_TRACKING_ENTRY_ABANDONED: 'daily_tracking_entry_abandoned',
   DAILY_TRACKING_STREAK_RECORDED: 'daily_tracking_streak_recorded',
+  VOICE_OBSERVATION_RECORDED: 'voice_observation_recorded',
 
   // Pedagogical Summary & Staff Meeting Readiness
   PEDAGOGICAL_SUMMARY_GENERATED: 'pedagogical_summary_generated',
@@ -93,6 +94,7 @@ export const EVENT_CATEGORY_MAP: Readonly<Record<string, string>> = Object.freez
   [TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_COMPLETED]: TELEMETRY_CATEGORIES.DAILY_TRACKING,
   [TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_ABANDONED]: TELEMETRY_CATEGORIES.DAILY_TRACKING,
   [TELEMETRY_EVENTS.DAILY_TRACKING_STREAK_RECORDED]: TELEMETRY_CATEGORIES.DAILY_TRACKING,
+  [TELEMETRY_EVENTS.VOICE_OBSERVATION_RECORDED]: TELEMETRY_CATEGORIES.DAILY_TRACKING,
 
   // Pedagogical Summary & Staff Readiness
   [TELEMETRY_EVENTS.PEDAGOGICAL_SUMMARY_GENERATED]: TELEMETRY_CATEGORIES.PEDAGOGICAL_SUMMARY,
@@ -154,6 +156,10 @@ export const EVENT_SCHEMAS: Readonly<Record<string, Record<string, PropertyRule>
   },
   [TELEMETRY_EVENTS.DAILY_TRACKING_STREAK_RECORDED]: {
     currentStreakDays: { type: 'number', min: 0 }
+  },
+  [TELEMETRY_EVENTS.VOICE_OBSERVATION_RECORDED]: {
+    durationSec: { type: 'number', min: 0 },
+    hasTranscript: { type: 'boolean' }
   },
   [TELEMETRY_EVENTS.PEDAGOGICAL_SUMMARY_GENERATED]: {
     summaryType: { type: 'string', enum: ['staff_meeting', 'periodic_review'] },

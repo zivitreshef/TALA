@@ -11,8 +11,8 @@ import {
 import AllowlistAuthGate, { AdminAllowlistModal } from '../AllowlistAuthGate';
 
 describe('TypeScript Migration Step 2 Suite (v2.5.23)', () => {
-  it('synchronizes to target application version 2.6.33', () => {
-    expect(CURRENT_APP_VERSION).toBe('2.6.33');
+  it('synchronizes to target application version 2.6.34', () => {
+    expect(CURRENT_APP_VERSION).toBe('2.6.34');
   });
 
   describe('wordAndPrintBuilders module', () => {
