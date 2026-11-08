@@ -26,8 +26,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Calendar,
-    ClipboardList,
-  Mic
+    ClipboardList
 } from 'lucide-react';
 import {
   loadAllowedUsers,
@@ -156,7 +155,7 @@ import {
   buildSurveySummaryNotes
 } from './domain/userEngagement';
 import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
-import MobileQuickActionsModal from './components/mobile/MobileQuickActionsModal';
+import MobileTeacherWorkspace from './components/mobile/MobileTeacherWorkspace';
 import GoalBankPage from './components/GoalBankPage';
 import ClassReadinessOverview from './components/ClassReadinessOverview';
 import OnboardingNavigatorModal from './components/onboarding/OnboardingNavigatorModal';
@@ -561,7 +560,19 @@ export default function App() {
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState<any>(null);
   const [showDailyTracker, setShowDailyTracker] = useState(false);
-  const [showMobileQuickActions, setShowMobileQuickActions] = useState(false);
+  const [isMobileScreen, setIsMobileScreen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 768;
+  });
+  const [forceDesktopMode, setForceDesktopMode] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [showClassOverview, setShowClassOverview] = useState(false);
   const [studentSearch, setStudentSearch] = useState('');
   const [_insideLandingSearch, setInsideLandingSearch] = useState('');
@@ -2484,8 +2495,36 @@ export default function App() {
       ? 'collapsed'
       : 'expanded';
 
+  if (currentUser && isMobileScreen && !forceDesktopMode) {
+    return (
+      <div className="tala-app-root" dir="rtl">
+        <MobileTeacherWorkspace
+          students={baseStudentsForView}
+          selectedStudentId={selectedStudentId}
+          onSelectStudent={(stId) => setSelectedStudentId(stId)}
+          currentUser={effectiveCurrentUser}
+          onUpdateStudent={(updatedStudent) => handleSaveStudentPlan(updatedStudent)}
+          onSwitchToDesktop={() => setForceDesktopMode(true)}
+          onLogout={() => performLogout()}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="tala-app-root" dir="rtl">
+      {isMobileScreen && forceDesktopMode && (
+        <div className="desktop-force-return-banner">
+          <span>את נמצאת בתצוגת מחשב מלאה</span>
+          <button
+            type="button"
+            className="desktop-force-return-btn"
+            onClick={() => setForceDesktopMode(false)}
+          >
+            חזרה לתצוגת מובייל נקייה
+          </button>
+        </div>
+      )}
       {/* Real-Time Deployment & Upgrade Warning Banner */}
       <UpgradeBanner
         bannerData={upgradeBanner}
@@ -2604,15 +2643,6 @@ export default function App() {
             >
               <UserCheck size={15} />
               <span>מבט על</span>
-            </button>
-            <button
-              type="button"
-              className="header-nav-btn mobile-only-nav-btn"
-              onClick={() => setShowMobileQuickActions(true)}
-              title="מוקד פעולות מהיר"
-            >
-              <Mic size={15} />
-              <span>תיעוד מהיר</span>
             </button>
           </nav>
 
@@ -4394,39 +4424,6 @@ export default function App() {
           />
         </>
       )}
-
-      {/* Mobile Floating Action Button and Quick-Hub Sheet */}
-      {currentUser && (
-        <>
-          <button
-            type="button"
-            className="mobile-quick-fab"
-            onClick={() => setShowMobileQuickActions(true)}
-            aria-label="מוקד פעולות מהיר"
-            title="מוקד פעולות מהיר לתלמיד"
-          >
-            <span className="fab-icon-wrap">
-              <Mic size={16} />
-            </span>
-            <span>תיעוד מהיר</span>
-          </button>
-
-          <MobileQuickActionsModal
-            isOpen={showMobileQuickActions}
-            onClose={() => setShowMobileQuickActions(false)}
-            students={baseStudentsForView}
-            selectedStudentId={selectedStudentId || undefined}
-            onSelectStudent={(stId) => {
-              setSelectedStudentId(stId);
-            }}
-            currentUser={effectiveCurrentUser}
-            onUpdateStudent={(updatedStudent) => {
-              handleSaveStudentPlan(updatedStudent);
-            }}
-          />
-        </>
-      )}
-
       {/* Live Bi-directional Support Chat Widget for Teachers (Non-intrusive floating launcher) */}
       {currentUser && (
         <TeacherChatWidget
