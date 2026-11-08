@@ -350,7 +350,7 @@ export default function EcologicalWorkPlanForm({
 
   const AI_BUSY_STEPS = [
     'שלב 1/3: מנתח את התיאור החופשי ומזהה מוקדי כוח, תחומי תפקוד ואתגרים של הילד/ה...',
-    'שלב 2/3: מתאים מטרות ויעדים לפי גיל ורמת הילד/ה ומחשב משך זמן יחסי (T-Shirt Size)...',
+    'שלב 2/3: מתאים מטרות ויעדים לפי גיל ורמת הילד/ה ומחשב משך זמן יחסי לפי גודל המטרה...',
     'שלב 3/3: מנסח בעברית פדגוגית תקנית את טבלת המטרות, היעדים ופרק ההמלצות...'
   ];
 
@@ -1431,7 +1431,7 @@ export default function EcologicalWorkPlanForm({
         ? ` (${protectedGoals.length} מטרות שנערכו על ידי המורה נשמרו ללא כל שינוי)`
         : '';
     setReverseEngineerBanner(
-      `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו ${isTalaMode ? 'פרופיל התלמיד/ה' : 'טבלת מוקדי הכוח'}, ${candidateGoals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות. (שירות ה-AI לא היה זמין – הדוח הופק במנוע המקומי, מותאם לשלב החינוכי: ${getStageLabelHe(currentStage)}. ניתן לנסות שוב מאוחר יותר.)`
+      `✨ הדוח הרשמי הופק בהצלחה מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה, נוסחו ${isTalaMode ? 'פרופיל התלמיד/ה' : 'טבלת מוקדי הכוח'}, ${candidateGoals.length} מטרות רשמיות${preservedNote} ופרק ההמלצות. (שירות ה-AI לא היה זמין – הדוח הופק במנוע המקומי, מותאם לשלב החינוכי: ${getStageLabelHe(currentStage)}. ניתן לנסות שוב מאוחר יותר.)`
     );
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 3500);
@@ -1733,7 +1733,7 @@ ${textToUse}
               ? ` 🎯 אימות שלב חינוכי (${getStageLabelHe(currentStage)}): הוסרו ${stageCheck.droppedCount} מטרות לא מתאימות, תוקנו ${stageCheck.correctedCount}.`
               : '';
           setReverseEngineerBanner(
-            `✨ הדוח הרשמי הופק בהצלחה ב-Gemini AI מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה (T-Shirt Size), נוסחו פרופיל התלמיד/ה, ${mergedGoals.length} מטרות${preservedNote} ופרק ההמלצות.${stageNote}`
+            `✨ הדוח הרשמי הופק בהצלחה ב-Gemini AI מתוך הטקסט הגולמי! הותאמו זמני יעד יחסיים לפי גודל המטרה, נוסחו פרופיל התלמיד/ה, ${mergedGoals.length} מטרות${preservedNote} ופרק ההמלצות.${stageNote}`
           );
           setSaveBanner(true);
           setTimeout(() => setSaveBanner(false), 3500);
