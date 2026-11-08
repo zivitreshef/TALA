@@ -153,3 +153,17 @@ describe('Hebrew Wording & Typo Fixes in AdminAnalyticsDashboard (Issue 4)', () 
     expect(html).not.toContain('(tala_health_events)');
   });
 });
+
+describe('Hebrew-Only Titles & Removal of English in Parentheses', () => {
+  it('prohibits (T-Shirt Size) across generated report banners and UI step labels', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const formCode = fs.readFileSync(path.resolve(__dirname, '../EcologicalWorkPlanForm.tsx'), 'utf8');
+
+    // Ensure user-facing banner messages and step instructions do not include (T-Shirt Size)
+    expect(formCode).not.toContain('לפי גודל המטרה (T-Shirt Size)');
+    expect(formCode).not.toContain('ומחשב משך זמן יחסי (T-Shirt Size)');
+    expect(formCode).toContain('הותאמו זמני יעד יחסיים לפי גודל המטרה');
+    expect(formCode).toContain('ומחשב משך זמן יחסי לפי גודל המטרה');
+  });
+});
