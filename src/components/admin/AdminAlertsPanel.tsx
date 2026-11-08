@@ -24,12 +24,14 @@ export interface AdminAlertsPanelProps {
   allowedUsers?: any[];
   onUpdateAllowedUsers?: (users: any[]) => void;
   emailEngineConfig?: any;
+  initialExpandedAdminId?: string | null;
 }
 
 export default function AdminAlertsPanel({
   allowedUsers = [],
   onUpdateAllowedUsers,
-  emailEngineConfig = null
+  emailEngineConfig = null,
+  initialExpandedAdminId = null
 }: AdminAlertsPanelProps) {
   const admins = (allowedUsers || []).filter((u) => u && u.role === 'admin' && u.active !== false);
 
@@ -42,7 +44,7 @@ export default function AdminAlertsPanel({
     return initial;
   });
 
-  const [expandedAdminId, setExpandedAdminId] = useState<string | null>(() => (admins[0]?.id || admins[0]?.email || null));
+  const [expandedAdminId, setExpandedAdminId] = useState<string | null>(initialExpandedAdminId);
   const [showGuide, setShowGuide] = useState(false);
   const [testingChannel, setTestingChannel] = useState<{ adminKey: string; channel: string } | null>(null);
   const [testResult, setTestResult] = useState<{ adminKey: string; channel: string; ok: boolean; message: string } | null>(null);
@@ -228,7 +230,7 @@ export default function AdminAlertsPanel({
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#1e3a8a' }}>
-              התרעות מנהל בזמן אמת (Real-Time Push Alerts)
+              התרעות מנהל בזמן אמת
             </h3>
             <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#3b82f6' }}>
               קבלת התרעה מיידית למייל, ל-WhatsApp או ל-Telegram בכל פעם שמתרחשת תקלת מערכת או חריגת מכסה
@@ -281,7 +283,7 @@ export default function AdminAlertsPanel({
               <div>מופעל אוטומטית דרך מנוע המייל של TALA. פשוט ודאו שכתובת המייל מעודכנת והמתג דולק.</div>
             </div>
             <div style={{ background: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontWeight: 700, color: '#16a34a', marginBottom: '4px' }}>💬 2. וואטסאפ (CallMeBot חינם)</div>
+              <div style={{ fontWeight: 700, color: '#16a34a', marginBottom: '4px' }}>💬 2. וואטסאפ (חינם)</div>
               <div>
                 שלחו מטלפונכם בוואטסאפ את ההודעה: <code>I allow callmebot to send me messages</code> למספר{' '}
                 <strong>+34 911 06 16 54</strong>. תקבלו מפתח (API Key) תוך שניות — הדביקו אותו כאן!
@@ -478,7 +480,7 @@ export default function AdminAlertsPanel({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Mail size={18} color="#2563eb" />
                         <span style={{ fontWeight: 700, fontSize: '13.5px', color: '#1e3a8a' }}>
-                          התרעות באימייל (Email Push)
+                          התרעות באימייל
                         </span>
                       </div>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
@@ -559,7 +561,7 @@ export default function AdminAlertsPanel({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <MessageSquare size={18} color="#16a34a" />
                         <span style={{ fontWeight: 700, fontSize: '13.5px', color: '#14532d' }}>
-                          התרעות בוואטסאפ (WhatsApp via CallMeBot)
+                          התרעות בוואטסאפ
                         </span>
                       </div>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
@@ -668,7 +670,7 @@ export default function AdminAlertsPanel({
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Smartphone size={18} color="#0284c7" />
                         <span style={{ fontWeight: 700, fontSize: '13.5px', color: '#075985' }}>
-                          התרעות בטלגרם (Telegram Push Bot)
+                          התרעות בטלגרם
                         </span>
                       </div>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
@@ -688,7 +690,7 @@ export default function AdminAlertsPanel({
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <div style={{ flex: '1', minWidth: '180px' }}>
                           <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>
-                            מזהה צ׳אט (Telegram Chat ID):
+                            מזהה צ׳אט:
                           </label>
                           <input
                             type="text"

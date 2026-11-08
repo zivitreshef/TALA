@@ -20,6 +20,7 @@ export interface VoiceObservationRecorderProps {
   baseText?: string;
   onAudioReady?: (audioBlob: Blob, audioUrl: string) => void;
   onClearAudio?: () => void;
+  onRecordingStart?: () => void;
   disabled?: boolean;
 }
 
@@ -55,6 +56,7 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
   baseText = '',
   onAudioReady,
   onClearAudio,
+  onRecordingStart,
   disabled = false
 }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -236,6 +238,7 @@ export const VoiceObservationRecorder: React.FC<VoiceObservationRecorderProps> =
       }
 
       setIsRecording(true);
+      onRecordingStart?.();
       setRecordingSeconds(0);
 
       // Start timer

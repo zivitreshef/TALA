@@ -14,11 +14,14 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-  Layers
+  Layers,
+  Search,
+  Sparkles
 } from 'lucide-react';
 import {
   aggregateTelemetryData,
-  generateTelemetryCsv
+  generateTelemetryCsv,
+  toTimestampMs
 } from '../../domain/telemetry';
 import {
   fetchTelemetrySnapshot,
@@ -45,6 +48,9 @@ export default function AdminUsageAndSecurityDashboard({
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [showBlazeBreakdown, setShowBlazeBreakdown] = useState(false);
   const [showLargestFiles, setShowLargestFiles] = useState(false);
+  const [aiSearchEmail, setAiSearchEmail] = useState('');
+  const [aiOperationFilter, setAiOperationFilter] = useState('all');
+  const [showAllAiLogs, setShowAllAiLogs] = useState(false);
 
   const loadSnapshot = async () => {
     setLoading(true);
@@ -76,6 +82,49 @@ export default function AdminUsageAndSecurityDashboard({
       now: new Date()
     });
   }, [rawAiLogs, rawEmailLogs, students, settings]);
+
+  const AI_OPERATION_NAMES_HE: Record<string, string> = {
+    goalMatch: 'ניתוח ושיוך ליעד ב-AI',
+    rawPrompt: 'שאילתת פרומפט חופשית',
+    transcribeAudio: 'תמלול הקלטה קולית',
+    facilitate: 'הנחיית שאלות ליעד',
+    applyAnswers: 'גזירת יעד מתשובות',
+    reverseEngineer: 'קליטת אבחון וניתוח מסמך',
+    reverseEngineerFullReport: 'קליטת אבחון ודוח מלא',
+    summary: 'הפקת סיכום פדגוגי',
+    statusReport: 'דוח סטטוס והערכה',
+    eval: 'הערכת התקדמות',
+    evalFull: 'הערכה מקיפה',
+    ping: 'בדיקת תקינות שרת'
+  };
+
+  const AI_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+    ok: { label: 'הושלם בהצלחה', color: '#15803d', bg: '#dcfce7' },
+    ok_raw: { label: 'הושלם בהצלחה', color: '#15803d', bg: '#dcfce7' },
+    blocked_injection: { label: 'נחסם (הזרקת תוכן)', color: '#991b1b', bg: '#fee2e2' },
+    rate_limit_exceeded: { label: 'הוגבל קצב', color: '#92400e', bg: '#fef3c7' },
+    gemini_error: { label: 'שגיאת מודל', color: '#991b1b', bg: '#fee2e2' }
+  };
+
+  const filteredAiLogs = useMemo(() => {
+    let list = Array.isArray(rawAiLogs) ? [...rawAiLogs] : [];
+    list.sort((a, b) => {
+      const aMs = toTimestampMs(a.createdAt || a.timestamp || a.createdAtMs);
+      const bMs = toTimestampMs(b.createdAt || b.timestamp || b.createdAtMs);
+      return bMs - aMs;
+    });
+
+    if (aiSearchEmail.trim()) {
+      const q = aiSearchEmail.trim().toLowerCase();
+      list = list.filter((l) => (l.email || '').toLowerCase().includes(q));
+    }
+
+    if (aiOperationFilter !== 'all') {
+      list = list.filter((l) => l.operation === aiOperationFilter);
+    }
+
+    return list;
+  }, [rawAiLogs, aiSearchEmail, aiOperationFilter]);
 
   const handleToggleAiFreeze = async () => {
     const nextFreeze = !data.isAiFrozen;
@@ -290,7 +339,7 @@ export default function AdminUsageAndSecurityDashboard({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertTriangle size={18} style={{ color: '#d97706' }} />
             <strong style={{ fontSize: '14px', color: '#92400e' }}>
-              התראות סף מקדימות וזיהוי חריגות פעילות (Proactive Anomaly Alerts):
+              התראות סף מקדימות וזיהוי חריגות פעילות:
             </strong>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -348,7 +397,7 @@ export default function AdminUsageAndSecurityDashboard({
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#5b21b6' }}>
-              🤖 שאילתות AI (Gemini)
+              🤖 שאילתות AI
             </span>
             <Zap size={18} style={{ color: '#7c3aed' }} />
           </div>
@@ -391,7 +440,7 @@ export default function AdminUsageAndSecurityDashboard({
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#1e40af' }}>
-              ✉️ משלוח מיילים (Apps Script)
+              ✉️ משלוח מיילים
             </span>
             <Mail size={18} style={{ color: '#2563eb' }} />
           </div>
@@ -433,7 +482,7 @@ export default function AdminUsageAndSecurityDashboard({
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#166534' }}>
-              💾 אחסון תיקי אבחון (Storage)
+              💾 אחסון תיקי אבחון
             </span>
             <HardDrive size={18} style={{ color: '#16a34a' }} />
           </div>
@@ -693,7 +742,7 @@ export default function AdminUsageAndSecurityDashboard({
               <thead>
                 <tr>
                   <th>שירות ענן</th>
-                  <th>מסגרת חינמית (Free Tier)</th>
+                  <th>מסגרת חינמית</th>
                   <th>צריכה נוכחית</th>
                   <th>סטטוס חיוב</th>
                   <th>עלות משוערת</th>
@@ -756,7 +805,7 @@ export default function AdminUsageAndSecurityDashboard({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <FileText size={18} style={{ color: '#16a34a' }} />
               <strong style={{ fontSize: '14px', color: '#14532d' }}>
-                📁 קבצי אבחון כבדים ביותר ב-Storage (Top 5 Files)
+                📁 קבצי אבחון כבדים ביותר באחסון
               </strong>
             </div>
             <button
@@ -819,7 +868,7 @@ export default function AdminUsageAndSecurityDashboard({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ShieldAlert size={18} style={{ color: '#dc2626' }} />
             <strong style={{ fontSize: '14px', color: '#991b1b' }}>
-              🛡️ יומן חסימות אבטחה, הזרקות וחריגות קצב (Security & Abuse Watchdog):
+              🛡️ יומן חסימות אבטחה, הזרקות וחריגות קצב:
             </strong>
           </div>
           <span style={{ fontSize: '11.5px', color: '#64748b' }}>
@@ -956,7 +1005,7 @@ export default function AdminUsageAndSecurityDashboard({
         }}
       >
         <strong style={{ fontSize: '14px', color: '#1e3a5f' }}>
-          👥 דירוג משתמשות פעילות (Real Cloud Consumer Ranking):
+          👥 דירוג משתמשות פעילות:
         </strong>
 
         {data.topActiveTeachers.length === 0 ? (
@@ -998,6 +1047,177 @@ export default function AdminUsageAndSecurityDashboard({
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* Row 7: Detailed AI Audit Logs & Operations */}
+      <div
+        data-testid="detailed-ai-logs-panel"
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles size={18} color="#7c3aed" />
+            <strong style={{ fontSize: '14px', color: '#1e3a5f' }}>
+              פירוט שאילתות ופעולות AI אחרונות ({filteredAiLogs.length})
+            </strong>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Search Input */}
+            <div style={{ position: 'relative', minWidth: '220px' }}>
+              <input
+                type="text"
+                placeholder="חיפוש לפי מייל משתמש/ת..."
+                value={aiSearchEmail}
+                onChange={(e) => setAiSearchEmail(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '5px 10px 5px 28px',
+                  fontSize: '12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px'
+                }}
+              />
+              <Search size={13} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            </div>
+
+            {/* Operation Filter */}
+            <select
+              value={aiOperationFilter}
+              onChange={(e) => setAiOperationFilter(e.target.value)}
+              style={{
+                padding: '5px 8px',
+                fontSize: '12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                background: '#ffffff',
+                color: '#334155'
+              }}
+            >
+              <option value="all">כל סוגי הפעולות</option>
+              <option value="goalMatch">ניתוח ושיוך ליעד ב-AI</option>
+              <option value="transcribeAudio">תמלול הקלטה קולית</option>
+              <option value="rawPrompt">שאילתת פרומפט חופשית</option>
+              <option value="facilitate">הנחיית שאלות ליעד</option>
+              <option value="applyAnswers">גזירת יעד מתשובות</option>
+              <option value="reverseEngineerFullReport">קליטת אבחון ודוח מלא</option>
+              <option value="reverseEngineer">קליטת אבחון וניתוח מסמך</option>
+              <option value="summary">הפקת סיכום פדגוגי</option>
+            </select>
+          </div>
+        </div>
+
+        {filteredAiLogs.length === 0 ? (
+          <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '12.5px', background: '#f8fafc', borderRadius: '8px' }}>
+            {rawAiLogs.length === 0
+              ? 'טרם נרשמו שאילתות AI בענן.'
+              : 'לא נמצאו רשומות AI התואמות לחיפוש הנוכחי.'}
+          </div>
+        ) : (
+          <div className="allowed-users-table-wrap" style={{ maxHeight: '280px', overflowY: 'auto' }}>
+            <table className="allowed-users-table">
+              <thead>
+                <tr>
+                  <th>זמן</th>
+                  <th>משתמש/ת (Email)</th>
+                  <th>סוג פעולה</th>
+                  <th>מודל</th>
+                  <th>סטטוס</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAiLogs.slice(0, showAllAiLogs ? 300 : 25).map((log: any, idx: number) => {
+                  const ms = toTimestampMs(log.createdAt || log.timestamp || log.createdAtMs);
+                  const dateStr = ms
+                    ? new Date(ms).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'medium' })
+                    : '—';
+                  const opKey = String(log.operation || 'rawPrompt');
+                  const opLabel = AI_OPERATION_NAMES_HE[opKey] || opKey;
+                  const stConfig = AI_STATUS_CONFIG[log.status] || {
+                    label: log.status || 'הושלם',
+                    color: '#15803d',
+                    bg: '#dcfce7'
+                  };
+
+                  return (
+                    <tr key={String(log.id || `${ms}_${idx}`)}>
+                      <td style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>
+                        {dateStr}
+                      </td>
+                      <td style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '12px' }}>
+                        {log.email || '—'}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            fontSize: '11.5px',
+                            fontWeight: 600,
+                            color: opKey === 'goalMatch' ? '#6d28d9' : opKey === 'transcribeAudio' ? '#0284c7' : '#334155',
+                            background: opKey === 'goalMatch' ? '#f5f3ff' : opKey === 'transcribeAudio' ? '#f0f9ff' : '#f1f5f9',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: `1px solid ${opKey === 'goalMatch' ? '#ddd6fe' : opKey === 'transcribeAudio' ? '#bae6fd' : '#e2e8f0'}`,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          {opKey === 'goalMatch' ? '🎯 ' : opKey === 'transcribeAudio' ? '🎙️ ' : '🤖 '}
+                          {opLabel}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '11px', color: '#64748b' }}>
+                        {log.model || 'gemini-2.5-flash'}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: stConfig.color,
+                            background: stConfig.bg,
+                            padding: '2px 8px',
+                            borderRadius: '999px'
+                          }}
+                        >
+                          {stConfig.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {filteredAiLogs.length > 25 && !showAllAiLogs && (
+          <div style={{ textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setShowAllAiLogs(true)}
+              style={{
+                fontSize: '12px',
+                color: '#2563eb',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+                textDecoration: 'underline'
+              }}
+            >
+              הצג את כל {filteredAiLogs.length} הרשומות
+            </button>
           </div>
         )}
       </div>

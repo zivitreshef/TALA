@@ -93,11 +93,11 @@ describe('Telemetry Event Taxonomy Registry (F2, F12, F16, F17, F18)', () => {
       expect(TELEMETRY_EVENTS.PAGE_LOAD_RECORDED).toBe('page_load_recorded');
     });
 
-    it('contains exactly 33 unique event definitions in total', () => {
+    it('contains exactly 34 unique event definitions in total', () => {
       const events = getAllEvents();
       const uniqueEvents = new Set(events);
-      expect(uniqueEvents.size).toBe(33);
-      expect(events.length).toBe(33);
+      expect(uniqueEvents.size).toBe(34);
+      expect(events.length).toBe(34);
     });
 
     it('maps every single event to a recognized category in EVENT_CATEGORY_MAP', () => {
@@ -118,7 +118,8 @@ describe('Telemetry Event Taxonomy Registry (F2, F12, F16, F17, F18)', () => {
         'daily_tracking_entry_started',
         'daily_tracking_entry_completed',
         'daily_tracking_entry_abandoned',
-        'daily_tracking_streak_recorded'
+        'daily_tracking_streak_recorded',
+        'voice_observation_recorded'
       ]);
 
       const sharingChatEvents = getEventsByCategory(TELEMETRY_CATEGORIES.SHARING_AND_CHAT);

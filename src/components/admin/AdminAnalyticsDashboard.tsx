@@ -122,16 +122,18 @@ export interface AdminAnalyticsDashboardProps {
   initialTimeRange?: string;
   initialEvents?: any[] | null;
   onExport?: ((events: any[], analytics?: any) => void) | null;
+  initialTab?: string;
 }
 
 export default function AdminAnalyticsDashboard({
   currentUser = null,
   initialTimeRange = '30d',
   initialEvents = null,
-  onExport = null
+  onExport = null,
+  initialTab = 'overview'
 }: AdminAnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState(initialTimeRange);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [settings, setSettings] = useState<TelemetryDashboardSettings>(() => {
     try {
       const saved = safeGetStorageJson<Partial<TelemetryDashboardSettings>>(TELEMETRY_SETTINGS_KEY, null);
@@ -786,6 +788,17 @@ export default function AdminAnalyticsDashboard({
                   {dailyTracking.abandoned} יציאות לאחר כ-{dailyTracking.avgAbandonTimeSec} שניות בממוצע
                 </div>
               </div>
+
+              <div style={cardStyle} data-testid="kpi-card-voice-tracking">
+                <div style={cardHeaderStyle}>
+                  <span style={cardTitleStyle}>תיעודים קוליים</span>
+                  <span style={{ ...cardIconStyle, background: '#f5f3ff', color: '#7c3aed' }}>🎙️</span>
+                </div>
+                <div style={cardValueStyle}>{dailyTracking.voiceCount}</div>
+                <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600 }}>
+                  {dailyTracking.voicePct}% מכלל הרשומות
+                </div>
+              </div>
             </div>
 
             {/* Breakdown Panels */}
@@ -805,6 +818,36 @@ export default function AdminAnalyticsDashboard({
                       </span>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Voice vs Text Input Breakdown */}
+              <div style={panelStyle} data-testid="panel-voice-vs-text">
+                <h3 style={panelTitleStyle}>🎙️ אופן הזנת התיעוד:</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ width: '130px', fontSize: '12.5px', fontWeight: 600, color: '#7c3aed' }}>
+                      🎙️ הקלטה קולית
+                    </span>
+                    <div style={{ flex: 1, height: '8px', background: '#e9f0f8', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${dailyTracking.voicePct}%`, background: '#7c3aed', borderRadius: '4px' }} />
+                    </div>
+                    <span style={{ width: '80px', fontSize: '12px', fontWeight: 600, textAlign: 'left', color: '#5e718d' }}>
+                      {dailyTracking.voiceCount} ({dailyTracking.voicePct}%)
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ width: '130px', fontSize: '12.5px', fontWeight: 600, color: '#2563eb' }}>
+                      ⌨️ הקלדת טקסט
+                    </span>
+                    <div style={{ flex: 1, height: '8px', background: '#e9f0f8', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${dailyTracking.textPct}%`, background: '#2563eb', borderRadius: '4px' }} />
+                    </div>
+                    <span style={{ width: '80px', fontSize: '12px', fontWeight: 600, textAlign: 'left', color: '#5e718d' }}>
+                      {dailyTracking.textCount} ({dailyTracking.textPct}%)
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -904,12 +947,12 @@ export default function AdminAnalyticsDashboard({
 
               <div style={cardStyle}>
                 <div style={cardHeaderStyle}>
-                  <span style={cardTitleStyle}>ססיות צ'אט פדגוגי</span>
+                  <span style={cardTitleStyle}>שיחות צ'אט פדגוגי</span>
                   <span style={{ ...cardIconStyle, background: '#f5f3ff', color: '#8b6fc0' }}>💬</span>
                 </div>
                 <div style={cardValueStyle}>{sharingAndChat.chatSessionsStarted}</div>
                 <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600 }}>
-                  ממוצע {sharingAndChat.avgTurnsPerSession} אינטראקציות לססיה
+                  ממוצע {sharingAndChat.avgTurnsPerSession} אינטראקציות לשיחה
                 </div>
               </div>
 
@@ -1265,7 +1308,7 @@ export default function AdminAnalyticsDashboard({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '20px' }}>🤖</span>
-                  <h3 style={{ ...panelTitleStyle, margin: 0 }}>בריאות ותקינות מנוע ה-AI ורשת (tala_health_events)</h3>
+                  <h3 style={{ ...panelTitleStyle, margin: 0 }}>בריאות ותקינות מנוע ה-AI והרשת</h3>
                   <span
                     style={{
                       fontSize: '11px',
