@@ -66,3 +66,7 @@ For ANY enhancement or bug fix, ALWAYS strictly follow this 7-step lifecycle:
    - **STRICT PROHIBITION**: NEVER push directly to `main` (`git push origin main` is blocked by `.git/hooks/pre-push`). If a PR cannot be opened or merged, the task is BLOCKED — stop immediately, report the failure, and do NOT bypass the gate.
 6. **Deploy Web**: Confirm that the GitHub Actions deployment workflow to GitHub Pages starts and finishes successfully.
 7. **Disable Banner (If Activated)**: If the red warning banner was triggered in Step 1, turn it off once the deployment is live: `npm run upgrade:end`.
+
+# Code Search and Navigation
+
+- **ripgrep (`rg`)**: `rg` is installed and globally available on PATH. Use `rg` as the primary search command for fast recursive project inspections and symbol discovery.
