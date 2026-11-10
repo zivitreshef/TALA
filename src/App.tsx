@@ -27,8 +27,10 @@ import {
   ArrowRight,
   ArrowLeft,
   Calendar,
-    ClipboardList
+    ClipboardList,
+  Download
 } from 'lucide-react';
+import { diagnosticTracer } from './services/diagnosticTracer';
 import {
   loadAllowedUsers,
   saveAllowedUsers,
@@ -4460,6 +4462,52 @@ export default function App() {
           onToggleOpen={setIsSupportChatOpen}
           onboardingDockMode={onboardingDockMode}
         />
+      )}
+
+      {/* Discreet floating diagnostic badge when ?debug=true or trace mode is active */}
+      {diagnosticTracer.isDebugModeEnabled() && (
+        <div
+          data-testid="floating-diagnostic-badge"
+          style={{
+            position: 'fixed',
+            bottom: '16px',
+            left: '16px',
+            zIndex: 99999,
+            background: 'rgba(15, 23, 42, 0.94)',
+            backdropFilter: 'blur(8px)',
+            color: '#ffffff',
+            padding: '6px 14px',
+            borderRadius: '999px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+            border: '1.5px solid #38bdf8',
+            fontSize: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}
+        >
+          <span style={{ fontWeight: 600, color: '#38bdf8' }}>🔍 מצב אבחון פעיל</span>
+          <button
+            type="button"
+            onClick={() => diagnosticTracer.downloadTraceLog()}
+            style={{
+              background: '#38bdf8',
+              color: '#0f172a',
+              border: 'none',
+              borderRadius: '999px',
+              padding: '3px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <Download size={11} />
+            <span>הורדת יומן</span>
+          </button>
+        </div>
       )}
     </div>
   );
