@@ -2350,7 +2350,7 @@ export const INITIAL_STUDENTS_DATA = [
   {
     id: 'st_demo_1',
     date: new Date().toLocaleDateString('he-IL'),
-    schoolYear: 'תשפ"ו (2025-2026)',
+    schoolYear: 'תשפ"ז (2026-2027)',
     planType: 'תוכנית אקולוגית לילדי הגן',
     name: 'נועם ישראלי',
     gender: 'boy',

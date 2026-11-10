@@ -46,7 +46,8 @@ import {
 } from './AllowlistAuthGate';
 import {
   DEFAULT_PLAN_TYPE,
-  TACHI_PLAN_TYPE
+  TACHI_PLAN_TYPE,
+  DEFAULT_SCHOOL_YEAR
 } from './domain/yearReport';
 import {
   DEFAULT_USER_PREFERENCES,
@@ -1831,7 +1832,7 @@ export default function App() {
       id: newId,
       ownerEmail: currentUser.email.trim().toLowerCase(),
       date: todayStr,
-      schoolYear: 'תשפ"ו (2025-2026)',
+      schoolYear: DEFAULT_SCHOOL_YEAR,
       planType: chosenPlanType,
       name: '',
       gender: 'boy',

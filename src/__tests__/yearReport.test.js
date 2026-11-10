@@ -11,7 +11,7 @@ import {
   normalizeStudentForForm
 } from '../domain/yearReport';
 
-const Y2 = 'תשפ"ז (2026-2027)';
+const Y2 = 'תשפ"ח (2027-2028)';
 
 describe('yearReport', () => {
   it('builds storage keys per plan type with a default year', () => {

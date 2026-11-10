@@ -143,9 +143,10 @@ import { HEALTH_EVENT_KINDS } from './domain/healthEvents';
 
 // NEW: Firebase Functions imports
 import {
-    DEFAULT_PLAN_TYPE,
+  DEFAULT_SCHOOL_YEAR,
+  DEFAULT_PLAN_TYPE,
   TACHI_PLAN_TYPE,
-      extractYearReportFromFormData,
+  extractYearReportFromFormData,
   isRawFreeTextAlreadyAnalyzed,
   hasContentInYearReport,
   normalizeStudentForForm,
@@ -765,7 +766,7 @@ export default function EcologicalWorkPlanForm({
 
   // Rollover current student's plan into the next school year (Option D)
   const handleRolloverToNextYear = (targetYearOverride = null) => {
-    const currentYear = formData.schoolYear || 'תשפ"ו (2025-2026)';
+    const currentYear = formData.schoolYear || DEFAULT_SCHOOL_YEAR;
     const nextYear = targetYearOverride || getNextSchoolYear(currentYear);
     if (
       !window.confirm(
@@ -2898,17 +2899,17 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           <div className="inline-meta-field banner-slot-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
             <label style={{ whiteSpace: 'nowrap' }}>שנת לימודים:</label>
             <select
-              value={formData.schoolYear || 'תשפ"ו (2025-2026)'}
+              value={formData.schoolYear || DEFAULT_SCHOOL_YEAR}
               onChange={(e) => handleSchoolYearChange(e.target.value)}
               title="בחר שנת לימודים להצגה או ליצירת דו״ח חדש לתלמיד/ה עבור שנה זו"
             >
-              {!SCHOOL_YEARS_LIST.includes(formData.schoolYear || 'תשפ"ו (2025-2026)') && (
+              {!SCHOOL_YEARS_LIST.includes(formData.schoolYear || DEFAULT_SCHOOL_YEAR) && (
                 <option value={formData.schoolYear}>
                   {formData.schoolYear}
                 </option>
               )}
               {SCHOOL_YEARS_LIST.map((yr) => {
-                const isCurrent = yr === (formData.schoolYear || 'תשפ"ו (2025-2026)');
+                const isCurrent = yr === (formData.schoolYear || DEFAULT_SCHOOL_YEAR);
                 const rep = isCurrent
                   ? extractYearReportFromFormData(formData)
                   : formData.reportsByYear?.[yr];
@@ -2920,7 +2921,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 );
               })}
             </select>
-            {getNextSchoolYear(formData.schoolYear || 'תשפ"ו (2025-2026)') && (
+            {getNextSchoolYear(formData.schoolYear || DEFAULT_SCHOOL_YEAR) && (
               <button
                 type="button"
                 onClick={() => handleRolloverToNextYear()}

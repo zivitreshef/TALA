@@ -252,7 +252,7 @@ export const DEMO_STUDENT_DATA: Record<string, unknown> = {
   stageSource: 'demo_dataset',
   stageReason: 'תלמיד כיתה ב׳ במסגרת בית ספר יסודי',
   stageUpdatedAt: '2025-09-01T08:00:00.000Z',
-  schoolYear: 'תשפ"ו (2025-2026)',
+  schoolYear: 'תשפ"ז (2026-2027)',
   planType: 'תוכנית לימודים אישית (תל"א) - שילוב',
   address: 'רחוב הבנים 18, תל אביב',
   phone: '052-8765432',
@@ -584,7 +584,7 @@ export const DEMO_STUDENT_DATA: Record<string, unknown> = {
   // Section 9: 15-Section Status Report Data
   statusReport: {
     reportType: 'דוח מצב תפקודי לוועדת אפיון וזכאות',
-    academicYear: 'תשפ"ו (2025-2026)',
+    academicYear: 'תשפ"ז (2026-2027)',
     sectionsCount: 15,
     keySectionsSummary: {
       frameworkRationale: 'זכאות לסל שילוב בבית ספר יסודי לחיזוק אורייני, רגשי והתנהגותי',
