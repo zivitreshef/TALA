@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useModalAnimation } from '../hooks/useModalAnimation';
 import {
   Calendar as CalendarIcon,
   CalendarDays,
@@ -427,6 +428,10 @@ export default function DailyPedagogicalTracker({
   }, [events, STORAGE_EVENTS_KEY]);
 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const scheduleModalAnim = useModalAnimation({
+    isOpen: showScheduleModal,
+    onClose: () => setShowScheduleModal(false)
+  });
   const [editingEventId, setEditingEventId] = useState(null);
   const [newEventForm, setNewEventForm] = useState({
     title: '',
@@ -1905,9 +1910,9 @@ export default function DailyPedagogicalTracker({
       </div>
 
       {/* Modal: Schedule Event / Meeting */}
-      {showScheduleModal && (
-        <div className="tracker-modal-overlay">
-          <div className="tracker-modal-card" dir="rtl">
+      {scheduleModalAnim.shouldRender && (
+        <div className={`tracker-modal-overlay ${scheduleModalAnim.isClosing ? 'is-closing' : ''}`}>
+          <div className={`tracker-modal-card ${scheduleModalAnim.isClosing ? 'is-closing' : ''}`} dir="rtl">
             <div className="modal-header-row">
               <h3 className="modal-header-title">
                 <CalendarIcon size={17} style={{ color: '#4a88c7' }} />

@@ -108,6 +108,7 @@ import { INITIAL_GOAL_BANK } from './goalBankData';
 import { canLockReport, isStudentPlanShared } from './domain/permissions';
 import StatusReportPanel from './components/form/StatusReportPanel';
 import ShareTeamModal from './components/form/ShareTeamModal';
+import { useModalAnimation } from './hooks/useModalAnimation';
 import TeamChatDrawer from './components/form/TeamChatDrawer';
 import ParentVoiceControl from './components/form/ParentVoiceControl';
 import StaffVoiceControl, { type StaffMergePayload } from './components/form/StaffVoiceControl';
@@ -464,6 +465,10 @@ export default function EcologicalWorkPlanForm({
 
   // State for "Send to Email" (שלח למייל) modal
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const emailModalAnim = useModalAnimation({
+    isOpen: showEmailModal,
+    onClose: () => setShowEmailModal(false)
+  });
   const [emailRecipient, setEmailRecipient] = useState('');
   const [emailFormat, setEmailFormat] = useState('docx'); // 'docx' | 'pdf'
   const [emailStatusMsg, setEmailStatusMsg] = useState('');
@@ -7196,10 +7201,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
 
       {/* Send Report to Email Modal ("שלח למייל") */}
-      {showEmailModal && (
-        <div className="modal-backdrop" onClick={() => setShowEmailModal(false)}>
+      {emailModalAnim.shouldRender && (
+        <div
+          className={`modal-backdrop ${emailModalAnim.isClosing ? 'is-closing' : ''}`}
+          onClick={() => setShowEmailModal(false)}
+        >
           <div
-            className="modal-card email-report-modal"
+            className={`modal-card email-report-modal ${emailModalAnim.isClosing ? 'is-closing' : ''}`}
             dir="rtl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -7362,14 +7370,13 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       )}
 
       
-      {showMinistryCopyModal && (
-        <MinistryCopyModal
-          formData={formData}
-          hideDetails={hideStudentDetailsOnPrint}
-          onToggleHideDetails={setHideStudentDetailsOnPrint}
-          onClose={() => setShowMinistryCopyModal(false)}
-        />
-      )}
+      <MinistryCopyModal
+        isOpen={showMinistryCopyModal}
+        formData={formData}
+        hideDetails={hideStudentDetailsOnPrint}
+        onToggleHideDetails={setHideStudentDetailsOnPrint}
+        onClose={() => setShowMinistryCopyModal(false)}
+      />
       {observationModalGoalId &&
         (() => {
           const targetGoal = (formData.goals || []).find((g: any) => g.id === observationModalGoalId);
@@ -7418,31 +7425,31 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             />
           );
         })()}
-      {showDiagnosticIntakeModal && (
-        <DiagnosticIntakeModal
-          formData={formData}
-          initialText={selectedIntakeDoc?.fullText || ''}
-          initialDocName={selectedIntakeDoc?.fileName || ''}
-          authorName={userPreferences?.fullName || currentUser?.name || ''}
-          onApplyIntake={(updatedStudent) => {
-            setFormData(updatedStudent);
-            setIsDossierOpen(true);
-            onSaveStudentPlan?.(updatedStudent);
-            setShowDiagnosticIntakeModal(false);
-            setSelectedIntakeDoc(null);
-          }}
-          onClose={() => {
-            setShowDiagnosticIntakeModal(false);
-            setSelectedIntakeDoc(null);
-          }}
-        />
-      )}
+      <DiagnosticIntakeModal
+        isOpen={showDiagnosticIntakeModal}
+        formData={formData}
+        initialText={selectedIntakeDoc?.fullText || ''}
+        initialDocName={selectedIntakeDoc?.fileName || ''}
+        authorName={userPreferences?.fullName || currentUser?.name || ''}
+        onApplyIntake={(updatedStudent) => {
+          setFormData(updatedStudent);
+          setIsDossierOpen(true);
+          onSaveStudentPlan?.(updatedStudent);
+          setShowDiagnosticIntakeModal(false);
+          setSelectedIntakeDoc(null);
+        }}
+        onClose={() => {
+          setShowDiagnosticIntakeModal(false);
+          setSelectedIntakeDoc(null);
+        }}
+      />
 
       {/* Reader Modal for Diagnostic Document Full Text */}
       {viewingDocText && (
         <div
           role="dialog"
           aria-modal="true"
+          className="modal-backdrop"
           style={{
             position: 'fixed',
             inset: 0,
@@ -7457,6 +7464,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           onClick={() => setViewingDocText(null)}
         >
           <div
+            className="modal-card"
             style={{
               backgroundColor: '#ffffff',
               borderRadius: '14px',

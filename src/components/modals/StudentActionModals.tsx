@@ -10,6 +10,7 @@ export interface StudentToDelete {
 
 export interface DeleteStudentModalProps {
   studentToDelete?: StudentToDelete | null;
+  isClosing?: boolean;
   onClose: () => void;
   onConfirmArchiveInstead: (student?: any) => void;
   onConfirmDelete: (student?: any) => void;
@@ -17,16 +18,18 @@ export interface DeleteStudentModalProps {
 
 export function DeleteStudentModal({
   studentToDelete,
+  isClosing = false,
   onClose,
   onConfirmArchiveInstead,
   onConfirmDelete
 }: DeleteStudentModalProps): React.JSX.Element | null {
   if (!studentToDelete) return null;
+  const student = studentToDelete;
 
   return (
-    <div className="modal-backdrop" onClick={onClose} dir="rtl">
+    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose} dir="rtl">
       <div
-        className="modal-container"
+        className={`modal-container ${isClosing ? 'is-closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '460px', borderTopColor: '#d9534f' }}
       >
@@ -50,7 +53,7 @@ export function DeleteStudentModal({
             }}
           >
             האם את/ה בטוח/ה שברצונך למחוק את תכנית העבודה של{' '}
-            <strong>"{studentToDelete.name || 'ללא שם'}"</strong>?
+            <strong>"{student.name || 'ללא שם'}"</strong>?
           </p>
           <div
             style={{
@@ -61,13 +64,13 @@ export function DeleteStudentModal({
               borderRadius: '8px',
               fontSize: '12.5px',
               fontWeight: 600,
-              marginBottom: !studentToDelete.archived ? '10px' : 0
+              marginBottom: !student.archived ? '10px' : 0
             }}
           >
             ⚠️ שים/י לב: פעולה זו תמחק את התלמיד/ה ותכנית העבודה לצמיתות ולא ניתן לשחזר אותה.
           </div>
 
-          {!studentToDelete.archived && (
+          {!student.archived && (
             <div
               style={{
                 background: '#f3eefc',
@@ -104,10 +107,10 @@ export function DeleteStudentModal({
           </button>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {!studentToDelete.archived && (
+            {!student.archived && (
               <button
                 type="button"
-                onClick={() => onConfirmArchiveInstead(studentToDelete)}
+                onClick={() => onConfirmArchiveInstead(student)}
                 style={{
                   background: 'linear-gradient(135deg, #5b9bd5 0%, #8b6fc0 100%)',
                   color: '#ffffff',
@@ -129,7 +132,7 @@ export function DeleteStudentModal({
 
             <button
               type="button"
-              onClick={() => onConfirmDelete(studentToDelete)}
+              onClick={() => onConfirmDelete(student)}
               style={{
                 background: '#d9534f',
                 color: '#ffffff',
@@ -162,21 +165,23 @@ export interface StudentToArchive {
 
 export interface ArchiveStudentModalProps {
   studentToArchive?: StudentToArchive | null;
+  isClosing?: boolean;
   onClose: () => void;
   onConfirmArchive: (student?: any) => void;
 }
 
 export function ArchiveStudentModal({
   studentToArchive,
+  isClosing = false,
   onClose,
   onConfirmArchive
 }: ArchiveStudentModalProps): React.JSX.Element | null {
   if (!studentToArchive) return null;
 
   return (
-    <div className="modal-backdrop" onClick={onClose} dir="rtl">
+    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose} dir="rtl">
       <div
-        className="modal-container"
+        className={`modal-container ${isClosing ? 'is-closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '480px', borderTopColor: '#8b6fc0' }}
       >
@@ -260,6 +265,7 @@ export function ArchiveStudentModal({
 
 export interface LogoutUnsavedModalProps {
   isOpen: boolean;
+  isClosing?: boolean;
   draftStudentName?: string;
   onClose: () => void;
   onDiscardAndLogout: () => void;
@@ -268,6 +274,7 @@ export interface LogoutUnsavedModalProps {
 
 export function LogoutUnsavedModal({
   isOpen,
+  isClosing = false,
   draftStudentName,
   onClose,
   onDiscardAndLogout,
@@ -276,9 +283,9 @@ export function LogoutUnsavedModal({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop" onClick={onClose} dir="rtl">
+    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose} dir="rtl">
       <div
-        className="modal-container"
+        className={`modal-container ${isClosing ? 'is-closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '500px', borderTopColor: '#f59e0b' }}
       >

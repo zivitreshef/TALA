@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ClipboardCopy, Check, X, Eye, EyeOff } from 'lucide-react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import {
   buildMinistryCopyBlocks,
   formatAllMinistryBlocks,
@@ -9,6 +10,7 @@ import {
 
 export interface MinistryCopyModalProps {
   formData: MinistryCopyFormData;
+  isOpen?: boolean;
   hideDetails?: boolean;
   onToggleHideDetails?: (hide: boolean) => void;
   onClose: () => void;
@@ -16,16 +18,20 @@ export interface MinistryCopyModalProps {
 
 export default function MinistryCopyModal({
   formData,
+  isOpen = true,
   hideDetails = false,
   onToggleHideDetails,
   onClose
-}: MinistryCopyModalProps): React.JSX.Element {
+}: MinistryCopyModalProps): React.JSX.Element | null {
+  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const blocks: MinistryCopyBlock[] = useMemo(
     () => buildMinistryCopyBlocks(formData, Boolean(hideDetails)),
     [formData, hideDetails]
   );
+
+  if (!shouldRender) return null;
 
   const handleCopy = async (id: string, text: string): Promise<void> => {
     try {
@@ -43,9 +49,9 @@ export default function MinistryCopyModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose}>
       <div
-        className="modal-card email-report-modal"
+        className={`modal-card email-report-modal ${isClosing ? 'is-closing' : ''}`}
         dir="rtl"
         style={{ maxWidth: '680px', width: '95%' }}
         onClick={(e) => e.stopPropagation()}

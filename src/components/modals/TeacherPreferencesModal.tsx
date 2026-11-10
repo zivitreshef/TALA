@@ -4,6 +4,7 @@ import {
 } from '../../domain/dailyPedagogicalTracking';
 import { sendPedagogicalReminderEmailInBackground } from '../../emailService';
 import React, { useState, useEffect } from 'react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import {
   X,
   Check,
@@ -242,7 +243,13 @@ export default function TeacherPreferencesModal({
     }
   }, [isOpen, userPreferences, unreadSharedReports.length, isMandatoryFirstLogin]);
 
-  if (!isOpen || !currentUser) return null;
+  const { shouldRender, isClosing } = useModalAnimation({
+    isOpen,
+    onClose: isMandatoryFirstLogin ? undefined : onClose,
+    closeOnEsc: !isMandatoryFirstLogin
+  });
+
+  if (!shouldRender || !currentUser) return null;
 
   const notificationsEnabled = currentUser.notifyOnSharedReport !== false;
 
@@ -357,12 +364,12 @@ export default function TeacherPreferencesModal({
   if (isMandatoryFirstLogin) {
     return (
       <div
-        className="modal-backdrop"
+        className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`}
         onClick={() => {}}
         dir="rtl"
       >
         <div
-          className="modal-container"
+          className={`modal-container ${isClosing ? 'is-closing' : ''}`}
           onClick={(e) => e.stopPropagation()}
           style={{ maxWidth: '520px', borderTop: '5px solid #6b46c1' }}
         >
@@ -469,12 +476,12 @@ export default function TeacherPreferencesModal({
   // -------------------------------------------------------------
   return (
     <div
-      className="modal-backdrop"
+      className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`}
       onClick={onClose}
       dir="rtl"
     >
       <div
-        className="modal-container"
+        className={`modal-container ${isClosing ? 'is-closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '820px',

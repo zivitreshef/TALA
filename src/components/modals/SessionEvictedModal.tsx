@@ -35,6 +35,7 @@ export default function SessionEvictedModal({
       }}
     >
       <div
+        className="modal-card"
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '16px',

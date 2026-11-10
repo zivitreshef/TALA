@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import { Star, MessageSquareHeart, X, Send, Clock, EyeOff } from 'lucide-react';
 
 export interface SurveyCategory {
@@ -108,7 +109,12 @@ export default function UserFeedbackSurveyModal({
   const [improvementSuggestions, setImprovementSuggestions] = useState('');
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
 
-  if (!isOpen || !currentUser) return null;
+  const { shouldRender, isClosing } = useModalAnimation({
+    isOpen,
+    onClose: onSnoozeSurvey
+  });
+
+  if (!shouldRender || !currentUser) return null;
 
   const handleSetRating = (key: keyof SurveyRatings, val: number) => {
     setRatings((prev) => ({ ...prev, [key]: val }));
@@ -143,13 +149,13 @@ export default function UserFeedbackSurveyModal({
 
   return (
     <div
-      className="modal-backdrop"
+      className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`}
       dir="rtl"
       onClick={onSnoozeSurvey}
       style={{ zIndex: 2450 }}
     >
       <div
-        className="modal-container"
+        className={`modal-container ${isClosing ? 'is-closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '680px',
