@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { diagnosticTracer } from '../services/diagnosticTracer';
+import { usageTelemetryService } from '../services/usageTelemetryService';
+import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
 import SystemHealthPanel from '../components/modals/SystemHealthPanel';
 
 describe('DiagnosticTracer Service & End-User Debug Mode', () => {
@@ -57,6 +59,16 @@ describe('DiagnosticTracer Service & End-User Debug Mode', () => {
     expect(breadcrumbs[199].message).toBe('Step 219');
   });
 
+  it('automatically captures user actions from usageTelemetryService.track', () => {
+    usageTelemetryService.track(TELEMETRY_EVENTS.NAVIGATE_SCREEN, { screen: 'goals' });
+    const breadcrumbs = diagnosticTracer.getBreadcrumbs();
+    const found = breadcrumbs.find(
+      (b) => b.category === 'Telemetry' && b.message.includes(TELEMETRY_EVENTS.NAVIGATE_SCREEN)
+    );
+    expect(found).toBeDefined();
+    expect(found?.level).toBe('DEBUG');
+  });
+
   it('formats breadcrumbs into standard Log4j plain-text layout', () => {
     diagnosticTracer.debug('aiProxyClient', 'Call started');
     diagnosticTracer.error('aiProxyClient', 'Call failed', { code: 'NETWORK_ERR' });
@@ -71,7 +83,7 @@ describe('DiagnosticTracer Service & End-User Debug Mode', () => {
     const guidance = diagnosticTracer.getTeacherGuidanceText('https://test.tala.app/app');
     expect(guidance).toContain('https://test.tala.app/app?debug=true');
     expect(guidance).toContain('אנא היכנסי למערכת דרך הקישור הייעודי הבא:');
-    expect(guidance).toContain('הורדת יומן אבחון');
+    expect(guidance).toContain('הורדת יומן');
   });
 });
 

@@ -17,6 +17,7 @@ import {
   UserContext
 } from '../domain/telemetryPrivacy';
 import { isValidEventName, CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
+import { diagnosticTracer } from './diagnosticTracer';
 
 export const OFFLINE_STORAGE_KEY = 'tala_telemetry_offline_queue';
 export const RING_BUFFER_CAPACITY = 100;
@@ -161,6 +162,10 @@ export class UsageTelemetryService {
     properties: Record<string, unknown> = {},
     options: TrackOptions = {}
   ): boolean {
+    try {
+      diagnosticTracer.debug('Telemetry', eventName, properties);
+    } catch (_) {}
+
     try {
       if (!this._enabled) {
         return false;
