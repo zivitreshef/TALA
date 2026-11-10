@@ -107,3 +107,23 @@ export function removeSnippet(
   if (!Array.isArray(snippets)) return [];
   return snippets.filter((s) => s.id !== snippetId);
 }
+
+export function updateSnippet(
+  snippets: PedagogicalSnippet[] | undefined,
+  snippetId: string,
+  updatedContent: string
+): PedagogicalSnippet[] {
+  if (!Array.isArray(snippets)) return [];
+  const trimmed = (updatedContent || '').trim();
+  if (!trimmed) return snippets;
+  return snippets.map((s) => {
+    if (s.id === snippetId) {
+      return {
+        ...s,
+        content: trimmed,
+        updatedAt: new Date().toISOString()
+      };
+    }
+    return s;
+  });
+}

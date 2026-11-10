@@ -8,7 +8,8 @@ import {
   aggregateSnippetsForAiPrompt,
   syncSnippetsToCombinedText,
   addSnippet,
-  removeSnippet
+  removeSnippet,
+  updateSnippet
 } from '../domain/pedagogicalFeed';
 import PedagogicalFeed, { SNIPPET_COLOR_PALETTES } from '../components/form/PedagogicalFeed';
 import DiagnosticIntakeModal from '../components/form/DiagnosticIntakeModal';
@@ -141,6 +142,27 @@ describe('Pedagogical Feed Domain & Timeline Logic', () => {
       expect(removed[0].id).toBe('2');
       expect(added).toHaveLength(2);
     });
+
+    it('updateSnippet updates content and sets updatedAt immutably', () => {
+      const initial: PedagogicalSnippet[] = [
+        { id: '1', sourceType: 'document', sourceTitle: 'A', content: 'Original text', createdAt: '2026-11-01T10:00:00Z' },
+        { id: '2', sourceType: 'teacher_note', sourceTitle: 'B', content: 'Second note', createdAt: '2026-11-01T11:00:00Z' }
+      ];
+
+      const updated = updateSnippet(initial, '1', 'Updated text by teacher');
+      expect(updated).toHaveLength(2);
+      expect(updated[0].content).toBe('Updated text by teacher');
+      expect(updated[0].updatedAt).toBeDefined();
+      expect(initial[0].content).toBe('Original text');
+
+      const notFound = updateSnippet(initial, '999', 'Something');
+      expect(notFound[0].content).toBe('Original text');
+
+      const emptyUpdate = updateSnippet(initial, '1', '   ');
+      expect(emptyUpdate[0].content).toBe('Original text');
+
+      expect(updateSnippet(undefined, '1', 'Text')).toEqual([]);
+    });
   });
 });
 
@@ -239,6 +261,40 @@ describe('PedagogicalFeed Component UI Tests', () => {
 
     expect(html).toContain('דוגמה לבי');
     expect(html).toContain('דוגמה לגן');
+  });
+
+  it('renders edit pencil button for each snippet when report is not locked', () => {
+    const html = renderToStaticMarkup(
+      <PedagogicalFeed
+        snippets={sampleSnippets}
+        onAddSnippet={vi.fn()}
+        onUpdateSnippet={vi.fn()}
+        onRemoveSnippet={vi.fn()}
+        onOpenUploadModal={vi.fn()}
+        onTriggerAiAnalysis={vi.fn()}
+        isLocked={false}
+      />
+    );
+
+    expect(html).toContain('עריכת תובנה זו');
+    expect(html).toContain('הסרת תובנה זו');
+  });
+
+  it('hides edit pencil and remove buttons when report is locked', () => {
+    const html = renderToStaticMarkup(
+      <PedagogicalFeed
+        snippets={sampleSnippets}
+        onAddSnippet={vi.fn()}
+        onUpdateSnippet={vi.fn()}
+        onRemoveSnippet={vi.fn()}
+        onOpenUploadModal={vi.fn()}
+        onTriggerAiAnalysis={vi.fn()}
+        isLocked={true}
+      />
+    );
+
+    expect(html).not.toContain('עריכת תובנה זו');
+    expect(html).not.toContain('הסרת תובנה זו');
   });
 });
 

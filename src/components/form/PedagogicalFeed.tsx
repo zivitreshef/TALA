@@ -15,6 +15,9 @@ import {
   Lock,
   Play,
   Pause,
+  Pencil,
+  Check,
+  X
 
 } from 'lucide-react';
 import type { PedagogicalSnippet } from '../../domain/types';
@@ -110,6 +113,7 @@ export const SNIPPET_COLOR_PALETTES: SnippetColorTheme[] = [
 export interface PedagogicalFeedProps {
   snippets: PedagogicalSnippet[];
   onAddSnippet: (snippet: PedagogicalSnippet) => void;
+  onUpdateSnippet?: (snippetId: string, updatedContent: string) => void;
   onRemoveSnippet: (snippetId: string) => void;
   onOpenUploadModal: () => void;
   onSaveDraft?: () => void | Promise<void>;
@@ -123,6 +127,7 @@ export interface PedagogicalFeedProps {
 export default function PedagogicalFeed({
   snippets = [],
   onAddSnippet,
+  onUpdateSnippet,
   onRemoveSnippet,
   onOpenUploadModal,
   onSaveDraft,
@@ -133,6 +138,28 @@ export default function PedagogicalFeed({
   onboardingStep = 0
 }: PedagogicalFeedProps): React.JSX.Element {
   const [newNoteText, setNewNoteText] = useState('');
+  const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState<string>('');
+
+  const handleStartEdit = (snippet: PedagogicalSnippet): void => {
+    setEditingSnippetId(snippet.id);
+    setEditingText(snippet.content);
+  };
+
+  const handleCancelEdit = (): void => {
+    setEditingSnippetId(null);
+    setEditingText('');
+  };
+
+  const handleSaveEdit = (snippetId: string): void => {
+    const trimmed = editingText.trim();
+    if (!trimmed) return;
+    if (onUpdateSnippet) {
+      onUpdateSnippet(snippetId, trimmed);
+    }
+    setEditingSnippetId(null);
+    setEditingText('');
+  };
   const [saveToastVisible, setSaveToastVisible] = useState(false);
   const [lastSavedTime, setLastSavedTime] = useState<string>('');
   const [pendingAudioBlob, setPendingAudioBlob] = useState<Blob | null>(null);
@@ -522,6 +549,39 @@ export default function PedagogicalFeed({
                     </span>
                   )}
                   {!isLocked && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => (editingSnippetId === snippet.id ? handleCancelEdit() : handleStartEdit(snippet))}
+                        title={editingSnippetId === snippet.id ? 'ביטול עריכה' : 'עריכת תובנה זו'}
+                        aria-label={editingSnippetId === snippet.id ? 'ביטול עריכה' : 'עריכת תובנה זו'}
+                        style={{
+                          background: editingSnippetId === snippet.id ? '#ede9fe' : 'transparent',
+                          border: 'none',
+                          color: editingSnippetId === snippet.id ? '#6d28d9' : '#94a3b8',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (editingSnippetId !== snippet.id) {
+                            e.currentTarget.style.color = '#4f46e5';
+                            e.currentTarget.style.background = '#eef2ff';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (editingSnippetId !== snippet.id) {
+                            e.currentTarget.style.color = '#94a3b8';
+                            e.currentTarget.style.background = 'transparent';
+                          }
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </button>
                     <button
                       type="button"
                       onClick={() => onRemoveSnippet(snippet.id)}
@@ -549,11 +609,88 @@ export default function PedagogicalFeed({
                     >
                       <Trash2 size={14} />
                     </button>
-                  )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Snippet Content */}
+            {editingSnippetId === snippet.id ? (
+              <div style={{ marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <textarea
+                  rows={3}
+                  value={editingText}
+                  onChange={(e) => setEditingText(e.target.value)}
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    borderRadius: '7px',
+                    border: '1.5px solid #6366f1',
+                    padding: '8px 10px',
+                    fontSize: '0.85rem',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.45,
+                    outline: 'none',
+                    resize: 'vertical',
+                    background: '#ffffff',
+                    color: '#1e293b'
+                  }}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                      e.preventDefault();
+                      handleSaveEdit(snippet.id);
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      handleCancelEdit();
+                    }
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: '#f8fafc',
+                      color: '#64748b',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <X size={13} />
+                    <span>ביטול</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveEdit(snippet.id)}
+                    disabled={!editingText.trim()}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: editingText.trim() ? '#4f46e5' : '#cbd5e1',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: editingText.trim() ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    <Check size={13} />
+                    <span>שמירה</span>
+                  </button>
                 </div>
               </div>
-
-              {/* Snippet Content */}
+            ) : (
               <div
                 style={{
                   fontSize: '0.85rem',
@@ -568,6 +705,7 @@ export default function PedagogicalFeed({
               >
                 {snippet.content}
               </div>
+            )}
             </div>
           );
         })}

@@ -120,6 +120,7 @@ import {
   syncSnippetsToCombinedText,
   addSnippet,
   removeSnippet,
+  updateSnippet,
   createTeacherNoteSnippet
 } from './domain/pedagogicalFeed';
 import type { PedagogicalSnippet } from './domain/types';
@@ -300,6 +301,19 @@ export default function EcologicalWorkPlanForm({
       ? formData.pedagogicalSnippets
       : activeSnippets;
     const nextSnippets = removeSnippet(currentList, snippetId);
+    const combinedText = syncSnippetsToCombinedText(nextSnippets);
+    setFormData((prev: any) => ({
+      ...prev,
+      pedagogicalSnippets: nextSnippets,
+      teacherFreeText: combinedText
+    }));
+  };
+
+  const handleUpdateSnippet = (snippetId: string, updatedContent: string) => {
+    const currentList = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+      ? formData.pedagogicalSnippets
+      : activeSnippets;
+    const nextSnippets = updateSnippet(currentList, snippetId, updatedContent);
     const combinedText = syncSnippetsToCombinedText(nextSnippets);
     setFormData((prev: any) => ({
       ...prev,
@@ -4916,6 +4930,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <PedagogicalFeed
                 snippets={activeSnippets}
                 onAddSnippet={handleAddSnippet}
+                onUpdateSnippet={handleUpdateSnippet}
                 onRemoveSnippet={handleRemoveSnippet}
                 onOpenUploadModal={() => {
                   setSelectedIntakeDoc(null);
