@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import {
   FileUp,
   CheckCircle2,
@@ -53,6 +54,7 @@ export interface DiagnosticIntakeStudentData {
 
 export interface DiagnosticIntakeModalProps {
   formData: DiagnosticIntakeStudentData;
+  isOpen?: boolean;
   onApplyIntake?: (updatedStudent: DiagnosticIntakeStudentData, newSnippet?: PedagogicalSnippet) => void;
   onClose?: () => void;
   initialText?: string;
@@ -62,16 +64,20 @@ export interface DiagnosticIntakeModalProps {
 
 export default function DiagnosticIntakeModal({
   formData,
+  isOpen = true,
   onApplyIntake,
   onClose,
   initialText = '',
   initialDocName = '',
   authorName = ''
-}: DiagnosticIntakeModalProps): React.JSX.Element {
+}: DiagnosticIntakeModalProps): React.JSX.Element | null {
+  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
   const [uploadedFileName, setUploadedFileName] = useState<string>(initialDocName || '');
   const [uploadedDocRecord, setUploadedDocRecord] = useState<DiagnosticDocumentRecord | null>(null);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+
+  if (!shouldRender) return null;
 
   // Highlighter and text selection states
   const initialLines = useMemo<string[]>(() => {
@@ -245,9 +251,9 @@ export default function DiagnosticIntakeModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose}>
       <div
-        className="modal-card email-report-modal"
+        className={`modal-card email-report-modal ${isClosing ? 'is-closing' : ''}`}
         dir="rtl"
         style={{ maxWidth: '750px', width: '95%' }}
         onClick={(e) => e.stopPropagation()}

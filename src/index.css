@@ -31,6 +31,15 @@
     #a98eda 75%,
     #c5aef2 100%
   );
+
+  /* === Centralized Modal Animation Tokens === */
+  --modal-anim-open-duration: 220ms;
+  --modal-anim-close-duration: 160ms;
+  --modal-anim-backdrop-open-duration: 200ms;
+  --modal-anim-backdrop-close-duration: 160ms;
+  --modal-anim-easing-open: cubic-bezier(0.16, 1, 0.3, 1);
+  --modal-anim-easing-close: cubic-bezier(0.7, 0, 0.84, 0);
+  --modal-backdrop-bg: rgba(0, 0, 0, 0.40);
 }
 
 * {
@@ -2829,24 +2838,118 @@ input, textarea, select, button {
   margin-top: 18px;
 }
 
-.modal-backdrop {
+/* === Modal Backdrop & Animation System === */
+@keyframes talaModalBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes talaModalBackdropOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes talaModalCardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes talaModalCardOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.modal-backdrop,
+.modal-overlay,
+.tracker-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(36, 52, 77, 0.48);
+  background: var(--modal-backdrop-bg, rgba(0, 0, 0, 0.40));
   z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  animation: talaModalBackdropIn var(--modal-anim-backdrop-open-duration) var(--modal-anim-easing-open) forwards;
+  will-change: opacity;
 }
 
-.modal-container {
+.modal-backdrop.is-closing,
+.modal-overlay.is-closing,
+.tracker-modal-overlay.is-closing {
+  animation: talaModalBackdropOut var(--modal-anim-backdrop-close-duration) var(--modal-anim-easing-close) forwards;
+  pointer-events: none !important;
+}
+
+.modal-container,
+.modal-card,
+.tracker-modal-card {
   background: #ffffff;
   width: 100%;
   border-radius: 16px;
   overflow: hidden;
   border-top: 5px solid #8b6fc0;
   box-shadow: 0 20px 50px rgba(36, 52, 77, 0.24);
+  animation: talaModalCardIn var(--modal-anim-open-duration) var(--modal-anim-easing-open) forwards;
+  will-change: opacity, transform;
+  transform-origin: center center;
+}
+
+.modal-container.is-closing,
+.modal-card.is-closing,
+.tracker-modal-card.is-closing {
+  animation: talaModalCardOut var(--modal-anim-close-duration) var(--modal-anim-easing-close) forwards;
+  pointer-events: none !important;
+}
+
+body.modal-open {
+  overflow: hidden !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --modal-anim-open-duration: 0.01ms;
+    --modal-anim-close-duration: 0.01ms;
+    --modal-anim-backdrop-open-duration: 0.01ms;
+    --modal-anim-backdrop-close-duration: 0.01ms;
+  }
+
+  .modal-backdrop,
+  .modal-overlay,
+  .tracker-modal-overlay,
+  .modal-backdrop.is-closing,
+  .modal-overlay.is-closing,
+  .tracker-modal-overlay.is-closing,
+  .modal-container,
+  .modal-card,
+  .tracker-modal-card,
+  .modal-container.is-closing,
+  .modal-card.is-closing,
+  .tracker-modal-card.is-closing {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 .modal-header {

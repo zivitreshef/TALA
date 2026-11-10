@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import { Users, X, ShieldAlert, Lock } from 'lucide-react';
 import {
   getShareableColleagues,
@@ -65,7 +66,9 @@ export default function ShareTeamModal({
     }
   }, [isOpen, formData?.id]);
 
-  if (!isOpen) return null;
+  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
+
+  if (!shouldRender) return null;
 
   const isLocked = Boolean(formData?.isLocked);
   const activeChips = isLocked ? LOCKED_QUICK_CHIPS : QUICK_CHIPS;
@@ -107,9 +110,9 @@ export default function ShareTeamModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose}>
       <div
-        className="modal-card email-report-modal"
+        className={`modal-card email-report-modal ${isClosing ? 'is-closing' : ''}`}
         dir="rtl"
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '500px' }}

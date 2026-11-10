@@ -44,6 +44,7 @@ export default function TakeoverModal({
       }}
     >
       <div
+        className="modal-card"
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '16px',

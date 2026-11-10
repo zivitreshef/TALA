@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ClipboardList, Check, Plus, Trash2, X } from 'lucide-react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import {
   SUPPORT_LEVEL_OPTIONS,
   formatObservationLine,
@@ -23,6 +24,7 @@ export interface AddObservationPayload {
 
 export interface QuickObservationModalProps {
   goalRow?: GoalRowItem | null;
+  isOpen?: boolean;
   authorName?: string;
   onAddObservation?: (payload: AddObservationPayload) => void;
   onDeleteObservation?: (obsId: string) => void;
@@ -31,15 +33,19 @@ export interface QuickObservationModalProps {
 
 export default function QuickObservationModal({
   goalRow,
+  isOpen = true,
   authorName = '',
   onAddObservation,
   onDeleteObservation,
   onClose
-}: QuickObservationModalProps): React.JSX.Element {
+}: QuickObservationModalProps): React.JSX.Element | null {
+  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
   const [supportLevel, setSupportLevel] = useState<string>('תיווך חלקי');
   const [note, setNote] = useState<string>('');
   const [targetEvalField, setTargetEvalField] = useState<string>('midYearEvaluation');
   const [savedToast, setSavedToast] = useState<boolean>(false);
+
+  if (!shouldRender) return null;
 
   const observations: ObservationEntry[] = Array.isArray(goalRow?.observations) ? goalRow.observations : [];
 
@@ -57,9 +63,9 @@ export default function QuickObservationModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose}>
       <div
-        className="modal-card email-report-modal"
+        className={`modal-card email-report-modal ${isClosing ? 'is-closing' : ''}`}
         dir="rtl"
         style={{ maxWidth: '520px', width: '95%' }}
         onClick={(e) => e.stopPropagation()}

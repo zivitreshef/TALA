@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useModalAnimation } from './hooks/useModalAnimation';
 import {
   Users,
   Plus,
@@ -668,6 +669,15 @@ export default function App() {
   });
   const [showLogoutUnsavedModal, setShowLogoutUnsavedModal] = useState(false);
   const [showIntroVideoModal, setShowIntroVideoModal] = useState(false);
+
+  const archiveModalAnim = useModalAnimation({
+    isOpen: showArchiveModal,
+    onClose: () => setShowArchiveModal(false)
+  });
+  const introVideoAnim = useModalAnimation({
+    isOpen: showIntroVideoModal,
+    onClose: () => setShowIntroVideoModal(false)
+  });
 
   // Guided Onboarding Journey State (Milestone 1)
   const [onboardingState, setOnboardingState] = useState(() => {
@@ -3845,14 +3855,14 @@ export default function App() {
 
 
       {/* Archive Viewer Modal (ארכיון תלמידים ודוחות) */}
-      {showArchiveModal && (
+      {archiveModalAnim.shouldRender && (
         <div
-          className="modal-backdrop"
+          className={`modal-backdrop ${archiveModalAnim.isClosing ? 'is-closing' : ''}`}
           onClick={() => setShowArchiveModal(false)}
           dir="rtl"
         >
           <div
-            className="modal-container"
+            className={`modal-container ${archiveModalAnim.isClosing ? 'is-closing' : ''}`}
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '1080px', width: '96%', borderTopColor: '#4a88c7' }}
           >
@@ -4351,10 +4361,14 @@ export default function App() {
       )}
 
       {/* Introductory Video Player Modal */}
-      {showIntroVideoModal && (
-        <div className="modal-backdrop" onClick={() => setShowIntroVideoModal(false)} dir="rtl">
+      {introVideoAnim.shouldRender && (
+        <div
+          className={`modal-backdrop ${introVideoAnim.isClosing ? 'is-closing' : ''}`}
+          onClick={() => setShowIntroVideoModal(false)}
+          dir="rtl"
+        >
           <div
-            className="modal-container"
+            className={`modal-container ${introVideoAnim.isClosing ? 'is-closing' : ''}`}
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '820px', padding: '0', overflow: 'hidden', borderRadius: '16px' }}
           >

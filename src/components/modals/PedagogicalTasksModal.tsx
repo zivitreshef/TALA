@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import {
   Sparkles,
   CheckSquare,
@@ -130,7 +131,9 @@ export default function PedagogicalTasksModal({
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedPedagogicalTask[]>([]);
   const [generationError, setGenerationError] = useState('');
 
-  if (!isOpen) return null;
+  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
+
+  if (!shouldRender) return null;
 
   // Students who have meetings or events on selectedDate
   const studentsWithEventsOnDate = students.filter((s) =>
@@ -311,7 +314,7 @@ ${studentsContext}
 
   return (
     <div
-      className="modal-overlay"
+      className={`modal-overlay ${isClosing ? 'is-closing' : ''}`}
       onClick={onClose}
       style={{
         position: 'fixed',
@@ -328,7 +331,7 @@ ${studentsContext}
       }}
     >
       <div
-        className="modal-card modal-large"
+        className={`modal-card modal-large ${isClosing ? 'is-closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: '#ffffff',

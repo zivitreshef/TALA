@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import {
   ShieldCheck,
   X,
@@ -500,7 +501,9 @@ export default function AdminAllowlistModal({
     return () => unsub?.();
   }, [isOpen, currentUser]);
 
-  if (!isOpen) return null;
+  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
+
+  if (!shouldRender) return null;
 
   const lockedOutUsers = (allowedUsers || []).filter((u) => Boolean(u.lockedOut));
   const existingGroups = Array.from(
@@ -1069,9 +1072,14 @@ export default function AdminAllowlistModal({
   const userAlertsCount = lockedOutUsers.length + unreadInquiriesCount;
 
   return (
-    <div className="modal-backdrop" onClick={onClose} dir="rtl" style={{ zIndex: 2500, padding: '16px' }}>
+    <div
+      className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`}
+      onClick={onClose}
+      dir="rtl"
+      style={{ zIndex: 2500, padding: '16px' }}
+    >
       <div
-        className="modal-container"
+        className={`modal-container ${isClosing ? 'is-closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: '1100px',
