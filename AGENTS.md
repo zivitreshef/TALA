@@ -31,3 +31,7 @@ Canonical triage roles mapped 1:1 (`needs-triage`, `needs-info`, `ready-for-agen
 ### Domain docs
 
 Single-context layout (`GLOSSARY.md` and `docs/adr/` at repo root). See `docs/agents/domain.md`.
+
+### Code search and navigation
+
+`rg` (`rg.exe` / ripgrep) is installed globally and on PATH. Use `rg` for all fast recursive text and regex searches across the project.
