@@ -4,7 +4,7 @@ import { reportHealthEvent } from './healthTelemetry';
 import { HEALTH_EVENT_KINDS, buildPingResult, PingResult } from '../domain/healthEvents';
 import { containsInjection } from '../domain/aiSecurityGuards';
 import { usageTelemetryService } from './usageTelemetryService';
-import { TELEMETRY_EVENTS } from '../domain/telemetryTaxonomy';
+import { TELEMETRY_EVENTS, CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
 
 export interface CallDirectGeminiApiOptions {
   prompt: string;
@@ -251,14 +251,26 @@ export async function callAiProxyEndpoint({
     if (err.status === 503 || (err.message && err.message.includes('frozen'))) {
       throw err;
     }
+
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    const errorType = err?.name || 'Error';
+    const rcaReason = `latency=${latencyMs}ms • online=${isOnline} • ver=${CURRENT_APP_VERSION} • type=${errorType}`;
+    const rawMsg = err?.message || 'Proxy endpoint unavailable or failed';
+    const enrichedMessage = rawMsg.includes('latency=') ? rawMsg : `${rawMsg} (${rcaReason})`;
+
     console.warn('[aiProxyClient] Proxy endpoint unavailable or failed:', err.message);
     reportHealthEvent({
       kind: HEALTH_EVENT_KINDS.AI_PROXY_ERROR,
       operation,
-      error: err,
+      error: {
+        status: err?.status,
+        name: err?.name,
+        message: enrichedMessage
+      },
       extra: {
         promptLength: typeof safePayload?.prompt === 'string' ? safePayload.prompt.length : (typeof payload?.prompt === 'string' ? payload.prompt.length : undefined),
-        viaDirectKey: Boolean(localApiKey)
+        viaDirectKey: Boolean(localApiKey),
+        reason: rcaReason
       }
     });
     if (localApiKey) {

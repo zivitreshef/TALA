@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Activity, CheckCircle2, AlertTriangle, RefreshCw, Trash2, Check } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, RefreshCw, Trash2, Check, Download } from 'lucide-react';
 import {
   HEALTH_CATEGORY_LABELS_HE,
   HEALTH_KIND_LABELS_HE,
@@ -7,7 +7,10 @@ import {
   HealthEventEntity,
   summarizeHealthEvents,
   normalizeHealthEvents,
-  countUnreviewedHealthEvents
+  countUnreviewedHealthEvents,
+  getHealthEventLogLevel,
+  filterVisibleAdminHealthEvents,
+  downloadHealthEventsLog4j
 } from '../../domain/healthEvents';
 import { pingAiProxy } from '../../services/aiProxyClient';
 import { pingFirestore } from '../../firebaseBackend';
@@ -59,7 +62,10 @@ export default function SystemHealthPanel({
   const [isPinging, setIsPinging] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
-  const events: HealthEventEntity[] = useMemo(() => normalizeHealthEvents(healthEvents), [healthEvents]);
+  const events: HealthEventEntity[] = useMemo(
+    () => filterVisibleAdminHealthEvents(normalizeHealthEvents(healthEvents)),
+    [healthEvents]
+  );
   const summary = useMemo(() => summarizeHealthEvents(events), [events]);
   const unreviewed = countUnreviewedHealthEvents(events, healthReviewedMs);
   const sev = SEVERITY_STYLE[summary.severity];
@@ -198,22 +204,32 @@ export default function SystemHealthPanel({
                 </tr>
               </thead>
               <tbody>
-                {events.slice(0, 25).map((e) => (
-                  <tr
-                    key={String(e.id || `${e.createdAtMs}-${e.kind}`)}
-                    style={{ borderTop: '1px solid #f1f5f9', background: e.createdAtMs > healthReviewedMs ? '#fff7ed' : 'transparent' }}
-                  >
-                    <td style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>{formatTime(e.createdAtMs)}</td>
-                    <td style={{ padding: '6px 8px' }}>{e.userEmail || '—'}</td>
-                    <td style={{ padding: '6px 8px' }}>{HEALTH_KIND_LABELS_HE[e.kind as HealthEventKind] || e.kind}</td>
-                    <td style={{ padding: '6px 8px' }}>{HEALTH_CATEGORY_LABELS_HE[e.category] || e.category}</td>
-                    <td style={{ padding: '6px 8px', color: '#64748b' }}>
-                      {[e.status ? `HTTP ${e.status}` : '', e.stage ? `שלב: ${e.stage}` : '', e.reason || '', e.message || '']
-                        .filter(Boolean)
-                        .join(' • ')}
-                    </td>
-                  </tr>
-                ))}
+                {events.slice(0, 25).map((e) => {
+                  const level = getHealthEventLogLevel(e);
+                  const levelBg = level === 'FATAL' ? '#fee2e2' : level === 'ERROR' ? '#ffedd5' : '#fef9c3';
+                  const levelColor = level === 'FATAL' ? '#991b1b' : level === 'ERROR' ? '#c2410c' : '#854d0e';
+                  return (
+                    <tr
+                      key={String(e.id || `${e.createdAtMs}-${e.kind}`)}
+                      style={{ borderTop: '1px solid #f1f5f9', background: e.createdAtMs > healthReviewedMs ? '#fff7ed' : 'transparent' }}
+                    >
+                      <td style={{ padding: '6px 8px', whiteSpace: 'nowrap' }}>{formatTime(e.createdAtMs)}</td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: levelBg, color: levelColor, marginLeft: '6px' }}>
+                          {level}
+                        </span>
+                        {e.userEmail || '—'}
+                      </td>
+                      <td style={{ padding: '6px 8px' }}>{HEALTH_KIND_LABELS_HE[e.kind as HealthEventKind] || e.kind}</td>
+                      <td style={{ padding: '6px 8px' }}>{HEALTH_CATEGORY_LABELS_HE[e.category] || e.category}</td>
+                      <td style={{ padding: '6px 8px', color: '#64748b' }}>
+                        {[e.status ? `HTTP ${e.status}` : '', e.stage ? `שלב: ${e.stage}` : '', e.reason || '', e.message || '']
+                          .filter(Boolean)
+                          .join(' • ')}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -227,6 +243,17 @@ export default function SystemHealthPanel({
             >
               <Check size={13} />
               <span>סמן כנסקר ({unreviewed})</span>
+            </button>
+            <button
+              type="button"
+              className="btn-secondary-sm"
+              onClick={() => downloadHealthEventsLog4j(events)}
+              disabled={events.length === 0}
+              title="הורדת יומן שגיאות בפורמט Log4j"
+              style={{ fontSize: '12px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            >
+              <Download size={13} />
+              <span>הורדת יומן שגיאות</span>
             </button>
             <button
               type="button"
