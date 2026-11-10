@@ -152,6 +152,7 @@ export interface PedagogicalSnippet {
   content: string;
   authorName?: string;
   createdAt: string;
+  updatedAt?: string;
   hasAudio?: boolean;
   audioStorageUrl?: string;
 }
