@@ -17,9 +17,13 @@ const MAX_RING_BUFFER_SIZE = 200;
 class DiagnosticTracer {
   private _buffer: TraceBreadcrumb[] = [];
   private _explicitEnabled: boolean | null = null;
+  private _isLoggingInternally = false;
+  private _interceptorsInstalled = false;
 
   constructor() {
     this._initGlobalErrorCatchers();
+    this._initGlobalInteractions();
+    this._initNetworkAndConsole();
   }
 
   /** Checks if debug/trace mode is active via URL params, localStorage, or programmatic toggle. */
@@ -90,7 +94,8 @@ class DiagnosticTracer {
       this._buffer.shift();
     }
 
-    if (this.isDebugModeEnabled() && typeof console !== 'undefined') {
+    if (this.isDebugModeEnabled() && typeof console !== 'undefined' && !this._isLoggingInternally) {
+      this._isLoggingInternally = true;
       const prefix = `[TALA:${level}] [${category}]`;
       const color =
         level === 'ERROR'
@@ -113,7 +118,10 @@ class DiagnosticTracer {
         } else {
           console.log(`%c${prefix} ${message}`, `color:${color}`, safeDetails || '');
         }
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        this._isLoggingInternally = false;
+      }
     }
   }
 
@@ -163,6 +171,11 @@ class DiagnosticTracer {
       ''
     ];
 
+    if (breadcrumbs.length === 0) {
+      lines.push('# (No user actions or events were recorded in the session buffer)');
+      return lines.join('\n');
+    }
+
     for (const b of breadcrumbs) {
       const d = new Date(b.timestampMs);
       const dateStr = [
@@ -180,9 +193,10 @@ class DiagnosticTracer {
         String(d.getMilliseconds()).padStart(3, '0');
 
       const level = b.level.padEnd(5, ' ');
-      const detailsSuffix = b.details && Object.keys(b.details).length > 0
-        ? ` [details=${JSON.stringify(b.details)}]`
-        : '';
+      const detailsSuffix =
+        b.details && Object.keys(b.details).length > 0
+          ? ` [details=${JSON.stringify(b.details)}]`
+          : '';
 
       lines.push(`${dateStr} ${timeStr} [${level}] [${b.category}] - ${b.message}${detailsSuffix}`);
     }
@@ -218,7 +232,7 @@ class DiagnosticTracer {
 1. אנא היכנסי למערכת דרך הקישור הייעודי הבא:
    ${debugUrl}
 2. בצעי שוב את הפעולה שגרמה לתקלה.
-3. בסיום, לחצי על כפתור "הורדת יומן אבחון" (או דרך סרגל הבריאות) ושלחי אלינו את הקובץ שירד.
+3. בסיום, לחצי על כפתור "הורדת יומן" (שמופיע בפינה השמאלית בתחתית המסך) ושלחי אלינו את הקובץ שירד.
 תודה על העזרה בשיפור המערכת!`;
   }
 
@@ -244,7 +258,7 @@ class DiagnosticTracer {
     if (typeof window !== 'undefined') {
       window.addEventListener('error', (event) => {
         this.error('UnhandledWindowError', event.message || 'Window error triggered', {
-          filename: event.filename,
+          filename: event.filename ? String(event.filename).split('/').pop() : 'unknown',
           lineno: event.lineno,
           colno: event.colno
         });
@@ -254,6 +268,98 @@ class DiagnosticTracer {
         const reason = (event as PromiseRejectionEvent).reason;
         const msg = typeof reason === 'object' && reason?.message ? reason.message : String(reason);
         this.error('UnhandledPromiseRejection', msg);
+      });
+    }
+  }
+
+  private _initGlobalInteractions(): void {
+    if (typeof document !== 'undefined') {
+      document.addEventListener(
+        'click',
+        (e: MouseEvent) => {
+          try {
+            const target = e.target as HTMLElement | null;
+            if (!target) return;
+
+            const interactive = target.closest<HTMLElement>(
+              'button, a, input, select, textarea, [role="button"], [role="tab"], .tala-nav-item, [data-testid]'
+            );
+            if (!interactive) return;
+
+            const rawLabel =
+              interactive.getAttribute('aria-label') ||
+              interactive.getAttribute('title') ||
+              (interactive instanceof HTMLInputElement ? interactive.placeholder || interactive.value : null) ||
+              interactive.innerText ||
+              interactive.getAttribute('data-testid') ||
+              interactive.id ||
+              interactive.tagName;
+
+            const cleanLabel = String(rawLabel || '')
+              .replace(/\s+/g, ' ')
+              .trim()
+              .slice(0, 45);
+
+            if (cleanLabel) {
+              this.trace('UserClick', `Clicked [${cleanLabel}]`, {
+                tag: interactive.tagName.toLowerCase(),
+                id: interactive.id || undefined
+              });
+            }
+          } catch (_) {}
+        },
+        { capture: true, passive: true }
+      );
+    }
+  }
+
+  private _initNetworkAndConsole(): void {
+    if (this._interceptorsInstalled) return;
+    this._interceptorsInstalled = true;
+
+    if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (...args: Parameters<typeof fetch>) => {
+        const startTime = Date.now();
+        const firstArg = args[0];
+        let urlStr = 'unknown';
+        if (typeof firstArg === 'string') {
+          urlStr = firstArg;
+        } else if (firstArg instanceof URL) {
+          urlStr = firstArg.toString();
+        } else if (firstArg && typeof firstArg === 'object' && 'url' in firstArg) {
+          urlStr = (firstArg as Request).url;
+        }
+
+        // Clean query strings to prevent leaking tokens
+        const sanitizedUrl = urlStr.split('?')[0].slice(-60);
+        const method = (args[1]?.method || 'GET').toUpperCase();
+
+        try {
+          const res = await originalFetch(...args);
+          const durationMs = Date.now() - startTime;
+          // Only record network calls in trace buffer
+          this.trace('Network', `${method} ${sanitizedUrl} -> ${res.status} (${durationMs}ms)`, {
+            status: res.status,
+            durationMs
+          });
+          return res;
+        } catch (err: unknown) {
+          const durationMs = Date.now() - startTime;
+          const msg = (err as Error)?.message || 'Network request failed';
+          this.error('Network', `${method} ${sanitizedUrl} -> FAILED: ${msg} (${durationMs}ms)`, {
+            durationMs
+          });
+          throw err;
+        }
+      };
+    }
+
+    // Record session initialization
+    if (typeof window !== 'undefined') {
+      this.info('Lifecycle', `TALA session initialized (ver. ${CURRENT_APP_VERSION})`, {
+        online: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        debugMode: this.isDebugModeEnabled()
       });
     }
   }
