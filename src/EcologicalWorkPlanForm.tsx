@@ -93,6 +93,7 @@ import {
 import {
   buildBankReferenceForPrompt,
   buildStageRulesBlock,
+  buildFocusDomainsCoverageGuidance,
   buildPedagogicalOpportunitiesGuidance,
   enforceGoalStage,
   getCuratedTitlesExclusiveToStage,
@@ -1563,6 +1564,7 @@ ${buildStageRulesBlock(currentStage)}
      { "subDomain": "...", "strengthsAndFacilitators": "מוקדי כוח וגורמים מסייעים...", "areasToStrengthenAndBarriers": "מוקדים לחיזוק וגורמים מגבילים..." }
 3. עבור תח"י: "strengthsExisting" (3-4 נקודות) ו-"strengthsToEmpower" (3-4 נקודות).
 4. מטרות ויעדים (T-Shirt Size: S / M / L ומשך יחסי מתאריך ${dateInfo.entryDateFormatted}):
+${buildFocusDomainsCoverageGuidance(currentStage)}
 ${buildPedagogicalOpportunitiesGuidance(currentStage)}
    - "learningAccommodations": התאמות ללמידה ובדרכי ההיבחנות
 ${protectedGoalsPromptBlock}${removedGoalsPromptBlock}${unprotectedGoalsPromptBlock}
@@ -1593,7 +1595,7 @@ ${textToUse}
       "environment": "...",
       "activityParticipation": "...",
       "title": "...",
-      "objectives": "• ...",
+      "objectives": "• יעד אופרטיבי מדיד ראשון\n• יעד אופרטיבי מדיד שני\n• יעד אופרטיבי מדיד שלישי",
       "opportunities": "${isKindergarten ? 'אמצעי גננת מעשיים ומפורטים...' : 'אמצעי מחנכת מעשיים ומפורטים...'}",
       "opportunitiesIntegration": "${isKindergarten ? 'אמצעי גננת שילוב מותאמים...' : 'אמצעי מורת שילוב מותאמים...'}",
       "opportunitiesTherapist": "אמצעי מטפלת באומנויות...",
