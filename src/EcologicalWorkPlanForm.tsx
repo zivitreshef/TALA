@@ -469,6 +469,17 @@ export default function EcologicalWorkPlanForm({
     isOpen: showEmailModal,
     onClose: () => setShowEmailModal(false)
   });
+  const ministryCopyModalAnim = useModalAnimation({
+    isOpen: showMinistryCopyModal,
+    onClose: () => setShowMinistryCopyModal(false)
+  });
+  const diagnosticIntakeModalAnim = useModalAnimation({
+    isOpen: showDiagnosticIntakeModal,
+    onClose: () => {
+      setShowDiagnosticIntakeModal(false);
+      setSelectedIntakeDoc(null);
+    }
+  });
   const [emailRecipient, setEmailRecipient] = useState('');
   const [emailFormat, setEmailFormat] = useState('docx'); // 'docx' | 'pdf'
   const [emailStatusMsg, setEmailStatusMsg] = useState('');
@@ -7370,13 +7381,15 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       )}
 
       
-      <MinistryCopyModal
-        isOpen={showMinistryCopyModal}
-        formData={formData}
-        hideDetails={hideStudentDetailsOnPrint}
-        onToggleHideDetails={setHideStudentDetailsOnPrint}
-        onClose={() => setShowMinistryCopyModal(false)}
-      />
+      {ministryCopyModalAnim.shouldRender && (
+        <MinistryCopyModal
+          formData={formData}
+          isClosing={ministryCopyModalAnim.isClosing}
+          hideDetails={hideStudentDetailsOnPrint}
+          onToggleHideDetails={setHideStudentDetailsOnPrint}
+          onClose={() => setShowMinistryCopyModal(false)}
+        />
+      )}
       {observationModalGoalId &&
         (() => {
           const targetGoal = (formData.goals || []).find((g: any) => g.id === observationModalGoalId);
@@ -7425,24 +7438,26 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             />
           );
         })()}
-      <DiagnosticIntakeModal
-        isOpen={showDiagnosticIntakeModal}
-        formData={formData}
-        initialText={selectedIntakeDoc?.fullText || ''}
-        initialDocName={selectedIntakeDoc?.fileName || ''}
-        authorName={userPreferences?.fullName || currentUser?.name || ''}
-        onApplyIntake={(updatedStudent) => {
-          setFormData(updatedStudent);
-          setIsDossierOpen(true);
-          onSaveStudentPlan?.(updatedStudent);
-          setShowDiagnosticIntakeModal(false);
-          setSelectedIntakeDoc(null);
-        }}
-        onClose={() => {
-          setShowDiagnosticIntakeModal(false);
-          setSelectedIntakeDoc(null);
-        }}
-      />
+      {diagnosticIntakeModalAnim.shouldRender && (
+        <DiagnosticIntakeModal
+          formData={formData}
+          isClosing={diagnosticIntakeModalAnim.isClosing}
+          initialText={selectedIntakeDoc?.fullText || ''}
+          initialDocName={selectedIntakeDoc?.fileName || ''}
+          authorName={userPreferences?.fullName || currentUser?.name || ''}
+          onApplyIntake={(updatedStudent) => {
+            setFormData(updatedStudent);
+            setIsDossierOpen(true);
+            onSaveStudentPlan?.(updatedStudent);
+            setShowDiagnosticIntakeModal(false);
+            setSelectedIntakeDoc(null);
+          }}
+          onClose={() => {
+            setShowDiagnosticIntakeModal(false);
+            setSelectedIntakeDoc(null);
+          }}
+        />
+      )}
 
       {/* Reader Modal for Diagnostic Document Full Text */}
       {viewingDocText && (

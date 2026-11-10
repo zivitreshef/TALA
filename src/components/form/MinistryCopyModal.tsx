@@ -11,6 +11,7 @@ import {
 export interface MinistryCopyModalProps {
   formData: MinistryCopyFormData;
   isOpen?: boolean;
+  isClosing?: boolean;
   hideDetails?: boolean;
   onToggleHideDetails?: (hide: boolean) => void;
   onClose: () => void;
@@ -19,11 +20,13 @@ export interface MinistryCopyModalProps {
 export default function MinistryCopyModal({
   formData,
   isOpen = true,
+  isClosing: propIsClosing,
   hideDetails = false,
   onToggleHideDetails,
   onClose
 }: MinistryCopyModalProps): React.JSX.Element | null {
-  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
+  const anim = useModalAnimation({ isOpen, onClose });
+  const effectiveClosing = propIsClosing ?? anim.isClosing;
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const blocks: MinistryCopyBlock[] = useMemo(
@@ -31,7 +34,7 @@ export default function MinistryCopyModal({
     [formData, hideDetails]
   );
 
-  if (!shouldRender) return null;
+  if (!anim.shouldRender) return null;
 
   const handleCopy = async (id: string, text: string): Promise<void> => {
     try {
@@ -49,9 +52,9 @@ export default function MinistryCopyModal({
   };
 
   return (
-    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose}>
+    <div className={`modal-backdrop ${effectiveClosing ? 'is-closing' : ''}`} onClick={onClose}>
       <div
-        className={`modal-card email-report-modal ${isClosing ? 'is-closing' : ''}`}
+        className={`modal-card email-report-modal ${effectiveClosing ? 'is-closing' : ''}`}
         dir="rtl"
         style={{ maxWidth: '680px', width: '95%' }}
         onClick={(e) => e.stopPropagation()}
