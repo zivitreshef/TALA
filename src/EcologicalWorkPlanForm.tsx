@@ -1384,14 +1384,21 @@ export default function EcologicalWorkPlanForm({
   
   // === AI Reverse Engineering from Raw Data Text to Full Formal Report ===
   // Helper to apply local reverse engineered plan to student state
-  const applyEngineeredPlan = (engineered: any, _isLocal = false) => {
+  const applyEngineeredPlan = (engineered: any, _isLocal = false, overrideSnippets?: PedagogicalSnippet[]) => {
     if (!engineered) return;
     const existingGoals = formData.goals || [];
     const protectedGoals = existingGoals.filter((g: any) => isGoalProtectedFromAiOverwrite(g));
     const stageCheck = enforceStageOnGeneratedGoals(engineered.goals || []);
     const candidateGoals = stageCheck.goals;
+    const snippetsToKeep = (overrideSnippets && overrideSnippets.length > 0)
+      ? overrideSnippets
+      : (formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+          ? formData.pedagogicalSnippets
+          : activeSnippets);
     const updatedBase = {
       ...formData,
+      pedagogicalSnippets: snippetsToKeep,
+      teacherFreeText: syncSnippetsToCombinedText(snippetsToKeep),
       freeTextAnalyzed: true,
       name: engineered.name || formData.name,
       gender: engineered.gender || formData.gender || 'boy',
@@ -1469,16 +1476,27 @@ export default function EcologicalWorkPlanForm({
     }
   };
 
-  async function handleReverseEngineerFullReport() {
+  async function handleReverseEngineerFullReport(overrideSnippets?: PedagogicalSnippet[]) {
     if (formData.isLocked) return;
-    const snippetsToUse = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
-      ? formData.pedagogicalSnippets
-      : activeSnippets;
+    const snippetsToUse = (overrideSnippets && overrideSnippets.length > 0)
+      ? overrideSnippets
+      : (formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+          ? formData.pedagogicalSnippets
+          : activeSnippets);
     const aggregatedText = aggregateSnippetsForAiPrompt(snippetsToUse);
     const rawText = (aggregatedText || formData.teacherFreeText || '').trim();
     if (!rawText) {
       window.alert('נא להזין תצפית או לצרף מסמך בציר התובנות כדי שה-AI יוכל להפיק ממנו דוח ומטרות.');
       return;
+    }
+
+    if (overrideSnippets && overrideSnippets.length > 0) {
+      const combinedText = syncSnippetsToCombinedText(overrideSnippets);
+      setFormData((prev: any) => ({
+        ...prev,
+        pedagogicalSnippets: overrideSnippets,
+        teacherFreeText: combinedText
+      }));
     }
 
     setIsReverseEngineering(true);
@@ -1683,6 +1701,8 @@ ${textToUse}
                     
           const updatedBase = {
             ...formData,
+            pedagogicalSnippets: snippetsToUse,
+            teacherFreeText: syncSnippetsToCombinedText(snippetsToUse),
             freeTextAnalyzed: true,
             name:
               parsed.name && (!formData.name || formData.name === 'תלמיד/ה חדש/ה')
@@ -1775,7 +1795,7 @@ ${textToUse}
 
     const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
     if (engineered) {
-      applyEngineeredPlan(engineered, true);
+      applyEngineeredPlan(engineered, true, snippetsToUse);
       return;
     }
     } catch (err: any) {
@@ -1793,7 +1813,7 @@ ${textToUse}
             try {
         const localEngineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
         if (localEngineered && Array.isArray(localEngineered.goals) && localEngineered.goals.length > 0) {
-          applyEngineeredPlan(localEngineered, true);
+          applyEngineeredPlan(localEngineered, true, snippetsToUse);
           return;
         }
       } catch (localErr) {
@@ -4940,7 +4960,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   setShowDiagnosticIntakeModal(true);
                 }}
                 onSaveDraft={handleSaveDraft}
-                onTriggerAiAnalysis={() => handleReverseEngineerFullReport()}
+                onTriggerAiAnalysis={(overrideSnippets) => handleReverseEngineerFullReport(overrideSnippets)}
                 isAnalyzing={isReverseEngineering}
                 isLocked={isReportLocked}
                 currentUserName={userPreferences?.fullName || currentUser?.name || ''}

@@ -296,6 +296,75 @@ describe('PedagogicalFeed Component UI Tests', () => {
     expect(html).not.toContain('עריכת תובנה זו');
     expect(html).not.toContain('הסרת תובנה זו');
   });
+
+  describe('AI Trigger & Self-Explaining Empty State UX', () => {
+    it('renders disabled AI button with informative tooltip and guidance text when no content exists', () => {
+      const html = renderToStaticMarkup(
+        <PedagogicalFeed
+          snippets={[]}
+          onAddSnippet={vi.fn()}
+          onRemoveSnippet={vi.fn()}
+          onOpenUploadModal={vi.fn()}
+          onTriggerAiAnalysis={vi.fn()}
+        />
+      );
+
+      // AI button is disabled and has explanatory tooltip
+      expect(html).toContain('disabled=""');
+      expect(html).toContain('יש להקליד תצפית בתיבה או להעלות מסמך כדי להפעיל את ניתוח ה-AI');
+      // Visual guidance microcopy is displayed below the button
+      expect(html).toContain('ai-trigger-empty-helper-text');
+      expect(html).toContain('הקלידי תצפית בתיבה או העלי מסמך להפעלת הניתוח');
+    });
+
+    it('renders active AI button without guidance text when snippets are present', () => {
+      const html = renderToStaticMarkup(
+        <PedagogicalFeed
+          snippets={sampleSnippets}
+          onAddSnippet={vi.fn()}
+          onRemoveSnippet={vi.fn()}
+          onOpenUploadModal={vi.fn()}
+          onTriggerAiAnalysis={vi.fn()}
+        />
+      );
+
+      expect(html).not.toContain('ai-trigger-empty-helper-text');
+      expect(html).not.toContain('הקלידי תצפית בתיבה או העלי מסמך להפעלת הניתוח');
+      expect(html).toContain('לחצי להפקת יעדים ומטרות מכל המקורות');
+    });
+
+    it('hides empty guidance text while AI analysis is actively processing', () => {
+      const html = renderToStaticMarkup(
+        <PedagogicalFeed
+          snippets={[]}
+          onAddSnippet={vi.fn()}
+          onRemoveSnippet={vi.fn()}
+          onOpenUploadModal={vi.fn()}
+          onTriggerAiAnalysis={vi.fn()}
+          isAnalyzing={true}
+        />
+      );
+
+      expect(html).toContain('מעבד את כל המקורות ב-AI...');
+      expect(html).not.toContain('ai-trigger-empty-helper-text');
+      expect(html).not.toContain('הקלידי תצפית בתיבה או העלי מסמך להפעלת הניתוח');
+    });
+
+    it('preserves 100% of uncommitted notes and documents when aggregating for AI prompt', () => {
+      const existingDoc = sampleSnippets[0];
+      const uncommittedTypedText = 'תצפית טרייה שהוקלדה בתיבה וטרם נשמרה בלחיצה ידנית';
+      const autoCommittedNote = createTeacherNoteSnippet(uncommittedTypedText, 'רינת המורה');
+
+      const fullCombinedSnippets = addSnippet([existingDoc], autoCommittedNote);
+      expect(fullCombinedSnippets).toHaveLength(2);
+
+      const aggregatedPrompt = aggregateSnippetsForAiPrompt(fullCombinedSnippets);
+      // Both existing doc and newly typed uncommitted note are fully present in prompt
+      expect(aggregatedPrompt).toContain(existingDoc.content);
+      expect(aggregatedPrompt).toContain(uncommittedTypedText);
+      expect(aggregatedPrompt).toContain('רינת המורה');
+    });
+  });
 });
 
 describe('DiagnosticIntakeModal Simplified Workflow', () => {

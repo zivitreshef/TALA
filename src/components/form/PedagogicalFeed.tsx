@@ -21,7 +21,7 @@ import {
 
 } from 'lucide-react';
 import type { PedagogicalSnippet } from '../../domain/types';
-import { createTeacherNoteSnippet } from '../../domain/pedagogicalFeed';
+import { createTeacherNoteSnippet, updateSnippet } from '../../domain/pedagogicalFeed';
 
 export interface SnippetColorTheme {
   cardBorder: string;
@@ -117,7 +117,7 @@ export interface PedagogicalFeedProps {
   onRemoveSnippet: (snippetId: string) => void;
   onOpenUploadModal: () => void;
   onSaveDraft?: () => void | Promise<void>;
-  onTriggerAiAnalysis: () => void | Promise<void>;
+  onTriggerAiAnalysis: (overrideSnippets?: PedagogicalSnippet[]) => void | Promise<void>;
   isAnalyzing?: boolean;
   isLocked?: boolean;
   currentUserName?: string;
@@ -288,6 +288,65 @@ export default function PedagogicalFeed({
   };
 
   const activeSourcesCount = snippets.length;
+
+  const hasUnsavedNewNote = Boolean(newNoteText.trim() || pendingAudioBlob);
+  const hasUnsavedEdit = Boolean(editingSnippetId && editingText.trim());
+  const hasAnyContent = snippets.length > 0 || hasUnsavedNewNote || hasUnsavedEdit;
+  const isAiDisabled = isLocked || isAnalyzing || !hasAnyContent;
+
+  const handleTriggerAiWithAutoCommit = async (): Promise<void> => {
+    if (isAiDisabled) return;
+
+    let currentSnippets = [...snippets];
+
+    // 1. Auto-commit pending inline edit if active
+    if (editingSnippetId && editingText.trim()) {
+      const trimmed = editingText.trim();
+      if (onUpdateSnippet) {
+        onUpdateSnippet(editingSnippetId, trimmed);
+      }
+      currentSnippets = updateSnippet(currentSnippets, editingSnippetId, trimmed);
+      setEditingSnippetId(null);
+      setEditingText('');
+    }
+
+    // 2. Auto-commit pending new note or audio transcript if present
+    let noteText = newNoteText.trim();
+    if (!noteText && pendingAudioBlob) {
+      try {
+        const transcript = await transcribeAudioWithGemini(pendingAudioBlob);
+        if (transcript) {
+          noteText = transcript;
+        }
+      } catch (_) {}
+    }
+
+    if (noteText || pendingAudioBlob) {
+      if (!noteText) {
+        noteText = 'הקלטת תצפית קולית';
+      }
+      const author = currentUserName ? `${currentUserName} (אני)` : 'אני';
+      const snippet = createTeacherNoteSnippet(noteText, author);
+      if (pendingAudioBlob) {
+        snippet.hasAudio = true;
+        const audioToSave = pendingAudioBlob;
+        saveAudioRecordBlob(snippet.id, audioToSave).catch(() => {});
+        uploadAudioRecordToCloud(snippet.id, audioToSave)
+          .then((cloudRes) => {
+            if (cloudRes && cloudRes.storageUrl) {
+              snippet.audioStorageUrl = cloudRes.storageUrl;
+            }
+          })
+          .catch(() => {});
+        setPendingAudioBlob(null);
+      }
+      onAddSnippet(snippet);
+      currentSnippets = [...currentSnippets, snippet];
+      setNewNoteText('');
+    }
+
+    await onTriggerAiAnalysis(currentSnippets);
+  };
 
   return (
     <div
@@ -933,40 +992,63 @@ export default function PedagogicalFeed({
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => void onTriggerAiAnalysis()}
-            disabled={isLocked || isAnalyzing || snippets.length === 0}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              background: '#4f46e5',
-              color: '#ffffff',
-              border: '1px solid #4338ca',
-              borderRadius: '7px',
-              padding: '6px 14px',
-              fontSize: '12.5px',
-              fontWeight: 600,
-              cursor: isLocked || isAnalyzing || snippets.length === 0 ? 'not-allowed' : 'pointer',
-              opacity: isLocked || isAnalyzing || snippets.length === 0 ? 0.6 : 1,
-              boxShadow: '0 1px 2px rgba(79, 70, 229, 0.18)',
-              transition: 'background-color 0.15s ease, box-shadow 0.15s ease'
-            }}
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 size={14} className="tala-spin-icon" />
-                <span>מעבד את כל המקורות ב-AI...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles size={14} />
-                <span>ניתוח כל המקורות ב-AI</span>
-              </>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <button
+              type="button"
+              onClick={() => void handleTriggerAiWithAutoCommit()}
+              disabled={isAiDisabled}
+              title={
+                !hasAnyContent
+                  ? 'יש להקליד תצפית בתיבה או להעלות מסמך כדי להפעיל את ניתוח ה-AI'
+                  : 'לחצי להפקת יעדים ומטרות מכל המקורות'
+              }
+              aria-label="ניתוח כל המקורות ב-AI"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                background: '#4f46e5',
+                color: '#ffffff',
+                border: '1px solid #4338ca',
+                borderRadius: '7px',
+                padding: '6px 14px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                cursor: isAiDisabled ? 'not-allowed' : 'pointer',
+                opacity: isAiDisabled ? 0.6 : 1,
+                boxShadow: '0 1px 2px rgba(79, 70, 229, 0.18)',
+                transition: 'background-color 0.15s ease, box-shadow 0.15s ease'
+              }}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 size={14} className="tala-spin-icon" />
+                  <span>מעבד את כל המקורות ב-AI...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} />
+                  <span>ניתוח כל המקורות ב-AI</span>
+                </>
+              )}
+            </button>
+            {!hasAnyContent && !isLocked && !isAnalyzing && (
+              <span
+                className="ai-trigger-empty-helper-text"
+                style={{
+                  fontSize: '11px',
+                  color: '#64748b',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginTop: '1px'
+                }}
+              >
+                הקלידי תצפית בתיבה או העלי מסמך להפעלת הניתוח
+              </span>
             )}
-          </button>
+          </div>
         </div>
       </div>
     </div>
