@@ -13,12 +13,12 @@ export type SchoolYear = (typeof SCHOOL_YEARS_LIST)[number];
 const DEFAULT_ENVIRONMENT = 'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה';
 
 export function getNextSchoolYear(currentYear?: string | null): string {
-  if (!currentYear) return 'תשפ"ז (2026-2027)';
+  if (!currentYear) return 'תשפ"ח (2027-2028)';
   const idx = (SCHOOL_YEARS_LIST as readonly string[]).indexOf(currentYear);
   if (idx !== -1 && idx + 1 < SCHOOL_YEARS_LIST.length) {
     return SCHOOL_YEARS_LIST[idx + 1];
   }
-  return 'תשפ"ז (2026-2027)';
+  return 'תשפ"ח (2027-2028)';
 }
 
 export interface RolloverGoal {
@@ -98,7 +98,7 @@ export function buildRolloverStudentForNextYear<T extends StudentRolloverInput>(
   targetYearOverride: string | null = null
 ): RolledStudentResult<T> | null {
   if (!studentObj) return null;
-  const fromYear = sourceYear || studentObj.schoolYear || 'תשפ"ו (2025-2026)';
+  const fromYear = sourceYear || studentObj.schoolYear || 'תשפ"ז (2026-2027)';
   const nextYear = targetYearOverride || getNextSchoolYear(fromYear);
   const sourceReport = (studentObj.reportsByYear?.[fromYear] || studentObj) as StudentRolloverInput;
   const todayStr = new Date().toLocaleDateString('he-IL');

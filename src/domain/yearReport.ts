@@ -13,7 +13,7 @@ import { hasPopulatedTalaProfile } from '../export/wordAndPrintBuilders';
 import { detectStudentStage } from '../studentStage.js';
 import type { EducationalStage, StageSource } from './types';
 
-export const DEFAULT_SCHOOL_YEAR = 'תשפ"ו (2025-2026)';
+export const DEFAULT_SCHOOL_YEAR = 'תשפ"ז (2026-2027)';
 export const DEFAULT_PLAN_TYPE = 'תוכנית לתלמיד ביה"ס';
 export const TACHI_PLAN_TYPE = 'תוכנית אקולוגית לילדי הגן';
 
