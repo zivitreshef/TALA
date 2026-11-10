@@ -1093,6 +1093,61 @@ export const INITIAL_GOAL_BANK = [
     defaultPartners: 'מחנכת, מורת שילוב',
     defaultDuration: 'עד סוף השנה',
     defaultEvaluation: 'ישתמש באותיות סופיות ובסימני פיסוק בסיסיים וישמור על מוסכמות לשון בכתיבה.'
+  },
+  {
+    id: 'gb_school_math_1',
+    title: 'ביסוס מושגי יסוד מתמטיים, חשיבה כמותית ומיומנויות חישוב ומדידה',
+    stages: ['school'],
+    environment: 'מתמטיקה',
+    usageCount: 0,
+    defaultActivity: 'מתנסה בפעילויות מתמטיות, פתרון בעיות ותרגול מיומנויות כמותיות וחישוביות בהנחיית הצוות.',
+    suggestedObjectives: [
+      'התלמיד יזהה כמויות וייצג מספרים בהתאם לשלב הלימודי.',
+      'התלמיד יבצע פעולות חשבון בסיסיות (חיבור, חיסור, כפל או חילוק) בעזרת אמצעי המחשה או באופן מופשט.',
+      'התלמיד יפתור שאלות מילוליות פשוטות באמצעות שלבי עבודה מובנים.',
+      'התלמיד ישתמש בעזרי המחשה, לוח מספרים וסרגל ציר באופן מותאם.',
+      'התלמיד יסביר במילים את דרך החישוב או הפתרון שבחר.'
+    ],
+    defaultOpportunities: '• תיווך הדרגתי של מושגים כמותיים ומתמטיים באמצעות עזרי המחשה רב-חושיים.\n• פירוק שאלות מילוליות ומשימות חישוב לצעדים קטנים ומובנים.\n• שימוש בדפי עבודה מדורגים ומתן חיזוק על מאמץ והתקדמות.',
+    defaultPartners: 'מחנכת, מורת שילוב',
+    defaultDuration: 'עד סוף השנה',
+    defaultEvaluation: 'שליטה ומענה מותאם במשימות חשבון ומיומנויות כמותיות בתיווך מותאם.'
+  },
+  {
+    id: 'gb_school_self_mgmt_1',
+    title: 'התנהלות עצמאית, התארגנות מותאמת וויסות התנהגותי בשגרת יום הלימודים',
+    stages: ['school'],
+    environment: 'ניהול עצמי',
+    usageCount: 0,
+    defaultActivity: 'מתנהל בשגרת הכיתה, מתארגן עם ציוד ומשימות ומגלה ויסות ועצמאות גוברת בתיווך הצוות.',
+    suggestedObjectives: [
+      'התלמיד יתארגן עם הציוד הנדרש בתחילת השיעור ובסיומו.',
+      'התלמיד ישמור על קשב ורצף למידה לאורך המשימה.',
+      'התלמיד יזהה מצבי עומס או קושי ויפנה לבקשת עזרה מותאמת.',
+      'התלמיד ישתמש בכרטיסיית ניווט חזותית או סדר יום אישי.'
+    ],
+    defaultOpportunities: '• הצגת סדר יום חזותי וכללים ברורים בתחילת כל שיעור ומעבר.\n• תיווך מניעתי, הטרמת שינויים ומתן חיזוק מיידי על התארגנות עצמאית.\n• שימוש בטבלת חיזוקים או לוח הצלחות אישי.',
+    defaultPartners: 'מחנכת, מורת שילוב, יועצת',
+    defaultDuration: 'עד סוף השנה',
+    defaultEvaluation: 'התארגנות עצמאית ומווסתת בשגרת הלמידה והמעברים בתיווך מופחת.'
+  },
+  {
+    id: 'gb_school_social_1',
+    title: 'השתלבות בפעילויות חברתיות ואינטראקציה מותאמת עם קבוצת השווים',
+    stages: ['school'],
+    environment: 'תקשורת ויחסים בינאישיים',
+    usageCount: 0,
+    defaultActivity: 'לוקח חלק במשחקים ובאינטראקציות חברתיות בהפסקות ובפעילויות קבוצתיות בכיתה.',
+    suggestedObjectives: [
+      'התלמיד יזום פנייה חיובית לחבר למשחק משותף או שיחה.',
+      'התלמיד ישתף פעולה וישמור על כללי המשחק והתורות.',
+      'התלמיד יפתור חילוקי דעות באמצעות שיח או פנייה למבוגר מגשר.',
+      'התלמיד יביע אמפתיה והתחשבות ברגשות חבריו.'
+    ],
+    defaultOpportunities: '• יצירת הזדמנויות למשחק משותף בקבוצה קטנה ומודרכת בהפסקות.\n• תיווך סיטואציות חברתיות ואימון במיומנויות תקשורת ופתרון קונפליקטים.\n• שיקוף וחיזוק התנהגויות חברתיות חיוביות.',
+    defaultPartners: 'מחנכת, מורת שילוב, יועצת, הורים',
+    defaultDuration: 'עד סוף השנה',
+    defaultEvaluation: 'השתלבות נעימה ועקבית במשחקים ובשיח עם חברים בתיווך מופחת.'
   }
 ];
 
@@ -1943,6 +1998,39 @@ export function reverseEngineerRawTextLocally(rawText: string, currentFormData: 
         [/פיסוק|אותיות סופיות|מוסכמות/, /מוסכמות הלשון/],
         [/מורפולוג|שורש|מבנה המילה/, /מורפולוגי/]
       ]
+    },
+    {
+      id: 'school_math',
+      environment: 'מתמטיקה',
+      triggerRx: /מתמטיק|חשבון|כמויות|מספרים|כפל|חילוק|חיבור וחיסור|שברים|גאומטר|הנדס|לוח הכפל/,
+      executiveEmpowerBullet:
+        '• מתמטיקה: ביסוס מושגי יסוד מתמטיים, חשיבה כמותית ומיומנויות חישוב',
+      preferences: [
+        [/חשבון|חיבור|חיסור|כפל|חילוק/, /חישוב|פעולות/],
+        [/כמות|מספר|יסוד|ציר/, /חשיבה כמותית|מושגי יסוד/]
+      ]
+    },
+    {
+      id: 'school_self_management',
+      environment: 'ניהול עצמי',
+      triggerRx: /ניהול עצמי|ויסות|התפרצ|כעס|תסכול|התנהגות|גבולות|התארגנות|ציוד|קשב|ריכוז|מוסח|דחיית סיפוקים|שגרה|סדר יום/,
+      executiveEmpowerBullet:
+        '• ניהול עצמי: ויסות התנהגותי ורגשי, עצמאות והתארגנות בשגרת הלמידה',
+      preferences: [
+        [/ויסות|התפרצ|כעס|תסכול/, /ויסות התנהגותי/],
+        [/התארגנות|ציוד|סדר יום|קשב/, /התארגנות מותאמת/]
+      ]
+    },
+    {
+      id: 'school_social_relations',
+      environment: 'תקשורת ויחסים בינאישיים',
+      triggerRx: /חברים|חברתי|יחסים|בינאישי|הפסק|חצר|משחק משותף|דחוי|בדידות|ריב|סכסוך/,
+      executiveEmpowerBullet:
+        '• תקשורת ויחסים בינאישיים: שילוב חברתי, שיתוף פעולה ופתרון קונפליקטים',
+      preferences: [
+        [/חברים|חברתי|משחק משותף/, /השתלבות חברתית/],
+        [/סכסוך|ריב|קונפליקט/, /פתרון קונפליקטים/]
+      ]
     }
   ].map((dom) => ({
     ...dom,
@@ -1962,7 +2050,7 @@ export function reverseEngineerRawTextLocally(rawText: string, currentFormData: 
 
   activeInterpreters.forEach((dom) => {
     if (dom.triggerRx.test(challengeContextText)) {
-      if (matchedGoals.length < 4) {
+      if (matchedGoals.length < 5) {
         const built = dom.buildGoal(challengeContextText);
         if (!built) return;
         executiveEmpowerBullets.push(dom.executiveEmpowerBullet);
@@ -2042,7 +2130,7 @@ export function reverseEngineerRawTextLocally(rawText: string, currentFormData: 
     };
   };
 
-  if (unmatchedClauses.length > 0 && matchedGoals.length < 4) {
+  if (unmatchedClauses.length > 0 && matchedGoals.length < 5) {
     unmatchedClauses.slice(0, 2).forEach((clause, idx) => {
       if (matchedGoals.length < 4) {
         const customGoal = synthesizeCustomGoalFromClause(clause, idx);
