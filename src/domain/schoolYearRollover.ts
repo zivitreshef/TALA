@@ -1,3 +1,5 @@
+import { getSchoolYearForDate, HEBREW_YEAR_LOOKUP } from './yearReport';
+
 export const SCHOOL_YEARS_LIST = [
   'תשפ"ד (2023-2024)',
   'תשפ"ה (2024-2025)',
@@ -5,7 +7,12 @@ export const SCHOOL_YEARS_LIST = [
   'תשפ"ז (2026-2027)',
   'תשפ"ח (2027-2028)',
   'תשפ"ט (2028-2029)',
-  'תש"צ (2029-2030)'
+  'תש"צ (2029-2030)',
+  'תשצ"א (2030-2031)',
+  'תשצ"ב (2031-2032)',
+  'תשצ"ג (2032-2033)',
+  'תשצ"ד (2033-2034)',
+  'תשצ"ה (2034-2035)'
 ] as const;
 
 export type SchoolYear = (typeof SCHOOL_YEARS_LIST)[number];
@@ -13,10 +20,18 @@ export type SchoolYear = (typeof SCHOOL_YEARS_LIST)[number];
 const DEFAULT_ENVIRONMENT = 'משחקי שולחן, משחקי בנייה, הרכבה, לימודי דיגיטלי ואסטרטגיה';
 
 export function getNextSchoolYear(currentYear?: string | null): string {
-  if (!currentYear) return 'תשפ"ח (2027-2028)';
-  const idx = (SCHOOL_YEARS_LIST as readonly string[]).indexOf(currentYear);
+  const baseYear = currentYear || getSchoolYearForDate();
+  const idx = (SCHOOL_YEARS_LIST as readonly string[]).indexOf(baseYear);
   if (idx !== -1 && idx + 1 < SCHOOL_YEARS_LIST.length) {
     return SCHOOL_YEARS_LIST[idx + 1];
+  }
+  // Dynamic fallback for arbitrary future years
+  const match = baseYear.match(/\((\d{4})-(\d{4})\)/);
+  if (match) {
+    const nextStart = parseInt(match[1], 10) + 1;
+    const nextEnd = nextStart + 1;
+    const heb = HEBREW_YEAR_LOOKUP[nextStart];
+    return heb ? `${heb} (${nextStart}-${nextEnd})` : `${nextStart}-${nextEnd}`;
   }
   return 'תשפ"ח (2027-2028)';
 }

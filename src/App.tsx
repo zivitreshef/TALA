@@ -47,7 +47,8 @@ import {
 import {
   DEFAULT_PLAN_TYPE,
   TACHI_PLAN_TYPE,
-  DEFAULT_SCHOOL_YEAR
+  DEFAULT_SCHOOL_YEAR,
+  associateStudentToWorkingYear
 } from './domain/yearReport';
 import {
   DEFAULT_USER_PREFERENCES,
@@ -533,10 +534,15 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.map((s) => ({
-            ...s,
-            ownerEmail: (s.ownerEmail || PRIMARY_ADMIN_EMAIL).toLowerCase()
-          }));
+          return parsed.map((s) => {
+            const scoped = {
+              ...s,
+              ownerEmail: (s.ownerEmail || PRIMARY_ADMIN_EMAIL).toLowerCase()
+            };
+            return (scoped.schoolYear === 'תשפ"ו (2025-2026)')
+              ? associateStudentToWorkingYear(scoped, DEFAULT_SCHOOL_YEAR)
+              : scoped;
+          });
         }
       }
     } catch (e) {
@@ -870,10 +876,15 @@ export default function App() {
         }
       },
       onStudentsChange: (cloudStudents) => {
-        const normalized = cloudStudents.map((s) => ({
-          ...s,
-          ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
-        }));
+        const normalized = cloudStudents.map((s) => {
+          const scoped = {
+            ...s,
+            ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
+          };
+          return (scoped.schoolYear === 'תשפ"ו (2025-2026)')
+            ? associateStudentToWorkingYear(scoped, DEFAULT_SCHOOL_YEAR)
+            : scoped;
+        });
         setStudents(normalized);
         safeSetStorageJson(STUDENTS_STORAGE_KEY, normalized);
       },
