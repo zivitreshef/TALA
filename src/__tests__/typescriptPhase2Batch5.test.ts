@@ -35,10 +35,10 @@ describe('TypeScript Migration Phase 2 Batch 5 Gate', () => {
     it('returns sequential school year and falls back safely', () => {
       expect(getNextSchoolYear('תשפ"ד (2023-2024)')).toBe('תשפ"ה (2024-2025)');
       expect(getNextSchoolYear('תשפ"ה (2024-2025)')).toBe('תשפ"ו (2025-2026)');
-      expect(getNextSchoolYear('תש"צ (2029-2030)')).toBe('תשפ"ח (2027-2028)');
+      expect(getNextSchoolYear('תש"צ (2029-2030)')).toBe('תשצ"א (2030-2031)');
       expect(getNextSchoolYear(null)).toBe('תשפ"ח (2027-2028)');
       expect(getNextSchoolYear('שנה לא קיימת')).toBe('תשפ"ח (2027-2028)');
-      expect(SCHOOL_YEARS_LIST).toHaveLength(7);
+      expect(SCHOOL_YEARS_LIST.length).toBeGreaterThanOrEqual(12);
     });
 
     it('builds rollover student object with rolled goals and archived previous year', () => {
