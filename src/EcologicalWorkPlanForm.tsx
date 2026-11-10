@@ -4683,21 +4683,20 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
-                      background: '#2563eb',
-                      color: '#ffffff',
-                      border: '1px solid #1d4ed8',
+                      background: '#f5f3ff',
+                      color: '#6d28d9',
+                      border: '1px solid #ddd6fe',
                       borderRadius: '8px',
-                      padding: '8px 16px',
-                      fontSize: '13px',
+                      padding: '6px 12px',
+                      fontSize: '12.5px',
                       fontWeight: 600,
                       cursor: 'pointer',
-                      boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)',
-                      transition: 'opacity 0.2s'
+                      transition: 'all 0.15s ease'
                     }}
-                    title="העלאת ועיבוד מסמכי אבחון"
+                    title="העלאת קובץ Word, PDF או סריקה לשמירה בתיק והוספת תובנות"
                   >
-                    <Paperclip size={15} />
-                    <span>העלאת ועיבוד מסמכים</span>
+                    <Paperclip size={14} />
+                    <span>העלאת מסמך אבחון</span>
                   </button>
                 )}
               </div>
@@ -4715,7 +4714,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     fontSize: '13px'
                   }}
                 >
-                  טרם נשמרו מסמכי אבחון לתלמיד/ה זה. לחצי על ״העלאת ועיבוד מסמכים״ כדי לצרף אבחון פסיכודידקטי, סיכום ועדת אפיון וזכאות או דוח טיפולי.
+                  טרם נשמרו מסמכי אבחון לתלמיד/ה זה. לחצי על ״העלאת מסמך אבחון״ כדי לצרף אבחון פסיכודידקטי, סיכום ועדת אפיון וזכאות או דוח טיפולי.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

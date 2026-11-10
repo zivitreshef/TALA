@@ -203,7 +203,7 @@ describe('PedagogicalFeed Component UI Tests', () => {
     expect(html).toContain('קושי בוויסות רגשי במעברים פתוחים.');
     expect(html).toContain('בשיעור ספורט הצליח להמתין לתורו יפה.');
     expect(html).toContain('שמור טיוטה');
-    expect(html).toContain('העלאת מסמך נוסף');
+    expect(html).toContain('העלאת מסמך אבחון');
     expect(html).toContain('ניתוח כל המקורות ב-AI');
 
     // Distinct palettes: Card 0 uses indigo (#4f46e5), Card 1 uses teal (#0d9488)
@@ -394,5 +394,19 @@ describe('DiagnosticIntakeModal Simplified Workflow', () => {
     expect(html).toContain('privacy-sensitive-info-note');
     expect(html).toContain('שמירה על פרטיות:');
     expect(html).toContain('נא להימנע מחשיפת מידע אישי רגיש או פרטים מזהים של התלמיד/ה');
+  });
+
+  it('unifies the diagnostic upload button label to "העלאת מסמך אבחון" in PedagogicalFeed', () => {
+    const html = renderToStaticMarkup(
+      <PedagogicalFeed
+        snippets={[]}
+        onAddSnippet={vi.fn()}
+        onRemoveSnippet={vi.fn()}
+        onOpenUploadModal={vi.fn()}
+        onTriggerAiAnalysis={vi.fn()}
+      />
+    );
+    expect(html).toContain('העלאת מסמך אבחון');
+    expect(html).not.toContain('העלאת מסמך נוסף');
   });
 });

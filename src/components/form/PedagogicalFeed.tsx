@@ -405,21 +405,21 @@ export default function PedagogicalFeed({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '5px',
+                gap: '6px',
                 background: '#f5f3ff',
                 color: '#6d28d9',
                 border: '1px solid #ddd6fe',
-                borderRadius: '7px',
-                padding: '5px 10px',
-                fontSize: '12px',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '12.5px',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
               title="העלאת קובץ Word, PDF או סריקה לשמירה בתיק והוספת תובנות"
             >
-              <Paperclip size={13} />
-              <span>העלאת מסמך נוסף</span>
+              <Paperclip size={14} />
+              <span>העלאת מסמך אבחון</span>
             </button>
 
             <button
@@ -500,7 +500,7 @@ export default function PedagogicalFeed({
             </span>
             <span style={{ color: '#cbd5e1' }} aria-hidden="true">•</span>
             <span>
-              ניתן ללחוץ על ״העלאת מסמך נוסף״ למעלה או להקליד תצפית אישית למטה.
+              ניתן ללחוץ על ״העלאת מסמך אבחון״ למעלה או להקליד תצפית אישית למטה.
             </span>
           </div>
         )}
