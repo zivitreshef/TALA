@@ -27,6 +27,8 @@ import {
 } from 'firebase/firestore';
 import { ensureUsersListPasswordsHashed } from './allowedUsers';
 import { mergeStudentSnapshots } from './domain/studentSyncMerge';
+import { buildHealthEvent, HEALTH_EVENT_KINDS } from './domain/healthEvents';
+import { CURRENT_APP_VERSION } from './domain/telemetryTaxonomy';
 import {
   pruneStaleFirestoreKeys,
   hasLocalStorageQuotaHeadroom,
@@ -803,6 +805,21 @@ export async function saveStudentToCloud(studentObj: any): Promise<boolean> {
       return true;
     } catch (fallbackErr) {
       console.error('Failed to save student to Firestore:', fallbackErr);
+      try {
+        const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+        const errObj = fallbackErr as { code?: string; name?: string; message?: string };
+        const code = errObj?.code || errObj?.name || 'SaveError';
+        const msg = String(errObj?.message || 'Failed to save student');
+        const rcaReason = `online=${isOnline} • ver=${CURRENT_APP_VERSION} • code=${code}`;
+        const evt = buildHealthEvent({
+          kind: HEALTH_EVENT_KINDS.DB_ERROR,
+          operation: 'saveStudentToCloud',
+          error: { status: 0, name: code, message: `${msg} (${rcaReason})` },
+          extra: { reason: rcaReason, stage: 'storage' },
+          user: { email: getFirebaseAuth()?.currentUser?.email || '' }
+        });
+        reportHealthEventToCloud(evt).catch(() => {});
+      } catch (_) {}
       return false;
     }
   }

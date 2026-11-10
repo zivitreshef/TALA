@@ -1,6 +1,7 @@
 import { getFirebaseAuth, reportHealthEventToCloud } from '../firebaseBackend';
-import { buildHealthEvent } from '../domain/healthEvents';
+import { buildHealthEvent, HEALTH_EVENT_KINDS } from '../domain/healthEvents';
 import type { HealthEventKind } from '../domain/healthEvents';
+import { CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
 
 export interface ReportHealthEventParams {
   kind: HealthEventKind | string;
@@ -44,4 +45,28 @@ export function reportHealthEvent({ kind, operation, error, extra }: ReportHealt
   } catch (_) {
     // ignore
   }
+}
+
+/** Reports an unexpected Firestore / database persistence failure for RCA tracking. */
+export function reportDatabaseHealthError(operation: string, error: unknown, extra: Record<string, unknown> = {}): void {
+  const err = (error && typeof error === 'object' ? error : {}) as { code?: string; message?: string; name?: string };
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  const errorName = err.code || err.name || 'FirestoreError';
+  const rawMsg = err.message || 'Database operation failed';
+  const rcaDetails = `online=${isOnline} • ver=${CURRENT_APP_VERSION} • code=${errorName}`;
+  const enrichedMessage = rawMsg.includes('online=') ? rawMsg : `${rawMsg} (${rcaDetails})`;
+
+  reportHealthEvent({
+    kind: HEALTH_EVENT_KINDS.DB_ERROR,
+    operation: operation || 'firestore',
+    error: {
+      status: 0,
+      name: errorName,
+      message: enrichedMessage
+    },
+    extra: {
+      reason: rcaDetails,
+      ...extra
+    }
+  });
 }
