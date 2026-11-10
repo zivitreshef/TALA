@@ -55,6 +55,7 @@ export interface DiagnosticIntakeStudentData {
 export interface DiagnosticIntakeModalProps {
   formData: DiagnosticIntakeStudentData;
   isOpen?: boolean;
+  isClosing?: boolean;
   onApplyIntake?: (updatedStudent: DiagnosticIntakeStudentData, newSnippet?: PedagogicalSnippet) => void;
   onClose?: () => void;
   initialText?: string;
@@ -65,21 +66,22 @@ export interface DiagnosticIntakeModalProps {
 export default function DiagnosticIntakeModal({
   formData,
   isOpen = true,
+  isClosing: propIsClosing,
   onApplyIntake,
   onClose,
   initialText = '',
   initialDocName = '',
   authorName = ''
 }: DiagnosticIntakeModalProps): React.JSX.Element | null {
-  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
+  const anim = useModalAnimation({ isOpen, onClose });
+  const effectiveClosing = propIsClosing ?? anim.isClosing;
+
   const [uploadedFileName, setUploadedFileName] = useState<string>(initialDocName || '');
   const [uploadedDocRecord, setUploadedDocRecord] = useState<DiagnosticDocumentRecord | null>(null);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  if (!shouldRender) return null;
-
-  // Highlighter and text selection states
+  // Highlighter and text selection states - MUST be declared unconditionally before any return
   const initialLines = useMemo<string[]>(() => {
     if (!initialText) return [];
     return initialText
@@ -99,6 +101,8 @@ export default function DiagnosticIntakeModal({
   const [extractionStatus, setExtractionStatus] = useState<'idle' | 'success' | 'scanned_image'>(
     initialLines.length > 0 ? 'success' : 'idle'
   );
+
+  if (!anim.shouldRender) return null;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
@@ -251,9 +255,9 @@ export default function DiagnosticIntakeModal({
   };
 
   return (
-    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose}>
+    <div className={`modal-backdrop ${effectiveClosing ? 'is-closing' : ''}`} onClick={onClose}>
       <div
-        className={`modal-card email-report-modal ${isClosing ? 'is-closing' : ''}`}
+        className={`modal-card email-report-modal ${effectiveClosing ? 'is-closing' : ''}`}
         dir="rtl"
         style={{ maxWidth: '750px', width: '95%' }}
         onClick={(e) => e.stopPropagation()}

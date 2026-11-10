@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import fs from 'fs';
 import path from 'path';
+import ts from 'typescript';
+import DiagnosticIntakeModal from '../components/form/DiagnosticIntakeModal';
+import MinistryCopyModal from '../components/form/MinistryCopyModal';
 import {
   useModalAnimation,
   lockScroll,
@@ -281,6 +284,137 @@ describe('TALA Consistent Modal Animation System Suite', () => {
       // 7. Scroll lock class
       expect(cssContent).toContain('body.modal-open {');
       expect(cssContent).toContain('overflow: hidden !important;');
+    });
+  });
+
+  describe('Rules-of-Hooks Compliance & Regression (React Error #310 Prevention)', () => {
+    it('DiagnosticIntakeModal safely renders with isOpen=false and isOpen=true without hook mismatch', () => {
+      const mockFormData: any = { id: 'st-1', name: 'ישראל ישראלי', pedagogicalSnippets: [] };
+
+      // Render closed
+      const closedHtml = renderToStaticMarkup(
+        <DiagnosticIntakeModal
+          formData={mockFormData}
+          isOpen={false}
+          onClose={vi.fn()}
+        />
+      );
+      expect(closedHtml).toBe('');
+
+      // Render open (must not throw React error #310)
+      const openHtml = renderToStaticMarkup(
+        <DiagnosticIntakeModal
+          formData={mockFormData}
+          isOpen={true}
+          initialDocName="test.pdf"
+          initialText="שורה ראשונה\nשורה שנייה"
+          onClose={vi.fn()}
+        />
+      );
+      expect(openHtml).toContain('קליטת מסמך ושמירה בתיק התלמיד/ה');
+      expect(openHtml).toContain('modal-backdrop');
+    });
+
+    it('MinistryCopyModal safely renders with isOpen=false and isOpen=true', () => {
+      const mockFormData: any = { id: 'st-1', name: 'ישראל ישראלי', goals: [] };
+
+      // Render closed
+      const closedHtml = renderToStaticMarkup(
+        <MinistryCopyModal
+          formData={mockFormData}
+          isOpen={false}
+          onClose={vi.fn()}
+        />
+      );
+      expect(closedHtml).toBe('');
+
+      // Render open
+      const openHtml = renderToStaticMarkup(
+        <MinistryCopyModal
+          formData={mockFormData}
+          isOpen={true}
+          onClose={vi.fn()}
+        />
+      );
+      expect(openHtml).toContain('העתקה למנב');
+      expect(openHtml).toContain('modal-backdrop');
+    });
+
+    it('Guarantees zero hook violations across all components in src via AST inspection', () => {
+      let violations: string[] = [];
+
+      function checkFile(filePath: string) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true);
+
+        function inspectNode(node: ts.Node) {
+          if (
+            (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node)) &&
+            node.body &&
+            ts.isBlock(node.body)
+          ) {
+            let seenReturn = false;
+            let returnLine = -1;
+
+            for (const stmt of node.body.statements) {
+              function checkCalls(n: ts.Node) {
+                if (ts.isCallExpression(n)) {
+                  let callName = '';
+                  if (ts.isIdentifier(n.expression)) callName = n.expression.text;
+                  else if (ts.isPropertyAccessExpression(n.expression) && ts.isIdentifier(n.expression.name)) {
+                    callName = n.expression.name.text;
+                  }
+
+                  if (
+                    /^use[A-Z]/.test(callName) &&
+                    !['useFakeTimers', 'useRealTimers'].includes(callName) &&
+                    seenReturn
+                  ) {
+                    const line = sourceFile.getLineAndCharacterOfPosition(n.getStart()).line + 1;
+                    violations.push(`${filePath}:${line} -> Hook '${callName}' called after return on line ${returnLine}`);
+                  }
+                }
+                ts.forEachChild(n, checkCalls);
+              }
+
+              checkCalls(stmt);
+
+              if (ts.isIfStatement(stmt)) {
+                const t = stmt.thenStatement;
+                if (
+                  ts.isReturnStatement(t) ||
+                  (ts.isBlock(t) && t.statements.some((s) => ts.isReturnStatement(s)))
+                ) {
+                  seenReturn = true;
+                  returnLine = sourceFile.getLineAndCharacterOfPosition(stmt.getStart()).line + 1;
+                }
+              } else if (ts.isReturnStatement(stmt)) {
+                seenReturn = true;
+                returnLine = sourceFile.getLineAndCharacterOfPosition(stmt.getStart()).line + 1;
+              }
+            }
+          }
+          ts.forEachChild(node, inspectNode);
+        }
+
+        inspectNode(sourceFile);
+      }
+
+      function walk(dir: string) {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            if (!['node_modules', '.git', 'dist', 'graphify-out'].includes(entry.name)) {
+              walk(fullPath);
+            }
+          } else if (entry.isFile() && (entry.name.endsWith('.tsx') || entry.name.endsWith('.jsx'))) {
+            checkFile(fullPath);
+          }
+        }
+      }
+
+      walk('src');
+      expect(violations).toEqual([]);
     });
   });
 });
