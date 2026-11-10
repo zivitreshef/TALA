@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Activity, CheckCircle2, AlertTriangle, RefreshCw, Trash2, Check, Download } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, RefreshCw, Trash2, Check, Download, Bug, Copy } from 'lucide-react';
 import {
   HEALTH_CATEGORY_LABELS_HE,
   HEALTH_KIND_LABELS_HE,
@@ -14,6 +14,7 @@ import {
 } from '../../domain/healthEvents';
 import { pingAiProxy } from '../../services/aiProxyClient';
 import { pingFirestore } from '../../firebaseBackend';
+import { diagnosticTracer } from '../../services/diagnosticTracer';
 
 const SEVERITY_STYLE = {
   ok: { bg: '#f0fdf4', border: '#86efac', color: '#14532d', label: '🟢 תקין – לא נרשמו תקלות ב-24 השעות האחרונות' },
@@ -61,6 +62,9 @@ export default function SystemHealthPanel({
   const [pingResults, setPingResults] = useState<PingResult[] | null>(null);
   const [isPinging, setIsPinging] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [showDiagnosticGuide, setShowDiagnosticGuide] = useState(false);
+  const [copiedGuide, setCopiedGuide] = useState(false);
+  const [isDebugActive, setIsDebugActive] = useState(() => diagnosticTracer.isDebugModeEnabled());
 
   const events: HealthEventEntity[] = useMemo(
     () => filterVisibleAdminHealthEvents(normalizeHealthEvents(healthEvents)),
@@ -115,6 +119,21 @@ export default function SystemHealthPanel({
     setIsClearing(false);
   };
 
+  const handleCopyGuide = () => {
+    const text = diagnosticTracer.getTeacherGuidanceText(typeof window !== 'undefined' ? window.location.href : undefined);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedGuide(true);
+      setTimeout(() => setCopiedGuide(false), 2500);
+    }
+  };
+
+  const handleToggleLocalDebug = () => {
+    const next = !isDebugActive;
+    diagnosticTracer.setDebugMode(next);
+    setIsDebugActive(next);
+  };
+
   return (
     <div
       style={{
@@ -132,17 +151,81 @@ export default function SystemHealthPanel({
         <strong style={{ color: sev.color, fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Activity size={17} /> בריאות המערכת ומעקב תקלות AI
         </strong>
-        <button
-          type="button"
-          className="btn-primary-sm"
-          onClick={runPing}
-          disabled={isPinging}
-          style={{ fontSize: '12px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-        >
-          <RefreshCw size={13} />
-          <span>{isPinging ? 'בודק…' : 'בדיקת תקינות עכשיו'}</span>
-        </button>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button
+            type="button"
+            className="btn-secondary-sm"
+            onClick={() => setShowDiagnosticGuide((v) => !v)}
+            style={{ fontSize: '12px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+          >
+            <Bug size={13} />
+            <span>{showDiagnosticGuide ? 'הסתר הנחיות אבחון' : 'הנחיות אבחון למורה'}</span>
+          </button>
+          <button
+            type="button"
+            className="btn-primary-sm"
+            onClick={runPing}
+            disabled={isPinging}
+            style={{ fontSize: '12px', padding: '5px 12px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+          >
+            <RefreshCw size={13} />
+            <span>{isPinging ? 'בודק…' : 'בדיקת תקינות עכשיו'}</span>
+          </button>
+        </div>
       </div>
+
+      {showDiagnosticGuide && (
+        <div
+          style={{
+            background: '#f8fafc',
+            border: '1px solid #cbd5e1',
+            borderRadius: '8px',
+            padding: '12px 14px',
+            fontSize: '12.5px',
+            color: '#1e293b',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}
+        >
+          <div style={{ fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Bug size={15} color="#0284c7" />
+            <span>הנחיות הפעלת מצב אבחון למשתמשי קצה</span>
+          </div>
+          <div style={{ color: '#475569', lineHeight: 1.5 }}>
+            כאשר מורה מדווחת על תקלה שחוזרת על עצמה, ניתן להנחות אותה להיכנס עם פרמטר <code>?debug=true</code> בכתובת המערכת.
+            במצב זה יישמרו 200 הצעדים האחרונים ברמת פירוט מלאה (כולל שגיאות ורשת) עם כפתור הורדה ייעודי.
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '4px' }}>
+            <button
+              type="button"
+              className="btn-primary-sm"
+              onClick={handleCopyGuide}
+              style={{ fontSize: '12px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            >
+              <Copy size={13} />
+              <span>{copiedGuide ? 'ההודעה הועתקה ללוח!' : 'העתק הודעה מוכנה לשליחה למורה'}</span>
+            </button>
+            <button
+              type="button"
+              className="btn-secondary-sm"
+              onClick={() => diagnosticTracer.downloadTraceLog()}
+              style={{ fontSize: '12px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+            >
+              <Download size={13} />
+              <span>הורדת יומן צעדים נוכחי</span>
+            </button>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', marginRight: 'auto' }}>
+              <input
+                type="checkbox"
+                checked={isDebugActive}
+                onChange={handleToggleLocalDebug}
+              />
+              <span>מצב אבחון פעיל בדפדפן זה</span>
+            </label>
+          </div>
+        </div>
+      )}
 
       <div style={{ fontSize: '12.5px', color: sev.color, fontWeight: 700 }}>{sev.label}</div>
 

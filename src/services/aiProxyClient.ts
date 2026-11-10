@@ -5,6 +5,7 @@ import { HEALTH_EVENT_KINDS, buildPingResult, PingResult } from '../domain/healt
 import { containsInjection } from '../domain/aiSecurityGuards';
 import { usageTelemetryService } from './usageTelemetryService';
 import { TELEMETRY_EVENTS, CURRENT_APP_VERSION } from '../domain/telemetryTaxonomy';
+import { diagnosticTracer } from './diagnosticTracer';
 
 export interface CallDirectGeminiApiOptions {
   prompt: string;
@@ -136,6 +137,12 @@ export async function callAiProxyEndpoint({
     model
   });
 
+  diagnosticTracer.debug('aiProxyClient', `Dispatching AI request: ${operation || 'unknown'}`, {
+    model,
+    operation,
+    promptLength: safePayload?.prompt?.length
+  });
+
   const isTransientFailure = (err: CustomAiError): boolean => {
     if (!err) return false;
     // Client-side hard timeout: fail fast so fallback/error banner triggers immediately
@@ -234,6 +241,11 @@ export async function callAiProxyEndpoint({
       });
     } catch (_) {}
 
+    diagnosticTracer.debug('aiProxyClient', `AI request succeeded: ${operation || 'unknown'}`, {
+      latencyMs,
+      callStatus
+    });
+
     incrementDailyQuotaCount('ai');
     return result;
   } catch (proxyError: unknown) {
@@ -247,6 +259,12 @@ export async function callAiProxyEndpoint({
         status: 'failure'
       });
     } catch (_) {}
+
+    diagnosticTracer.error('aiProxyClient', `AI request failed: ${operation || 'unknown'} - ${err.message}`, {
+      latencyMs,
+      status: err.status,
+      name: err.name
+    });
 
     if (err.status === 503 || (err.message && err.message.includes('frozen'))) {
       throw err;
@@ -282,7 +300,12 @@ export async function callAiProxyEndpoint({
       }
       console.info('[aiProxyClient] Using direct Gemini API call via saved Admin key...');
       const directResult = await callDirectGeminiApi({ prompt: promptToUse, model, apiKey: String(localApiKey) });
-      incrementDailyQuotaCount('ai');
+      diagnosticTracer.debug('aiProxyClient', `AI request succeeded: ${operation || 'unknown'}`, {
+      latencyMs,
+      callStatus
+    });
+
+    incrementDailyQuotaCount('ai');
       return directResult;
     }
     throw err;
