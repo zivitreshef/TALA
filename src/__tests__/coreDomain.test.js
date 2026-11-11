@@ -272,9 +272,9 @@ describe('Teacher-Edited Goal Protection on Re-Analysis', () => {
   });
 });
 
-describe('Status Report Generator (15-Section Specification)', () => {
+describe('Status Report Generator (16-Section Specification)', () => {
   it('omits sections without data, strips forbidden placeholders, and integrates mid/end-year evaluation', () => {
-    expect(STATUS_REPORT_SECTIONS_SCHEMA).toHaveLength(15);
+    expect(STATUS_REPORT_SECTIONS_SCHEMA).toHaveLength(16);
 
     const studentData = {
       name: 'מאיה לוי',
@@ -305,10 +305,12 @@ describe('Status Report Generator (15-Section Specification)', () => {
     expect(sections.length).toBeGreaterThanOrEqual(5);
     // Section 2 (medical/diagnosis) has no data in studentData, so it must be omitted
     expect(sections.some((s) => s.sectionNumber === 2)).toBe(false);
-    // Section 11 (progress) must be included because midYearEvaluation / evalReportSummary exist
-    expect(sections.some((s) => s.sectionNumber === 11)).toBe(true);
-    // Section 14 (continuing goals) must be included
-    expect(sections.some((s) => s.sectionNumber === 14)).toBe(true);
+    // Section 8 (motor domain) is included based on drawing / playground motor activities
+    expect(sections.some((s) => s.sectionNumber === 8)).toBe(true);
+    // Section 12 (progress) must be included because midYearEvaluation / evalReportSummary exist
+    expect(sections.some((s) => s.sectionNumber === 12)).toBe(true);
+    // Section 15 (continuing goals) must be included
+    expect(sections.some((s) => s.sectionNumber === 15)).toBe(true);
 
     // Verify sanitizeStatusReportSections strips "לא ידוע" / "לא קיים מידע"
     const dirty = [

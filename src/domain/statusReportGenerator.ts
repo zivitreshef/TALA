@@ -4,7 +4,7 @@ import {
   isGoalEmpty
 } from './goalSizingAndMerge';
 
-// === מבנה קבוע של 15 סעיפי דו"ח מצב תפקודי-חינוכי ===
+// === מבנה קבוע של 16 סעיפי דו"ח מצב תפקודי-חינוכי ===
 export const STATUS_REPORT_SECTIONS_SCHEMA = [
   { sectionNumber: 1, title: 'פרטים מזהים ורקע כללי' },
   { sectionNumber: 2, title: 'רקע התפתחותי ואבחוני רלוונטי' },
@@ -13,14 +13,15 @@ export const STATUS_REPORT_SECTIONS_SCHEMA = [
   { sectionNumber: 5, title: 'תחום שפתי ותקשורתי' },
   { sectionNumber: 6, title: 'תחום חברתי' },
   { sectionNumber: 7, title: 'תחום רגשי והתנהגותי' },
-  { sectionNumber: 8, title: 'תפקודי עצמאות והתארגנות' },
-  { sectionNumber: 9, title: 'חוזקות ותחומי עניין' },
-  { sectionNumber: 10, title: 'מענים והתערבויות שניתנו' },
-  { sectionNumber: 11, title: 'התקדמות בעקבות ההתערבות' },
-  { sectionNumber: 12, title: 'רמת התמיכה הנדרשת כיום' },
-  { sectionNumber: 13, title: 'השפעת הקשיים על ההשתתפות והתפקוד' },
-  { sectionNumber: 14, title: 'מטרות להמשך' },
-  { sectionNumber: 15, title: 'סיכום והמלצות מקצועיות' }
+  { sectionNumber: 8, title: 'תחום מוטורי' },
+  { sectionNumber: 9, title: 'תפקודי עצמאות והתארגנות' },
+  { sectionNumber: 10, title: 'חוזקות ותחומי עניין' },
+  { sectionNumber: 11, title: 'מענים והתערבויות שניתנו' },
+  { sectionNumber: 12, title: 'התקדמות בעקבות ההתערבות' },
+  { sectionNumber: 13, title: 'רמת התמיכה הנדרשת כיום' },
+  { sectionNumber: 14, title: 'השפעת הקשיים על ההשתתפות והתפקוד' },
+  { sectionNumber: 15, title: 'מטרות להמשך' },
+  { sectionNumber: 16, title: 'סיכום והמלצות מקצועיות' }
 ] as const;
 
 export interface StatusReportSection {
@@ -110,12 +111,50 @@ export function sanitizeStatusReportSections(
   const cleaned: StatusReportSection[] = [];
   rawSections.forEach((sec, idx) => {
     if (!sec) return;
-    const num = Number(sec.sectionNumber) || idx + 1;
-    const canonicalTitle =
-      validByNum.get(num) ||
-      String(sec.title || '')
-        .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪\-]\s*)/, '')
-        .trim();
+    const rawNum = Number(sec.sectionNumber) || idx + 1;
+    const rawTitle = String(sec.title || '')
+      .replace(/^\s*(?:\d+[\.\)\-]\s*|[•◆▪\-]\s*)/, '')
+      .trim();
+
+    // Check title match against current schema (supports "התחום המוטורי" as alias for "תחום מוטורי")
+    const matchByTitle = STATUS_REPORT_SECTIONS_SCHEMA.find(
+      (s) =>
+        s.title === rawTitle ||
+        (s.sectionNumber === 8 && /מוטורי/.test(rawTitle))
+    );
+
+    let num = matchByTitle ? matchByTitle.sectionNumber : rawNum;
+    let canonicalTitle = matchByTitle ? matchByTitle.title : (validByNum.get(num) || rawTitle);
+
+    // Legacy migration support: if report used 15-section schema where 8 was תפקודי עצמאות והתארגנות, etc.
+    if (!matchByTitle) {
+      if (/עצמאות|התארגנות/.test(rawTitle)) {
+        num = 9;
+        canonicalTitle = validByNum.get(9) || rawTitle;
+      } else if (/חוזקות|עניין/.test(rawTitle)) {
+        num = 10;
+        canonicalTitle = validByNum.get(10) || rawTitle;
+      } else if (/מענים|התערבויות/.test(rawTitle)) {
+        num = 11;
+        canonicalTitle = validByNum.get(11) || rawTitle;
+      } else if (/התקדמות/.test(rawTitle)) {
+        num = 12;
+        canonicalTitle = validByNum.get(12) || rawTitle;
+      } else if (/תמיכה/.test(rawTitle)) {
+        num = 13;
+        canonicalTitle = validByNum.get(13) || rawTitle;
+      } else if (/השפעת הקשיים|השתתפות/.test(rawTitle)) {
+        num = 14;
+        canonicalTitle = validByNum.get(14) || rawTitle;
+      } else if (/מטרות/.test(rawTitle)) {
+        num = 15;
+        canonicalTitle = validByNum.get(15) || rawTitle;
+      } else if (/סיכום|המלצות/.test(rawTitle)) {
+        num = 16;
+        canonicalTitle = validByNum.get(16) || rawTitle;
+      }
+    }
+
     if (!canonicalTitle) return;
 
     const content = formatStatusReportBulletLines(sec.content || '', gender);
@@ -377,19 +416,74 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
     });
   }
 
-  // 8. תפקודי עצמאות והתארגנות
+  // 8. תחום מוטורי (מוטוריקה גסה ושיווי משקל, מוטוריקה עדינה ותיאום עין-יד, ויסות חושי וסנסורי)
+  const grossMotorSentences = extractMatchingSentences(
+    /(מוטוריקה גסה|שיווי משקל|קואורדינציה|הליכה|ריצה|קפיצה|יציבה|מדרגות|תפיסת כדור|זריקת כדור|משחקי כדור|כדור|מרחב החצר|מתקנים בחצר|מתקני חצר|ניידות|הליכון|כיסא מותאם|כרית ישיבה|כרית תחושתית|כרית יציבה)/
+  );
+  const fineMotorSentences = extractMatchingSentences(
+    /(מוטוריקה עדינה|תיאום עין[- ]יד|וויזו[- ]מוטור|ויזו[- ]מוטור|אחיזת עיפרון|אחיזת כלי כתיבה|אחיזת כלי|אחיזה|לחץ על הדף|צביעה|בתוך קווים|העתקה|העתקה מהלוח|גזירה|מספריים|הדבקה|השחלה|הרכבת חלקים|חלקים קטנים|גרפו[- ]מוטור|כתיבה ידנית|התעייפות בכתיבה|רכיסת כפתורים|שריכת שרוכים|פתיחת קופסת אוכל|קופסת אוכל)/
+  );
+  const sensorySentences = extractMatchingSentences(
+    /(ויסות חושי|וויסות חושי|ויסות סנסורי|וויסות סנסורי|רגישות יתר|תת[- ]רגישות|רגישות למגע|רגישות לרעש|רגישות לתנועה|רגישות למרקמים|מרקמים|חיפוש חושי|צורך בתנועה|תנועתיות|הפסקות תנועה|גרייה חושית)/
+  );
+  const generalMotorSentences = extractMatchingSentences(
+    /(מוטורי|מוטוריקה|ריפוי בעיסוק|פיזיותרפ)/
+  );
+
+  const motorGoals = validGoals.filter((g) =>
+    /(מוטור|סדנא|יצירה|חצר|וויזו|ויזו|גרפו|אחיז|גזיר|ציור|שיווי משקל|ריפוי בעיסוק|פיזיותרפ|חושי)/.test(
+      `${g.environment || ''} ${g.title || ''} ${g.objectives || ''}`
+    )
+  );
+
+  const motorParts: string[] = [];
+  const usedMotorSentences = new Set<string>();
+
+  const appendMotorSentences = (sentences: string[], label?: string) => {
+    const unpicked = sentences.filter((s) => !usedMotorSentences.has(s)).slice(0, 2);
+    if (unpicked.length > 0) {
+      unpicked.forEach((s) => usedMotorSentences.add(s));
+      const line = unpicked.join('. ');
+      motorParts.push(label ? `${label}: ${line}.` : `${line}.`);
+    }
+  };
+
+  appendMotorSentences(grossMotorSentences, 'מוטוריקה גסה ושיווי משקל');
+  appendMotorSentences(fineMotorSentences, 'מוטוריקה עדינה ותיאום עין-יד');
+  appendMotorSentences(sensorySentences, 'ויסות חושי וסנסורי');
+  appendMotorSentences(generalMotorSentences);
+
+  motorGoals.forEach((g) => {
+    const latestEval = (g.endYearEvaluation || g.midYearEvaluation || '').trim();
+    const act = (g.activityParticipation || '').trim();
+    if (latestEval) {
+      motorParts.push(`בסביבת "${g.environment}" – ${latestEval.replace(/\.$/, '')}.`);
+    } else if (act && !usedMotorSentences.has(act)) {
+      motorParts.push(`בסביבת "${g.environment}" – ${act.replace(/\.$/, '')}.`);
+    }
+  });
+
+  if (motorParts.length > 0) {
+    sections.push({
+      sectionNumber: 8,
+      title: 'תחום מוטורי',
+      content: motorParts.join('\n')
+    });
+  }
+
+  // 9. תפקודי עצמאות והתארגנות
   const independenceSentences = extractMatchingSentences(
     /(עצמא|התארגנ|מעברים|ארוחה|אכילה|אוכל|שירותים|גמילה|ניקיון|היגיינה|ציוד|חפצים|סדר יום|שגרה)/
   );
   if (independenceSentences.length > 0) {
     sections.push({
-      sectionNumber: 8,
+      sectionNumber: 9,
       title: 'תפקודי עצמאות והתארגנות',
       content: `${independenceSentences.slice(0, 3).join('. ')}.`
     });
   }
 
-  // 9. חוזקות ותחומי עניין
+  // 10. חוזקות ותחומי עניין
   const strengthsParts: string[] = [];
   if (strengthsExisting) {
     const cleanedExisting = strengthsExisting
@@ -413,13 +507,13 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
   }
   if (strengthsParts.length > 0) {
     sections.push({
-      sectionNumber: 9,
+      sectionNumber: 10,
       title: 'חוזקות ותחומי עניין',
       content: strengthsParts.join('\n')
     });
   }
 
-  // 10. מענים והתערבויות שניתנו
+  // 11. מענים והתערבויות שניתנו
   const interventions = validGoals
     .filter((g) => (g.opportunities || '').trim())
     .map((g) => {
@@ -436,13 +530,13 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
     });
   if (interventions.length > 0) {
     sections.push({
-      sectionNumber: 10,
+      sectionNumber: 11,
       title: 'מענים והתערבויות שניתנו',
       content: interventions.join('.\n') + '.'
     });
   }
 
-  // 11. התקדמות בעקבות ההתערבות
+  // 12. התקדמות בעקבות ההתערבות
   if (hasEvalData) {
     const progressLines: string[] = [];
     if (evalSummary) {
@@ -466,26 +560,26 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
     });
     if (progressLines.length > 0) {
       sections.push({
-        sectionNumber: 11,
+        sectionNumber: 12,
         title: 'התקדמות בעקבות ההתערבות',
         content: progressLines.join('\n')
       });
     }
   }
 
-  // 12. רמת התמיכה הנדרשת כיום
+  // 13. רמת התמיכה הנדרשת כיום
   const supportSentences = extractMatchingSentences(
     /(תיווך|סיוע|עזרה|תזכורת|רמז|ליווי|הטרמה|עצמאי|עצמאית|באופן עצמאי|זקוק לתיווך|זקוקה לתיווך)/
   );
   if (supportSentences.length > 0) {
     sections.push({
-      sectionNumber: 12,
+      sectionNumber: 13,
       title: 'רמת התמיכה הנדרשת כיום',
       content: `${supportSentences.slice(0, 4).join('. ')}.`
     });
   }
 
-  // 13. השפעת הקשיים על ההשתתפות והתפקוד
+  // 14. השפעת הקשיים על ההשתתפות והתפקוד
   const impactGoals = validGoals.filter(
     (g) =>
       (g.activityParticipation || '').trim() &&
@@ -498,13 +592,13 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
       (g) => `בסביבת "${g.environment}": ${(g.activityParticipation || '').trim().replace(/\.$/, '')}.`
     );
     sections.push({
-      sectionNumber: 13,
+      sectionNumber: 14,
       title: 'השפעת הקשיים על ההשתתפות והתפקוד',
       content: impactLines.join('\n')
     });
   }
 
-  // 14. מטרות להמשך
+  // 15. מטרות להמשך
   if (validGoals.length > 0) {
     const goalsLines = validGoals.map((g) => {
       const objClean = (g.objectives || '')
@@ -527,13 +621,13 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
     });
 
     sections.push({
-      sectionNumber: 14,
+      sectionNumber: 15,
       title: 'מטרות להמשך',
       content: goalsLines.join('\n')
     });
   }
 
-  // 15. סיכום והמלצות מקצועיות
+  // 16. סיכום והמלצות מקצועיות
   const summaryParts: string[] = [];
   if (recommendations) {
     const cleanRecs = recommendations
@@ -554,7 +648,7 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
   }
   if (summaryParts.length > 0) {
     sections.push({
-      sectionNumber: 15,
+      sectionNumber: 16,
       title: 'סיכום והמלצות מקצועיות',
       content: summaryParts.join('\n')
     });

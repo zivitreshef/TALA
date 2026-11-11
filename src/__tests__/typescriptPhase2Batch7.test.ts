@@ -40,7 +40,7 @@ import {
 describe('TypeScript Migration Phase 2 Batch 7 Gate', () => {
   describe('telemetryTaxonomy.ts', () => {
     it('synchronizes taxonomy version and provides categories and events', () => {
-      expect(CURRENT_APP_VERSION).toBe('2.6.52');
+      expect(CURRENT_APP_VERSION).toBe('2.6.53');
       expect(getAllCategories()).toContain(TELEMETRY_CATEGORIES.ENGAGEMENT);
       expect(getAllCategories()).toContain(TELEMETRY_CATEGORIES.WORKFLOW);
       expect(getAllCategories()).toContain(TELEMETRY_CATEGORIES.TECHNICAL_HEALTH);
@@ -168,7 +168,7 @@ describe('TypeScript Migration Phase 2 Batch 7 Gate', () => {
       expect(envelope?.eventName).toBe(TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_COMPLETED);
       expect(envelope?.category).toBe(TELEMETRY_CATEGORIES.DAILY_TRACKING);
       expect(envelope?.accountType).toBe('teacher');
-      expect(envelope?.appVersion).toBe('2.6.52');
+      expect(envelope?.appVersion).toBe('2.6.53');
       expect(envelope?.properties.mode).toBe('text');
       expect(envelope?.properties.durationSec).toBe(30);
       expect(envelope?.properties.studentName).toBeUndefined();

@@ -239,9 +239,10 @@ describe('TypeScript Migration Phase 2 Batch 5 Gate', () => {
 
   describe('statusReportGenerator.ts', () => {
     it('validates schema sections and sanitizes raw bullet lines', () => {
-      expect(STATUS_REPORT_SECTIONS_SCHEMA).toHaveLength(15);
+      expect(STATUS_REPORT_SECTIONS_SCHEMA).toHaveLength(16);
       expect(STATUS_REPORT_SECTIONS_SCHEMA[0].title).toBe('פרטים מזהים ורקע כללי');
-      expect(STATUS_REPORT_SECTIONS_SCHEMA[14].title).toBe('סיכום והמלצות מקצועיות');
+      expect(STATUS_REPORT_SECTIONS_SCHEMA[7].title).toBe('תחום מוטורי');
+      expect(STATUS_REPORT_SECTIONS_SCHEMA[15].title).toBe('סיכום והמלצות מקצועיות');
 
       const formatted = formatStatusReportBulletLines(
         '1. מתקשה בריכוז\nלא ידוע\n• משתף פעולה במשחקים',
@@ -254,12 +255,12 @@ describe('TypeScript Migration Phase 2 Batch 5 Gate', () => {
       const rawSections = [
         { sectionNumber: 1, title: 'פרטים מזהים', content: 'תלמיד בכיתה ב בבית ספר' },
         { sectionNumber: 4, title: 'תחום לימודי', content: 'קצר' }, // too short, should be dropped
-        { sectionNumber: 15, title: 'סיכום', content: 'מומלץ להמשיך בתוכנית העבודה הנוכחית' }
+        { sectionNumber: 16, title: 'סיכום', content: 'מומלץ להמשיך בתוכנית העבודה הנוכחית' }
       ];
       const sanitized = sanitizeStatusReportSections(rawSections, 'boy');
       expect(sanitized).toHaveLength(2);
       expect(sanitized[0].sectionNumber).toBe(1);
-      expect(sanitized[1].sectionNumber).toBe(15);
+      expect(sanitized[1].sectionNumber).toBe(16);
     });
 
     it('generates a comprehensive local status report from form data', () => {
@@ -312,20 +313,23 @@ describe('TypeScript Migration Phase 2 Batch 5 Gate', () => {
       expect(sec4).toBeDefined();
       expect(sec4?.content).toContain('קריאה');
 
-      // Section 11: Progress
-      const sec11 = sections.find((s) => s.sectionNumber === 11);
-      expect(sec11).toBeDefined();
-      expect(sec11?.content).toContain('הערכת מחצית: התקדמות יפה בזיהוי תנועות');
+      // Section 8: Motor domain should be omitted when no motor/sensory data exists
+      expect(sections.some((s) => s.sectionNumber === 8)).toBe(false);
 
-      // Section 14: Goals for future
-      const sec14 = sections.find((s) => s.sectionNumber === 14);
-      expect(sec14).toBeDefined();
-      expect(sec14?.content).toContain('קריאה והפקת משמעות');
+      // Section 12: Progress
+      const sec12 = sections.find((s) => s.sectionNumber === 12);
+      expect(sec12).toBeDefined();
+      expect(sec12?.content).toContain('הערכת מחצית: התקדמות יפה בזיהוי תנועות');
 
-      // Section 15: Recommendations
+      // Section 15: Goals for future
       const sec15 = sections.find((s) => s.sectionNumber === 15);
       expect(sec15).toBeDefined();
-      expect(sec15?.content).toContain('להמשיך ליווי בהוראה מותאמת');
+      expect(sec15?.content).toContain('קריאה והפקת משמעות');
+
+      // Section 16: Recommendations
+      const sec16 = sections.find((s) => s.sectionNumber === 16);
+      expect(sec16).toBeDefined();
+      expect(sec16?.content).toContain('להמשיך ליווי בהוראה מותאמת');
     });
   });
 });

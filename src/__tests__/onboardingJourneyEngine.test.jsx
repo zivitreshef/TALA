@@ -185,9 +185,9 @@ describe('Onboarding Journey Engine & Help Modal Re-launch Suite', () => {
       expect(pv.priorities).toContain('ביטחון בקריאה');
     });
 
-    it('includes completed mid-year evaluation and 15-section status report', () => {
+    it('includes completed mid-year evaluation and 16-section status report', () => {
       expect(DEMO_STUDENT_DATA.midYearEvaluation.goalEvals.length).toBe(3);
-      expect(DEMO_STUDENT_DATA.statusReport.sectionsCount).toBe(15);
+      expect(DEMO_STUDENT_DATA.statusReport.sectionsCount).toBe(16);
       expect(DEMO_STUDENT_DATA.statusReport.keySectionsSummary.frameworkRationale).toBeDefined();
     });
 
