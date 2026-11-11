@@ -479,13 +479,14 @@ export default function AdminAllowlistModal({
           aiLogs: snap.aiLogs,
           emailLogs: snap.emailLogs,
           students,
+          allowedUsers,
           settings: { aiFreeze },
           now: new Date()
         });
         setCloudTelemetry(agg);
       }
     }).catch(() => {});
-  }, [isOpen, students, aiFreeze]);
+  }, [isOpen, students, allowedUsers, aiFreeze]);
 
   const effectiveAiCount = cloudTelemetry ? cloudTelemetry.aiTodayCount : dailyAiCount;
   
@@ -522,7 +523,7 @@ export default function AdminAllowlistModal({
   }
 
   // Group stats calculation
-  const groupStats = computeGroupStats(allowedUsers, students);
+  const groupStats = computeGroupStats(allowedUsers, students, cloudTelemetry?.userActivityByEmail);
 
   // Group counts for sub-tabs (pure computation - no hook after early return)
   let adminCount = 0;
@@ -2318,6 +2319,7 @@ export default function AdminAllowlistModal({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
               <AdminUsageAndSecurityDashboard
                 students={students}
+                allowedUsers={allowedUsers}
                 settings={{ aiFreeze }}
                 onSettingsChange={(s: any) => onUpdateAiFreeze && onUpdateAiFreeze(s.aiFreeze)}
                 onTelemetryUpdated={(snap: any) => {
@@ -2325,6 +2327,7 @@ export default function AdminAllowlistModal({
                     aiLogs: snap.aiLogs,
                     emailLogs: snap.emailLogs,
                     students,
+                    allowedUsers,
                     settings: { aiFreeze },
                     now: new Date()
                   });
@@ -2362,7 +2365,11 @@ export default function AdminAllowlistModal({
                 >
                   <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#5b21b6' }}>🤖 סה"כ שאילתות AI (מצטבר)</span>
                   <strong style={{ fontSize: '26px', color: '#4c1d95' }}>
-                    {allowedUsers.reduce((sum, u) => sum + (Number(u.aiUsageCount) || 0), 0)}
+                    {allowedUsers.reduce((sum, u) => {
+                      const emailKey = (u.email || '').trim().toLowerCase();
+                      const teleAi = cloudTelemetry?.userActivityByEmail?.[emailKey]?.aiCount;
+                      return sum + Math.max(Number(u.aiUsageCount) || 0, Number(teleAi) || 0);
+                    }, 0)}
                   </strong>
                   <span style={{ fontSize: '11.5px', color: '#7c3aed' }}>
                     היום: <strong>{effectiveAiCount}</strong> מתוך {DAILY_AI_QUOTA_LIMIT} | ניסוח יעדים
@@ -2409,7 +2416,7 @@ export default function AdminAllowlistModal({
               {/* Capacity Ranking Table */}
               <div>
                 <strong style={{ fontSize: '14px', color: '#1e3a5f', display: 'block', marginBottom: '8px' }}>
-                  📊 דירוג פעילות וקיבולת לפי מורה (Top Capacity Users):
+                  📊 דירוג פעילות וקיבולת לפי מורה:
                 </strong>
                 <div className="allowed-users-table-wrap">
                   <table className="allowed-users-table">
@@ -2432,19 +2439,27 @@ export default function AdminAllowlistModal({
                         })
                         .map((u) => {
                           const count = studentCountByEmail.get((u.email || '').toLowerCase()) || 0;
+                          const emailKey = (u.email || '').trim().toLowerCase();
+                          const teleActivity = cloudTelemetry?.userActivityByEmail?.[emailKey];
+                          const effectiveAiUsage = Math.max(Number(u.aiUsageCount) || 0, teleActivity?.aiCount || 0);
+                          const lastAiDate = teleActivity?.lastActiveMs
+                            ? new Date(teleActivity.lastActiveMs).toLocaleDateString('he-IL')
+                            : u.lastAiUsedAt
+                            ? new Date(u.lastAiUsedAt).toLocaleDateString('he-IL')
+                            : '—';
                           return (
                             <tr key={u.id}>
                               <td><strong>{u.name}</strong></td>
                               <td>{u.group || '—'}</td>
                               <td>🎒 <strong>{count} תלמידים</strong></td>
-                              <td>🤖 {u.aiUsageCount || 0}</td>
+                              <td>🤖 {effectiveAiUsage}</td>
                               <td>
                                 <span style={{ fontSize: '11px', fontWeight: 700 }}>
                                   {u.isTrialUser ? 'ניסיון' : 'מנוי שנתי'}
                                 </span>
                               </td>
                               <td style={{ fontSize: '11px', color: '#64748b' }}>
-                                {u.lastAiUsedAt ? new Date(u.lastAiUsedAt).toLocaleDateString('he-IL') : '—'}
+                                {lastAiDate}
                               </td>
                             </tr>
                           );
