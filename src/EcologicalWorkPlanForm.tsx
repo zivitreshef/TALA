@@ -49,6 +49,7 @@ import {
   resolveStudentAgeAndDateInfo,
   normalizeAndSizeGoalDuration,
   isGoalEmpty,
+  resolveAiGoalTitle,
   attachAiBaselineToGoal,
   isGoalProtectedFromAiOverwrite,
   mergeReanalyzedGoals,
@@ -1629,7 +1630,7 @@ ${textToUse}
     {
       "environment": "...",
       "activityParticipation": "...",
-      "title": "...",
+      "title": "כותרת המטרה המרכזית בעברית (4-10 מילים, חובה למלא — אסור להשאיר ריק)",
       "objectives": "• יעד אופרטיבי מדיד ראשון\n• יעד אופרטיבי מדיד שני\n• יעד אופרטיבי מדיד שלישי",
       "opportunities": "${isKindergarten ? 'אמצעי גננת מעשיים ומפורטים...' : 'אמצעי מחנכת מעשיים ומפורטים...'}",
       "opportunitiesIntegration": "${isKindergarten ? 'אמצעי גננת שילוב מותאמים...' : 'אמצעי מורת שילוב מותאמים...'}",
@@ -1663,11 +1664,12 @@ ${textToUse}
       aiParsedResult = parsed;
       if (parsed && Array.isArray(parsed.goals)) {
         const rawCandidateGoals = parsed.goals.map((g: any, i: any) => {
+          const resolvedEnvironment = g.environment || getDefaultEnvironmentForStage(currentStage);
           const rawCandidate = {
             id: 'g_airev_' + Date.now() + '_' + i,
-            environment: g.environment || getDefaultEnvironmentForStage(currentStage),
+            environment: resolvedEnvironment,
             activityParticipation: g.activityParticipation || '',
-            title: g.title || '',
+            title: resolveAiGoalTitle(g, resolvedEnvironment),
             objectives: g.objectives || '',
             opportunities: g.opportunities || '',
             opportunitiesIntegration: g.opportunitiesIntegration || '',

@@ -596,6 +596,114 @@ export function normalizeAndSizeGoalDuration(goalObj?: Partial<SizedGoal> | null
 
 // === עזרים לנעילת מטרות שנערכו / נוספו / הוסרו על ידי המורה בניתוח חוזר (Re-Analysis Protection) ===
 
+const AI_GOAL_TITLE_PLACEHOLDERS = new Set([
+  '...',
+  '…',
+  '-',
+  '—',
+  'n/a',
+  'null',
+  'undefined',
+  'לא צוין',
+  'אין',
+  'ללא'
+]);
+
+const AI_GOAL_TITLE_MAX_LEN = 72;
+const AI_GOAL_TITLE_SYNONYM_KEYS = [
+  'title',
+  'goalTitle',
+  'goal',
+  'mainGoal',
+  'goalName',
+  'target',
+  'subject'
+] as const;
+
+function sanitizeTitleCandidate(value: unknown): string {
+  if (Array.isArray(value)) {
+    return sanitizeTitleCandidate(value.find((item) => String(item ?? '').trim()));
+  }
+  const normalized = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  if (AI_GOAL_TITLE_PLACEHOLDERS.has(normalized.toLowerCase())) return '';
+  return normalized;
+}
+
+function summarizeObjectiveAsTitle(rawText: unknown): string {
+  const textSource = Array.isArray(rawText)
+    ? rawText.map((item) => String(item ?? '')).join('\n')
+    : String(rawText ?? '');
+  const firstLine = textSource
+    .split(/[\r\n]+/)
+    .map((line) => line.replace(/^\s*(?:[•\-*–—]+|\d+[.)])\s*/, '').trim())
+    .map((line) => sanitizeTitleCandidate(line))
+    .find(Boolean);
+  if (!firstLine) return '';
+  if (firstLine.length <= AI_GOAL_TITLE_MAX_LEN) return firstLine;
+
+  const sliced = firstLine.slice(0, AI_GOAL_TITLE_MAX_LEN);
+  const lastSpaceIdx = sliced.lastIndexOf(' ');
+  const trimmed = lastSpaceIdx >= 24 ? sliced.slice(0, lastSpaceIdx).trim() : sliced.trim();
+  return `${trimmed}…`;
+}
+
+export interface AiGoalTitleCandidate {
+  title?: unknown;
+  goalTitle?: unknown;
+  goal?: unknown;
+  mainGoal?: unknown;
+  goalName?: unknown;
+  target?: unknown;
+  subject?: unknown;
+  objectives?: unknown;
+  activityParticipation?: unknown;
+  opportunities?: unknown;
+  opportunitiesIntegration?: unknown;
+  opportunitiesTherapist?: unknown;
+  learningAccommodations?: unknown;
+  evaluationCriteria?: unknown;
+  environment?: unknown;
+}
+
+/**
+ * Resolves a non-empty Hebrew goal title from an AI-generated goal object.
+ * Falls back across synonym keys, first operational objective, activity context,
+ * or environment label when supporting fields exist (returning "" for empty stubs).
+ */
+export function resolveAiGoalTitle(
+  rawGoal: AiGoalTitleCandidate | Record<string, unknown> | null | undefined,
+  fallbackEnvironment?: string
+): string {
+  if (!rawGoal || typeof rawGoal !== 'object') return '';
+  const record = rawGoal as Record<string, unknown>;
+
+  for (const key of AI_GOAL_TITLE_SYNONYM_KEYS) {
+    const direct = sanitizeTitleCandidate(record[key]);
+    if (direct) return direct;
+  }
+
+  const fromObjectives = summarizeObjectiveAsTitle(record.objectives);
+  if (fromObjectives) return fromObjectives;
+
+  const fromActivity = summarizeObjectiveAsTitle(record.activityParticipation);
+  if (fromActivity) return fromActivity;
+
+  const hasSupportingContent = [
+    record.opportunities,
+    record.opportunitiesIntegration,
+    record.opportunitiesTherapist,
+    record.learningAccommodations,
+    record.evaluationCriteria
+  ].some((field) => sanitizeTitleCandidate(field).length > 0);
+
+  if (!hasSupportingContent) return '';
+
+  const resolvedEnv =
+    sanitizeTitleCandidate(record.environment) || sanitizeTitleCandidate(fallbackEnvironment);
+  return resolvedEnv ? `קידום תפקוד בתחום ${resolvedEnv}` : '';
+}
+
 export function isGoalEmpty(goalObj?: Partial<SizedGoal> | null): boolean {
   if (!goalObj) return true;
   return (
