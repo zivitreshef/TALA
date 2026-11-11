@@ -20,6 +20,10 @@ describe('buildFocusDomainsCoverageGuidance', () => {
     expect(guidance).toContain('תחום רגשי');
     expect(guidance).toContain('תחום חברתי');
 
+    // Mandatory non-empty title requirement
+    expect(guidance).toContain('חובת ניסוח כותרת מטרה (title)');
+    expect(guidance).toContain('אסור שיישאר ריק');
+
     // Concrete measurable objectives requirement
     expect(guidance).toContain('חובת פירוט יעדים אופרטיביים (objectives)');
     expect(guidance).toContain('2-4 יעדים קונקרטיים, מדידים ומדורגים');
@@ -33,6 +37,7 @@ describe('buildFocusDomainsCoverageGuidance', () => {
     expect(guidance).toContain('תחום קוגניטיבי, חשבוני וחשיבה כמותית');
     expect(guidance).toContain('משחקי שולחן וקופסא');
     expect(guidance).toContain('סביבת גן מתאימה');
+    expect(guidance).toContain('חובת ניסוח כותרת מטרה (title)');
     expect(guidance).toContain('2-4 יעדים קונקרטיים, מדידים ומדורגים');
   });
 
