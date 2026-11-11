@@ -31,16 +31,20 @@ import {
 
 export interface AdminUsageAndSecurityDashboardProps {
   students?: any[];
+  allowedUsers?: any[];
   settings?: any;
   onSettingsChange?: (settings: any) => void;
   onTelemetryUpdated?: (telemetry: any) => void;
+  initialExpandedLargestFiles?: boolean;
 }
 
 export default function AdminUsageAndSecurityDashboard({
   students = [],
+  allowedUsers = [],
   settings = {},
   onSettingsChange,
-  onTelemetryUpdated
+  onTelemetryUpdated,
+  initialExpandedLargestFiles = false
 }: AdminUsageAndSecurityDashboardProps) {
   const [loading, setLoading] = useState(false);
   const [freezeLoading, setFreezeLoading] = useState(false);
@@ -48,7 +52,7 @@ export default function AdminUsageAndSecurityDashboard({
   const [rawEmailLogs, setRawEmailLogs] = useState<any[]>([]);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [showBlazeBreakdown, setShowBlazeBreakdown] = useState(false);
-  const [showLargestFiles, setShowLargestFiles] = useState(false);
+  const [showLargestFiles, setShowLargestFiles] = useState(initialExpandedLargestFiles);
   const [aiSearchEmail, setAiSearchEmail] = useState('');
   const [aiOperationFilter, setAiOperationFilter] = useState('all');
   const [showAllAiLogs, setShowAllAiLogs] = useState(false);
@@ -82,10 +86,11 @@ export default function AdminUsageAndSecurityDashboard({
       aiLogs: rawAiLogs,
       emailLogs: rawEmailLogs,
       students,
+      allowedUsers,
       settings,
       now: new Date()
     });
-  }, [rawAiLogs, rawEmailLogs, students, settings]);
+  }, [rawAiLogs, rawEmailLogs, students, allowedUsers, settings]);
 
   const AI_OPERATION_NAMES_HE: Record<string, string> = {
     goalMatch: 'ניתוח ושיוך ליעד ב-AI',
@@ -849,6 +854,7 @@ export default function AdminUsageAndSecurityDashboard({
                   <tr>
                     <th>שם הקובץ</th>
                     <th>משויך לתלמיד/ה</th>
+                    <th>שם המורה</th>
                     <th>נפח קובץ</th>
                     <th>תאריך העלאה</th>
                   </tr>
@@ -858,6 +864,7 @@ export default function AdminUsageAndSecurityDashboard({
                     <tr key={f.id}>
                       <td style={{ fontWeight: 600 }}>{f.fileName}</td>
                       <td>{f.studentName}</td>
+                      <td style={{ fontWeight: 500, color: '#334155' }}>{f.teacherName || '—'}</td>
                       <td>
                         <strong style={{ color: '#16a34a' }}>{f.formattedSize}</strong>
                       </td>

@@ -748,7 +748,8 @@ export interface GroupStat {
  */
 export function computeGroupStats(
   usersList: Partial<AllowedUserRecord>[] = [],
-  studentsList: Array<{ ownerEmail?: string; [key: string]: unknown }> = []
+  studentsList: Array<{ ownerEmail?: string; [key: string]: unknown }> = [],
+  userActivityByEmail?: Record<string, { aiCount?: number }>
 ): GroupStat[] {
   const groupsMap = new Map<string, GroupStat>();
 
@@ -766,7 +767,10 @@ export function computeGroupStats(
     }
     const stat = groupsMap.get(groupName)!;
     stat.teachersCount += 1;
-    stat.aiUsageTotal += Number(user.aiUsageCount) || 0;
+    const emailKey = (user.email || '').trim().toLowerCase();
+    const teleAi = userActivityByEmail?.[emailKey]?.aiCount;
+    const effectiveAi = Math.max(Number(user.aiUsageCount) || 0, Number(teleAi) || 0);
+    stat.aiUsageTotal += effectiveAi;
     if (user.isTrialUser) {
       stat.trialCount += 1;
     } else {

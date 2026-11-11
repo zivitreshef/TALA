@@ -21,6 +21,7 @@ export interface StorageFileItem {
   formattedSize: string;
   studentName: string;
   studentId: string;
+  teacherName?: string;
   uploadedAt: string;
 }
 
@@ -121,6 +122,7 @@ export interface AggregatedTelemetryData {
 
   last7Days: DayTimelineItem[];
   topActiveTeachers: UserActivity[];
+  userActivityByEmail: Record<string, UserActivity>;
   blazeBreakdown: BlazeServiceBreakdown[];
   isAiFrozen: boolean;
 }
@@ -137,6 +139,7 @@ export interface AggregateTelemetryParams {
   aiLogs?: Array<Record<string, unknown>>;
   emailLogs?: Array<Record<string, unknown>>;
   students?: Array<Record<string, unknown>>;
+  allowedUsers?: Array<Record<string, unknown>>;
   settings?: { aiFreeze?: boolean; [key: string]: unknown };
   now?: Date | string | number;
 }
@@ -190,9 +193,23 @@ export function toTimestampMs(timeVal?: unknown): number {
  * Computes storage metrics across all student diagnostic dossiers.
  * Also extracts top 5 largest files to identify storage hogs.
  */
-export function calculateStorageFootprint(students: Array<Record<string, unknown>> = []): StorageFootprintResult {
+export function calculateStorageFootprint(
+  students: Array<Record<string, unknown>> = [],
+  allowedUsers: Array<Record<string, unknown>> = []
+): StorageFootprintResult {
   if (!Array.isArray(students)) {
     return { totalFiles: 0, totalBytes: 0, formattedMb: '0.0 MB', usagePercent: 0, largestFiles: [] };
+  }
+
+  const teacherNameByEmail = new Map<string, string>();
+  if (Array.isArray(allowedUsers)) {
+    allowedUsers.forEach((u) => {
+      const email = String(u.email || '').trim().toLowerCase();
+      const name = String(u.name || '').trim();
+      if (email && name) {
+        teacherNameByEmail.set(email, name);
+      }
+    });
   }
 
   let totalFiles = 0;
@@ -202,6 +219,15 @@ export function calculateStorageFootprint(students: Array<Record<string, unknown
   students.forEach((student) => {
     const studentName = (student?.name as string) || 'תלמיד/ה ללא שם';
     const studentId = (student?.id as string) || '';
+    const ownerEmail = String(student?.ownerEmail || student?.teacherEmail || '').trim().toLowerCase();
+    const studentTeacherName =
+      (student?.teacherName as string) ||
+      (student?.teacher as string) ||
+      (student?.ownerName as string) ||
+      (ownerEmail ? teacherNameByEmail.get(ownerEmail) : '') ||
+      (student?.createdBy as string) ||
+      '';
+
     const docs = Array.isArray(student?.diagnosticDocuments)
       ? (student.diagnosticDocuments as Array<Record<string, unknown>>)
       : Array.isArray((student?.diagnosticDossier as { documents?: unknown })?.documents)
@@ -222,6 +248,17 @@ export function calculateStorageFootprint(students: Array<Record<string, unknown
         if (!fileSize) fileSize = 250 * 1024;
         totalFiles += 1;
         totalBytes += fileSize;
+
+        const docOwnerEmail = String(doc.uploadedByEmail || doc.authorEmail || '').trim().toLowerCase();
+        const docTeacher =
+          (doc.teacherName as string) ||
+          (doc.uploadedBy as string) ||
+          (doc.authorName as string) ||
+          (docOwnerEmail ? teacherNameByEmail.get(docOwnerEmail) : '') ||
+          studentTeacherName ||
+          (ownerEmail ? (teacherNameByEmail.get(ownerEmail) || ownerEmail) : '') ||
+          '—';
+
         allFiles.push({
           id: (doc.id || doc.storagePath) as string,
           fileName: (doc.fileName || doc.name || 'קובץ ללא שם') as string,
@@ -231,6 +268,7 @@ export function calculateStorageFootprint(students: Array<Record<string, unknown
             : Math.round(fileSize / 1024) + ' KB',
           studentName,
           studentId,
+          teacherName: docTeacher || '—',
           uploadedAt: (doc.uploadedAt || doc.createdAt || '') as string
         });
       }
@@ -492,6 +530,7 @@ export function aggregateTelemetryData({
   aiLogs = [],
   emailLogs = [],
   students = [],
+  allowedUsers = [],
   settings = {},
   now = new Date()
 }: AggregateTelemetryParams = {}): AggregatedTelemetryData {
@@ -620,7 +659,7 @@ export function aggregateTelemetryData({
     .slice(0, 10);
 
   // 5. Storage Footprint (Diagnostic files and Voice records)
-  const storage = calculateStorageFootprint(students);
+  const storage = calculateStorageFootprint(students, allowedUsers);
   const voiceStorage = computeVoiceStorageFootprint(students);
 
   // 6. Cost Estimation
@@ -716,6 +755,7 @@ export function aggregateTelemetryData({
 
     last7Days,
     topActiveTeachers,
+    userActivityByEmail: Object.fromEntries(userActivityMap.entries()),
     blazeBreakdown,
     isAiFrozen: Boolean(settings?.aiFreeze)
   };
