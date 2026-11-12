@@ -197,6 +197,12 @@ export default function AdminOutreachEmailModal({
     <div
       dir="rtl"
       className="modal-backdrop"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (e.target === e.currentTarget && !isSending) {
+          onClose();
+        }
+      }}
       style={{
         position: 'fixed',
         top: 0,
@@ -214,6 +220,7 @@ export default function AdminOutreachEmailModal({
     >
       <div
         className="modal-content"
+        onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '16px',
@@ -341,7 +348,10 @@ export default function AdminOutreachEmailModal({
         >
           <button
             type="button"
-            onClick={() => setActiveViewTab('edit')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveViewTab('edit');
+            }}
             style={{
               padding: '10px 14px',
               border: 'none',
@@ -361,7 +371,10 @@ export default function AdminOutreachEmailModal({
           </button>
           <button
             type="button"
-            onClick={() => setActiveViewTab('preview')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveViewTab('preview');
+            }}
             style={{
               padding: '10px 14px',
               border: 'none',
@@ -415,7 +428,10 @@ export default function AdminOutreachEmailModal({
                     <button
                       key={tmpl.key}
                       type="button"
-                      onClick={() => handleSelectTemplate(tmpl.key)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectTemplate(tmpl.key);
+                      }}
                       style={{
                         padding: '6px 12px',
                         borderRadius: '8px',

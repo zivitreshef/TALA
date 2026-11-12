@@ -267,29 +267,37 @@ export default function DailyPedagogicalTracker({
   const [newTodoText, setNewTodoText] = useState('');
   const [newTodoDate, setNewTodoDate] = useState(todayStr);
   const [newTodoTime, setNewTodoTime] = useState(''); void setNewTodoTime;
+  const [newTodoStudentId, setNewTodoStudentId] = useState<string>(() => targetStudentId || students[0]?.id || '');
+
+  // Keep synced when targetStudentId changes
+  useEffect(() => {
+    if (targetStudentId) {
+      setNewTodoStudentId(targetStudentId);
+    }
+  }, [targetStudentId]);
 
   const handleAddTodo = (e: any) => {
     e.preventDefault();
     if (!newTodoText.trim()) return;
-    const currentStudent = students.find((s: any) => s.id === targetStudentId) || students[0];
+    const selectedStudent = students.find((s: any) => s.id === newTodoStudentId);
     const newTask = {
       id: `todo_${Date.now()}`,
       text: newTodoText.trim(),
       date: newTodoDate || todayStr,
       time: newTodoTime || '',
       completed: false,
-      studentId: currentStudent?.id || null,
-      studentName: currentStudent?.name || ''
+      studentId: selectedStudent?.id || null,
+      studentName: selectedStudent?.name || ''
     };
     setTodos((prev: any) => [newTask, ...prev]);
     setNewTodoText('');
 
-    if (currentStudent && onUpdateStudent) {
-      const existing = Array.isArray(currentStudent.pedagogicalTasks)
-        ? currentStudent.pedagogicalTasks
+    if (selectedStudent && onUpdateStudent) {
+      const existing = Array.isArray(selectedStudent.pedagogicalTasks)
+        ? selectedStudent.pedagogicalTasks
         : [];
       onUpdateStudent({
-        ...currentStudent,
+        ...selectedStudent,
         pedagogicalTasks: [newTask, ...existing]
       });
     }
@@ -1424,9 +1432,6 @@ export default function DailyPedagogicalTracker({
                   <Sparkles size={14} />
                   <span>מיקוד פדגוגי עם AI</span>
                 </button>
-                <span className="todo-count-badge">
-                  {filteredTodos.filter((t: any) => !t.completed).length} פתוחות
-                </span>
               </div>
             </div>
 
@@ -1462,6 +1467,20 @@ export default function DailyPedagogicalTracker({
                 onChange={(e: any) => setNewTodoText(e.target.value)}
                 className="todo-input-text"
               />
+              <select
+                value={newTodoStudentId}
+                onChange={(e: any) => setNewTodoStudentId(e.target.value)}
+                className="todo-student-select"
+                aria-label="שיוך משימה לתלמיד/ה"
+                title="שיוך משימה לתלמיד/ה"
+              >
+                <option value="">כללי (ללא שיוך)</option>
+                {students.map((st: any) => (
+                  <option key={st.id} value={st.id}>
+                    👤 {st.name}
+                  </option>
+                ))}
+              </select>
               <HebrewDatePicker
                 value={newTodoDate}
                 onChange={setNewTodoDate}
