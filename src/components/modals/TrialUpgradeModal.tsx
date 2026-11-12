@@ -1022,6 +1022,44 @@ export default function TrialUpgradeModal({
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Section B: Android */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px', borderTop: '1px dashed #cbd5e1', paddingTop: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e3a5f', fontWeight: 700 }}>
+                                  <Smartphone size={16} color="#16a34a" />
+                                  <span>קיצור לאנדרואיד: איך להוסיף קיצור דרך של TALA למסך הבית באנדרואיד</span>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                    <span style={{ fontWeight: 800, color: '#16a34a', fontSize: '14px', width: '20px' }}>1</span>
+                                    <div style={{ fontSize: '12.5px', color: '#334155' }}>
+                                      <strong>פתיחת Chrome:</strong> היכנסי בדפדפן <strong>Chrome</strong> (או דפדפן ברירת המחדל במכשירך) לכתובת: <code style={{ color: '#0f172a', fontWeight: 600 }}>https://zivitreshef.github.io/TALA/</code>
+                                    </div>
+                                  </div>
+
+                                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                    <span style={{ fontWeight: 800, color: '#16a34a', fontSize: '14px', width: '20px' }}>2</span>
+                                    <div style={{ fontSize: '12.5px', color: '#334155' }}>
+                                      <strong>לחיצה על שלוש הנקודות:</strong> לחצי על סמל התפריט – <strong>שלוש הנקודות האנכיות (⋮)</strong> בפינה העליונה של המסך.
+                                    </div>
+                                  </div>
+
+                                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                    <span style={{ fontWeight: 800, color: '#16a34a', fontSize: '14px', width: '20px' }}>3</span>
+                                    <div style={{ fontSize: '12.5px', color: '#334155' }}>
+                                      <strong>הוספה למסך הבית:</strong> בתפריט שנפתח, לחצי על <strong>"הוספה למסך הבית"</strong> (או <strong>"התקנת אפליקציה" / Add to Home screen</strong>).
+                                    </div>
+                                  </div>
+
+                                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                    <span style={{ fontWeight: 800, color: '#16a34a', fontSize: '14px', width: '20px' }}>4</span>
+                                    <div style={{ fontSize: '12.5px', color: '#334155' }}>
+                                      <strong>אישור:</strong> לחצי על <strong>"הוסף" (או "התקנה")</strong> בחלון שנפתח. סמל TALA יתווסף ישירות למסך הבית וייפתח כאפליקציה עצמאית ונקייה בלחיצה אחת!
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           ) : (
                             chapter.content.map((item, idx) => (
