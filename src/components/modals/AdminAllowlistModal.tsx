@@ -15,6 +15,7 @@ import {
   Trash2,
   Edit2,
   Send,
+  Mail,
   Check,
   Clock,
   CheckCircle2,
@@ -50,6 +51,7 @@ import {
   sortUsersList
 } from '../../allowedUsers';
 import { sendUserInvitationEmailInBackground } from '../../emailService';
+import AdminOutreachEmailModal from './AdminOutreachEmailModal';
 import { subscribeToUserPresence, recordUserPresence } from '../../firebaseBackend';
 import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../UpgradeBanner';
 import SystemHealthPanel from './SystemHealthPanel';
@@ -445,6 +447,11 @@ export default function AdminAllowlistModal({
   const [passwordSavedToastId, setPasswordSavedToastId] = useState<string | null>(null); void passwordSavedToastId;
   const [editUserError, setEditUserError] = useState(''); void editUserError;
 
+  // Multi-selection & Outreach modal state
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [isOutreachModalOpen, setIsOutreachModalOpen] = useState(false);
+  const [outreachRecipients, setOutreachRecipients] = useState<AllowedUserRecord[]>([]);
+
   const [editingDetailsUserId, setEditingDetailsUserId] = useState(null);
   const [editUserForm, setEditUserForm] = useState({
     name: '',
@@ -591,6 +598,57 @@ export default function AdminAllowlistModal({
   });
 
   const filteredUsers = sortUsersList(filteredUsersList, sortField, sortDirection, studentCountByEmail, now);
+
+  // Multi-selection handlers for proactive outreach
+  const isAllFilteredSelected = filteredUsers.length > 0 && filteredUsers.every((u) => selectedUserIds.has(u.id));
+  const selectedCount = selectedUserIds.size;
+
+  const handleToggleSelectUser = (userId: string) => {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const handleSelectAllFilteredToggle = () => {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      if (isAllFilteredSelected) {
+        filteredUsers.forEach((u) => next.delete(u.id));
+      } else {
+        filteredUsers.forEach((u) => next.add(u.id));
+      }
+      return next;
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedUserIds(new Set());
+  };
+
+  const handleOpenOutreachForSelected = () => {
+    const list = (allowedUsers || []).filter((u) => selectedUserIds.has(u.id));
+    if (list.length > 0) {
+      setOutreachRecipients(list);
+      setIsOutreachModalOpen(true);
+    }
+  };
+
+  const handleOpenOutreachForSingleUser = (user: AllowedUserRecord) => {
+    setOutreachRecipients([user]);
+    setIsOutreachModalOpen(true);
+  };
+
+  const handleRemoveOutreachRecipient = (userId: string) => {
+    setOutreachRecipients((prev) => prev.filter((r) => r.id !== userId));
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      next.delete(userId);
+      return next;
+    });
+  };
 
   const handleSortToggle = (field: any) => {
     if (sortField === field) {
@@ -1652,11 +1710,82 @@ export default function AdminAllowlistModal({
                 </form>
               )}
 
+              {/* Proactive Outreach Multi-Selection Banner */}
+              {selectedCount > 0 && (
+                <div
+                  style={{
+                    background: '#eff6ff',
+                    border: '1.5px solid #93c5fd',
+                    borderRadius: '10px',
+                    padding: '10px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.08)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#1e40af' }}>
+                      ✓ נבחרו {selectedCount} משתמשים
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleClearSelection}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#64748b',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      בטל בחירה
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleOpenOutreachForSelected}
+                      className="btn-primary-sm"
+                      style={{
+                        background: 'linear-gradient(135deg, #2563eb 0%, #6b46c1 100%)',
+                        color: '#ffffff',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 4px rgba(37, 99, 235, 0.25)'
+                      }}
+                    >
+                      <Send size={13} />
+                      <span>שליחת מייל יזום ({selectedCount})</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Users Directory Table */}
               <div className="allowed-users-table-wrap">
                 <table className="allowed-users-table">
                   <thead>
                     <tr>
+                      <th style={{ width: '40px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={isAllFilteredSelected}
+                          onChange={handleSelectAllFilteredToggle}
+                          title="בחר את כל המשתמשים המוצגים"
+                          aria-label="בחר את כל המשתמשים המוצגים"
+                          style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                        />
+                      </th>
                       <th
                         onClick={() => handleSortToggle('name')}
                         style={{ cursor: 'pointer', userSelect: 'none' }}
@@ -1714,7 +1843,7 @@ export default function AdminAllowlistModal({
                   <tbody>
                     {filteredUsers.length === 0 && (
                       <tr>
-                        <td colSpan={7} style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
                           <Users size={32} style={{ margin: '0 auto 8px', color: '#cbd5e1' }} />
                           <div style={{ fontSize: '14px', fontWeight: 700, color: '#334155' }}>לא נמצאו משתמשים בקבוצה זו</div>
                           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
@@ -1729,16 +1858,27 @@ export default function AdminAllowlistModal({
                       const remainingDays = getTrialRemainingDays(u);
                       const isEditingThisUser = editingDetailsUserId === u.id;
                       const studentCount = studentCountByEmail.get((u.email || '').toLowerCase()) || 0;
-                      
+                      const isSelected = selectedUserIds.has(u.id);
 
                       return (
                         <tr
                           key={u.id}
                           style={{
-                            background: isEditingThisUser ? '#f0f7ff' : undefined,
+                            background: isEditingThisUser ? '#f0f7ff' : isSelected ? '#eff6ff' : undefined,
                             opacity: !u.active || userStatus === 'trial_expired' ? 0.75 : 1
                           }}
                         >
+                          {/* Row Selection Checkbox */}
+                          <td style={{ textAlign: 'center', width: '40px' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectUser(u.id)}
+                              aria-label={`בחר את המשתמש ${u.name}`}
+                              style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                            />
+                          </td>
+
                           {/* Name & Badges */}
                           <td>
                             {isEditingThisUser ? (
@@ -2088,6 +2228,16 @@ export default function AdminAllowlistModal({
                                 </>
                               ) : (
                                 <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenOutreachForSingleUser(u)}
+                                    className="btn-secondary-sm"
+                                    style={{ padding: '3px 7px', fontSize: '11px', background: '#f5f3ff', color: '#6d28d9', borderColor: '#ddd6fe' }}
+                                    title="שלח מייל יזום ומעוצב למורה זו"
+                                  >
+                                    <Mail size={12} />
+                                  </button>
+
                                   <button
                                     type="button"
                                     onClick={() => handleStartEditUserDetails(u)}
@@ -3547,6 +3697,18 @@ export default function AdminAllowlistModal({
           </div>
         </div>
       )}
+
+      {/* Admin Proactive Outreach Email Modal */}
+      <AdminOutreachEmailModal
+        isOpen={isOutreachModalOpen}
+        recipients={outreachRecipients}
+        onClose={() => setIsOutreachModalOpen(false)}
+        onRemoveRecipient={handleRemoveOutreachRecipient}
+        onSuccess={(msg) => {
+          setInviteStatusBanner(msg);
+          handleClearSelection();
+        }}
+      />
     </div>
   );
 }
