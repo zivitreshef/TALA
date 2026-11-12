@@ -248,6 +248,9 @@ export interface AllowedUserRecord {
   subscriptionType?: 'annual_paid' | string;
   paidExpiresAt?: string | null;
   upgradedToPaidAt?: string | null;
+  paidLicenseAccepted?: boolean;
+  paidLicenseAcceptedAt?: string | null;
+  paidLicenseVersion?: string | null;
   lockedOut?: boolean;
   lockedOutAt?: string;
   failedLoginAttempts?: number;
@@ -618,11 +621,46 @@ export function extendUserTrial<T extends Partial<AllowedUserRecord>>(user: T, a
   };
 }
 
+export const CURRENT_PAID_LICENSE_VERSION = '1.0';
+
+/**
+ * Checks whether a paying user must accept the paid license agreement before using the system.
+ * Returns true if the user is a non-admin, paid account (subscriptionType === 'annual_paid' or upgradedToPaidAt exists)
+ * and has not yet accepted the current paid license agreement version.
+ */
+export function mustUserAcceptPaidLicense(user?: Partial<AllowedUserRecord> | null): boolean {
+  if (!user || typeof user !== 'object') return false;
+  if (user.role === 'admin' || user.email?.toLowerCase() === 'zivit.reshef@gmail.com') {
+    return false;
+  }
+  // Check if user is a paid subscriber
+  const isPaid = user.subscriptionType === 'annual_paid' || Boolean(user.upgradedToPaidAt);
+  if (!isPaid) return false;
+
+  return !user.paidLicenseAccepted || user.paidLicenseVersion !== CURRENT_PAID_LICENSE_VERSION;
+}
+
+/**
+ * Stamps a user object with the accepted paid license agreement metadata.
+ */
+export function acceptPaidLicenseForUser<T extends Partial<AllowedUserRecord>>(
+  user: T,
+  now: Date | string | number = new Date()
+): T & { paidLicenseAccepted: true; paidLicenseAcceptedAt: string; paidLicenseVersion: string } {
+  const nowDate = now instanceof Date ? now : new Date(now);
+  return {
+    ...user,
+    paidLicenseAccepted: true,
+    paidLicenseAcceptedAt: nowDate.toISOString(),
+    paidLicenseVersion: CURRENT_PAID_LICENSE_VERSION
+  };
+}
+
 /**
  * Upgrades a user to a full annual paid subscription (365 days from now).
  */
-export function upgradeUserToAnnualPaid<T extends Partial<AllowedUserRecord>>(user: T, now: Date | string | number = new Date()): T & { isTrialUser: false; subscriptionType: 'annual_paid'; paidExpiresAt: string; upgradedToPaidAt: string; trialExpiresAt: null; trialDays: null } {
-  if (!user || typeof user !== 'object') return user as unknown as T & { isTrialUser: false; subscriptionType: 'annual_paid'; paidExpiresAt: string; upgradedToPaidAt: string; trialExpiresAt: null; trialDays: null };
+export function upgradeUserToAnnualPaid<T extends Partial<AllowedUserRecord>>(user: T, now: Date | string | number = new Date()): T & { isTrialUser: false; subscriptionType: 'annual_paid'; paidExpiresAt: string; upgradedToPaidAt: string; trialExpiresAt: null; trialDays: null; paidLicenseAccepted: false; paidLicenseAcceptedAt: null; paidLicenseVersion: null } {
+  if (!user || typeof user !== 'object') return user as unknown as T & { isTrialUser: false; subscriptionType: 'annual_paid'; paidExpiresAt: string; upgradedToPaidAt: string; trialExpiresAt: null; trialDays: null; paidLicenseAccepted: false; paidLicenseAcceptedAt: null; paidLicenseVersion: null };
   const nowDate = now instanceof Date ? now : new Date(now);
   const nextYearIso = new Date(nowDate.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -633,7 +671,10 @@ export function upgradeUserToAnnualPaid<T extends Partial<AllowedUserRecord>>(us
     paidExpiresAt: nextYearIso,
     upgradedToPaidAt: nowDate.toISOString(),
     trialExpiresAt: null,
-    trialDays: null
+    trialDays: null,
+    paidLicenseAccepted: false,
+    paidLicenseAcceptedAt: null,
+    paidLicenseVersion: null
   };
 }
 

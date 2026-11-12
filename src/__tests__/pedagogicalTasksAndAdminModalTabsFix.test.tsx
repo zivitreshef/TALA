@@ -92,6 +92,23 @@ describe('Pedagogical Tasks UX & Admin Modal Tab Isolation (Bugs 1, 2, 3)', () =
       expect(html).not.toContain('todo-count-badge');
       expect(html).not.toContain('פתוחות</span>');
     });
+
+    it('ensures only one single AI focus button exists in the header and eliminates the duplicate empty-state button', () => {
+      const html = renderToStaticMarkup(
+        <DailyPedagogicalTracker
+          students={mockStudents}
+          currentUser={{ email: 'teacher@school.gov.il' } as any}
+          onUpdateStudent={vi.fn()}
+          onSelectStudent={vi.fn()}
+          onClose={vi.fn()}
+        />
+      );
+
+      // Verify the single header AI button remains
+      expect(html).toContain('מיקוד פדגוגי עם AI');
+      // Verify the duplicate button inside the empty state was eliminated
+      expect(html).not.toContain('חולל משימות AI לתלמידים להיום');
+    });
   });
 
   describe('Bug 3: Admin Outreach Email Modal Tab Isolation', () => {
