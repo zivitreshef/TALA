@@ -36,6 +36,19 @@ describe('Admin Outreach Email Service', () => {
     expect(html).toContain('פסקה שנייה כאן.');
   });
 
+  it('avoids duplicating the greeting when messageContent already starts with שלום', () => {
+    const html = buildAdminOutreachEmailHtml({
+      teacherName: 'זיוית רשף',
+      teacherEmail: 'zivit@school.org',
+      subject: 'פנייה אישית',
+      messageContent: 'שלום זיוית רשף,\n\nרצינו להתעדכן כיצד מתקדמת העבודה.'
+    });
+
+    // Match count of "שלום זיוית רשף" in the HTML should be exactly 1
+    const occurrences = (html.match(/שלום זיוית רשף/g) || []).length;
+    expect(occurrences).toBe(1);
+  });
+
   it('interpolates template placeholders accurately', () => {
     const template = 'שלום {name}, נותרו לך {remainingDays} ימים במערכת במסגרת {group}.';
     const result = interpolateOutreachTemplate(template, {

@@ -1451,6 +1451,14 @@ export function buildAdminOutreachEmailHtml({
     .map((para) => `<p style="margin:0 0 14px 0; font-size:14.5px; line-height:1.7; color:#334155;">${para.replace(/\r?\n/g, '<br/>')}</p>`)
     .join('');
 
+  // Check whether the message already starts with a greeting like "שלום ..." to avoid duplicate greetings
+  const startsWithGreeting = /^\s*שלום\s+/i.test(messageContent || '');
+  const greetingHtml = startsWithGreeting
+    ? ''
+    : `<div style="font-size:16px; font-weight:bold; color:#1e3a5f; margin-bottom:14px;">
+            שלום ${cleanName},
+          </div>`;
+
   return `
     <!DOCTYPE html>
     <html lang="he" dir="rtl">
@@ -1485,9 +1493,7 @@ export function buildAdminOutreachEmailHtml({
 
         <!-- Body Content -->
         <div style="padding:26px; text-align:right;">
-          <div style="font-size:16px; font-weight:bold; color:#1e3a5f; margin-bottom:14px;">
-            שלום ${cleanName},
-          </div>
+          ${greetingHtml}
 
           <div style="background:#ffffff;">
             ${paragraphs || '<p style="margin:0 0 14px 0; font-size:14.5px; line-height:1.7; color:#334155;">פנייה זו נשלחה אליך ממערכת TALA.</p>'}
@@ -1556,13 +1562,13 @@ export async function sendAdminOutreachEmailInBackground({
     siteUrl
   });
 
+  const startsWithGreeting = /^\s*שלום\s+/i.test(messageContent || '');
+  const textPrefix = startsWithGreeting ? '' : `שלום ${teacherName || 'צוות חינוכי'},\r\n\r\n`;
   const textBody = [
-    `שלום ${teacherName || 'צוות חינוכי'},`,
-    '',
-    messageContent,
+    textPrefix + messageContent,
     '',
     `קישור למערכת TALA: ${siteUrl || 'https://zivitreshef.github.io/TALA/'}`
-  ].join('\r\n');
+  ].filter((line) => line !== '').join('\r\n');
 
   return sendReportEmailInBackground({
     config,
