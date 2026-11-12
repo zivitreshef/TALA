@@ -1479,7 +1479,7 @@ export default function TrialUpgradeModal({
                 <span>הסכם רישיון שימוש ומדיניות "שימוש נאות" (Fair Use) – מערכת TALA</span>
               </div>
               <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-                מערכת TALA פותחה בהשקעה עצומה כדי להעניק לאנשי חינוך כלי מקצועי ואמין. השימוש במערכת כפוף לכללים הבאים:
+                מערכת TALA היא מערכת עזר חכמה לאנשי חינוך והוראה. השימוש במערכת והמנוי כפופים להסכם הרישיון הרשמי ולכללים הבאים:
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', margin: '4px 0' }}>
@@ -1513,8 +1513,10 @@ export default function TrialUpgradeModal({
                     <Check size={14} color="#16a34a" />
                     <span>1. רישיון אישי למורה / גננת (פר משתמשת)</span>
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    הרישיון הינו אישי, שמי ואינו ניתן להעברה או שיתוף. כל חשבון מיועד אך ורק למורה או לגננת הרשומה.
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
+                    • הרישיון הינו אישי, שמי ואינו ניתן להעברה או שיתוף, לתקופת שימוש קצובה של 12 חודשים.<br />
+                    • <strong>מכסת תוכניות ומכסת תלמידים:</strong> בנייה וניהול של עד 22 תוכניות עבודה לתלמידים במקביל במסגרת המנוי השנתי.<br />
+                    • <strong>מחיר השקה מיוחד:</strong> 150 ₪ לשנת שימוש מלאה (תשלום שנתי חד-פעמי מראש, אינו חיוב מתחדש אוטומטית).
                   </div>
                 </div>
 
@@ -1523,9 +1525,9 @@ export default function TrialUpgradeModal({
                     <ShieldAlert size={14} color="#dc2626" />
                     <span>2. איסור שיתוף פרטי גישה ואיסור אספקת דוחות לגורמי צד שלישי</span>
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    • חל איסור מוחלט על שיתוף פרטי הכניסה (דוא"ל וסיסמה) עם מורות אחרות או אנשי צוות.<br />
-                    • חל איסור מוחלט להשתמש בחשבון כדי להפיק, לבנות או לספק דוחות ותוכניות עבודה עבור תלמידים של מורות/גננות שאינן בעלות מנוי אישי פעיל במערכת.
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
+                    • חל איסור מוחלט על שיתוף פרטי הכניסה (דוא"ל וסיסמה) עם מורות אחרות או גורמי צד שלישי.<br />
+                    • חל איסור להשתמש בחשבון לצורך שיתוף מסחרי או הפקת דוחות ותוכניות עבודה עבור אנשי צוות שאינם בעלי מנוי אישי פעיל במערכת.
                   </div>
                 </div>
 
@@ -1534,18 +1536,54 @@ export default function TrialUpgradeModal({
                     <Check size={14} color="#16a34a" />
                     <span>3. מגבלות שימוש נאות (מכסת תלמידים ומכסת בינה מלאכותית)</span>
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
-                    • <strong>מכסת תלמידים שנתית:</strong> עד 35 תלמידים פעילים בשנה למנוי אישי (בהתאם לתקן המקובל למורה/גננת שילוב). מעבר לכך נדרש רישיון מוסדי/מתי"א.<br />
-                    • <strong>מכסת בקשות AI:</strong> עד 20 שאילתות AI לתלמיד בשנה, לשמירה על יציבות השרתים וזמינות המערכת.
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
+                    • <strong>מכסת תלמידים שנתית:</strong> עד 22 תוכניות עבודה לתלמידים במקביל (ועד 35 תלמידים פעילים בשנה למנוי אישי בהתאם לתקן המקובל להוראה מותאמת). מעבר לכך נדרש רישיון מוסדי/מתי"א.<br />
+                    • <strong>מכסת בינה מלאכותית (AI):</strong> עד 20 שאילתות AI לתלמיד בשנה לשמירה על יציבות השרתים וזמינות המערכת לכלל המשתמשות.
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
+                    <Check size={14} color="#16a34a" />
+                    <span>4. שמירה על פרטיות התלמידים והגנת מידע (חינוך מיוחד)</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
+                    • <strong>איסור הזנת פרטים מזהים ישירים (PII):</strong> חל איסור מוחלט להזין ת"ז, שמות משפחה מלאים, כתובות או תמונות פנים של תלמידים.<br />
+                    • העבודה במערכת תיעשה בראשי תיבות, כינויים או מספרי קוד פנימיים בלבד בהתאם לסטנדרט אבטחת המידע.<br />
+                    • המשתמשת נושאת באחריות המלאה לקבלת כל ההסכמות הנדרשות מההורים ומגורמי החינוך לפי דין וחוזרי מנכ"ל משרד החינוך.
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
+                    <Check size={14} color="#16a34a" />
+                    <span>5. בינה מלאכותית (AI) – כלי עזר בלבד ואחריות מקצועית</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
+                    • תוצרי הבינה המלאכותית הם בגדר המלצה וטיוטת עזר פדגוגית בלבד ואינם מהווים אבחון מקצועי, חוות דעת פסיכולוגית או תחליף לשיקול דעת אשת החינוך.<br />
+                    • חלה על אשת החינוך חובה מוחלטת לבדוק, לדייק ולהתאים אישית כל תוצר טרם יישומו בעבודה עם התלמיד או מסירתו להורים.<br />
+                    • הנהלת המערכת אינה נושאת באחריות ישירה או עקיפה לתוצאות הנובעות מהסתמכות על תוצרי ה-AI ללא בדיקה מקצועית.
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
+                    <Check size={14} color="#16a34a" />
+                    <span>6. תמיכה טכנית ומדיניות ביטולים כדין</span>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
+                    • <strong>תמיכה טכנית:</strong> סיוע בכניסה, תפעול, שמירת נתונים, הפקת דוחות (PDF) וטיפול בשגיאות מערכת (ללא ייעוץ פדגוגי פרטני).<br />
+                    • <strong>ביטול עסקה כדין:</strong> בהתאם לחוק הגנת הצרכן, ביטול בתוך 14 ימים ממועד העסקה מזכה בהחזר כספי מלא (בניכוי דמי ביטול כדין של עד 5% או 100 ₪, הנמוך מביניהם). לאחר 14 ימים לא יינתן החזר בגין אי-שימוש.<br />
+                    • <strong>פרטי התקשרות:</strong> דוא"ל zivit.reshef@gmail.com | וואטסאפ / טלפון 052-4286501 (ימים א'-ה' 09:00–17:00).
                   </div>
                 </div>
 
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#991b1b', fontWeight: 700, fontSize: '13px' }}>
                     <ShieldAlert size={14} color="#dc2626" />
-                    <span>4. איסור הנדסה לאחור (Reverse Engineering)</span>
+                    <span>7. איסור הנדסה לאחור (Reverse Engineering)</span>
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
                     חל איסור מוחלט להעתיק, לשכפל, להנדס לאחור (Reverse Engineer), לבצע דה-קומפילציה, לפרק את קוד המקור או להשתמש במבנה ובמתודולוגיה לצורך פיתוח מוצר מתחרה.
                   </div>
                 </div>
@@ -1553,9 +1591,9 @@ export default function TrialUpgradeModal({
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#1e3a5f', fontWeight: 700, fontSize: '13px' }}>
                     <Check size={14} color="#16a34a" />
-                    <span>5. זכויות יוצרים וקניין רוחני</span>
+                    <span>8. זכויות יוצרים וקניין רוחני</span>
                   </div>
-                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
                     כל זכויות היוצרים, סימני המסחר, הקניין הרוחני, מאגר המטרות והיעדים הדינמי, מנגנוני ה-AI והעיצוב שמורים באופן בלעדי ליוצרת המערכת – <strong>גב' זיוית רשף</strong>.
                   </div>
                 </div>
