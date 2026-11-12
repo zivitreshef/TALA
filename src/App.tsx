@@ -39,6 +39,7 @@ import {
   isTrialUserExpired,
   getTrialRemainingDays,
   getPaidRemainingDays,
+  mustUserAcceptPaidLicense,
   createPasswordCredentials,
   ensureUsersListPasswordsHashed,
   verifyUserPassword
@@ -138,6 +139,7 @@ import {
   LogoutUnsavedModal
 } from './components/modals/StudentActionModals';
 import TrialNdaModal from './components/modals/TrialNdaModal';
+import PaidLicenseModal from './components/modals/PaidLicenseModal';
 import TrialUpgradeModal from './components/modals/TrialUpgradeModal';
 import TeacherChatWidget from './components/chat/TeacherChatWidget';
 import { subscribeToAllSupportThreads } from './services/supportChatService';
@@ -1113,6 +1115,8 @@ export default function App() {
         (matchingUser.trialDays || 0) !== (currentUser.trialDays || 0) ||
         (matchingUser.paidExpiresAt || '') !== (currentUser.paidExpiresAt || '') ||
         (matchingUser.subscriptionType || '') !== (currentUser.subscriptionType || '') ||
+        Boolean(matchingUser.paidLicenseAccepted) !== Boolean(currentUser.paidLicenseAccepted) ||
+        (matchingUser.paidLicenseVersion || '') !== (currentUser.paidLicenseVersion || '') ||
         (matchingUser.notifyOnSharedReport !== false) !==
           (currentUser.notifyOnSharedReport !== false)
       ) {
@@ -1131,6 +1135,9 @@ export default function App() {
           subscriptionType: matchingUser.subscriptionType || (matchingUser.isTrialUser ? 'trial' : 'annual_paid'),
           paidExpiresAt: matchingUser.paidExpiresAt || null,
           upgradedToPaidAt: matchingUser.upgradedToPaidAt || null,
+          paidLicenseAccepted: Boolean(matchingUser.paidLicenseAccepted),
+          paidLicenseAcceptedAt: matchingUser.paidLicenseAcceptedAt || null,
+          paidLicenseVersion: matchingUser.paidLicenseVersion || null,
           mustSignNda: Boolean(matchingUser.mustSignNda),
           ndaSigned: Boolean(matchingUser.ndaSigned),
           ndaSignedAt: matchingUser.ndaSignedAt,
@@ -1498,6 +1505,47 @@ export default function App() {
         'Could not send signed NDA email in background, recorded in admin notifications:',
         err
       );
+    });
+  };
+
+  const handleCompletePaidLicense = async (licensePayload: {
+    version: string;
+    acceptedAt: string;
+    userEmail: string;
+    userName: string;
+  }) => {
+    if (!currentUser) return;
+    const acceptedAtStr = licensePayload.acceptedAt || new Date().toISOString();
+    const acceptedVersion = licensePayload.version || '1.0';
+
+    const updatedList = allowedUsers.map((u) =>
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+        ? {
+            ...u,
+            paidLicenseAccepted: true,
+            paidLicenseAcceptedAt: acceptedAtStr,
+            paidLicenseVersion: acceptedVersion
+          }
+        : u
+    );
+    handleUpdateAllowedUsers(updatedList);
+
+    const updatedCurrent = {
+      ...currentUser,
+      paidLicenseAccepted: true,
+      paidLicenseAcceptedAt: acceptedAtStr,
+      paidLicenseVersion: acceptedVersion
+    };
+    setCurrentUser(updatedCurrent);
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+
+    handleSubmitAdminRequest({
+      id: 'license_' + Date.now(),
+      topic: 'אישור הסכם רישיון שימוש, תנאי מנוי ותמיכה (EULA) – מנוי בתשלום',
+      name: licensePayload.userName || currentUser.name,
+      email: licensePayload.userEmail || currentUser.email,
+      notes: `גרסת הסכם: ${acceptedVersion} | מועד אישור: ${new Date(acceptedAtStr).toLocaleString('he-IL')}`,
+      createdAt: new Date().toLocaleString('he-IL')
     });
   };
 
@@ -3744,13 +3792,26 @@ export default function App() {
         onLogout={performLogout}
       />
 
+      {/* Mandatory Paid License Agreement Modal for Paying Users (opens immediately when account becomes paid) */}
+      <PaidLicenseModal
+        isOpen={Boolean(
+          currentUser &&
+            !currentUser.mustChangePassword &&
+            mustUserAcceptPaidLicense(currentUser)
+        )}
+        currentUser={currentUser}
+        onAcceptLicense={handleCompletePaidLicense}
+        onLogout={performLogout}
+      />
+
       {/* Optional Post-Usage User Experience & Recommendation Survey Modal */}
       <UserFeedbackSurveyModal
         isOpen={Boolean(
           showFeedbackSurveyModal &&
             currentUser &&
             !currentUser.mustChangePassword &&
-            !(currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned))
+            !(currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned)) &&
+            !mustUserAcceptPaidLicense(currentUser)
         )}
         currentUser={currentUser}
         onSubmitSurvey={handleSubmitUserSurvey}
@@ -3764,7 +3825,8 @@ export default function App() {
           showTrialUpgradeModal &&
             currentUser &&
             !currentUser.mustChangePassword &&
-            !(currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned))
+            !(currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned)) &&
+            !mustUserAcceptPaidLicense(currentUser)
         )}
         onClose={() => setShowTrialUpgradeModal(false)}
         currentUser={currentUser}

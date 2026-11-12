@@ -20,7 +20,8 @@ import {
   FileText,
   Check,
   ShieldAlert,
-  Search
+  Search,
+  Download
 } from 'lucide-react';
 import { getPaidRemainingDays } from '../../allowedUsers';
 import { PEDAGOGICAL_GUIDE_CHAPTERS, GUIDE_CATEGORIES } from './pedagogicalGuideData';
@@ -1479,6 +1480,31 @@ export default function TrialUpgradeModal({
               </div>
               <div style={{ fontSize: '12.5px', color: '#64748b' }}>
                 מערכת TALA פותחה בהשקעה עצומה כדי להעניק לאנשי חינוך כלי מקצועי ואמין. השימוש במערכת כפוף לכללים הבאים:
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', margin: '4px 0' }}>
+                <a
+                  href="./docs/legal/TALA_License_Agreement_EULA.pdf"
+                  download="TALA_License_Agreement_EULA.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    textDecoration: 'none'
+                  }}
+                >
+                  <Download size={13} />
+                  <span>הורדת הסכם רישיון שימוש, תנאי מנוי ותמיכה (PDF)</span>
+                </a>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

@@ -1495,28 +1495,8 @@ export default function DailyPedagogicalTracker({
             {/* Task Items */}
             <div className="todo-list-items">
               {filteredTodos.length === 0 ? (
-                <div className="agenda-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '16px' }}>
+                <div className="agenda-empty" style={{ padding: '16px', textAlign: 'center' }}>
                   <span>אין משימות מתוזמנות ליום זה.</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAiTasksModal(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '6px 14px',
-                      background: '#f1f7fc',
-                      color: '#2b4c73',
-                      border: '1.5px dashed #4a88c7',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Sparkles size={14} color="#4a88c7" />
-                    <span>חולל משימות AI לתלמידים להיום</span>
-                  </button>
                 </div>
               ) : (
                 filteredTodos.map((todo: any) => (
