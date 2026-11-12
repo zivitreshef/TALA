@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   buildAdminOutreachEmailHtml,
   sendAdminOutreachEmailInBackground
 } from '../emailService';
+import { interpolateOutreachTemplate } from '../components/modals/AdminOutreachEmailModal';
 
 describe('Admin Outreach Email Service', () => {
   it('generates HTML email containing TALA logo, teacher name, and content', () => {
@@ -33,5 +34,23 @@ describe('Admin Outreach Email Service', () => {
 
     expect(html).toContain('פסקה ראשונה כאן.');
     expect(html).toContain('פסקה שנייה כאן.');
+  });
+
+  it('interpolates template placeholders accurately', () => {
+    const template = 'שלום {name}, נותרו לך {remainingDays} ימים במערכת במסגרת {group}.';
+    const result = interpolateOutreachTemplate(template, {
+      name: 'שרה כהן',
+      remainingDays: 4,
+      group: 'מתי"א שרון'
+    });
+
+    expect(result).toBe('שלום שרה כהן, נותרו לך 4 ימים במערכת במסגרת מתי"א שרון.');
+  });
+
+  it('handles missing or empty variables gracefully in interpolation', () => {
+    const template = 'שלום {name}, קבוצה: {group}, ימים: {remainingDays}.';
+    const result = interpolateOutreachTemplate(template, {});
+
+    expect(result).toBe('שלום מורה, קבוצה: ללא שיוך, ימים: 0.');
   });
 });
