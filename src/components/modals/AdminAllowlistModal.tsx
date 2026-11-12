@@ -1132,12 +1132,17 @@ export default function AdminAllowlistModal({
   const userAlertsCount = lockedOutUsers.length + unreadInquiriesCount;
 
   return (
-    <div
-      className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`}
-      onClick={onClose}
-      dir="rtl"
-      style={{ zIndex: 2500, padding: '16px' }}
-    >
+    <>
+      <div
+        className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+        dir="rtl"
+        style={{ zIndex: 2500, padding: '16px' }}
+      >
       <div
         className={`modal-container ${isClosing ? 'is-closing' : ''}`}
         onClick={(e) => e.stopPropagation()}
@@ -1246,7 +1251,10 @@ export default function AdminAllowlistModal({
         >
           <button
             type="button"
-            onClick={() => setActiveTab('users')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('users');
+            }}
             style={{
               padding: '12px 16px',
               border: 'none',
@@ -1267,7 +1275,10 @@ export default function AdminAllowlistModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('groups')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('groups');
+            }}
             style={{
               padding: '12px 16px',
               border: 'none',
@@ -1288,7 +1299,10 @@ export default function AdminAllowlistModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('site_telemetry')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('site_telemetry');
+            }}
             style={{
               padding: '12px 16px',
               border: 'none',
@@ -1309,7 +1323,10 @@ export default function AdminAllowlistModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('analytics')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('analytics');
+            }}
             style={{
               padding: '12px 16px',
               border: 'none',
@@ -1330,7 +1347,10 @@ export default function AdminAllowlistModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('requests')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('requests');
+            }}
             style={{
               padding: '12px 16px',
               border: 'none',
@@ -1367,7 +1387,10 @@ export default function AdminAllowlistModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('health')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('health');
+            }}
             style={{
               padding: '12px 16px',
               border: 'none',
@@ -1404,7 +1427,10 @@ export default function AdminAllowlistModal({
 
           <button
             type="button"
-            onClick={() => setActiveTab('settings')}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('settings');
+            }}
             style={{
               padding: '12px 16px',
               border: 'none',
@@ -3623,6 +3649,7 @@ export default function AdminAllowlistModal({
           ))}
         </datalist>
       </div>
+    </div>
 
       {/* Admin Screenshot Lightbox */}
       {adminPreviewImgUrl && (
@@ -3710,6 +3737,6 @@ export default function AdminAllowlistModal({
           handleClearSelection();
         }}
       />
-    </div>
+    </>
   );
 }

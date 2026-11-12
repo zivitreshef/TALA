@@ -599,6 +599,26 @@
   box-shadow: 0 0 0 3px rgba(74, 136, 199, 0.12);
 }
 
+.todo-student-select {
+  background: #f4f7fc;
+  border: 1.5px solid var(--border, #d3dff0);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-deep, #2b4c73);
+  outline: none;
+  cursor: pointer;
+  max-width: 170px;
+  transition: all 0.15s ease;
+}
+
+.todo-student-select:focus {
+  background: #ffffff;
+  border-color: #4a88c7;
+  box-shadow: 0 0 0 3px rgba(74, 136, 199, 0.12);
+}
+
 .todo-input-date {
   background: #f4f7fc;
   border: 1.5px solid var(--border, #d3dff0);
@@ -2118,6 +2138,11 @@
   .todo-input-text {
     width: 100%;
     flex: 1 0 100%;
+  }
+
+  .todo-student-select {
+    flex: 1 1 auto;
+    min-width: 130px;
   }
 
   .btn-todo-add {
