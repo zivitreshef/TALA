@@ -36,14 +36,12 @@ describe('CI/CD Workflows Configuration', () => {
     // Concurrency cancellation for outdated PR pushes
     expect(ciContent).toContain('cancel-in-progress: true');
 
-    // Frontend checks
+    // Quality gates
+    expect(ciContent).toContain('npm ci');
     expect(ciContent).toContain('npm run lint');
     expect(ciContent).toContain('npm run type-check');
+    expect(ciContent).toContain('node --check functions/index.js');
     expect(ciContent).toContain('npm run test:run');
     expect(ciContent).toContain('npx vite build');
-
-    // Cloud Functions verification
-    expect(ciContent).toContain('npm --prefix functions ci');
-    expect(ciContent).toContain('npm --prefix functions run lint');
   });
 });
