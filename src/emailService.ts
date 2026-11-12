@@ -1412,3 +1412,163 @@ export async function sendCustomerReceiptEmailToAdmin({
     targetFolderId: GOOGLE_DRIVE_FOLDERS.CUSTOMER_RECEIPTS
   });
 }
+
+export interface AdminOutreachEmailParams {
+  teacherName?: string;
+  teacherEmail: string;
+  remainingDays?: number | null;
+  group?: string;
+  subject: string;
+  messageContent: string;
+  siteUrl?: string;
+}
+
+export interface SendAdminOutreachEmailParams extends AdminOutreachEmailParams {
+  config?: EmailEngineConfig;
+}
+
+/**
+ * Builds standard executive HTML for proactive Keep-in-Touch / Trial assistance outreach emails to teachers.
+ */
+export function buildAdminOutreachEmailHtml({
+  teacherName,
+  teacherEmail: _teacherEmail,
+  remainingDays,
+  group: _group,
+  subject: _subject,
+  messageContent,
+  siteUrl
+}: AdminOutreachEmailParams): string {
+  const appUrl = siteUrl || 'https://zivitreshef.github.io/TALA/';
+  const logoUrl = 'https://zivitreshef.github.io/TALA/tala-logo.png';
+  const cleanName = teacherName || 'צוות חינוכי יקר';
+
+  // Format multi-line message into styled HTML paragraphs
+  const paragraphs = (messageContent || '')
+    .split(/\r?\n\r?\n/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((para) => `<p style="margin:0 0 14px 0; font-size:14.5px; line-height:1.7; color:#334155;">${para.replace(/\r?\n/g, '<br/>')}</p>`)
+    .join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+    </head>
+    <body dir="rtl" style="margin:0; padding:24px 12px; background-color:#f0f4fa; font-family: Arial, Helvetica, sans-serif; color:#1e293b; text-align:right;">
+      <div dir="rtl" style="max-width:620px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 12px 32px rgba(30, 58, 95, 0.12);">
+        
+        <!-- Top Stained Glass Strip -->
+        <div style="height:6px; background:linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%);"></div>
+
+        <!-- Executive Header Banner with Logo -->
+        <div style="background:linear-gradient(135deg, #1b365d 0%, #3b6ea5 55%, #6b46c1 100%); color:#ffffff; padding:24px 26px; text-align:right;">
+          <table dir="rtl" border="0" cellpadding="0" cellspacing="0" style="width:100%;">
+            <tr>
+              <td style="vertical-align:middle;">
+                <div style="display:inline-block; background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.3); border-radius:999px; padding:3px 12px; font-size:11.5px; font-weight:bold; margin-bottom:8px;">
+                  💬 פנייה אישית מהנהלת המערכת
+                </div>
+                <h1 style="margin:0 0 4px 0; font-size:22px; font-weight:800; color:#ffffff;">מערכת TALA – תוכנית עבודה אקולוגית</h1>
+                <p style="margin:0; font-size:13px; color:#e2e8f0; line-height:1.4;">
+                  ליווי, סיוע ומענה מקצועי לצוות החינוכי
+                </p>
+              </td>
+              <td style="width:68px; text-align:left; vertical-align:middle;">
+                <img src="${logoUrl}" alt="TALA" style="width:58px; height:58px; border-radius:50%; background:#ffffff; padding:2px; box-shadow:0 4px 10px rgba(0,0,0,0.2); object-fit:cover;" />
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Body Content -->
+        <div style="padding:26px; text-align:right;">
+          <div style="font-size:16px; font-weight:bold; color:#1e3a5f; margin-bottom:14px;">
+            שלום ${cleanName},
+          </div>
+
+          <div style="background:#ffffff;">
+            ${paragraphs || '<p style="margin:0 0 14px 0; font-size:14.5px; line-height:1.7; color:#334155;">פנייה זו נשלחה אליך ממערכת TALA.</p>'}
+          </div>
+
+          <!-- Highlight Box (Conditional for trial expiration remaining days) -->
+          ${
+            remainingDays !== undefined && remainingDays !== null && remainingDays >= 0
+              ? `
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-right:4px solid #2563eb; border-radius:10px; padding:12px 16px; margin:18px 0;">
+                <div style="font-size:13px; font-weight:bold; color:#1e40af;">
+                  ⏳ תזכורת ידידותית לגבי תקופת ההתנסות:
+                </div>
+                <div style="font-size:12.5px; color:#334155; margin-top:4px;">
+                  יתרת ימי הניסיון בחשבונך עומדת כעת על <strong>${remainingDays} ימים</strong>. נשמח לסייע בכל שאלה או צורך לפני תום התקופה.
+                </div>
+              </div>
+              `
+              : ''
+          }
+
+          <!-- Direct CTA Button -->
+          <div style="text-align:center; margin:28px 0 14px 0;">
+            <a href="${appUrl}" target="_blank" rel="noopener noreferrer"
+               style="display:inline-block; background:linear-gradient(135deg, #2b6cb0 0%, #6b46c1 100%); color:#ffffff; text-decoration:none; font-size:14.5px; font-weight:bold; padding:12px 28px; border-radius:10px; box-shadow:0 4px 12px rgba(107, 70, 193, 0.3);">
+              כניסה ישירה למערכת TALA &larr;
+            </a>
+          </div>
+          <div style="text-align:center; font-size:11.5px; color:#64748b;">
+            קישור למערכת: <a href="${appUrl}" style="color:#2563eb;">${appUrl}</a>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background:#f8fafc; border-top:1px solid #e2e8f0; padding:14px 24px; text-align:center; font-size:12px; color:#64748b;">
+          הודעה זו נשלחה באופן אישי על ידי מנהלת <strong>מערכת TALA – תוכנית עבודה אקולוגית</strong>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Sends a proactive outreach email in the background.
+ */
+export async function sendAdminOutreachEmailInBackground({
+  config,
+  teacherName,
+  teacherEmail,
+  remainingDays,
+  group,
+  subject,
+  messageContent,
+  siteUrl
+}: SendAdminOutreachEmailParams): Promise<{ ok: boolean; provider: string }> {
+  validateEmailDispatchParams(teacherEmail, subject);
+
+  const htmlBody = buildAdminOutreachEmailHtml({
+    teacherName,
+    teacherEmail,
+    remainingDays,
+    group,
+    subject,
+    messageContent,
+    siteUrl
+  });
+
+  const textBody = [
+    `שלום ${teacherName || 'צוות חינוכי'},`,
+    '',
+    messageContent,
+    '',
+    `קישור למערכת TALA: ${siteUrl || 'https://zivitreshef.github.io/TALA/'}`
+  ].join('\r\n');
+
+  return sendReportEmailInBackground({
+    config,
+    toEmail: teacherEmail,
+    subject,
+    htmlBody,
+    textBody
+  });
+}
