@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Send, Eye, Edit3, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
+import { useState } from 'react';
+import { X, Send, Eye, Edit3, AlertTriangle, Users } from 'lucide-react';
 import {
   buildAdminOutreachEmailHtml,
   sendAdminOutreachEmailInBackground

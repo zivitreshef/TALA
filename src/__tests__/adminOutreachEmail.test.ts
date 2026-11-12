@@ -53,4 +53,8 @@ describe('Admin Outreach Email Service', () => {
 
     expect(result).toBe('שלום מורה, קבוצה: ללא שיוך, ימים: 0.');
   });
+
+  it('exposes background outreach dispatcher function', () => {
+    expect(typeof sendAdminOutreachEmailInBackground).toBe('function');
+  });
 });

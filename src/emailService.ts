@@ -1432,10 +1432,10 @@ export interface SendAdminOutreachEmailParams extends AdminOutreachEmailParams {
  */
 export function buildAdminOutreachEmailHtml({
   teacherName,
-  teacherEmail,
+  teacherEmail: _teacherEmail,
   remainingDays,
-  group,
-  subject,
+  group: _group,
+  subject: _subject,
   messageContent,
   siteUrl
 }: AdminOutreachEmailParams): string {

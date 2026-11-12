@@ -48,7 +48,8 @@ import {
   resetUserDailyAiQuotaInList,
   setGroupDailyAiQuotaInList,
   classifyUserGroup,
-  sortUsersList
+  sortUsersList,
+  AllowedUserRecord
 } from '../../allowedUsers';
 import { sendUserInvitationEmailInBackground } from '../../emailService';
 import AdminOutreachEmailModal from './AdminOutreachEmailModal';
