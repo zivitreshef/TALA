@@ -41,10 +41,13 @@ describe('Unified Bottom Action Bar and Report Export Dropup', () => {
     expect(formCode).not.toContain("background: showStatusReportSection\n                  ? 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)'\n                  : 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)'");
   });
 
-  it('defines professional drop-up CSS rules for the bottom action bar', () => {
+  it('defines professional drop-up CSS rules for the bottom action bar and aligns buttons to the right', () => {
     expect(cssCode).toContain('.btn-export-dropdown-bottom');
     expect(cssCode).toContain('.export-dropdown-menu.drop-up');
     expect(cssCode).toContain('bottom: calc(100% + 8px)');
     expect(cssCode).toContain('animation: exportDropUpFadeIn');
+
+    // Aligns to the right in RTL via flex-start
+    expect(cssCode).toMatch(/\.bottom-final-actions\s*\{[^}]*justify-content:\s*flex-start/);
   });
 });
