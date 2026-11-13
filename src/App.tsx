@@ -3173,22 +3173,30 @@ export default function App() {
                             שותף עמך
                           </span>
                         ) : (
-                          Array.isArray(st.sharedWith) &&
-                          st.sharedWith.length > 0 && (
-                            <span
-                              style={{
-                                fontSize: '10.5px',
-                                background: '#f3eefc',
-                                color: '#5b21b6',
-                                border: '1px solid #ddd6fe',
-                                borderRadius: '999px',
-                                padding: '1px 6px',
-                                fontWeight: 700
-                              }}
-                            >
-                              משותף ({st.sharedWith.length})
-                            </span>
-                          )
+                          (() => {
+                            const validShared = (Array.isArray(st.sharedWith) ? st.sharedWith : []).filter(
+                              (em: string) => {
+                                const clean = String(em || '').trim().toLowerCase();
+                                const myEmail = (currentUser?.email || '').trim().toLowerCase();
+                                return clean && clean !== myEmail;
+                              }
+                            );
+                            return validShared.length > 0 ? (
+                              <span
+                                style={{
+                                  fontSize: '10.5px',
+                                  background: '#f3eefc',
+                                  color: '#5b21b6',
+                                  border: '1px solid #ddd6fe',
+                                  borderRadius: '999px',
+                                  padding: '1px 6px',
+                                  fontWeight: 700
+                                }}
+                              >
+                                משותף ({validShared.length})
+                              </span>
+                            ) : null;
+                          })()
                         )}
                         {st.lastSavedAt && (
                           <span className="st-saved-time">עודכן: {st.lastSavedAt}</span>
@@ -3310,7 +3318,7 @@ export default function App() {
                                   </span>
                                 ) : (
                                   Array.isArray(st.sharedWith) &&
-                                  st.sharedWith.length > 0 && (
+                                  st.sharedWith.some((em: string) => String(em || '').trim().toLowerCase() !== (currentUser?.email || '').trim().toLowerCase()) && (
                                     <span
                                       style={{
                                         fontSize: '10.5px',
@@ -3322,7 +3330,7 @@ export default function App() {
                                         fontWeight: 700
                                       }}
                                     >
-                                      משותף ({st.sharedWith.length})
+                                      משותף ({(st.sharedWith || []).filter((em: string) => String(em || '').trim().toLowerCase() !== (currentUser?.email || '').trim().toLowerCase()).length})
                                     </span>
                                   )
                                 )}

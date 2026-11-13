@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useModalAnimation } from '../../hooks/useModalAnimation';
-import { Users, X, ShieldAlert, Lock } from 'lucide-react';
+import { Users, X, ShieldAlert, Lock, Trash2 } from 'lucide-react';
 import {
   getShareableColleagues,
   getUserGroup,
@@ -81,6 +81,15 @@ export default function ShareTeamModal({
         ? prev.filter((e) => e !== colEmail)
         : [...prev, colEmail]
     );
+  };
+
+  const handleRemoveColleague = (emailToRemove: string): void => {
+    const clean = String(emailToRemove || '').trim().toLowerCase();
+    setSelectedEmails((prev) => prev.filter((e) => e !== clean));
+  };
+
+  const handleRemoveAllColleagues = (): void => {
+    setSelectedEmails([]);
   };
 
   const handleFinish = (): void => {
@@ -189,9 +198,133 @@ export default function ShareTeamModal({
               <p style={{ fontSize: '12px', margin: 0, color: '#991b1b', fontWeight: 500 }}>
                 כדי לשתף תוכניות עבודה, יש להגדיר שיוך צוות/מתי"א בפרופיל המשתמש דרך מנהלת המערכת.
               </p>
+              {selectedEmails.length > 0 && (
+                <button
+                  type="button"
+                  data-testid="remove-all-shares-btn"
+                  onClick={handleRemoveAllColleagues}
+                  style={{
+                    marginTop: '8px',
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '7px',
+                    padding: '6px 14px',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  הסר את כל השיתופים מהתוכנית
+                </button>
+              )}
             </div>
           ) : (
             <>
+              {/* Currently Shared Staff Section - ALWAYS visible when shares exist so owner can inspect and remove them */}
+              {selectedEmails.length > 0 && (
+                <div
+                  data-testid="currently-shared-section"
+                  style={{
+                    marginBottom: '16px',
+                    padding: '12px 14px',
+                    background: '#f8fafd',
+                    border: '1.5px solid #c5d5eb',
+                    borderRadius: '10px'
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}
+                  >
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#1e3a8a' }}>
+                      אנשי צוות המשותפים כרגע ({selectedEmails.length})
+                    </span>
+                    <button
+                      type="button"
+                      data-testid="remove-all-shares-btn"
+                      onClick={handleRemoveAllColleagues}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#dc2626',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: '2px 6px',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      הסר את כל השיתופים
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {selectedEmails.map((email) => {
+                      const matchedUser = (allowedUsers || []).find(
+                        (u) => (u.email || '').trim().toLowerCase() === email
+                      );
+                      const myCleanEmail = (currentUser?.email || '').trim().toLowerCase();
+                      const isSelf = myCleanEmail && myCleanEmail === email;
+                      const displayName = matchedUser?.name || email;
+                      const displayRole = isSelf
+                        ? 'המשתמש שלך (שיתוף עצמי • ניתן להסיר)'
+                        : matchedUser?.role || matchedUser?.title || 'איש/אשת צוות';
+
+                      return (
+                        <div
+                          key={email}
+                          data-testid={`shared-item-${email}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: '#ffffff',
+                            padding: '7px 11px',
+                            borderRadius: '7px',
+                            border: isSelf ? '1.5px solid #fde68a' : '1px solid #d3dff0'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                              {displayName}
+                            </div>
+                            <div style={{ fontSize: '11.5px', color: isSelf ? '#b45309' : '#64748b' }}>
+                              {displayRole} {matchedUser?.name ? `• ${email}` : ''}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            data-testid={`remove-share-btn-${email}`}
+                            onClick={() => handleRemoveColleague(email)}
+                            title="הסר שיתוף זה"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1px solid #fca5a5',
+                              borderRadius: '6px',
+                              padding: '4px 8px',
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Trash2 size={13} />
+                            <span>הסר שיתוף</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div
                 style={{
                   display: 'flex',
