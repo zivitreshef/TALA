@@ -31,8 +31,10 @@ import {
   Paperclip,
   MessageSquare,
   ClipboardCopy,
-      FolderOpen
+  FolderOpen,
+  WifiOff
 } from 'lucide-react';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 import {
   ENVIRONMENTS_LIST,
   SCHOOL_YEARS_LIST,
@@ -43,7 +45,6 @@ import {
   canonicalizeEnvironment,
   getCanonicalEnvironmentsForStage,
   generateDefaultQuestionsForCustomGoal,
-  reverseEngineerRawTextLocally,
   adaptTextToGender,
   adaptGoalToGender,
   resolveStudentAgeAndDateInfo,
@@ -264,7 +265,8 @@ export default function EcologicalWorkPlanForm({
   const [viewingDocText, setViewingDocText] = useState<any>(null);
   const [saveBanner, setSaveBanner] = useState(false);
   const [autoSavedTime, setAutoSavedTime] = useState('');
-    const [isReverseEngineering, setIsReverseEngineering] = useState(false);
+  const { isOnline } = useOnlineStatus();
+  const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerStepIdx, setReverseEngineerStepIdx] = useState(0);
   const [reverseEngineerBanner, setReverseEngineerBanner] = useState('');
   const [reverseEngineerError, setReverseEngineerError] = useState('');
@@ -1476,22 +1478,7 @@ export default function EcologicalWorkPlanForm({
     setSaveBanner(true);
     setTimeout(() => setSaveBanner(false), 3500);
   };
-
-  // Fallback trigger that allows teacher to immediately exit AI waiting and synthesize locally
-  const handleForceLocalReverseEngineer = () => {
-    setIsReverseEngineering(false);
-    setReverseEngineerError('');
-    const snippetsToUse = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
-      ? formData.pedagogicalSnippets
-      : activeSnippets;
-    const aggregatedText = aggregateSnippetsForAiPrompt(snippetsToUse);
-    const rawText = (aggregatedText || formData.teacherFreeText || '').trim();
-    if (!rawText) return;
-    const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
-    if (engineered) {
-      applyEngineeredPlan(engineered, true);
-    }
-  };
+  void applyEngineeredPlan;
 
   async function handleReverseEngineerFullReport(overrideSnippets?: PedagogicalSnippet[]) {
     if (formData.isLocked) return;
@@ -1504,6 +1491,13 @@ export default function EcologicalWorkPlanForm({
     const rawText = (aggregatedText || formData.teacherFreeText || '').trim();
     if (!rawText) {
       window.alert('נא להזין תצפית או לצרף מסמך בציר התובנות כדי שה-AI יוכל להפיק ממנו דוח ומטרות.');
+      return;
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setReverseEngineerError(
+        'אין חיבור לאינטרנט. הפקת יעדים ומטרות באמצעות בינה מלאכותית דורשת חיבור פעיל לרשת. כל הנתונים, התצפיות והטיוטות שרשמת שמורים בבטחה במכשירך ויסונכרנו לענן עם חזרת הרשת.'
+      );
       return;
     }
 
@@ -1797,27 +1791,23 @@ ${textToUse}
       }
     }
 
-    // 2. Coherent Built-in Hebrew Pedagogical NLP & Synthesis Engine
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-
+    // If AI result was empty or malformed, provide transparent notice without silently falling back to low-quality rules
     reportHealthEvent({
-      kind: HEALTH_EVENT_KINDS.AI_LOCAL_FALLBACK,
+      kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
       operation: 'reverseEngineerFullReport',
       extra: {
-        reason: aiParsedResult ? (aiParsedResult.raw ? 'ai_raw_output_not_json' : 'ai_missing_goals') : 'local_engine_used',
+        reason: aiParsedResult ? (aiParsedResult.raw ? 'ai_raw_output_not_json' : 'ai_missing_goals') : 'ai_empty_response',
         stage: currentStage,
         promptLength: rawText.length,
         category: aiParsedResult ? 'empty_response' : 'unknown'
       }
     });
 
-    const engineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
-    if (engineered) {
-      applyEngineeredPlan(engineered, true, snippetsToUse);
-      return;
-    }
+    setReverseEngineerError(
+      'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור הרשת או עומס רגעי). הטקסט והתצפיות שרשמת שמורים במלואם במכשירך ויסונכרנו לענן. אנא נסי שוב בעוד מספר רגעים.'
+    );
     } catch (err: any) {
-      console.warn('[handleReverseEngineerFullReport] AI processing encountered error, attempting graceful local fallback:', err);
+      console.warn('[handleReverseEngineerFullReport] AI processing encountered error:', err);
       reportHealthEvent({
         kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
         operation: 'reverseEngineerFullReport',
@@ -1828,17 +1818,8 @@ ${textToUse}
           errorMessage: err?.message || String(err)
         }
       });
-            try {
-        const localEngineered = reverseEngineerRawTextLocally(rawText, formData, goalBank);
-        if (localEngineered && Array.isArray(localEngineered.goals) && localEngineered.goals.length > 0) {
-          applyEngineeredPlan(localEngineered, true, snippetsToUse);
-          return;
-        }
-      } catch (localErr) {
-        console.error('[handleReverseEngineerFullReport] Local fallback failed:', localErr);
-      }
       setReverseEngineerError(
-        'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור הרשת או עומס רגעי). תוכלי לנסות שוב או להפיק מיידית במנוע המקומי ללא רשת.'
+        'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור הרשת או עומס רגעי). הטקסט והתצפיות שרשמת שמורים במלואם במכשירך ויסונכרנו לענן. אנא נסי שוב בעוד מספר רגעים.'
       );
     } finally {
       setIsReverseEngineering(false);
@@ -1926,6 +1907,11 @@ ${textToUse}
     const rawText = (goalRow[fieldName] || '').trim();
     if (!rawText) {
       window.alert('נא להזין טקסט בתיבת ההערכה לפני הפעלת עיבוד מידע ב-AI.');
+      return;
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      window.alert('אין חיבור לאינטרנט. ניסוח הערכה פדגוגית ב-AI דורש חיבור פעיל לרשת. השינויים נשמרים במכשירך.');
       return;
     }
 
@@ -2035,6 +2021,11 @@ ${rawText}
 
     if (!rawText && allObservations.length === 0 && completedTasks.length === 0) {
       window.alert('נא להזין תיאור חופשי של התקדמות התלמיד/ה, או לתעד תצפיות ומשימות במעקב היומי לפני הפעלת עיבוד מידע ב-AI.');
+      return;
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      window.alert('אין חיבור לאינטרנט. ניסוח הערכה תקופתית ב-AI דורש חיבור פעיל לרשת. השינויים נשמרים במכשירך.');
       return;
     }
 
@@ -2185,6 +2176,10 @@ ${goalsContext}
 
   // === Generate Professional Educational-Functional Status Report ("דו"ח מצב עדכני") ===
   const handleGenerateStatusReport = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      window.alert('אין חיבור לאינטרנט. הפקת דו"ח מצב ב-AI דורשת חיבור פעיל לרשת. השינויים נשמרים במכשירך.');
+      return;
+    }
     setIsGeneratingStatusReport(true);
     setStatusReportBanner('');
     try {
@@ -2691,7 +2686,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </div>
           </div>
 
-          <div style={{ position: 'relative', display: 'inline-block' }}>
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             {activeOnboardingStep === 6 && (
               <div className="onboarding-tour-arrow-box" style={{ top: '44px', right: '0' }}>
                 <span className="tour-arrow-anim">☝️</span>
@@ -2708,18 +2703,47 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <Save size={17} />
               <span>שמור התקדמות</span>
             </button>
+            {!isOnline && (
+              <span
+                className="offline-mode-pill"
+                data-testid="form-offline-pill"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  background: '#fff7ed',
+                  border: '1px solid #ffedd5',
+                  color: '#c2410c',
+                  fontSize: '11.5px',
+                  fontWeight: 600
+                }}
+                title="מצב לא מקוון – כל הנתונים נשמרים במכשיר ויעלו לענן כשהחיבור יתחדש"
+              >
+                <WifiOff size={13} />
+                <span>מצב לא מקוון (שמירה מקומית)</span>
+              </span>
+            )}
           </div>
 
           {saveBanner && (
-            <span className="save-toast-badge">
+            <span
+              className="save-toast-badge"
+              style={!isOnline ? { background: '#fffbeb', color: '#b45309', borderColor: '#fde68a' } : undefined}
+            >
               <Check size={14} />
-              <span>נשמר בהצלחה!</span>
+              <span>{!isOnline ? 'נשמר מקומית במכשיר (יסונכרן לענן בהתחברות)' : 'נשמר בהצלחה!'}</span>
             </span>
           )}
 
           {(autoSavedTime || formData.lastSavedAt) && !saveBanner && (
             <span className="last-saved-hint">
-              {autoSavedTime ? `נשמר אוטומטית: ${autoSavedTime}` : `שמירה אחרונה: ${formData.lastSavedAt}`}
+              {!isOnline
+                ? `נשמר מקומית: ${autoSavedTime || formData.lastSavedAt} (ממתין לסנכרון ענן)`
+                : autoSavedTime
+                ? `נשמר אוטומטית: ${autoSavedTime}`
+                : `שמירה אחרונה: ${formData.lastSavedAt}`}
             </span>
           )}
         </div>
@@ -5023,16 +5047,16 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 >
                   <span style={{ fontSize: '11.5px', color: '#64748b' }}>
                     {reverseEngineerElapsedSeconds >= 25
-                      ? 'אם חיבור הרשת מתעכב, תוכלי לעבור מיידית להפקה מקומית:'
-                      : 'אם את ממהרת, ניתן לעבור למנוע הפדגוגי המקומי בכל שלב:'}
+                      ? 'העיבוד מתעכב מעבר לרגיל עקב חיבור הרשת. כל הטקסטים שמורים בבטחה במכשירך.'
+                      : 'העיבוד נמשך. נתונייך שמורים במלואם.'}
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleForceLocalReverseEngineer()}
+                    onClick={() => setIsReverseEngineering(false)}
                     style={{
                       background: '#ffffff',
-                      color: '#4338ca',
-                      border: '1.5px solid #a5b4fc',
+                      color: '#475569',
+                      border: '1.5px solid #cbd5e1',
                       borderRadius: '8px',
                       padding: '4px 10px',
                       fontSize: '12px',
@@ -5043,7 +5067,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       gap: '5px'
                     }}
                   >
-                    ⚡ מעבר לעיבוד מקומי ללא אינטרנט
+                    ביטול וחזרה לעריכה
                   </button>
                 </div>
               )}
@@ -5087,22 +5111,6 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   }}
                 >
                   🔄 נסי שוב
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleForceLocalReverseEngineer()}
-                  style={{
-                    background: '#ffffff',
-                    color: '#991b1b',
-                    border: '1px solid #f87171',
-                    borderRadius: '6px',
-                    padding: '5px 12px',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  ⚡ הפק במנוע מקומי
                 </button>
                 <button
                   type="button"
@@ -6703,20 +6711,37 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             style={
               saveBanner
                 ? {
-                    background: 'linear-gradient(135deg, #16a34a 0%, #059669 100%)',
-                    borderColor: '#86efac'
+                    background: isOnline
+                      ? 'linear-gradient(135deg, #16a34a 0%, #059669 100%)'
+                      : 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                    borderColor: isOnline ? '#86efac' : '#fde68a'
                   }
                 : undefined
             }
           >
             {saveBanner ? <Check size={18} /> : <Save size={18} />}
-            <span>{saveBanner ? 'נשמר בהצלחה!' : 'שמור התקדמות לעריכה עתידית'}</span>
+            <span>
+              {saveBanner
+                ? isOnline
+                  ? 'נשמר בהצלחה בענן!'
+                  : 'נשמר במכשירך!'
+                : isOnline
+                ? 'שמור התקדמות לעריכה עתידית'
+                : 'שמור התקדמות במכשיר'}
+            </span>
           </button>
 
           {saveBanner && (
-            <span className="save-toast-badge">
+            <span
+              className="save-toast-badge"
+              style={!isOnline ? { background: '#fffbeb', color: '#b45309', borderColor: '#fde68a' } : undefined}
+            >
               <Check size={14} />
-              <span>השינויים נשמרו בהצלחה!</span>
+              <span>
+                {!isOnline
+                  ? 'השינויים נשמרו מקומית במכשיר (יסונכרנו לענן בהתחברות)'
+                  : 'השינויים נשמרו בהצלחה!'}
+              </span>
             </span>
           )}
 
