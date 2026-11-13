@@ -7,6 +7,7 @@ describe('SEO and Google Searchability Assets', () => {
   const indexPath = path.join(rootDir, 'index.html');
   const robotsPath = path.join(rootDir, 'public/robots.txt');
   const sitemapPath = path.join(rootDir, 'public/sitemap.xml');
+  const googleVerificationPath = path.join(rootDir, 'public/google3aca6ed907d12930.html');
 
   it('includes essential SEO meta tags in index.html', () => {
     expect(fs.existsSync(indexPath)).toBe(true);
@@ -35,5 +36,11 @@ describe('SEO and Google Searchability Assets', () => {
 
     expect(content).toContain('<loc>https://zivitreshef.github.io/TALA/</loc>');
     expect(content).toContain('<priority>1.0</priority>');
+  });
+
+  it('provides the Google Search Console verification HTML file', () => {
+    expect(fs.existsSync(googleVerificationPath)).toBe(true);
+    const content = fs.readFileSync(googleVerificationPath, 'utf-8');
+    expect(content).toContain('google-site-verification: google3aca6ed907d12930.html');
   });
 });
