@@ -4,6 +4,7 @@ import {
   getLastObservationInfo,
   startOfWeekSunday,
   formatLastObservationLabel,
+  formatCompactLastObservationLabel,
   isStale,
   calculateCurrentStreak,
   computeClassPulse
@@ -58,6 +59,13 @@ describe('studentPulse (v3.0.0)', () => {
       expect(formatLastObservationLabel({ lastMs: 1, daysSince: 0 })).toBe('תצפית אחרונה: היום');
       expect(formatLastObservationLabel({ lastMs: 1, daysSince: 1 })).toBe('תצפית אחרונה: אתמול');
       expect(formatLastObservationLabel({ lastMs: 1, daysSince: 5 })).toBe('תצפית אחרונה: לפני 5 ימים');
+    });
+
+    it('formats compact Hebrew labels without redundant prefixes for student cards', () => {
+      expect(formatCompactLastObservationLabel({ lastMs: null, daysSince: null })).toBe('טרם תועד');
+      expect(formatCompactLastObservationLabel({ lastMs: 1, daysSince: 0 })).toBe('היום');
+      expect(formatCompactLastObservationLabel({ lastMs: 1, daysSince: 1 })).toBe('אתמול');
+      expect(formatCompactLastObservationLabel({ lastMs: 1, daysSince: 5 })).toBe('לפני 5 ימים');
     });
 
     it('treats never-documented and 10+ days as stale', () => {

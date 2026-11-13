@@ -73,6 +73,14 @@ export function formatLastObservationLabel(info: LastObservationInfo): string {
   return `תצפית אחרונה: לפני ${info.daysSince} ימים`;
 }
 
+/** Compact Hebrew label for student card badges (omits redundant prefix to prevent layout overflow). */
+export function formatCompactLastObservationLabel(info: LastObservationInfo): string {
+  if (info.daysSince === null) return 'טרם תועד';
+  if (info.daysSince === 0) return 'היום';
+  if (info.daysSince === 1) return 'אתמול';
+  return `לפני ${info.daysSince} ימים`;
+}
+
 export function isStale(info: LastObservationInfo, staleDays: number = DEFAULT_STALE_DAYS): boolean {
   return info.daysSince === null || info.daysSince >= staleDays;
 }

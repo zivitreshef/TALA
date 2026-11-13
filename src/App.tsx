@@ -113,7 +113,11 @@ import {
   getObservationGaps,
   getPedagogicalAccomplishmentsSummary
 } from './domain/dailyPedagogicalTracking';
-import { getLastObservationInfo, formatLastObservationLabel } from './domain/studentPulse';
+import {
+  getLastObservationInfo,
+  formatLastObservationLabel,
+  formatCompactLastObservationLabel
+} from './domain/studentPulse';
 import ClassPulseStrip from './components/ClassPulseStrip';
 import QuickCaptureModal from './components/modals/QuickCaptureModal';
 import TeamMeetingReportModal from './components/modals/TeamMeetingReportModal';
@@ -3798,15 +3802,24 @@ export default function App() {
                             {clusterStudents.map((st: any) => {
                               const obsInfo = getLastObservationInfo(st);
                               const obsLabel = formatLastObservationLabel(obsInfo);
+                              const compactObsLabel = formatCompactLastObservationLabel(obsInfo);
                               const isStale = obsInfo.daysSince === null || obsInfo.daysSince >= 10;
                               return (
                                 <div key={st.id} className="inside-landing-student-item">
-                                  <button
-                                    type="button"
-                                    className="inside-landing-student-row"
+                                  <div
+                                    className="inside-landing-student-clickable"
                                     onClick={() => {
                                       setSelectedStudentId(st.id);
                                     }}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setSelectedStudentId(st.id);
+                                      }
+                                    }}
+                                    title={`כניסה ליומן ולסביבת העבודה של ${st.name || 'תלמיד/ה'}`}
                                   >
                                     <div className="inside-st-main">
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -3827,9 +3840,9 @@ export default function App() {
                                     <div className="inside-st-meta">
                                       <span
                                         className={`inside-st-obs-badge ${isStale ? 'stale' : 'fresh'}`}
-                                        title="מועד התצפית האחרונה שתועדה"
+                                        title={`מועד התצפית האחרונה: ${obsLabel}`}
                                       >
-                                        {obsLabel}
+                                        {compactObsLabel}
                                       </span>
                                       {(st.ownerEmail || '').toLowerCase() !==
                                         currentUser.email.toLowerCase() && (
@@ -3850,21 +3863,31 @@ export default function App() {
                                       <span className="st-goals-badge">
                                         {(st.goals || []).filter((g: any) => g.title).length} מטרות
                                       </span>
-                                      <ChevronLeft size={16} className="inside-st-arrow" />
                                     </div>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="inside-landing-student-mic-btn"
-                                    title={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
-                                    aria-label={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setQuickCaptureStudent(st);
-                                    }}
-                                  >
-                                    <Mic size={15} />
-                                  </button>
+                                  </div>
+                                  <div className="inside-st-actions">
+                                    <button
+                                      type="button"
+                                      className="inside-landing-student-mic-btn"
+                                      title={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
+                                      aria-label={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setQuickCaptureStudent(st);
+                                      }}
+                                    >
+                                      <Mic size={15} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="inside-st-arrow-btn"
+                                      onClick={() => setSelectedStudentId(st.id)}
+                                      title={`כניסה ליומן של ${st.name || 'תלמיד/ה'}`}
+                                      aria-label={`כניסה ליומן של ${st.name || 'תלמיד/ה'}`}
+                                    >
+                                      <ChevronLeft size={16} className="inside-st-arrow" />
+                                    </button>
+                                  </div>
                                 </div>
                               );
                             })}
@@ -3877,15 +3900,24 @@ export default function App() {
                       {sortedStudentsByName.map((st: any) => {
                         const obsInfo = getLastObservationInfo(st);
                         const obsLabel = formatLastObservationLabel(obsInfo);
+                        const compactObsLabel = formatCompactLastObservationLabel(obsInfo);
                         const isStale = obsInfo.daysSince === null || obsInfo.daysSince >= 10;
                         return (
                           <div key={st.id} className="inside-landing-student-item">
-                            <button
-                              type="button"
-                              className="inside-landing-student-row"
+                            <div
+                              className="inside-landing-student-clickable"
                               onClick={() => {
                                 setSelectedStudentId(st.id);
                               }}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setSelectedStudentId(st.id);
+                                }
+                              }}
+                              title={`כניסה ליומן ולסביבת העבודה של ${st.name || 'תלמיד/ה'}`}
                             >
                               <div className="inside-st-main">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -3906,9 +3938,9 @@ export default function App() {
                               <div className="inside-st-meta">
                                 <span
                                   className={`inside-st-obs-badge ${isStale ? 'stale' : 'fresh'}`}
-                                  title="מועד התצפית האחרונה שתועדה"
+                                  title={`מועד התצפית האחרונה: ${obsLabel}`}
                                 >
-                                  {obsLabel}
+                                  {compactObsLabel}
                                 </span>
                                 {(st.ownerEmail || '').toLowerCase() !==
                                   currentUser.email.toLowerCase() && (
@@ -3929,21 +3961,31 @@ export default function App() {
                                 <span className="st-goals-badge">
                                   {(st.goals || []).filter((g: any) => g.title).length} מטרות
                                 </span>
-                                <ChevronLeft size={16} className="inside-st-arrow" />
                               </div>
-                            </button>
-                            <button
-                              type="button"
-                              className="inside-landing-student-mic-btn"
-                              title={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
-                              aria-label={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setQuickCaptureStudent(st);
-                              }}
-                            >
-                              <Mic size={15} />
-                            </button>
+                            </div>
+                            <div className="inside-st-actions">
+                              <button
+                                type="button"
+                                className="inside-landing-student-mic-btn"
+                                title={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
+                                aria-label={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setQuickCaptureStudent(st);
+                                }}
+                              >
+                                <Mic size={15} />
+                              </button>
+                              <button
+                                type="button"
+                                className="inside-st-arrow-btn"
+                                onClick={() => setSelectedStudentId(st.id)}
+                                title={`כניסה ליומן של ${st.name || 'תלמיד/ה'}`}
+                                aria-label={`כניסה ליומן של ${st.name || 'תלמיד/ה'}`}
+                              >
+                                <ChevronLeft size={16} className="inside-st-arrow" />
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
