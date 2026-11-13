@@ -14,6 +14,8 @@ import {
   EyeOff,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   BookOpen,
   Wand2,
   FileText,
@@ -397,6 +399,12 @@ export default function EcologicalWorkPlanForm({
     };
   }, [isReverseEngineering]);
 
+  // State for Work Plan Wizard / Stepper Navigation (1 = Details, 2 = Profile/Strengths, 3 = Goals, 4 = Recommendations/Summary)
+  const [activeWorkPlanStep, setActiveWorkPlanStep] = useState<number>(() => {
+    // If goals already exist, start on goals step, otherwise start on details
+    return 1;
+  });
+
   // State for Separate Mid-Year / End-of-Year Evaluation Report & AI Processing
   const [showEvalReportSection, setShowEvalReportSection] = useState(false);
   const [loadingEvalAiKey, setLoadingEvalAiKey] = useState<any>(null);
@@ -414,11 +422,14 @@ export default function EcologicalWorkPlanForm({
   useEffect(() => {
     if (activeOnboardingStep) {
       if (activeOnboardingStep === 2) {
+        setActiveWorkPlanStep(1);
         section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       } else if (activeOnboardingStep === 3) {
+        setActiveWorkPlanStep(2);
         setIsFreeTextCollapsed(false);
         setTimeout(() => section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
       } else if (activeOnboardingStep === 4) {
+        setActiveWorkPlanStep(3);
         section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       } else if (activeOnboardingStep === 6 || activeOnboardingStep === 10) {
         window.scrollTo?.({ top: 0, behavior: 'smooth' });
@@ -2894,35 +2905,47 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       )}
 
-      {/* Mobile-Friendly Quick Section Navigator Bar */}
-      <nav className="form-section-nav-bar" aria-label="ניווט מהיר בין סעיפי התוכנית">
+      {/* Interactive 4-Step Form Stepper */}
+      <nav className="form-section-nav-bar" aria-label="שלבי התוכנית הפדגוגית">
         <button
           type="button"
-          className="section-nav-pill"
-          onClick={() => section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className={`section-nav-pill ${activeWorkPlanStep === 1 ? 'active' : ''}`}
+          onClick={() => {
+            setActiveWorkPlanStep(1);
+            setTimeout(() => section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          }}
         >
-          1. פרטים
+          1. רקע ומסגרת
         </button>
         <button
           type="button"
-          className="section-nav-pill"
-          onClick={() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className={`section-nav-pill ${activeWorkPlanStep === 2 ? 'active' : ''}`}
+          onClick={() => {
+            setActiveWorkPlanStep(2);
+            setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          }}
         >
-          2. תיאור ומוקדי כוח
+          2. פרופיל ומוקדי כוח
         </button>
         <button
           type="button"
-          className="section-nav-pill"
-          onClick={() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className={`section-nav-pill ${activeWorkPlanStep === 3 ? 'active' : ''}`}
+          onClick={() => {
+            setActiveWorkPlanStep(3);
+            setTimeout(() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          }}
         >
-          3. מטרות ({(formData.goals || []).filter((g: any) => g.title).length})
+          3. מטרות ויעדים ({(formData.goals || []).filter((g: any) => g.title).length})
         </button>
         <button
           type="button"
-          className="section-nav-pill"
-          onClick={() => section4Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          className={`section-nav-pill ${activeWorkPlanStep === 4 ? 'active' : ''}`}
+          onClick={() => {
+            setActiveWorkPlanStep(4);
+            setTimeout(() => section4Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+          }}
         >
-          4. המלצות
+          4. המלצות וסיכום
         </button>
         <button
           type="button"
@@ -4011,7 +4034,11 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       ) : (
         <>
           {/* Section 1: Student Personal Details & Plan Type Radio Selector */}
-          <section className="form-section-card" ref={section1Ref}>
+          <section
+            className="form-section-card"
+            ref={section1Ref}
+            style={{ display: activeWorkPlanStep === 1 ? 'block' : 'none' }}
+          >
         <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -4636,10 +4663,30 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </div>
           )}
         </div>
+
+        {/* Step 1 Footer Nav */}
+        <div className="section-step-nav-buttons">
+          <div></div>
+          <button
+            type="button"
+            className="btn-step-next"
+            onClick={() => {
+              setActiveWorkPlanStep(2);
+              setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }}
+          >
+            <span>המשך לשלב 2: פרופיל ומוקדי כוח</span>
+            <ChevronLeft size={16} />
+          </button>
+        </div>
       </section>
 
       {/* Section 2: Assessment Dossier + Teacher Free Text + AI Processing + Student Profile / Strengths */}
-      <section className="form-section-card highlight-summary-section" ref={section2Ref}>
+      <section
+        className="form-section-card highlight-summary-section"
+        ref={section2Ref}
+        style={{ display: activeWorkPlanStep === 2 ? 'block' : 'none' }}
+      >
         <div className="section-header-line">
           <h3>
             {isTalaMode
@@ -5464,10 +5511,40 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </table>
           )}
         </div>
+
+        {/* Step 2 Footer Nav */}
+        <div className="section-step-nav-buttons">
+          <button
+            type="button"
+            className="btn-step-prev"
+            onClick={() => {
+              setActiveWorkPlanStep(1);
+              setTimeout(() => section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }}
+          >
+            <ChevronRight size={16} />
+            <span>חזרה לשלב 1: רקע ומסגרת</span>
+          </button>
+          <button
+            type="button"
+            className="btn-step-next"
+            onClick={() => {
+              setActiveWorkPlanStep(3);
+              setTimeout(() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }}
+          >
+            <span>המשך לשלב 3: מטרות ויעדים</span>
+            <ChevronLeft size={16} />
+          </button>
+        </div>
       </section>
 
       {/* Section 3: Goals & Environments Interactive Builder */}
-      <section className="form-section-card" ref={section3Ref}>
+      <section
+        className="form-section-card"
+        ref={section3Ref}
+        style={{ display: activeWorkPlanStep === 3 ? 'block' : 'none' }}
+      >
         <div className="section-header-line">
           <div>
             <h3>
@@ -5561,43 +5638,64 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         {(!formData.goals || formData.goals.length === 0) && (
           <div
             style={{
-              padding: '36px 20px',
+              padding: '40px 24px',
               textAlign: 'center',
               background: '#f8fafc',
               border: '2px dashed #cbd5e1',
-              borderRadius: '12px',
+              borderRadius: '16px',
               marginBottom: '20px'
             }}
           >
-            <div style={{ fontSize: '15px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+            <div style={{ fontSize: '17px', fontWeight: 800, color: '#1e293b', marginBottom: '8px' }}>
               {isTalaMode
-                ? 'טרם הוגדרו מטרות בתכנית הלימודית היחידנית (תל"א)'
-                : 'טרם הוגדרו מטרות בתכנית החינוכית היחידנית (תח"י)'}
+                ? 'טרם הוגדרו מטרות בתכנית הלימודית היחידנית'
+                : 'טרם הוגדרו מטרות בתכנית החינוכית היחידנית'}
             </div>
-            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px 0' }}>
-              תוכל לבחור מטרה מתוך מאגר המטרות הדינמי לפי סביבה ותחום לימודי או להגדיר מטרה חדשה.
+            <p style={{ fontSize: '14px', color: '#64748b', margin: '0 auto 24px auto', maxWidth: '520px', lineHeight: 1.5 }}>
+              כדי להתחיל, באפשרותך לקבל הצעת מטרות מותאמות אוטומטית בעזרת בינה מלאכותית, או לבחור ישירות מתוך מאגר היעדים הפדגוגי.
             </p>
-            <div style={{ position: 'relative', display: 'inline-block' }}>
-              {activeOnboardingStep === 4 && (
-                <div className="onboarding-tour-arrow-box" style={{ top: '-48px', left: '50%', transform: 'translateX(-50%)' }}>
-                  <span className="tour-arrow-anim">👇</span>
-                  <span>שלב 4: לחצי כאן להוספת מטרות מהמאגר האקולוגי!</span>
-                </div>
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              {/* Option 1: AI Goal Suggestion */}
               <button
                 type="button"
-                className={`btn-add-goal-block-large ${activeOnboardingStep === 4 ? 'tour-highlight-btn' : ''}`}
+                className="btn-step-next"
                 onClick={() => {
-                  handleAddGoalRow();
+                  if ((formData.teacherFreeText || '').trim().length > 10) {
+                    handleReverseEngineerFullReport();
+                  } else {
+                    setActiveWorkPlanStep(2);
+                    setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                  }
                 }}
-                disabled={isReportLocked}
-                style={{ display: 'inline-flex', width: 'auto', padding: '10px 24px' }}
+                disabled={isReportLocked || isReverseEngineering}
+                style={{ padding: '11px 20px', fontSize: '14px', background: '#2563eb' }}
+                title="הצעת יעדים מותאמים על בסיס פרופיל התלמיד/ה בעזרת בינה מלאכותית"
               >
-                <Plus size={18} />
-                <span>
-                  {isTalaMode ? '+ הוסף מטרה ראשונה לתל"א' : '+ הוסף מטרה ראשונה לתח"י'}
-                </span>
+                <Sparkles size={17} />
+                <span>הצעת מטרות מותאמות בבינה מלאכותית</span>
               </button>
+
+              {/* Option 2: Choose from Bank / Add Manually */}
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                {activeOnboardingStep === 4 && (
+                  <div className="onboarding-tour-arrow-box" style={{ top: '-48px', left: '50%', transform: 'translateX(-50%)' }}>
+                    <span className="tour-arrow-anim">👇</span>
+                    <span>שלב 4: לחצי כאן להוספת מטרות מהמאגר האקולוגי!</span>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={`btn-step-prev ${activeOnboardingStep === 4 ? 'tour-highlight-btn' : ''}`}
+                  onClick={() => {
+                    handleAddGoalRow();
+                  }}
+                  disabled={isReportLocked}
+                  style={{ padding: '11px 20px', fontSize: '14px', color: '#1e3a8a', borderColor: '#bfdbfe', background: '#eff6ff' }}
+                >
+                  <Plus size={17} />
+                  <span>בחירה ידנית ממאגר היעדים</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -6753,10 +6851,40 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </button>
           </div>
         )}
+
+        {/* Step 3 Footer Nav */}
+        <div className="section-step-nav-buttons">
+          <button
+            type="button"
+            className="btn-step-prev"
+            onClick={() => {
+              setActiveWorkPlanStep(2);
+              setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }}
+          >
+            <ChevronRight size={16} />
+            <span>חזרה לשלב 2: פרופיל ומוקדי כוח</span>
+          </button>
+          <button
+            type="button"
+            className="btn-step-next"
+            onClick={() => {
+              setActiveWorkPlanStep(4);
+              setTimeout(() => section4Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }}
+          >
+            <span>המשך לשלב 4: המלצות וסיכום</span>
+            <ChevronLeft size={16} />
+          </button>
+        </div>
       </section>
 
       {/* Section 4: Recommendations & Bottom Actions */}
-      <section className="form-section-card" ref={section4Ref}>
+      <section
+        className="form-section-card"
+        ref={section4Ref}
+        style={{ display: activeWorkPlanStep === 4 ? 'block' : 'none' }}
+      >
         <div className="section-header-line">
           <h3>4. המלצות</h3>
         </div>
@@ -6968,6 +7096,22 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <ClipboardList size={18} />
             <span>דו"ח מצב</span>
           </button>
+        </div>
+
+        {/* Step 4 Footer Nav */}
+        <div className="section-step-nav-buttons">
+          <button
+            type="button"
+            className="btn-step-prev"
+            onClick={() => {
+              setActiveWorkPlanStep(3);
+              setTimeout(() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }}
+          >
+            <ChevronRight size={16} />
+            <span>חזרה לשלב 3: מטרות ויעדים</span>
+          </button>
+          <div></div>
         </div>
       </section>
         </>
