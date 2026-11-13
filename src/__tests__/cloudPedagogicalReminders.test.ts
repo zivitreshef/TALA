@@ -209,7 +209,8 @@ describe('Cloud Pedagogical Reminders Engine', () => {
       expect(html).toContain('יוסי כהן');
       expect(html).toContain('שטף קריאה');
       expect(html).toContain('תלמידים בטיפולך');
-      expect(html).toContain('כניסה למערכת TALA');
+      expect(html).toContain('פתיחת דוח המוכנות הכיתתי בלחיצה אחת');
+      expect(html).toContain('view=class-readiness');
     });
 
     it('masks names when privacyMode is acronym', () => {

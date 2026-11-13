@@ -63,7 +63,7 @@ describe('Telemetry Device & Smartphone Detection', () => {
     expect(envelope).not.toBeNull();
     expect(envelope?.deviceType).toBe('mobile');
     expect(envelope?.isPwa).toBe(false);
-    expect(envelope?.appVersion).toBe('3.0.8');
+    expect(envelope?.appVersion).toBe('3.0.9');
   });
 
   it('aggregates device counts correctly in technical health metrics', () => {

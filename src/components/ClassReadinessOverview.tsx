@@ -120,7 +120,7 @@ export default function ClassReadinessOverview({
     <section
       className="class-readiness-overview-card"
       dir="rtl"
-      aria-label="מבט על כיתתי על עמידה ביעדים ומועדי דיווח"
+      aria-label="דוח מוכנות לישיבות צוות ומבט כיתתי מרוכז"
       style={{
         background: '#ffffff',
         border: '1px solid #e2e8f0',
@@ -164,7 +164,7 @@ export default function ClassReadinessOverview({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0, fontSize: '19px', fontWeight: 800, color: '#0f172a' }}>
-                מבט על כיתתי על עמידה ביעדים ומועדי דיווח
+                דוח מוכנות לישיבות צוות ומבט כיתתי מרוכז
               </h2>
               <span
                 style={{
@@ -181,7 +181,7 @@ export default function ClassReadinessOverview({
               </span>
             </div>
             <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-              סריקה מרוכזת במבט אחד של מוכנות כלל התיקים לקראת דיווחי אמצע, ועדות וסיכום שנה
+              תמונת מצב שוטפת לקראת דיוני צוות שבועיים, הערכות תקופתיות וועדות אפיון
             </p>
           </div>
         </div>
@@ -206,7 +206,7 @@ export default function ClassReadinessOverview({
               placeholder="חיפוש לפי שם או מסגרת..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="חיפוש במבט על כיתתי"
+              aria-label="חיפוש בדוח מוכנות לצוות"
               style={{
                 border: 'none',
                 background: 'transparent',

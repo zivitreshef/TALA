@@ -255,20 +255,24 @@ function buildPedagogicalReminderEmailHtmlServer({
     </tr>
   `).join('');
 
+  const directReadinessUrl = siteUrl.includes('?') 
+    ? `${siteUrl}&view=class-readiness` 
+    : `${siteUrl}?view=class-readiness`;
+
   return `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>סיכום פדגוגי שבועי – מערכת TALA</title>
+  <title>דוח מוכנות פדגוגי לקראת דיוני צוות – מערכת TALA</title>
 </head>
 <body style="margin: 0; padding: 20px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; direction: rtl; text-align: right;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
     <!-- כותרת ראשית -->
     <tr>
       <td style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 28px 24px; color: #ffffff; text-align: center;">
-        <h1 style="margin: 0 0 6px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">סיכום פדגוגי ומוכנות לישיבות צוות</h1>
-        <p style="margin: 0; font-size: 14px; opacity: 0.9;">מערכת TALA – תוכנית עבודה אקולוגית</p>
+        <h1 style="margin: 0 0 6px 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;">דוח מוכנות פדגוגי לקראת דיוני צוות</h1>
+        <p style="margin: 0; font-size: 14px; opacity: 0.9;">מערכת TALA – סביבת עבודה פדגוגית ומעקב שוטף</p>
       </td>
     </tr>
 
@@ -323,10 +327,10 @@ function buildPedagogicalReminderEmailHtmlServer({
           </div>
         `}
 
-        <!-- כפתור כניסה למערכת -->
+        <!-- כפתור כניסה ישירה לדוח המוכנות -->
         <div style="text-align: center; margin: 32px 0 16px 0;">
-          <a href="${siteUrl}" target="_blank" style="display: inline-block; background: #1e3a8a; color: #ffffff; font-weight: 700; font-size: 15px; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 6px rgba(30,58,138,0.25);">
-            כניסה למערכת TALA
+          <a href="${directReadinessUrl}" target="_blank" style="display: inline-block; background: #1e3a8a; color: #ffffff; font-weight: 700; font-size: 15px; text-decoration: none; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 6px rgba(30,58,138,0.25);">
+            פתיחת דוח המוכנות הכיתתי בלחיצה אחת
           </a>
         </div>
       </td>
@@ -422,7 +426,7 @@ async function dispatchPedagogicalRemindersServer({
         privacyMode: prefs.defaultPrivacyMode || 'full_name'
       });
 
-      const textBody = `שלום ${teacherName},\nריכזנו עבורך סיכום פדגוגי שבועי ממערכת TALA.\nתלמידים בטיפולך: ${teacherStudents.length}\nתצפיות החודש: ${accomplishments.recentObservationsCount}\nיעדים לרענון: ${gaps.length}\nכניסה למערכת: ${DEFAULT_SITE_URL}`;
+      const textBody = `שלום ${teacherName},\nישיבת צוות ביום ראשון? דוח המצב הכיתתי שלך מוכן לצפייה בלחיצה אחת ממערכת TALA.\nתלמידים בטיפולך: ${teacherStudents.length}\nתצפיות החודש: ${accomplishments.recentObservationsCount}\nיעדים לרענון: ${gaps.length}\nדוח מוכנות ישיר: ${DEFAULT_SITE_URL}?view=class-readiness`;
 
       // 5. Send Email if not dry-run
       if (!dryRun) {
@@ -431,10 +435,10 @@ async function dispatchPedagogicalRemindersServer({
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             to: email,
-            subject: 'סיכום פדגוגי שבועי ומוכנות לישיבות צוות – TALA',
+            subject: 'ישיבת צוות ביום ראשון? דוח המצב הכיתתי שלך מוכן לצפייה בלחיצה אחת 📋',
             htmlBody,
             textBody,
-            senderName: 'מערכת TALA – תוכנית עבודה אקולוגית'
+            senderName: 'מערכת TALA – סביבת עבודה פדגוגית ומעקב שוטף'
           })
         });
 
