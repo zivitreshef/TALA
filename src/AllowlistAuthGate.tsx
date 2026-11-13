@@ -1,5 +1,6 @@
 import TeacherPreferencesModal from './components/modals/TeacherPreferencesModal';
 import TeacherChatWidget from './components/chat/TeacherChatWidget';
+import SiteFooter from './components/SiteFooter';
 import { useState, useEffect } from 'react';
 import {
   Mail,
@@ -589,6 +590,9 @@ export function AllowlistAuthGate({
           </div>
         </div>
       )}
+      {/* Persistent Site Footer & RgM Professional Branding */}
+      <SiteFooter />
+
       {/* Live Bi-directional Support Chat on Login Screen (for lockout or assistance) */}
       <TeacherChatWidget
         initialUserEmail={email || contactEmail}

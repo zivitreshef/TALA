@@ -20,6 +20,7 @@ import { captureObservation, getActiveGoals } from '../../domain/observationCapt
 import { calculateCurrentStreak } from '../../domain/studentPulse';
 import { useCaptureTelemetry } from '../../hooks/useCaptureTelemetry';
 import { transcribeAudioWithGemini } from '../../services/audioTranscriptionService';
+import SiteFooter from '../SiteFooter';
 import './MobileTeacherWorkspace.css';
 
 export interface MobileTeacherWorkspaceProps {
@@ -501,6 +502,8 @@ export default function MobileTeacherWorkspace({
           </button>
         </div>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }
