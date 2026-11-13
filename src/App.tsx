@@ -3022,10 +3022,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Workspace: Student Roster Sidebar + Interactive Ecological Form */}
+      {/* Main Workspace: Student Roster Sidebar (shown ONLY when a student is selected) + Interactive Ecological Form */}
       <div className={`tala-workspace-layout ${selectedStudent ? 'has-selected-student' : 'no-selected-student'} ${showClassOverview ? 'overview-workspace-layout' : ''}`}>
-        {/* Right Sidebar: Students List */}
-        {!showClassOverview && (
+        {/* Right Sidebar: Students List - rendered only when editing a student */}
+        {!showClassOverview && selectedStudent && (
         <aside className="tala-students-sidebar">
           <div className="sidebar-top-row">
             <div className="sidebar-title-group">
@@ -3482,6 +3482,23 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Class Pulse Strip (Active Roster Overview & Daily Pedagogical Action - Full Width) */}
+              <ClassPulseStrip
+                students={userStudents}
+                userPreferences={userPreferences}
+                onQuickRecordStudent={(st) => setQuickCaptureStudent(st)}
+                onOpenTeamReport={() => setShowTeamMeetingReport(true)}
+                onOptInReminder={() => {
+                  handleSaveUserPreferences({
+                    ...userPreferences,
+                    pedagogicalReminderEnabled: true,
+                    monthlyPedagogicalReminder: true,
+                    pedagogicalReminderFrequency: 'weekly',
+                    pedagogicalReminderWeeklyDay: 'thursday'
+                  });
+                }}
+              />
+
               <div className="inside-landing-cards-grid">
                 {/* Onboarding Quickstart Banner for New Users */}
                 {SHOW_NEW_USER_JOURNEY && (userStudents.length === 0 || activeOnboardingStep === 1) && (
@@ -3653,23 +3670,6 @@ export default function App() {
                     </div>
                   </div>
                 )}
-
-                {/* Class Pulse Strip (Active Roster Overview & Daily Pedagogical Action) */}
-                <ClassPulseStrip
-                  students={userStudents}
-                  userPreferences={userPreferences}
-                  onQuickRecordStudent={(st) => setQuickCaptureStudent(st)}
-                  onOpenTeamReport={() => setShowTeamMeetingReport(true)}
-                  onOptInReminder={() => {
-                    handleSaveUserPreferences({
-                      ...userPreferences,
-                      pedagogicalReminderEnabled: true,
-                      monthlyPedagogicalReminder: true,
-                      pedagogicalReminderFrequency: 'weekly',
-                      pedagogicalReminderWeeklyDay: 'thursday'
-                    });
-                  }}
-                />
 
                 {/* Card 1: Create New Student */}
                 <div className="inside-landing-card create-card" style={{ position: 'relative' }}>

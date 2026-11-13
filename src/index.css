@@ -1234,6 +1234,10 @@ input, textarea, select, button {
   min-height: calc(100vh - 80px);
 }
 
+.tala-workspace-layout.no-selected-student {
+  grid-template-columns: 1fr;
+}
+
 .tala-workspace-layout.overview-workspace-layout {
   grid-template-columns: 1fr;
 }
@@ -4593,11 +4597,14 @@ body {
 
 /* === INSIDE LANDING PAGE (TEACHER WORKSPACE HUB) === */
 .inside-landing-page {
-  max-width: 980px;
+  max-width: 1320px;
+  width: 100%;
   margin: 18px auto 40px auto;
+  padding: 0 16px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+  box-sizing: border-box;
 }
 
 .inside-landing-hero {
@@ -4697,12 +4704,12 @@ body {
 
 .inside-landing-cards-grid {
   display: grid;
-  grid-template-columns: 1fr 1.25fr;
-  gap: 22px;
-  align-items: stretch;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 960px) {
   .inside-landing-cards-grid {
     grid-template-columns: 1fr;
   }
@@ -4712,7 +4719,7 @@ body {
   background: #ffffff;
   border: 1.5px solid var(--border);
   border-radius: 18px;
-  padding: 26px 24px;
+  padding: 24px 22px;
   box-shadow: 0 8px 24px rgba(43, 76, 115, 0.06);
   display: flex;
   flex-direction: column;
@@ -4811,13 +4818,13 @@ body {
 }
 
 .inside-landing-student-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 240px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  max-height: 480px;
   overflow-y: auto;
   padding-left: 4px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .inside-landing-student-item {
