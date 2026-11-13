@@ -1,65 +1,51 @@
 /* ==========================================================================
-   TALA Site Footer & RgM Branding Component
+   TALA Corner Watermark & RgM Branding
+   Discreet, elegant floating watermark positioned at bottom-right corner
    ========================================================================== */
 
-.tala-site-footer {
-  position: relative;
-  width: 100%;
-  background: #ffffff;
-  border-top: 1px solid var(--border-soft, #e2e8f0);
-  box-shadow: 0 -2px 10px rgba(43, 76, 115, 0.04);
-  padding: 10px 24px;
-  z-index: 5;
-  box-sizing: border-box;
-}
-
-/* Subtle stained glass accent strip on top of footer */
-.tala-site-footer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: var(--stained-glass-gradient, linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%));
-  opacity: 0.85;
-}
-
-.tala-site-footer-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  max-width: 1440px;
-  margin: 0 auto;
-  font-size: 13px;
-  color: var(--text-muted, #5c6f8c);
-}
-
-.tala-site-footer-brand {
+.tala-corner-watermark {
+  position: fixed;
+  bottom: 12px;
+  right: 16px;
+  z-index: 40;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
+  padding: 4px 11px;
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(211, 223, 240, 0.75);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(43, 76, 115, 0.08);
+  font-size: 11.5px;
+  color: #475569;
   user-select: none;
+  opacity: 0.75;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s ease,
+              box-shadow 0.2s ease;
+  pointer-events: auto;
 }
 
-.tala-site-footer-logo {
+.tala-corner-watermark:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(43, 76, 115, 0.14);
+}
+
+.tala-watermark-logo {
   display: block;
-  height: 24px;
+  height: 16px;
   width: auto;
   object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(43, 76, 115, 0.12));
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 1px 2px rgba(43, 76, 115, 0.15));
 }
 
-.tala-site-footer-logo:hover {
-  transform: scale(1.08);
-}
-
-.tala-site-footer-text {
+.tala-watermark-text {
   font-weight: 500;
-  color: var(--text-main, #24344d);
   letter-spacing: 0.1px;
 }
 
@@ -71,54 +57,24 @@
   -webkit-text-fill-color: transparent;
 }
 
-.tala-site-footer-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-muted, #64748b);
+/* Hide completely in print view so it never interferes with student report printouts */
+@media print {
+  .tala-corner-watermark {
+    display: none !important;
+  }
 }
 
-.tala-site-footer-version {
-  display: inline-block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  color: #475569;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  padding: 1px 7px;
-  border-radius: 6px;
-  letter-spacing: 0.2px;
-}
-
-.tala-site-footer-separator {
-  color: #cbd5e1;
-  user-select: none;
-}
-
-.tala-site-footer-copyright {
-  font-weight: 400;
-  letter-spacing: 0.1px;
-}
-
-/* Mobile responsive styles */
+/* Mobile adjustments */
 @media (max-width: 768px) {
-  .tala-site-footer {
-    padding: 12px 14px 20px 14px;
+  .tala-corner-watermark {
+    bottom: 10px;
+    right: 12px;
+    font-size: 10.5px;
+    padding: 3px 8px;
+    opacity: 0.7;
   }
 
-  .tala-site-footer-inner {
-    flex-direction: column;
-    justify-content: center;
-    text-align: center;
-    gap: 8px;
-  }
-
-  .tala-site-footer-meta {
-    flex-wrap: wrap;
-    justify-content: center;
-    font-size: 11.5px;
-    gap: 6px;
+  .tala-watermark-logo {
+    height: 14px;
   }
 }

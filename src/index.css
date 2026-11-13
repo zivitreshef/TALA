@@ -370,15 +370,14 @@ input, textarea, select, button {
 .auth-page-wrapper {
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   background:
     radial-gradient(circle at 18% 18%, rgba(126, 200, 227, 0.26) 0%, transparent 44%),
     radial-gradient(circle at 85% 22%, rgba(169, 142, 218, 0.24) 0%, transparent 46%),
     radial-gradient(circle at 50% 85%, rgba(91, 155, 213, 0.2) 0%, transparent 50%),
     linear-gradient(135deg, #f3f7fe 0%, #e9f1fc 50%, #ede6fa 100%);
-  padding: 28px 20px 0 20px;
+  padding: 28px 20px;
 }
 
 .auth-landing-shell {
@@ -393,14 +392,6 @@ input, textarea, select, button {
   box-shadow:
     0 24px 60px rgba(43, 76, 115, 0.16),
     0 0 0 1.5px rgba(179, 157, 219, 0.48);
-  margin: auto 0;
-}
-
-.auth-page-wrapper .tala-site-footer {
-  margin-top: 24px;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .auth-stained-glass-bar {

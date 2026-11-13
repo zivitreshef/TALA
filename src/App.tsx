@@ -3830,8 +3830,8 @@ export default function App() {
         </main>
       </div>
 
-      {/* Persistent Site Footer & RgM Professional Branding */}
-      <SiteFooter siteVersion={siteVersion} />
+      {/* Persistent Corner Watermark & RgM Professional Branding */}
+      <SiteFooter />
 
       {/* Self-Service & Mandatory First-Login Password Change Modal */}
       <UserSelfPasswordModal
