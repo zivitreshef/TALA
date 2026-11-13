@@ -172,6 +172,7 @@ import DailyPedagogicalTracker from './components/DailyPedagogicalTracker';
 import MobileTeacherWorkspace from './components/mobile/MobileTeacherWorkspace';
 import GoalBankPage from './components/GoalBankPage';
 import ClassReadinessOverview from './components/ClassReadinessOverview';
+import SiteFooter from './components/SiteFooter';
 import OnboardingNavigatorModal from './components/onboarding/OnboardingNavigatorModal';
 import OnboardingGuidedWorkspace from './components/onboarding/OnboardingGuidedWorkspace';
 import {
@@ -3828,6 +3829,9 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Persistent Site Footer & RgM Professional Branding */}
+      <SiteFooter siteVersion={siteVersion} />
 
       {/* Self-Service & Mandatory First-Login Password Change Modal */}
       <UserSelfPasswordModal
