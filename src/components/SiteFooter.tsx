@@ -16,8 +16,8 @@ export default function SiteFooter({ className = '' }: SiteFooterProps) {
         src="./rgm-logo.png"
         alt="לוגו RgM"
         className="tala-watermark-logo"
-        width={18}
-        height={15}
+        width={38}
+        height={32}
         loading="lazy"
       />
       <span className="tala-watermark-text">
