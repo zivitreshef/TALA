@@ -17,6 +17,7 @@ import {
   BookOpen,
   Wand2,
   FileText,
+  ClipboardList,
   Check,
   ShieldAlert,
   Mail,
@@ -442,17 +443,23 @@ export default function EcologicalWorkPlanForm({
   const [showTeamChatDrawer, setShowTeamChatDrawer] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<any>(null);
+  const [showBottomExportDropdown, setShowBottomExportDropdown] = useState(false);
+  const bottomExportDropdownRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!showExportDropdown) return;
+    if (!showExportDropdown && !showBottomExportDropdown) return;
     const handleClickOutside = (e: any) => {
       if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) {
         setShowExportDropdown(false);
+      }
+      if (bottomExportDropdownRef.current && !bottomExportDropdownRef.current.contains(e.target)) {
+        setShowBottomExportDropdown(false);
       }
     };
     const handleKeyDown = (e: any) => {
       if (e.key === 'Escape') {
         setShowExportDropdown(false);
+        setShowBottomExportDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -461,7 +468,7 @@ export default function EcologicalWorkPlanForm({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showExportDropdown]);
+  }, [showExportDropdown, showBottomExportDropdown]);
 
   // State for Collapsible Mid-Year / End-of-Year Evaluation per goal card (Option A)
   const [expandedEvalMap, setExpandedEvalMap] = useState<any>({});
@@ -3822,36 +3829,90 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
 
           <div className="bottom-final-actions" style={{ marginTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
-              <Printer size={18} />
-              <span>הדפס מסמך</span>
-            </button>
+            {/* Unified Export & Print Dropup */}
+            <div className="export-dropdown-wrapper" ref={bottomExportDropdownRef}>
+              <button
+                type="button"
+                className={`btn-print-doc btn-export-dropdown-bottom ${showBottomExportDropdown ? 'active' : ''}`}
+                data-testid="preview-bottom-action-bar-export-dropdown-btn"
+                onClick={() => setShowBottomExportDropdown((prev) => !prev)}
+                title="הדפסה, הורדת קובץ Word, שליחה למייל והעתקה למנב״ס"
+                aria-expanded={showBottomExportDropdown}
+              >
+                <Printer size={18} />
+                <span>הדפסה וייצוא</span>
+                <ChevronUp size={16} className={`export-dropdown-arrow ${showBottomExportDropdown ? 'open' : ''}`} />
+              </button>
 
-            <button
-              type="button"
-              className="btn-print-doc"
-              onClick={() => {
-                handleSaveProgress();
-                downloadWordFile('tala');
-              }}
-              title="הורד ישירות כקובץ Word ניתן לעריכה"
-            >
-              <Download size={18} />
-              <span>הורד קובץ Word</span>
-            </button>
+              {showBottomExportDropdown && (
+                <div className="export-dropdown-menu drop-up" role="menu" data-testid="preview-bottom-action-bar-export-menu">
+                  <button
+                    type="button"
+                    className="export-dropdown-item"
+                    onClick={() => {
+                      setShowBottomExportDropdown(false);
+                      handlePrintDocument();
+                    }}
+                  >
+                    <Printer size={15} style={{ color: '#2563eb' }} />
+                    <span>הדפס מסמך</span>
+                  </button>
 
-            <button
-              type="button"
-              className="btn-print-doc"
-              onClick={() => {
-                handleSaveProgress();
-                setShowMinistryCopyModal(true);
-              }}
-              title="העתקת סעיפי התוכנית כטקסט נקי להדבקה במנב״ס / משו״ב"
-            >
-              <ClipboardCopy size={18} />
-              <span>העתקה למנב&quot;ס</span>
-            </button>
+                  <button
+                    type="button"
+                    className="export-dropdown-item"
+                    onClick={() => {
+                      setShowBottomExportDropdown(false);
+                      handleSaveProgress();
+                      downloadWordFile('tala');
+                    }}
+                  >
+                    <Download size={15} style={{ color: '#059669' }} />
+                    <span>הורד קובץ Word</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="export-dropdown-item"
+                    onClick={() => {
+                      setShowBottomExportDropdown(false);
+                      handleOpenEmailModal('tala');
+                    }}
+                  >
+                    <Mail size={15} style={{ color: '#7c3aed' }} />
+                    <span>שלח למייל</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="export-dropdown-item"
+                    onClick={() => {
+                      setShowBottomExportDropdown(false);
+                      handleSaveProgress();
+                      setShowMinistryCopyModal(true);
+                    }}
+                  >
+                    <ClipboardCopy size={15} style={{ color: '#0284c7' }} />
+                    <span>העתקה למנב״ס</span>
+                  </button>
+
+                  <div className="export-dropdown-divider" />
+
+                  <label
+                    className={`export-dropdown-privacy ${hideStudentDetailsOnPrint ? 'checked' : 'unchecked'}`}
+                    title="כאשר מסומן, בהדפסה ובייצוא יוצגו ראשי תיבות במקום שם הילד ויושחרו פרטים מזהים"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={hideStudentDetailsOnPrint}
+                      onChange={(e) => setHideStudentDetailsOnPrint(e.target.checked)}
+                    />
+                    {hideStudentDetailsOnPrint ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                    <span>הסתר פרטים מזהים בהדפסה</span>
+                  </label>
+                </div>
+              )}
+            </div>
 
             <button
               type="button"
@@ -3926,23 +3987,20 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   }
                 }
               }}
-              style={{
-                background: showStatusReportSection
-                  ? 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)'
-                  : 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                color: showStatusReportSection ? '#ffffff' : '#1e40af',
-                borderColor: showStatusReportSection ? '#1d4ed8' : '#93c5fd',
-                fontWeight: 700
-              }}
+              style={
+                showStatusReportSection
+                  ? {
+                      background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                      color: '#ffffff',
+                      borderColor: '#1d4ed8',
+                      fontWeight: 700
+                    }
+                  : undefined
+              }
               title="הפקת דו״ח מצב חינוכי-תפקודי עדכני ומקצועי מבוסס על נתוני הכרטיס, המטרות והערכת מחצית/סוף שנה"
             >
-              <FileText size={18} />
+              <ClipboardList size={18} />
               <span>דו"ח מצב</span>
-            </button>
-
-            <button type="button" className="btn-send-email-doc" onClick={() => handleOpenEmailModal('tala')}>
-              <Mail size={18} />
-              <span>שלח למייל</span>
             </button>
           </div>
         </section>
@@ -6745,36 +6803,94 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </span>
           )}
 
-          <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
-            <Printer size={18} />
-            <span>הדפס מסמך</span>
-          </button>
+          {/* Unified Export & Print Dropup */}
+          <div className="export-dropdown-wrapper" ref={bottomExportDropdownRef}>
+            <button
+              type="button"
+              className={`btn-print-doc btn-export-dropdown-bottom ${showBottomExportDropdown ? 'active' : ''}`}
+              data-testid="bottom-action-bar-export-dropdown-btn"
+              onClick={() => setShowBottomExportDropdown((prev) => !prev)}
+              title="הדפסה, הורדת קובץ Word, שליחה למייל והעתקה למנב״ס"
+              aria-expanded={showBottomExportDropdown}
+            >
+              <Printer size={18} />
+              <span>הדפסה וייצוא</span>
+              <ChevronUp size={16} className={`export-dropdown-arrow ${showBottomExportDropdown ? 'open' : ''}`} />
+            </button>
 
-          <button
-            type="button"
-            className="btn-print-doc"
-            onClick={() => {
-              handleSaveProgress();
-              downloadWordFile('tala');
-            }}
-            title="הורד ישירות כקובץ Word ניתן לעריכה"
-          >
-            <Download size={18} />
-            <span>הורד קובץ Word</span>
-          </button>
+            {showBottomExportDropdown && (
+              <div className="export-dropdown-menu drop-up" role="menu" data-testid="bottom-action-bar-export-menu">
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  data-testid="bottom-export-menu-print-btn"
+                  onClick={() => {
+                    setShowBottomExportDropdown(false);
+                    handlePrintDocument();
+                  }}
+                >
+                  <Printer size={15} style={{ color: '#2563eb' }} />
+                  <span>הדפס מסמך</span>
+                </button>
 
-          <button
-            type="button"
-            className="btn-print-doc"
-            onClick={() => {
-              handleSaveProgress();
-              setShowMinistryCopyModal(true);
-            }}
-            title="העתקת סעיפי התוכנית כטקסט נקי להדבקה במנב״ס / משו״ב"
-          >
-            <ClipboardCopy size={18} />
-            <span>העתקה למנב&quot;ס</span>
-          </button>
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  data-testid="bottom-export-menu-word-btn"
+                  onClick={() => {
+                    setShowBottomExportDropdown(false);
+                    handleSaveProgress();
+                    downloadWordFile('tala');
+                  }}
+                >
+                  <Download size={15} style={{ color: '#059669' }} />
+                  <span>הורד קובץ Word</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  data-testid="bottom-export-menu-email-btn"
+                  onClick={() => {
+                    setShowBottomExportDropdown(false);
+                    handleOpenEmailModal('tala');
+                  }}
+                >
+                  <Mail size={15} style={{ color: '#7c3aed' }} />
+                  <span>שלח למייל</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  data-testid="bottom-export-menu-manbas-btn"
+                  onClick={() => {
+                    setShowBottomExportDropdown(false);
+                    handleSaveProgress();
+                    setShowMinistryCopyModal(true);
+                  }}
+                >
+                  <ClipboardCopy size={15} style={{ color: '#0284c7' }} />
+                  <span>העתקה למנב״ס</span>
+                </button>
+
+                <div className="export-dropdown-divider" />
+
+                <label
+                  className={`export-dropdown-privacy ${hideStudentDetailsOnPrint ? 'checked' : 'unchecked'}`}
+                  title="כאשר מסומן, בהדפסה ובייצוא יוצגו ראשי תיבות במקום שם הילד ויושחרו פרטים מזהים"
+                >
+                  <input
+                    type="checkbox"
+                    checked={hideStudentDetailsOnPrint}
+                    onChange={(e) => setHideStudentDetailsOnPrint(e.target.checked)}
+                  />
+                  {hideStudentDetailsOnPrint ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                  <span>הסתר פרטים מזהים בהדפסה</span>
+                </label>
+              </div>
+            )}
+          </div>
 
           <button
             type="button"
@@ -6827,23 +6943,20 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 }
               }
             }}
-            style={{
-              background: showStatusReportSection
-                ? 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)'
-                : 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-              color: showStatusReportSection ? '#ffffff' : '#1e40af',
-              borderColor: showStatusReportSection ? '#1d4ed8' : '#93c5fd',
-              fontWeight: 700
-            }}
+            style={
+              showStatusReportSection
+                ? {
+                    background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                    color: '#ffffff',
+                    borderColor: '#1d4ed8',
+                    fontWeight: 700
+                  }
+                : undefined
+            }
             title="הפקת דו״ח מצב חינוכי-תפקודי עדכני ומקצועי מבוסס על נתוני הכרטיס, המטרות והערכת מחצית/סוף שנה"
           >
-            <FileText size={18} />
+            <ClipboardList size={18} />
             <span>דו"ח מצב</span>
-          </button>
-
-          <button type="button" className="btn-send-email-doc" onClick={() => handleOpenEmailModal('tala')}>
-            <Mail size={18} />
-            <span>שלח למייל</span>
           </button>
         </div>
       </section>
