@@ -4819,11 +4819,12 @@ body {
 
 .inside-landing-student-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 10px;
-  max-height: 480px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 12px;
+  max-height: 520px;
   overflow-y: auto;
-  padding-left: 4px;
+  overflow-x: hidden;
+  padding: 4px;
   margin-top: 6px;
 }
 
@@ -4832,21 +4833,25 @@ body {
   align-items: center;
   gap: 8px;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .inside-landing-student-row {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   background: #fbfcfe;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   text-align: right;
   transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+  box-sizing: border-box;
 }
 
 .inside-landing-student-row:hover {
@@ -4856,9 +4861,9 @@ body {
 }
 
 .inside-landing-student-mic-btn {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   border-radius: 8px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
@@ -4869,6 +4874,7 @@ body {
   cursor: pointer;
   transition: all 0.15s ease;
   padding: 0;
+  box-sizing: border-box;
 }
 
 .inside-landing-student-mic-btn:hover {
@@ -4881,7 +4887,7 @@ body {
 .inside-st-obs-badge {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 9999px;
   white-space: nowrap;
 }
@@ -4903,24 +4909,32 @@ body {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .inside-st-main strong {
-  font-size: 14px;
+  font-size: 13.5px;
   color: var(--primary-deep);
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .inside-st-main span {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .inside-st-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 .inside-st-arrow {
