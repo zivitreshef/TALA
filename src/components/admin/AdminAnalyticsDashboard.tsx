@@ -1243,6 +1243,24 @@ export default function AdminAnalyticsDashboard({
                 )}
               </div>
 
+              <div style={panelStyle}>
+                <h3 style={panelTitleStyle}>📱 פילוח מכשירים ודפדפנים:</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13.5px', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
+                    <span>💻 מחשב נייח/נייד (Desktop):</span>
+                    <strong>{technicalHealth.devices.desktop || 0}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13.5px', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
+                    <span>📱 סמארטפון (Mobile):</span>
+                    <strong style={{ color: '#2563eb' }}>{technicalHealth.devices.mobile || 0}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13.5px', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px' }}>
+                    <span>📟 טאבלט / iPad:</span>
+                    <strong>{technicalHealth.devices.tablet || 0}</strong>
+                  </div>
+                </div>
+              </div>
+
               {/* Administrative Retention Controls */}
               <div style={panelStyle}>
                 <h3 style={panelTitleStyle}>⚙️ הגדרות שמירת נתונים ומחיקה:</h3>

@@ -10,6 +10,7 @@ import { sha256Hex } from '../allowedUsers.js';
 export const DEFAULT_TELEMETRY_SALT = 'tala_telemetry_salt_2026_v1';
 
 export type AccountType = 'teacher' | 'admin' | 'internal_test' | 'demo';
+export type DeviceCategory = 'mobile' | 'tablet' | 'desktop';
 
 export interface TelemetryEnvelope {
   eventId: string;
@@ -19,6 +20,8 @@ export interface TelemetryEnvelope {
   sessionId: string;
   accountType: AccountType;
   appVersion: string;
+  deviceType?: DeviceCategory;
+  isPwa?: boolean;
   properties: Record<string, unknown>;
   timestampMs: number;
 }
@@ -340,6 +343,45 @@ export function isInternalAccount(accountType?: string | null): boolean {
 }
 
 /**
+ * Detect client device category safely without external dependencies.
+ */
+export function detectDeviceCategory(): DeviceCategory {
+  if (typeof window === 'undefined') return 'desktop';
+  const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
+  const width = window.innerWidth || 0;
+
+  // Tablet check first (iPad, Android tablet or viewport 769px - 1024px)
+  if (
+    /ipad|tablet|(android(?!.*mobile))/i.test(ua) ||
+    (width > 768 && width <= 1024)
+  ) {
+    return 'tablet';
+  }
+
+  // Mobile check (phones or small viewport)
+  if (
+    /mobile|iphone|ipod|android.*mobile|blackberry|iemobile|opera mini/i.test(ua) ||
+    (width > 0 && width <= 768)
+  ) {
+    return 'mobile';
+  }
+
+  return 'desktop';
+}
+
+/**
+ * Detect whether client is running as an installed PWA / standalone window.
+ */
+export function detectIsPwa(): boolean {
+  if (typeof window === 'undefined') return false;
+  const isStandalone =
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    (window.navigator as any)?.standalone === true ||
+    (typeof document !== 'undefined' && (document.referrer || '').includes('android-app://'));
+  return Boolean(isStandalone);
+}
+
+/**
  * Sanitizes an incoming telemetry event payload through the 5-tier Zero-Trust pipeline.
  */
 export function sanitizeTelemetryPayload(
@@ -372,6 +414,8 @@ export function sanitizeTelemetryPayload(
     sessionId: getSessionId(),
     accountType,
     appVersion: CURRENT_APP_VERSION,
+    deviceType: detectDeviceCategory(),
+    isPwa: detectIsPwa(),
     properties: sanitizedProps,
     timestampMs: Date.now()
   };

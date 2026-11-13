@@ -795,7 +795,7 @@ export function computeTechnicalHealthMetrics(events: TelemetryEventInput[] = []
       }
     }
 
-    const dev = props.deviceCategory as string;
+    const dev = (ev as any).deviceType || (props.deviceCategory as string);
     if (dev && devices[dev] !== undefined) {
       devices[dev]++;
     }
