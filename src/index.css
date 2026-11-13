@@ -4817,6 +4817,67 @@ body {
   color: var(--text-main);
 }
 
+.inside-landing-framework-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px;
+  margin-top: 6px;
+}
+
+.inside-landing-framework-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inside-landing-framework-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: #f1f5f9;
+  border-right: 4px solid var(--primary, #2b4c73);
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: var(--text-main, #1e293b);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.inside-landing-framework-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inside-landing-framework-icon {
+  color: var(--primary, #2b4c73);
+  flex-shrink: 0;
+}
+
+.inside-landing-framework-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  background: #ffffff;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  border: 1px solid #cbd5e1;
+}
+
+.inside-landing-framework-section .inside-landing-student-list {
+  max-height: none;
+  overflow: visible;
+  margin-top: 4px;
+  padding: 0;
+}
+
 .inside-landing-student-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));

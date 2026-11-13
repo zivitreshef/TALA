@@ -29,7 +29,8 @@ import {
   Calendar,
     ClipboardList,
   Download,
-  Mic
+  Mic,
+  School
 } from 'lucide-react';
 import { diagnosticTracer } from './services/diagnosticTracer';
 import {
@@ -158,7 +159,6 @@ import {
   getFrameworkKey,
   filterStudentsBySearch,
   sortStudentsByName,
-  sortStudentsByFramework,
   groupStudentsByFramework
 } from './domain/studentListView';
 import {
@@ -2540,7 +2540,6 @@ export default function App() {
 
   const filteredStudents = filterStudentsBySearch(baseStudentsForView, studentSearch);
   const sortedStudentsByName = sortStudentsByName(filteredStudents);
-  const sortedStudentsByFramework = sortStudentsByFramework(filteredStudents);
   const frameworkClusters = groupStudentsByFramework(filteredStudents);
 
   const filteredArchivedStudents = filterStudentsBySearch(archivedUserStudents, archiveSearch);
@@ -3746,9 +3745,102 @@ export default function App() {
                         ? 'עדיין לא הוגדרו תלמידים במערכת. לחצי על הכפתור מימין ליצירת התלמיד/ה הראשון/ה.'
                         : 'לא נמצאו תלמידים התואמים לחיפוש.'}
                     </div>
+                  ) : studentSortBy === 'framework' ? (
+                    <div className="inside-landing-framework-groups">
+                      {frameworkClusters.map(([frameworkName, clusterStudents]) => (
+                        <div key={frameworkName} className="inside-landing-framework-section">
+                          <div className="inside-landing-framework-header">
+                            <div className="inside-landing-framework-title">
+                              <School size={16} className="inside-landing-framework-icon" />
+                              <strong>{frameworkName}</strong>
+                            </div>
+                            <span className="inside-landing-framework-count">
+                              {clusterStudents.length === 1
+                                ? 'תלמיד/ה 1'
+                                : `${clusterStudents.length} תלמידים/ות`}
+                            </span>
+                          </div>
+                          <div className="inside-landing-student-list">
+                            {clusterStudents.map((st: any) => {
+                              const obsInfo = getLastObservationInfo(st);
+                              const obsLabel = formatLastObservationLabel(obsInfo);
+                              const isStale = obsInfo.daysSince === null || obsInfo.daysSince >= 10;
+                              return (
+                                <div key={st.id} className="inside-landing-student-item">
+                                  <button
+                                    type="button"
+                                    className="inside-landing-student-row"
+                                    onClick={() => {
+                                      setSelectedStudentId(st.id);
+                                    }}
+                                  >
+                                    <div className="inside-st-main">
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <strong>{st.name || 'ללא שם'}</strong>
+                                        <span
+                                          className={`st-lock-indicator ${st.isLocked ? 'locked' : 'unlocked'}`}
+                                          title={
+                                            st.isLocked
+                                              ? 'הדו"ח נעול לעריכה (הערכת מחצית/סוף שנה ותצפית מהירה זמינות ויפתחו את הנעילה אוטומטית)'
+                                              : 'הדו"ח פתוח לעריכה ולשיתוף'
+                                          }
+                                        >
+                                          {st.isLocked ? <Lock size={13} /> : <Unlock size={13} />}
+                                        </span>
+                                      </div>
+                                      <span>{st.educationalFramework || 'ללא מסגרת חינוכית מוגדרת'}</span>
+                                    </div>
+                                    <div className="inside-st-meta">
+                                      <span
+                                        className={`inside-st-obs-badge ${isStale ? 'stale' : 'fresh'}`}
+                                        title="מועד התצפית האחרונה שתועדה"
+                                      >
+                                        {obsLabel}
+                                      </span>
+                                      {(st.ownerEmail || '').toLowerCase() !==
+                                        currentUser.email.toLowerCase() && (
+                                        <span
+                                          style={{
+                                            fontSize: '10.5px',
+                                            background: st.isLocked ? '#fffbeb' : '#eff6ff',
+                                            color: st.isLocked ? '#92400e' : '#1d4ed8',
+                                            border: st.isLocked ? '1px solid #fde68a' : '1px solid #bfdbfe',
+                                            borderRadius: '9999px',
+                                            padding: '1px 7px',
+                                            fontWeight: 700
+                                          }}
+                                        >
+                                          {st.isLocked ? 'שותף עמך (קריאה בלבד)' : 'שותף עמך'}
+                                        </span>
+                                      )}
+                                      <span className="st-goals-badge">
+                                        {(st.goals || []).filter((g: any) => g.title).length} מטרות
+                                      </span>
+                                      <ChevronLeft size={16} className="inside-st-arrow" />
+                                    </div>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="inside-landing-student-mic-btn"
+                                    title={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
+                                    aria-label={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setQuickCaptureStudent(st);
+                                    }}
+                                  >
+                                    <Mic size={15} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <div className="inside-landing-student-list">
-                      {(studentSortBy === 'name' ? sortedStudentsByName : sortedStudentsByFramework).map((st) => {
+                      {sortedStudentsByName.map((st: any) => {
                         const obsInfo = getLastObservationInfo(st);
                         const obsLabel = formatLastObservationLabel(obsInfo);
                         const isStale = obsInfo.daysSince === null || obsInfo.daysSince >= 10;

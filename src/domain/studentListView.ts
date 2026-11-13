@@ -7,21 +7,102 @@ export interface StudentListItem {
   [key: string]: unknown;
 }
 
+/**
+ * Strips invisible Unicode direction marks, control characters, and trims whitespace.
+ */
+export const cleanFramework = (str?: string | null): string => {
+  if (!str) return '';
+  return str
+    .replace(/[\u200E\u200F\u202A-\u202E\uFEFF]/g, '')
+    .trim();
+};
+
+/**
+ * Extracts the core semantic name of an educational institution,
+ * stripping surrounding quotes, punctuation, and common Hebrew prefixes
+ * (e.g. 'גן "אלון"' -> 'אלון', '"יובלים"' -> 'יובלים', 'בית ספר ארז' -> 'ארז').
+ */
+export const getCoreFrameworkName = (str?: string | null): string => {
+  const cleaned = cleanFramework(str);
+  if (!cleaned || cleaned === NO_FRAMEWORK_LABEL) return '';
+  let s = cleaned.replace(/^["'״׳“”‘’„‟«»()[\]{}—–\-]+|["'״׳“”‘’„‟«»()[\]{}—–\-]+$/g, '').trim();
+  s = s.replace(/^(גן\s*(?:ילדים|חובה)?|בית\s*ספר|בי"?ס|כיתה)\s*["'״׳“”‘’„‟«»]?/i, '').trim();
+  s = s.replace(/^["'״׳“”‘’„‟«»]+|["'״׳“”‘’„‟«»]+$/g, '').trim();
+  return s || cleaned;
+};
+
+/**
+ * Identifies the broad category of the educational institution.
+ */
+export const getFrameworkCategory = (
+  str?: string | null
+): 'none' | 'school' | 'class' | 'kindergarten' => {
+  const cleaned = cleanFramework(str);
+  if (!cleaned || cleaned === NO_FRAMEWORK_LABEL) return 'none';
+  if (/^(בית\s*ספר|בי"?ס)/i.test(cleaned)) return 'school';
+  if (/^כיתה/i.test(cleaned)) return 'class';
+  return 'kindergarten';
+};
+
+/**
+ * Generates a normalized canonical grouping key for an educational framework.
+ */
+export const getCanonicalFrameworkKey = (rawFramework?: string | null): string => {
+  const cleaned = cleanFramework(rawFramework);
+  if (!cleaned || cleaned === NO_FRAMEWORK_LABEL) return NO_FRAMEWORK_LABEL;
+  const core = getCoreFrameworkName(cleaned);
+  const category = getFrameworkCategory(cleaned);
+  return `${category}:${core}`;
+};
+
+/**
+ * Robust Hebrew comparison of educational framework names:
+ * 1. Unassigned / empty frameworks sort to the end.
+ * 2. Compares by core semantic name (Hebrew alphabetical).
+ * 3. Falls back to raw cleaned string comparison.
+ */
+export const compareFrameworks = (fwA?: string | null, fwB?: string | null): number => {
+  const cleanedA = cleanFramework(fwA);
+  const cleanedB = cleanFramework(fwB);
+  const aEmpty = !cleanedA || cleanedA === NO_FRAMEWORK_LABEL;
+  const bEmpty = !cleanedB || cleanedB === NO_FRAMEWORK_LABEL;
+  if (aEmpty && bEmpty) return 0;
+  if (aEmpty) return 1;
+  if (bEmpty) return -1;
+
+  const coreA = getCoreFrameworkName(cleanedA);
+  const coreB = getCoreFrameworkName(cleanedB);
+  const coreCmp = coreA.localeCompare(coreB, 'he');
+  if (coreCmp !== 0) return coreCmp;
+
+  return cleanedA.localeCompare(cleanedB, 'he');
+};
+
 export const getFrameworkKey = (student?: StudentListItem | null): string => {
-  return (student?.educationalFramework || '').trim() || NO_FRAMEWORK_LABEL;
+  return cleanFramework(student?.educationalFramework) || NO_FRAMEWORK_LABEL;
 };
 
 export const filterStudentsBySearch = <T extends StudentListItem>(
   students?: T[] | null,
   query: string = ''
 ): T[] => {
-  const q = (query || '').trim();
+  const q = cleanFramework(query).toLowerCase();
   if (!q) return Array.isArray(students) ? [...students] : [];
-  return (students || []).filter(
-    (s) =>
-      (s.name || '').includes(q) ||
-      (s.educationalFramework || '').includes(q)
-  );
+  const normalizedQ = getCoreFrameworkName(q) || q;
+
+  return (students || []).filter((s) => {
+    const name = (s.name || '').toLowerCase();
+    const fw = (s.educationalFramework || '').toLowerCase();
+    const cleanFw = cleanFramework(fw);
+    const coreFw = getCoreFrameworkName(cleanFw).toLowerCase();
+
+    return (
+      name.includes(q) ||
+      fw.includes(q) ||
+      cleanFw.includes(q) ||
+      (Boolean(coreFw) && coreFw.includes(normalizedQ))
+    );
+  });
 };
 
 export const sortStudentsByName = <T extends StudentListItem>(students?: T[] | null): T[] => {
@@ -34,7 +115,7 @@ export const sortStudentsByFramework = <T extends StudentListItem>(students?: T[
   return [...(students || [])].sort((a, b) => {
     const fwA = getFrameworkKey(a);
     const fwB = getFrameworkKey(b);
-    const fwCmp = fwA.localeCompare(fwB, 'he');
+    const fwCmp = compareFrameworks(fwA, fwB);
     if (fwCmp !== 0) return fwCmp;
     return (a.name || '').trim().localeCompare((b.name || '').trim(), 'he');
   });
@@ -43,15 +124,42 @@ export const sortStudentsByFramework = <T extends StudentListItem>(students?: T[
 export const groupStudentsByFramework = <T extends StudentListItem>(
   students?: T[] | null
 ): Array<[string, T[]]> => {
-  const map = (students || []).reduce<Record<string, T[]>>((acc, st) => {
-    const fwKey = getFrameworkKey(st);
-    if (!acc[fwKey]) {
-      acc[fwKey] = [];
+  const map: Record<string, { displayNames: string[]; students: T[] }> = {};
+
+  for (const st of students || []) {
+    const rawFw = getFrameworkKey(st);
+    if (rawFw === NO_FRAMEWORK_LABEL) {
+      if (!map[NO_FRAMEWORK_LABEL]) {
+        map[NO_FRAMEWORK_LABEL] = { displayNames: [NO_FRAMEWORK_LABEL], students: [] };
+      }
+      map[NO_FRAMEWORK_LABEL].students.push(st);
+      continue;
     }
-    acc[fwKey].push(st);
-    return acc;
-  }, {});
-  return Object.entries(map);
+
+    const canonicalKey = getCanonicalFrameworkKey(rawFw);
+    if (!map[canonicalKey]) {
+      map[canonicalKey] = { displayNames: [], students: [] };
+    }
+    map[canonicalKey].students.push(st);
+    map[canonicalKey].displayNames.push(rawFw);
+  }
+
+  const entries: Array<[string, T[]]> = Object.entries(map).map(([key, group]) => {
+    let displayName = key;
+    if (key === NO_FRAMEWORK_LABEL) {
+      displayName = NO_FRAMEWORK_LABEL;
+    } else {
+      // Pick best display name: prefer one with prefix (e.g. גן "יובלים" over "יובלים"), or first
+      displayName =
+        group.displayNames.find((n) => /^גן\s/i.test(n)) ||
+        group.displayNames.find((n) => /^(בית\s*ספר|בי"?ס|כיתה)\s/i.test(n)) ||
+        group.displayNames[0] ||
+        key;
+    }
+    return [displayName, sortStudentsByName(group.students)];
+  });
+
+  return entries.sort(([fwA], [fwB]) => compareFrameworks(fwA, fwB));
 };
 
 export const resolveBankTargetStudent = <T extends { id?: string }>(
