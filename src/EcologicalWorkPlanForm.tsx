@@ -5730,7 +5730,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                     handleAddGoalRow();
                   }}
                   disabled={isReportLocked}
-                  style={{ padding: '11px 20px', fontSize: '14px', color: '#1e3a8a', borderColor: '#bfdbfe', background: '#eff6ff' }}
+                  style={{ padding: '11px 20px', fontSize: '14px', color: '#2b4c73', borderColor: '#bfdbfe', background: '#eff6ff' }}
                 >
                   <Plus size={17} />
                   <span>בחירה ידנית ממאגר היעדים</span>
