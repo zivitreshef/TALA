@@ -2654,10 +2654,10 @@ input, textarea, select, button {
 }
 
 .section-nav-pill.active {
-  background: #1e3a8a;
+  background: linear-gradient(135deg, #5b9bd5 0%, #3d75ab 100%);
   color: #ffffff;
-  border-color: #1e3a8a;
-  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.25);
+  border-color: #3d75ab;
+  box-shadow: 0 2px 8px rgba(61, 117, 171, 0.25);
 }
 
 .section-step-nav-buttons {
@@ -2696,24 +2696,25 @@ input, textarea, select, button {
 }
 
 .btn-step-next {
-  background: #1e3a8a;
+  background: linear-gradient(135deg, #5b9bd5 0%, #3d75ab 100%);
   color: #ffffff;
-  border: 1px solid #1e3a8a;
-  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.2);
+  border: 1px solid #3d75ab;
+  box-shadow: 0 2px 8px rgba(61, 117, 171, 0.25);
 }
 
 .btn-step-next:hover {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #4f8ec9 0%, #35699b 100%);
+  border-color: #35699b;
 }
 
 /* Document Title Card */
 .document-title-card {
-  background: #1e3a8a;
+  background: linear-gradient(135deg, #5b9bd5 0%, #3d75ab 100%);
   color: #ffffff;
   border-radius: 14px;
   padding: 18px 24px;
-  border-bottom: 4px solid #3b82f6;
-  box-shadow: 0 4px 14px rgba(30, 58, 138, 0.12);
+  border-bottom: 3px solid #82b9e9;
+  box-shadow: 0 4px 16px rgba(61, 117, 171, 0.16);
 }
 
 .doc-title-top-row {
@@ -3040,9 +3041,9 @@ input, textarea, select, button {
 /* Section 3: Ecological Goal Blocks */
 .btn-add-goal-block,
 .btn-add-goal-block-large {
-  background: #1e3a8a;
+  background: linear-gradient(135deg, #5b9bd5 0%, #3d75ab 100%);
   color: #ffffff;
-  border: 1px solid #1e3a8a;
+  border: 1px solid #3d75ab;
   border-radius: 9px;
   padding: 9px 16px;
   font-size: 13.5px;
@@ -3051,14 +3052,14 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.2);
+  box-shadow: 0 2px 8px rgba(61, 117, 171, 0.25);
   transition: all 0.15s ease;
 }
 
 .btn-add-goal-block:hover,
 .btn-add-goal-block-large:hover {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: linear-gradient(135deg, #4f8ec9 0%, #35699b 100%);
+  border-color: #35699b;
 }
 
 .goals-blocks-list {
@@ -3095,7 +3096,7 @@ input, textarea, select, button {
 }
 
 .goal-number-badge {
-  background: #1e3a8a;
+  background: linear-gradient(135deg, #5b9bd5 0%, #3d75ab 100%);
   color: #ffffff;
   font-size: 12px;
   font-weight: 700;
