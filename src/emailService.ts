@@ -449,7 +449,7 @@ export function buildOnboardingInvitationHtml({
           </div>
           <h1 style="margin:0 0 6px 0; font-size:24px; font-weight:800; color:#ffffff;">ברוכים הבאים למערכת TALA</h1>
           <p style="margin:0; font-size:14px; color:#e2e8f0; line-height:1.5;">
-            תוכנית עבודה שנתית – תל"א (תוכנית לימודים אישית) / תח"י (תוכנית חינוכית יחידנית) ברוח הגישה האקולוגית
+            סביבת עבודה פדגוגית משותפת, יומן יעדים שוטף, תיעוד תצפיות מהיר ומאגר מטרות אקולוגי
           </p>
         </div>
 
@@ -557,7 +557,7 @@ export async function sendUserInvitationEmailInBackground({
   const textBody = [
     `שלום ${userName || userEmail},`,
     '',
-    `ברוכים הבאים למערכת TALA – תוכנית עבודה שנתית (תל"א / תח"י) ברוח הגישה האקולוגית.`,
+    `ברוכים הבאים למערכת TALA – סביבת עבודה פדגוגית ומעקב שוטף בגישה האקולוגית.`,
     `אימייל לכניסה: ${userEmail}`,
     `סיסמה זמנית: ${tempPassword || ''}`,
     `בכניסתך הראשונה תתבקש/י להחליף את הסיסמה הזמנית לסיסמה אישית חדשה.`,
@@ -1080,7 +1080,7 @@ export function buildPedagogicalReminderEmailHtml({
           </div>
           <h1 style="margin:0 0 6px 0; font-size:22px; font-weight:800; color:#ffffff;">הישגים, תצפיות מהעבודה הפרטנית ורציפות יעדים</h1>
           <p style="margin:0; font-size:13.5px; color:#e2e8f0; line-height:1.5;">
-            מערכת TALA – תוכנית עבודה שנתית בגישה האקולוגית
+            מערכת TALA – סביבת עבודה פדגוגית ומעקב שוטף בגישה האקולוגית
           </p>
         </div>
 
@@ -1336,7 +1336,7 @@ export function buildCustomerReceiptEmailHtml({
       <div dir="rtl" style="max-width:640px; margin:0 auto; background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden;">
         <div style="background:linear-gradient(135deg, #1b365d 0%, #166534 100%); color:#ffffff; padding:22px 24px;">
           <h1 style="margin:0; font-size:20px; font-weight:800;">🧾 אישור תשלום וקבלה – מנוי משלם</h1>
-          <div style="font-size:13px; opacity:0.9; margin-top:4px;">מערכת TALA • תוכנית עבודה שנתית בגישה האקולוגית</div>
+          <div style="font-size:13px; opacity:0.9; margin-top:4px;">מערכת TALA • סביבת עבודה פדגוגית ומעקב שוטף</div>
         </div>
         <div style="padding:22px 24px; line-height:1.6; font-size:14px;">
           <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px; margin-bottom:16px;">
