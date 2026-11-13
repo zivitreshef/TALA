@@ -283,8 +283,9 @@ export function getPedagogicalAccomplishmentsSummary(
 
       const observations = Array.isArray(goal.observations) ? goal.observations : [];
       for (const obs of observations) {
-        if (!obs.timestamp) continue;
-        const obsMs = new Date(obs.timestamp).getTime();
+        const stamp = obs.timestamp || obs.date;
+        if (!stamp) continue;
+        const obsMs = new Date(stamp).getTime();
         if (Number.isNaN(obsMs)) continue;
 
         if (nowMs - obsMs <= windowMs) {
@@ -294,13 +295,35 @@ export function getPedagogicalAccomplishmentsSummary(
             framework: String(student.educationalFramework || ''),
             goalTitle: String(goal.title || ''),
             environment: String(goal.environment || 'כללי'),
-            timestamp: String(obs.timestamp),
+            timestamp: new Date(obsMs).toISOString(),
             progress: Number(obs.progress ?? currentProg),
-            note: String(obs.note || '').trim(),
+            note: String(obs.note || obs.text || '').trim(),
             supportLevel: String(obs.supportLevel || '')
           });
         }
       }
+    }
+
+    // Unmatched quick observations (no goal) still count as documented activity
+    const dailyEntries = Array.isArray(student.dailyPedagogicalEntries)
+      ? (student.dailyPedagogicalEntries as Record<string, unknown>[])
+      : [];
+    for (const entry of dailyEntries) {
+      const stamp = entry.timestamp || entry.date;
+      if (!stamp) continue;
+      const entryMs = new Date(String(stamp)).getTime();
+      if (Number.isNaN(entryMs) || nowMs - entryMs > windowMs) continue;
+      recentObservations.push({
+        studentId: typeof student.id === 'string' ? student.id : undefined,
+        studentName: String(student.name || 'תלמיד/ה'),
+        framework: String(student.educationalFramework || ''),
+        goalTitle: 'תיעוד שוטף',
+        environment: 'כללי',
+        timestamp: new Date(entryMs).toISOString(),
+        progress: 0,
+        note: String(entry.note || '').trim(),
+        supportLevel: String(entry.supportLevel || '')
+      });
     }
   }
 

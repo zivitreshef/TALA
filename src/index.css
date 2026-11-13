@@ -4820,8 +4820,15 @@ body {
   margin-top: 4px;
 }
 
-.inside-landing-student-row {
+.inside-landing-student-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
+}
+
+.inside-landing-student-row {
+  flex: 1;
   background: #fbfcfe;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
@@ -4839,6 +4846,49 @@ body {
   background: #f2eefc;
   border-color: #b79ce8;
   transform: translateX(-2px);
+}
+
+.inside-landing-student-mic-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.inside-landing-student-mic-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+
+.inside-st-obs-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.inside-st-obs-badge.fresh {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.inside-st-obs-badge.stale {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
 }
 
 .inside-st-main {

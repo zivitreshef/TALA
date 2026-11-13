@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   Printer,
@@ -16,10 +16,9 @@ import {
 } from 'lucide-react';
 import VoiceObservationRecorder from '../voice/VoiceObservationRecorder';
 import { buildStatusReportPrintHtml, openHtmlPrintWindow } from '../../export/wordAndPrintBuilders';
-import { buildAiGoalMatchPrompt, parseAiGoalMultiMatchResponse } from '../../domain/dailyPedagogicalTracking';
-import { callAiProxyEndpoint } from '../../services/aiProxyClient';
-import { maskPromptForAi } from '../../goalBankData';
-import { saveAudioRecordBlob, uploadAudioRecordToCloud } from '../../services/dossierFileStorage';
+import { captureObservation, getActiveGoals } from '../../domain/observationCapture';
+import { calculateCurrentStreak } from '../../domain/studentPulse';
+import { useCaptureTelemetry } from '../../hooks/useCaptureTelemetry';
 import { transcribeAudioWithGemini } from '../../services/audioTranscriptionService';
 import './MobileTeacherWorkspace.css';
 
@@ -78,6 +77,11 @@ export default function MobileTeacherWorkspace({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const noteTextRef = useRef(noteText);
+  noteTextRef.current = noteText;
+  const pendingBlobRef = useRef(pendingAudioBlob);
+  pendingBlobRef.current = pendingAudioBlob;
+
   const formattedToday = useMemo(() => {
     try {
       return new Intl.DateTimeFormat('he-IL', { dateStyle: 'full' }).format(new Date());
@@ -85,8 +89,6 @@ export default function MobileTeacherWorkspace({
       return new Date().toISOString().slice(0, 10);
     }
   }, []);
-
-  const todayIsoDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const handleSelectStudent = (id: string) => {
     setActiveStudentId(id);
@@ -133,7 +135,18 @@ export default function MobileTeacherWorkspace({
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
-  // Analyze & Commit Observation
+  // Latest students for background AI matching (closures can be stale)
+  const studentsRef = useRef(students);
+  studentsRef.current = students;
+
+  const { markStarted, markCompleted } = useCaptureTelemetry(
+    'mobile_workspace',
+    currentUser?.email,
+    () => Boolean(noteTextRef.current.trim()),
+    () => (pendingBlobRef.current ? 'voice' : 'text')
+  );
+
+  // Analyze & Commit Observation: saves immediately, AI goal matching continues in background
   const handleAnalyzeAndSave = async () => {
     setFeedback(null);
     let noteToAnalyze = noteText.trim();
@@ -167,121 +180,45 @@ export default function MobileTeacherWorkspace({
       return;
     }
 
-    setIsAnalyzing(true);
-    const baseTimestamp = Date.now();
-    const obsId = `obs_${baseTimestamp}`;
-    const newObs: any = {
-      id: obsId,
-      timestamp: new Date().toISOString(),
-      date: todayIsoDate,
-      authorName: currentUser?.name || 'מורה משלבת',
-      supportLevel: 'תיווך חלקי',
+    const hasGoals = getActiveGoals(targetStudent).length > 0;
+    const usedVoice = Boolean(pendingAudioBlob);
+
+    captureObservation({
+      student: targetStudent,
       note: noteToAnalyze,
-      source: 'mobile_workspace'
-    };
-
-    if (pendingAudioBlob) {
-      newObs.hasAudio = true;
-      saveAudioRecordBlob(obsId, pendingAudioBlob).catch(() => {});
-      if (targetStudent.id) {
-        uploadAudioRecordToCloud(obsId, pendingAudioBlob, targetStudent.id).catch(() => {});
-      }
-    }
-
-    const activeGoals = (targetStudent.goals || []).filter((g: any) => g.title || g.description);
-
-    if (activeGoals.length === 0) {
-      const existingEntries = Array.isArray(targetStudent.dailyPedagogicalEntries)
-        ? targetStudent.dailyPedagogicalEntries
-        : [];
-      const updatedStudent = {
-        ...targetStudent,
-        dailyPedagogicalEntries: [newObs, ...existingEntries]
-      };
-      onUpdateStudent(updatedStudent);
-      setIsAnalyzing(false);
-      setFeedback({ type: 'success', text: 'התצפית נשמרה בהצלחה בתיעוד השוטף של התלמיד/ה!' });
-      setNoteText('');
-      setPendingAudioBlob(null);
-      return;
-    }
-
-    try {
-      const prompt = buildAiGoalMatchPrompt({ note: noteToAnalyze, student: targetStudent });
-      const maskedPrompt = maskPromptForAi(prompt, targetStudent);
-
-      const response = await callAiProxyEndpoint({
-        operation: 'goalMatch',
-        payload: { prompt: maskedPrompt },
-        hints: { gender: targetStudent?.gender || 'boy', name: targetStudent?.name, model: 'gemini-2.5-flash' }
-      });
-
-      const parsedMatches: any[] = parseAiGoalMultiMatchResponse(response);
-      const validMatches = (parsedMatches || []).filter((m) =>
-        m.matchedGoalId && activeGoals.some((g: any) => g.id === m.matchedGoalId)
-      );
-
-      if (validMatches.length > 0) {
-        const matchMap = new Map<string, { note: string; delta: number; supportLevel: string }>();
-        validMatches.forEach((m) => {
-          matchMap.set(m.matchedGoalId, {
-            note: m.conciseObservationNote || noteToAnalyze,
-            delta: m.suggestedProgressDelta || 0,
-            supportLevel: m.observedSupportLevel || 'תיווך חלקי'
+      author: currentUser?.name,
+      surface: 'mobile_workspace',
+      audioBlob: pendingAudioBlob,
+      onUpdateStudent,
+      getLatestStudent: (id) => studentsRef.current.find((s) => s.id === id),
+      onMatchSettled: ({ matchedCount, failed }) => {
+        if (failed) {
+          setFeedback({
+            type: 'success',
+            text: 'התצפית נשמרה בתיעוד השוטף. השיוך האוטומטי ליעד לא הושלם.'
           });
-        });
-
-        const updatedGoals = (targetStudent.goals || []).map((g: any) => {
-          const matchData = matchMap.get(g.id);
-          if (matchData) {
-            const currentP = Number(g.currentProgress) || 0;
-            const newP = Math.min(100, currentP + matchData.delta);
-            const goalObs = {
-              ...newObs,
-              supportLevel: matchData.supportLevel,
-              note: matchData.note
-            };
-            const existingObs = Array.isArray(g.observations) ? g.observations : [];
-            return {
-              ...g,
-              currentProgress: newP,
-              observations: [goalObs, ...existingObs]
-            };
-          }
-          return g;
-        });
-
-        const updatedStudent = {
-          ...targetStudent,
-          goals: updatedGoals
-        };
-        onUpdateStudent(updatedStudent);
-        setFeedback({
-          type: 'success',
-          text: `התצפית נותחה ושויכה בהצלחה ל-${validMatches.length} יעדים בתוכנית!`
-        });
-      } else {
-        const existingEntries = Array.isArray(targetStudent.dailyPedagogicalEntries)
-          ? targetStudent.dailyPedagogicalEntries
-          : [];
-        const updatedStudent = {
-          ...targetStudent,
-          dailyPedagogicalEntries: [newObs, ...existingEntries]
-        };
-        onUpdateStudent(updatedStudent);
-        setFeedback({
-          type: 'success',
-          text: 'לא זוהתה התאמה מובהקת ליעד ספציפי. התצפית נשמרה בתיעוד השוטף של התלמיד/ה!'
-        });
+        } else if (matchedCount > 0) {
+          setFeedback({
+            type: 'success',
+            text: `התצפית נותחה ושויכה בהצלחה ל-${matchedCount} יעדים בתוכנית!`
+          });
+        } else if (hasGoals) {
+          setFeedback({
+            type: 'success',
+            text: 'לא זוהתה התאמה מובהקת ליעד ספציפי. התצפית נשמרה בתיעוד השוטף של התלמיד/ה!'
+          });
+        }
       }
+    });
 
-      setNoteText('');
-      setPendingAudioBlob(null);
-    } catch {
-      setFeedback({ type: 'error', text: 'שגיאה בחיבור לבינה מלאכותית. התצפית לא נשמרה, נא לנסות שוב.' });
-    } finally {
-      setIsAnalyzing(false);
-    }
+    markCompleted(usedVoice ? 'voice' : 'text', calculateCurrentStreak(studentsRef.current));
+    setIsAnalyzing(false);
+    setFeedback({
+      type: 'success',
+      text: hasGoals ? 'התצפית נשמרה. משייכת ליעדים ברקע...' : 'התצפית נשמרה בהצלחה בתיעוד השוטף של התלמיד/ה!'
+    });
+    setNoteText('');
+    setPendingAudioBlob(null);
   };
 
   const activeGoals = useMemo(() => {
@@ -453,6 +390,7 @@ export default function MobileTeacherWorkspace({
                   <VoiceObservationRecorder
                     disabled={isAnalyzing}
                     baseText={noteText}
+                    onRecordingStart={() => markStarted('voice')}
                     onTranscript={(text) => setNoteText(text)}
                     onAudioReady={(blob) => setPendingAudioBlob(blob)}
                     onClearAudio={() => setPendingAudioBlob(null)}
@@ -465,7 +403,10 @@ export default function MobileTeacherWorkspace({
                 className="mobile-obs-textarea"
                 rows={3}
                 value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
+                onChange={(e) => {
+                  markStarted('text');
+                  setNoteText(e.target.value);
+                }}
                 placeholder="הקלידי או תמללי את התצפית מהמפגש..."
                 aria-label="תוכן תצפית"
               />

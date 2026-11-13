@@ -28,7 +28,8 @@ import {
   ArrowLeft,
   Calendar,
     ClipboardList,
-  Download
+  Download,
+  Mic
 } from 'lucide-react';
 import { diagnosticTracer } from './services/diagnosticTracer';
 import {
@@ -111,6 +112,10 @@ import {
   getObservationGaps,
   getPedagogicalAccomplishmentsSummary
 } from './domain/dailyPedagogicalTracking';
+import { getLastObservationInfo, formatLastObservationLabel } from './domain/studentPulse';
+import ClassPulseStrip from './components/ClassPulseStrip';
+import QuickCaptureModal from './components/modals/QuickCaptureModal';
+import TeamMeetingReportModal from './components/modals/TeamMeetingReportModal';
 import { toHebrewAcronym } from './domain/privacyAndAcronyms';
 import {
   loadEmailEngineConfig,
@@ -612,6 +617,10 @@ export default function App() {
       // ignore storage errors
     }
   };
+
+  // Quick Capture & Team Meeting Report state
+  const [quickCaptureStudent, setQuickCaptureStudent] = useState<any>(null);
+  const [showTeamMeetingReport, setShowTeamMeetingReport] = useState(false);
 
   // User Session & Screen Navigation Telemetry Tracking
   const sessionStartTimeRef = React.useRef<number>(Date.now());
@@ -3645,6 +3654,23 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Class Pulse Strip (Active Roster Overview & Daily Pedagogical Action) */}
+                <ClassPulseStrip
+                  students={userStudents}
+                  userPreferences={userPreferences}
+                  onQuickRecordStudent={(st) => setQuickCaptureStudent(st)}
+                  onOpenTeamReport={() => setShowTeamMeetingReport(true)}
+                  onOptInReminder={() => {
+                    handleSaveUserPreferences({
+                      ...userPreferences,
+                      pedagogicalReminderEnabled: true,
+                      monthlyPedagogicalReminder: true,
+                      pedagogicalReminderFrequency: 'weekly',
+                      pedagogicalReminderWeeklyDay: 'thursday'
+                    });
+                  }}
+                />
+
                 {/* Card 1: Create New Student */}
                 <div className="inside-landing-card create-card" style={{ position: 'relative' }}>
                   <div className="inside-card-icon create-icon">
@@ -3714,55 +3740,79 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="inside-landing-student-list">
-                      {(studentSortBy === 'name' ? sortedStudentsByName : sortedStudentsByFramework).map((st) => (
-                        <button
-                          key={st.id}
-                          type="button"
-                          className="inside-landing-student-row"
-                          onClick={() => {
-                            setSelectedStudentId(st.id);
-                          }}
-                        >
-                          <div className="inside-st-main">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <strong>{st.name || 'ללא שם'}</strong>
-                              <span
-                                className={`st-lock-indicator ${st.isLocked ? 'locked' : 'unlocked'}`}
-                                title={
-                                  st.isLocked
-                                    ? 'הדו"ח נעול לעריכה (הערכת מחצית/סוף שנה ותצפית מהירה זמינות ויפתחו את הנעילה אוטומטית)'
-                                    : 'הדו"ח פתוח לעריכה ולשיתוף'
-                                }
-                              >
-                                {st.isLocked ? <Lock size={13} /> : <Unlock size={13} />}
-                              </span>
-                            </div>
-                            <span>{st.educationalFramework || 'ללא מסגרת חינוכית מוגדרת'}</span>
+                      {(studentSortBy === 'name' ? sortedStudentsByName : sortedStudentsByFramework).map((st) => {
+                        const obsInfo = getLastObservationInfo(st);
+                        const obsLabel = formatLastObservationLabel(obsInfo);
+                        const isStale = obsInfo.daysSince === null || obsInfo.daysSince >= 10;
+                        return (
+                          <div key={st.id} className="inside-landing-student-item">
+                            <button
+                              type="button"
+                              className="inside-landing-student-row"
+                              onClick={() => {
+                                setSelectedStudentId(st.id);
+                              }}
+                            >
+                              <div className="inside-st-main">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <strong>{st.name || 'ללא שם'}</strong>
+                                  <span
+                                    className={`st-lock-indicator ${st.isLocked ? 'locked' : 'unlocked'}`}
+                                    title={
+                                      st.isLocked
+                                        ? 'הדו"ח נעול לעריכה (הערכת מחצית/סוף שנה ותצפית מהירה זמינות ויפתחו את הנעילה אוטומטית)'
+                                        : 'הדו"ח פתוח לעריכה ולשיתוף'
+                                    }
+                                  >
+                                    {st.isLocked ? <Lock size={13} /> : <Unlock size={13} />}
+                                  </span>
+                                </div>
+                                <span>{st.educationalFramework || 'ללא מסגרת חינוכית מוגדרת'}</span>
+                              </div>
+                              <div className="inside-st-meta">
+                                <span
+                                  className={`inside-st-obs-badge ${isStale ? 'stale' : 'fresh'}`}
+                                  title="מועד התצפית האחרונה שתועדה"
+                                >
+                                  {obsLabel}
+                                </span>
+                                {(st.ownerEmail || '').toLowerCase() !==
+                                  currentUser.email.toLowerCase() && (
+                                  <span
+                                    style={{
+                                      fontSize: '10.5px',
+                                      background: st.isLocked ? '#fffbeb' : '#eff6ff',
+                                      color: st.isLocked ? '#92400e' : '#1d4ed8',
+                                      border: st.isLocked ? '1px solid #fde68a' : '1px solid #bfdbfe',
+                                      borderRadius: '9999px',
+                                      padding: '1px 7px',
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    {st.isLocked ? 'שותף עמך (קריאה בלבד)' : 'שותף עמך'}
+                                  </span>
+                                )}
+                                <span className="st-goals-badge">
+                                  {(st.goals || []).filter((g: any) => g.title).length} מטרות
+                                </span>
+                                <ChevronLeft size={16} className="inside-st-arrow" />
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              className="inside-landing-student-mic-btn"
+                              title={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
+                              aria-label={`תיעוד מהיר עבור ${st.name || 'תלמיד/ה'}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuickCaptureStudent(st);
+                              }}
+                            >
+                              <Mic size={15} />
+                            </button>
                           </div>
-                          <div className="inside-st-meta">
-                            {(st.ownerEmail || '').toLowerCase() !==
-                              currentUser.email.toLowerCase() && (
-                              <span
-                                style={{
-                                  fontSize: '10.5px',
-                                  background: st.isLocked ? '#fffbeb' : '#eff6ff',
-                                  color: st.isLocked ? '#92400e' : '#1d4ed8',
-                                  border: st.isLocked ? '1px solid #fde68a' : '1px solid #bfdbfe',
-                                  borderRadius: '9999px',
-                                  padding: '1px 7px',
-                                  fontWeight: 700
-                                }}
-                              >
-                                {st.isLocked ? 'שותף עמך (קריאה בלבד)' : 'שותף עמך'}
-                              </span>
-                            )}
-                            <span className="st-goals-badge">
-                              {(st.goals || []).filter((g: any) => g.title).length} מטרות
-                            </span>
-                            <ChevronLeft size={16} className="inside-st-arrow" />
-                          </div>
-                        </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -3919,6 +3969,30 @@ export default function App() {
           onUpdateAiFreeze={handleUpdateAiFreeze}
         />
       )}
+
+      {/* Quick Capture Modal (Daily Observation Recording) */}
+      <QuickCaptureModal
+        isOpen={Boolean(quickCaptureStudent)}
+        onClose={() => setQuickCaptureStudent(null)}
+        student={quickCaptureStudent}
+        onStudentUpdated={(updatedStudent) => {
+          setStudents((prev) =>
+            prev.map((s) => (s.id === updatedStudent.id ? updatedStudent : s))
+          );
+          saveStudentToCloud(updatedStudent);
+          setQuickCaptureStudent(updatedStudent);
+        }}
+        teacherEmail={currentUser?.email || ''}
+      />
+
+      {/* Team Meeting Report Modal */}
+      <TeamMeetingReportModal
+        isOpen={showTeamMeetingReport}
+        onClose={() => setShowTeamMeetingReport(false)}
+        students={userStudents}
+        userPreferences={userPreferences}
+        currentUser={currentUser || { email: '', name: '' }}
+      />
 
       {/* Student Deletion & Archive Confirmation Modals */}
       <DeleteStudentModal

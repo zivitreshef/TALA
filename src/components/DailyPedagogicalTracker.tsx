@@ -43,45 +43,10 @@ import PedagogicalTasksModal from './modals/PedagogicalTasksModal';
 import VoiceObservationRecorder from './voice/VoiceObservationRecorder';
 import { saveAudioRecordBlob, uploadAudioRecordToCloud } from '../services/dossierFileStorage';
 import { transcribeAudioWithGemini } from '../services/audioTranscriptionService';
+import { calculateCurrentStreak } from '../domain/studentPulse';
 import './DailyPedagogicalTracker.css';
 
-/**
- * Calculates the current consecutive tracking streak (in days) based on
- * logged observation dates across all active students.
- */
-export function calculateCurrentStreak(students: any[], todayStr = new Date().toISOString().slice(0, 10)) {
-  const datesSet = new Set();
-  (students || []).forEach((st: any) => {
-    (st.goals || []).forEach((g: any) => {
-      (g.observations || []).forEach((obs: any) => {
-        if (obs.date) datesSet.add(obs.date.slice(0, 10));
-        else if (obs.timestamp) datesSet.add(obs.timestamp.slice(0, 10));
-      });
-    });
-  });
-  if (datesSet.size === 0) {
-    return 0;
-  }
-
-  let streak = 0;
-  const checkDate = new Date(todayStr);
-  const todayLogged = datesSet.has(todayStr);
-
-  if (!todayLogged) {
-    checkDate.setDate(checkDate.getDate() - 1);
-  }
-
-  while (true) {
-    const dateStr = checkDate.toISOString().slice(0, 10);
-    if (datesSet.has(dateStr)) {
-      streak++;
-      checkDate.setDate(checkDate.getDate() - 1);
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
+export { calculateCurrentStreak };
 
 const TIME_SLOTS = [
   '07:30', '08:00', '08:15', '08:30', '08:45',
@@ -644,7 +609,7 @@ export default function DailyPedagogicalTracker({
       try {
         usageTelemetryService.track(
           TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_STARTED,
-          { mode, isEdit },
+          { mode, isEdit, surface: 'desktop_tracker' },
           teacherEmail ? { userContext: { email: teacherEmail } } : {}
         );
       } catch (_) {}
@@ -662,7 +627,8 @@ export default function DailyPedagogicalTracker({
           TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_ABANDONED,
           {
             mode,
-            timeSpentSec
+            timeSpentSec,
+            surface: 'desktop_tracker'
           },
           teacherEmail ? { userContext: { email: teacherEmail } } : {}
         );
@@ -837,7 +803,8 @@ export default function DailyPedagogicalTracker({
           mode,
           durationSec,
           isEdit: false,
-          streakDays
+          streakDays,
+          surface: 'desktop_tracker'
         },
         teacherEmail ? { userContext: { email: teacherEmail } } : {}
       );
@@ -847,7 +814,8 @@ export default function DailyPedagogicalTracker({
           TELEMETRY_EVENTS.VOICE_OBSERVATION_RECORDED,
           {
             durationSec,
-            hasTranscript: Boolean(aiNoteText.trim())
+            hasTranscript: Boolean(aiNoteText.trim()),
+            surface: 'desktop_tracker'
           },
           teacherEmail ? { userContext: { email: teacherEmail } } : {}
         );
@@ -924,7 +892,8 @@ export default function DailyPedagogicalTracker({
           mode: 'text',
           durationSec,
           isEdit: false,
-          streakDays
+          streakDays,
+          surface: 'desktop_tracker'
         },
         teacherEmail ? { userContext: { email: teacherEmail } } : {}
       );

@@ -5,7 +5,7 @@
  * onboarding, friction, and technical health.
  */
 
-export const CURRENT_APP_VERSION = '2.6.68';
+export const CURRENT_APP_VERSION = '3.0.0';
 
 export const TELEMETRY_CATEGORIES = Object.freeze({
   ENGAGEMENT: 'engagement',
@@ -141,16 +141,19 @@ export const EVENT_SCHEMAS: Readonly<Record<string, Record<string, PropertyRule>
     durationSec: { type: 'number', min: 0 }
   },
   [TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_STARTED]: {
+    surface: { type: 'string', enum: ['desktop_tracker', 'mobile_workspace', 'quick_capture'] },
     mode: { type: 'string', enum: ['text', 'voice'] },
     isEdit: { type: 'boolean' }
   },
   [TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_COMPLETED]: {
+    surface: { type: 'string', enum: ['desktop_tracker', 'mobile_workspace', 'quick_capture'] },
     mode: { type: 'string', enum: ['text', 'voice'] },
     durationSec: { type: 'number', min: 0 },
     isEdit: { type: 'boolean' },
     streakDays: { type: 'number', min: 0 }
   },
   [TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_ABANDONED]: {
+    surface: { type: 'string', enum: ['desktop_tracker', 'mobile_workspace', 'quick_capture'] },
     mode: { type: 'string', enum: ['text', 'voice'] },
     timeSpentSec: { type: 'number', min: 0 }
   },
@@ -158,6 +161,7 @@ export const EVENT_SCHEMAS: Readonly<Record<string, Record<string, PropertyRule>
     currentStreakDays: { type: 'number', min: 0 }
   },
   [TELEMETRY_EVENTS.VOICE_OBSERVATION_RECORDED]: {
+    surface: { type: 'string', enum: ['desktop_tracker', 'mobile_workspace', 'quick_capture'] },
     durationSec: { type: 'number', min: 0 },
     hasTranscript: { type: 'boolean' }
   },
