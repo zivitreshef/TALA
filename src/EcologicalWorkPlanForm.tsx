@@ -370,9 +370,10 @@ export default function EcologicalWorkPlanForm({
   );
 
   const AI_BUSY_STEPS = [
-    'שלב 1/3: מנתח את התיאור החופשי ומזהה מוקדי כוח, תחומי תפקוד ואתגרים של הילד/ה...',
-    'שלב 2/3: מתאים מטרות ויעדים לפי גיל ורמת הילד/ה ומחשב משך זמן יחסי לפי גודל המטרה...',
-    'שלב 3/3: מנסח בעברית פדגוגית תקנית את טבלת המטרות, היעדים ופרק ההמלצות...'
+    'שלב 1 מתוך 4: קורא את מלל האבחון ומזהה מוקדי כוח, קשיים ותחומי תפקוד...',
+    'שלב 2 מתוך 4: מתאים מטרות ויעדים פדגוגיים לפי גיל ורמת התלמיד/ה ומחשב משך זמן יחסי לפי גודל המטרה...',
+    'שלב 3 מתוך 4: מנסח דרכי עבודה מותאמות ומבצע התאמה לשונית ומגדרית...',
+    'שלב 4 מתוך 4: מבצע ליטושים אחרונים ובדיקת תקינות פדגוגית...'
   ];
 
   useEffect(() => {
@@ -381,14 +382,17 @@ export default function EcologicalWorkPlanForm({
       setReverseEngineerElapsedSeconds(0);
       return;
     }
-    const stepTimer = setInterval(() => {
-      setReverseEngineerStepIdx((prev) => (prev + 1) % 3);
-    }, 1800);
     const secTimer = setInterval(() => {
-      setReverseEngineerElapsedSeconds((prev) => prev + 1);
+      setReverseEngineerElapsedSeconds((prev) => {
+        const next = prev + 1;
+        if (next < 4) setReverseEngineerStepIdx(0);
+        else if (next < 10) setReverseEngineerStepIdx(1);
+        else if (next < 20) setReverseEngineerStepIdx(2);
+        else setReverseEngineerStepIdx(3);
+        return next;
+      });
     }, 1000);
     return () => {
-      clearInterval(stepTimer);
       clearInterval(secTimer);
     };
   }, [isReverseEngineering]);
@@ -5076,10 +5080,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <Sparkles size={16} />
                 <span>
                   {reverseEngineerElapsedSeconds >= 25
-                    ? 'העיבוד מתעכב מעבר לרגיל (ייתכן חיבור רשת איטי)... המערכת ממשיכה לנסות.'
+                    ? 'העיבוד מעמיק במיוחד (דוח מפורט)... המערכת משלימה את הניסוח, תודה על הסבלנות.'
                     : reverseEngineerElapsedSeconds >= 12
                     ? 'ה-AI מעבד ניתוח מעמיק ומפורט לכל תחומי הפרופיל והמטרות, אנא המתיני...'
-                    : 'ה-AI מנתח את התיאור החופשי ובונה את תוכנית העבודה... (התהליך עשוי להימשך מספר שניות, נא להמתין)'}
+                    : 'ה-AI מנתח את התיאור החופשי ובונה את תוכנית העבודה... (התהליך עשוי להימשך מספר שניות)'}
                 </span>
               </div>
               <div className="ai-busy-indicator-sub">
@@ -5087,10 +5091,16 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 {reverseEngineerElapsedSeconds > 0 && ` (${reverseEngineerElapsedSeconds} שניות)`}
               </div>
               <div className="ai-busy-progress-track">
-                <div className="ai-busy-progress-bar" />
+                <div
+                  className="ai-busy-progress-bar"
+                  style={{
+                    width: `${Math.min(95, Math.max(15, (reverseEngineerStepIdx + 1) * 23 + (reverseEngineerElapsedSeconds % 4) * 2))}%`,
+                    transition: 'width 0.4s ease'
+                  }}
+                />
               </div>
 
-              {reverseEngineerElapsedSeconds >= 15 && (
+              {reverseEngineerElapsedSeconds >= 12 && (
                 <div
                   style={{
                     marginTop: '10px',
@@ -5105,8 +5115,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 >
                   <span style={{ fontSize: '11.5px', color: '#64748b' }}>
                     {reverseEngineerElapsedSeconds >= 25
-                      ? 'העיבוד מתעכב מעבר לרגיל עקב חיבור הרשת. כל הטקסטים שמורים בבטחה במכשירך.'
-                      : 'העיבוד נמשך. נתונייך שמורים במלואם.'}
+                      ? 'העיבוד נמשך מעבר לרגיל עקב פירוט הדוח. כל הטקסטים שמורים בבטחה במכשירך.'
+                      : 'העיבוד נמשך. כל הטקסטים והתצפיות שרשמת שמורים במלואם.'}
                   </span>
                   <button
                     type="button"

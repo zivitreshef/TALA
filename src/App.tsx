@@ -2626,7 +2626,7 @@ export default function App() {
       />
       <div className="stained-glass-top-strip" />
       {/* Top Header */}
-      <header className="tala-header">
+      <header className={`tala-header ${selectedStudentId ? 'compact-mode' : ''}`}>
         <div
           className="tala-brand"
           onClick={() => setSelectedStudentId(null)}
@@ -2646,6 +2646,11 @@ export default function App() {
               >
                 ver. {siteVersion}
               </span>
+              {selectedStudent && (
+                <span className="header-active-student-pill" title={`עריכת תכנית: ${selectedStudent.name}`}>
+                  עריכת תכנית: {selectedStudent.name}
+                </span>
+              )}
             </div>
             <span className="brand-subtitle">
               מערכת אינטראקטיבית לבניית תכנית עבודה משותפת, מאגר מטרות דינמי ושאלות מנחות ב-AI
