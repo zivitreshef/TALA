@@ -1708,7 +1708,7 @@ export default function App() {
     const checkAndDispatchDigest = async () => {
       try {
         const storageKey = `tala_pedagogical_digest_last_sent_${currentUser.email.toLowerCase()}`;
-        const lastSent = localStorage.getItem(storageKey);
+        const lastSent = (userPreferences as any)?.pedagogicalDigestLastSentAt || localStorage.getItem(storageKey);
         const now = new Date();
         if (shouldSendPedagogicalDigest(userPreferences as any, lastSent, now)) {
           const gaps = getObservationGaps(userStudents || [], 45, now);
@@ -1732,7 +1732,14 @@ export default function App() {
             isFullyReady: gaps.length === 0,
             email: currentUser.email
           });
-          localStorage.setItem(storageKey, now.toISOString());
+          const nowIso = now.toISOString();
+          localStorage.setItem(storageKey, nowIso);
+          if (currentUser.email && userPreferences) {
+            saveUserPreferencesToCloud(currentUser.email, {
+              ...userPreferences,
+              pedagogicalDigestLastSentAt: nowIso
+            }).catch(() => {});
+          }
         }
       } catch (err) {
         console.warn('Background pedagogical digest dispatch error:', err);

@@ -619,3 +619,47 @@ async function handleSupportThreadWritten(change, context) {
 exports.onSupportThreadWritten = functions.firestore
   .document("tala_support_threads/{threadId}")
   .onWrite(handleSupportThreadWritten);
+
+// ---- Scheduled Pedagogical Reminders (Hourly Sweeper - 0 Cost / 1 Cloud Scheduler Job) ----
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { dispatchPedagogicalRemindersServer } = require("./pedagogicalReminders");
+
+exports.scheduledPedagogicalReminders = onSchedule(
+  {
+    schedule: "0 7-19 * * *", // Once an hour between 07:00 and 19:00 Israel time (1 job total = $0)
+    timeZone: "Asia/Jerusalem",
+    region: "us-central1",
+    memory: "512MiB",
+    timeoutSeconds: 180
+  },
+  async (event) => {
+    console.log("Triggered scheduled pedagogical reminders sweep at:", new Date().toISOString());
+    const result = await dispatchPedagogicalRemindersServer({
+      db: admin.firestore()
+    });
+    console.log("Pedagogical reminders sweep outcome:", result);
+  }
+);
+
+exports.runPedagogicalRemindersSweep = require("firebase-functions/v2/https").onRequest(
+  { region: "us-central1", cors: false },
+  async (req, res) => {
+    try {
+      const email = await callerEmail(req);
+      if (!email) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
+      const dryRun = req.query.dryRun === "true" || (req.body && req.body.dryRun === true);
+      const result = await dispatchPedagogicalRemindersServer({
+        db: admin.firestore(),
+        dryRun
+      });
+      res.status(200).json({ ok: true, result });
+    } catch (e) {
+      console.error("Manual pedagogical reminders sweep failed:", e);
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  }
+);
+

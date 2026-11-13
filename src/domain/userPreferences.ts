@@ -21,7 +21,7 @@ export type PedagogicalReminderWeeklyDayPreference =
   | 'thursday'
   | 'friday'
   | 'saturday';
-export type PedagogicalReminderTimePreference = '09:00' | '12:00' | '17:00';
+export type PedagogicalReminderTimePreference = '09:00' | '12:00' | '13:00' | '17:00';
 export type BesadTextPreference = 'בס"ד' | 'ב"ה';
 
 export interface PrivateGoalItem {
@@ -54,6 +54,7 @@ export interface UserPreferences {
   pedagogicalReminderWeeklyDay: PedagogicalReminderWeeklyDayPreference;
   pedagogicalReminderMonthlyDay: number;
   pedagogicalReminderTime: PedagogicalReminderTimePreference;
+  pedagogicalDigestLastSentAt?: string | null;
 
   // 4. פרופיל מקצועי, בס"ד וחתימה
   fullName: string;
@@ -86,6 +87,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   pedagogicalReminderWeeklyDay: 'sunday',
   pedagogicalReminderMonthlyDay: 1,
   pedagogicalReminderTime: '09:00',
+  pedagogicalDigestLastSentAt: null,
 
   // 4. פרופיל מקצועי, בס"ד וחתימה
   fullName: '',
@@ -179,12 +181,16 @@ export function normalizeUserPreferences(
   const mDay = Number(raw.pedagogicalReminderMonthlyDay);
   result.pedagogicalReminderMonthlyDay =
     Number.isInteger(mDay) && mDay >= 1 && mDay <= 31 ? mDay : 1;
-  const validReminderTimes: PedagogicalReminderTimePreference[] = ['09:00', '12:00', '17:00'];
+  const validReminderTimes: PedagogicalReminderTimePreference[] = ['09:00', '12:00', '13:00', '17:00'];
   result.pedagogicalReminderTime = validReminderTimes.includes(
     raw.pedagogicalReminderTime as PedagogicalReminderTimePreference
   )
     ? (raw.pedagogicalReminderTime as PedagogicalReminderTimePreference)
     : '09:00';
+  result.pedagogicalDigestLastSentAt =
+    typeof raw.pedagogicalDigestLastSentAt === 'string' && raw.pedagogicalDigestLastSentAt.trim()
+      ? raw.pedagogicalDigestLastSentAt.trim()
+      : null;
 
   result.fullName = String(raw.fullName || '').trim();
   result.professionalTitle = String(raw.professionalTitle || '').trim();

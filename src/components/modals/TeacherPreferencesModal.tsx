@@ -1341,7 +1341,7 @@ export default function TeacherPreferencesModal({
             {/* 2. Pedagogical Reminder */}
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <strong style={{ fontSize: '14px', color: '#1e293b' }}>תזכורת וסיכום פדגוגי (מוכנות לישיבות צוות)</strong>
+                <strong style={{ fontSize: '14px', color: '#1e293b' }}>תזכורת וסיכום פדגוגי לקראת ישיבות צוות</strong>
               </div>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155', cursor: 'pointer' }}>
@@ -1360,6 +1360,10 @@ export default function TeacherPreferencesModal({
 
               {(draftPrefs.pedagogicalReminderEnabled || draftPrefs.monthlyPedagogicalReminder) && (
                 <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ fontSize: '12px', color: '#0369a1', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '7px 10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>☁️</span>
+                    <span>תזמון אוטומטי בענן: הסיכום יישלח לתיבת המייל במועד הנבחר גם כשהאתר סגור.</span>
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#475569' }}>תדירות תזכורת:</span>
                     <div style={{ display: 'flex', gap: '8px' }}>
@@ -1437,7 +1441,7 @@ export default function TeacherPreferencesModal({
                           שעת שליחה:
                         </span>
                         <div style={{ display: 'flex', gap: '6px' }}>
-                          {(['09:00', '12:00', '17:00'] as const).map((time) => (
+                          {(['09:00', '12:00', '13:00', '17:00'] as const).map((time) => (
                             <button
                               key={time}
                               type="button"
@@ -1497,7 +1501,7 @@ export default function TeacherPreferencesModal({
                           שעת שליחה:
                         </span>
                         <div style={{ display: 'flex', gap: '6px' }}>
-                          {(['09:00', '12:00', '17:00'] as const).map((time) => (
+                          {(['09:00', '12:00', '13:00', '17:00'] as const).map((time) => (
                             <button
                               key={time}
                               type="button"
