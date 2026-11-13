@@ -366,111 +366,66 @@ input, textarea, select, button {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* === AUTH GATE (EXECUTIVE SPLIT LANDING PAGE) === */
+/* === AUTH GATE (FULL-WIDTH SAAS SHOWCASE LANDING PAGE) === */
 .auth-page-wrapper {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   background:
-    radial-gradient(circle at 18% 18%, rgba(126, 200, 227, 0.26) 0%, transparent 44%),
-    radial-gradient(circle at 85% 22%, rgba(169, 142, 218, 0.24) 0%, transparent 46%),
-    radial-gradient(circle at 50% 85%, rgba(91, 155, 213, 0.2) 0%, transparent 50%),
-    linear-gradient(135deg, #f3f7fe 0%, #e9f1fc 50%, #ede6fa 100%);
-  padding: 28px 20px;
+    radial-gradient(circle at 12% 10%, rgba(56, 189, 248, 0.22) 0%, transparent 40%),
+    radial-gradient(circle at 88% 14%, rgba(139, 92, 246, 0.18) 0%, transparent 42%),
+    radial-gradient(circle at 50% 90%, rgba(16, 185, 129, 0.14) 0%, transparent 48%),
+    linear-gradient(160deg, #f1f5f9 0%, #e8f0fe 48%, #f3e8ff 100%);
+  padding: 20px 24px 48px 24px;
 }
 
-.auth-landing-shell {
-  position: relative;
-  overflow: hidden;
-  background: #ffffff;
+.saas-landing-container {
   width: 100%;
-  max-width: 1040px;
-  border-radius: 28px;
-  display: grid;
-  grid-template-columns: 1.18fr 0.82fr;
-  box-shadow:
-    0 24px 64px -12px rgba(15, 23, 42, 0.22),
-    0 0 0 1px rgba(226, 232, 240, 0.8);
-}
-
-.auth-stained-glass-bar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: 7px;
-  background: var(--stained-glass-gradient);
-  z-index: 3;
-}
-
-/* Right Showcase Panel */
-.auth-showcase-panel {
-  background: linear-gradient(155deg, #0f2744 0%, #1a365d 40%, #234268 70%, #312e81 100%);
-  color: #ffffff;
-  padding: 36px 32px 30px 32px;
+  max-width: 1280px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
-  position: relative;
-  overflow: hidden;
+  gap: 22px;
 }
 
-.auth-showcase-panel::before {
-  content: '';
-  position: absolute;
-  top: -15%;
-  right: -15%;
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, transparent 70%);
-  pointer-events: none;
-  border-radius: 50%;
-}
-
-.auth-showcase-top {
-  text-align: center;
-  position: relative;
-  z-index: 1;
-}
-
-.auth-badge-pill {
-  display: inline-flex;
+/* Top Glassmorphic Navigation Bar */
+.saas-landing-navbar {
+  display: flex;
   align-items: center;
-  gap: 7px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #e0f2fe;
-  padding: 5px 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(203, 213, 225, 0.85);
+  border-radius: 20px;
+  padding: 12px 22px;
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08);
 }
 
-.auth-badge-sparkle {
-  color: #fde047;
+.saas-navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .auth-logo-frame {
-  width: 104px;
-  height: 104px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
-  padding: 3.5px;
+  padding: 2.5px;
   background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
-  margin: 0 auto 10px auto;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   transition: transform 0.25s ease;
 }
 
 .auth-logo-frame:hover {
-  transform: scale(1.03);
+  transform: scale(1.04);
 }
 
 .auth-logo-img {
@@ -479,25 +434,223 @@ input, textarea, select, button {
   border-radius: 50%;
   object-fit: cover;
   display: block;
-  border: 2.5px solid #ffffff;
+  border: 2px solid #ffffff;
 }
 
-.auth-title {
-  margin: 0 0 6px 0;
-  font-size: 28px;
-  color: #ffffff;
+.saas-navbar-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.saas-navbar-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auth-title.saas-brand-name {
+  margin: 0;
+  font-size: 21px;
+  color: #0f172a;
   font-weight: 800;
   letter-spacing: -0.3px;
 }
 
-.auth-subtitle {
+.auth-badge-pill.saas-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #eff6ff 0%, #f3e8ff 100%);
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.auth-badge-sparkle {
+  color: #eab308;
+}
+
+.saas-navbar-tagline {
+  font-size: 12.5px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.saas-navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-saas-nav-video {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #f8fafc;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 8px 15px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-saas-nav-video:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+.btn-saas-nav-trial {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.28);
+  transition: all 0.18s ease;
+}
+
+.btn-saas-nav-trial:hover {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.38);
+}
+
+/* Main Hero & Login Split Grid */
+.auth-landing-shell.saas-hero-shell {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: 1.42fr 0.88fr;
+  gap: 22px;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+  align-items: stretch;
+}
+
+/* Right Hero Showcase Panel */
+.auth-showcase-panel.saas-hero-showcase {
+  background: linear-gradient(150deg, #0b192c 0%, #152c4a 45%, #1e3a5f 78%, #2d225a 100%);
+  color: #ffffff;
+  border-radius: 26px;
+  padding: 34px 34px 28px 34px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 22px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 24px 60px -12px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.auth-showcase-panel.saas-hero-showcase::before {
+  content: '';
+  position: absolute;
+  top: -18%;
+  right: -12%;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+  border-radius: 50%;
+}
+
+.auth-showcase-top.saas-hero-copy {
+  text-align: right;
+  position: relative;
+  z-index: 1;
+}
+
+.saas-eyebrow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #bae6fd;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.saas-eyebrow-icon {
+  color: #38bdf8;
+}
+
+.saas-hero-headline {
   margin: 0 0 12px 0;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: rgba(224, 242, 254, 0.9);
-  max-width: 480px;
-  margin-left: auto;
-  margin-right: auto;
+  font-size: 31px;
+  line-height: 1.26;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+
+.saas-hero-highlight {
+  background: linear-gradient(90deg, #7dd3fc 0%, #6ee7b7 55%, #fde047 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.auth-subtitle.saas-hero-subtitle {
+  margin: 0 0 18px 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: rgba(226, 232, 240, 0.92);
+  max-width: 680px;
+}
+
+.saas-hero-cta-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-saas-primary-trial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  padding: 11px 20px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(16, 185, 129, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-saas-primary-trial:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(16, 185, 129, 0.45);
 }
 
 .btn-auth-watch-video {
@@ -505,77 +658,128 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  padding: 8px 18px;
-  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  padding: 11px 18px;
+  font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+  backdrop-filter: blur(8px);
   transition: all 0.2s ease;
 }
 
 .btn-auth-watch-video:hover {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.45);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45);
 }
 
 .btn-auth-play-icon {
   flex-shrink: 0;
 }
 
-.auth-features-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  text-align: right;
+/* Interactive Product Mockup Window ("Show, Don't Tell") */
+.saas-product-mockup {
   position: relative;
   z-index: 1;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(12px);
 }
 
-.auth-feature-card {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 12px;
-  padding: 11px 12px;
-  backdrop-filter: blur(6px);
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  transition: all 0.2s ease;
-}
-
-.auth-feature-card:hover {
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
-}
-
-.auth-feature-card-header {
+.saas-mockup-topbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  padding: 9px 14px;
+  background: rgba(15, 23, 42, 0.85);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  gap: 10px;
 }
 
-.auth-feature-card-header strong {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #ffffff;
+.saas-mockup-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.auth-feature-card p {
-  margin: 0;
+.mockup-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.mockup-dot.dot-red {
+  background: #f87171;
+}
+.mockup-dot.dot-amber {
+  background: #fbbf24;
+}
+.mockup-dot.dot-green {
+  background: #34d399;
+}
+
+.saas-mockup-window-title {
   font-size: 11.5px;
-  line-height: 1.45;
-  color: rgba(224, 242, 254, 0.84);
+  color: #cbd5e1;
+  font-weight: 600;
 }
 
-.auth-feature-icon {
-  width: 28px;
-  height: 28px;
+.saas-mockup-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.saas-mockup-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 14px;
+}
+
+.saas-mockup-card {
+  background: rgba(30, 41, 59, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 13px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 9px;
+  text-align: right;
+}
+
+.saas-mockup-card-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.mockup-icon-badge {
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -583,66 +787,191 @@ input, textarea, select, button {
   flex-shrink: 0;
 }
 
-.auth-feature-icon.icon-tracker {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(37, 99, 235, 0.35));
+.mockup-icon-badge.badge-rose {
+  background: rgba(244, 63, 94, 0.22);
+  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.mockup-icon-badge.badge-emerald {
+  background: rgba(16, 185, 129, 0.22);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.mockup-head-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mockup-head-titles strong {
+  font-size: 12px;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.mockup-head-titles span {
+  font-size: 10.5px;
+  color: #94a3b8;
+}
+
+.saas-mockup-quote {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.55);
+  border-right: 3px solid #38bdf8;
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-style: italic;
+}
+
+.saas-mockup-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mockup-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.mockup-tag.tag-sky {
+  background: rgba(56, 189, 248, 0.14);
   color: #bae6fd;
 }
 
-.auth-feature-icon.icon-capture {
-  background: linear-gradient(135deg, rgba(244, 63, 94, 0.35), rgba(217, 70, 239, 0.35));
-  color: #fbcfe8;
-}
-
-.auth-feature-icon.icon-team {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(20, 184, 166, 0.35));
+.mockup-tag.tag-emerald {
+  background: rgba(16, 185, 129, 0.14);
   color: #a7f3d0;
 }
 
-.auth-feature-icon.icon-ai {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.35), rgba(249, 115, 22, 0.35));
-  color: #fef08a;
+.saas-mockup-progress-box {
+  background: rgba(15, 23, 42, 0.55);
+  padding: 8px 10px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.auth-showcase-trust-strip {
+.mockup-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.mockup-progress-labels strong {
+  color: #6ee7b7;
+}
+
+.mockup-progress-track {
+  width: 100%;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mockup-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8 0%, #10b981 100%);
+  border-radius: 999px;
+}
+
+.saas-mockup-ai-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #e2e8f0;
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  padding: 7px 9px;
+  border-radius: 8px;
+}
+
+.ai-summary-icon {
+  color: #fde047;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.saas-mockup-footer-metric {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  flex-wrap: wrap;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 9px 14px;
+  background: rgba(16, 185, 129, 0.12);
+  border-top: 1px solid rgba(16, 185, 129, 0.22);
+  font-size: 12px;
+  color: #d1fae5;
+  text-align: center;
+}
+
+.metric-award-icon {
+  color: #34d399;
+  flex-shrink: 0;
+}
+
+/* Left Column: Elevated Login & Onboarding Card */
+.auth-login-panel.saas-login-panel {
   position: relative;
-  z-index: 1;
-}
-
-.auth-trust-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: rgba(224, 242, 254, 0.88);
-  background: rgba(255, 255, 255, 0.08);
-  padding: 3px 9px;
-  border-radius: 999px;
-}
-
-/* Left Login Form Panel */
-.auth-login-panel {
-  padding: 44px 36px 36px 36px;
+  overflow: hidden;
+  padding: 34px 30px 26px 30px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   background: #ffffff;
+  border-radius: 26px;
   text-align: right;
+  box-shadow:
+    0 24px 60px -12px rgba(15, 23, 42, 0.16),
+    0 0 0 1px rgba(203, 213, 225, 0.85);
+}
+
+.auth-stained-glass-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 6px;
+  background: var(--stained-glass-gradient);
+  z-index: 3;
+}
+
+.saas-login-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+  width: fit-content;
+  margin-bottom: 10px;
 }
 
 .auth-login-header {
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 
 .auth-login-header h2 {
-  margin: 0 0 6px 0;
+  margin: 0 0 5px 0;
   font-size: 24px;
   color: var(--primary-deep);
   font-weight: 800;
@@ -650,7 +979,7 @@ input, textarea, select, button {
 
 .auth-login-header p {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -665,7 +994,7 @@ input, textarea, select, button {
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   text-align: right;
   line-height: 1.45;
 }
@@ -673,14 +1002,14 @@ input, textarea, select, button {
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   text-align: right;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .form-field label {
@@ -751,9 +1080,9 @@ input, textarea, select, button {
 }
 
 .btn-auth-submit {
-  margin-top: 6px;
-  padding: 13px;
-  background: linear-gradient(135deg, #4a88c7 0%, #7c65b8 100%);
+  margin-top: 4px;
+  padding: 12.5px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
   color: #fff;
   border: none;
   border-radius: 11px;
@@ -764,20 +1093,19 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 8px 22px rgba(74, 136, 199, 0.28);
+  box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
   transition: transform 0.12s, box-shadow 0.12s;
 }
 
 .btn-auth-submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 10px 26px rgba(124, 101, 184, 0.36);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.34);
 }
 
 .btn-auth-submit:disabled {
   opacity: 0.82;
   cursor: wait;
   transform: none;
-  box-shadow: 0 4px 12px rgba(74, 136, 199, 0.2);
 }
 
 .auth-form .input-with-icon input:disabled {
@@ -786,16 +1114,69 @@ input, textarea, select, button {
   opacity: 0.8;
 }
 
+/* Inviting New Teacher Trial Callout inside Login Card */
+.saas-new-teacher-box {
+  margin-top: 16px;
+  padding: 13px 14px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
+  border: 1.5px solid #86efac;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  text-align: right;
+}
+
+.saas-new-teacher-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.saas-new-teacher-text strong {
+  font-size: 13px;
+  color: #065f46;
+  font-weight: 800;
+}
+
+.saas-new-teacher-text span {
+  font-size: 11.5px;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.btn-saas-open-trial {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  border-radius: 9px;
+  padding: 8.5px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.15s;
+}
+
+.btn-saas-open-trial:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+
 .auth-contact-admin-footer {
-  margin-top: 22px;
-  padding-top: 16px;
+  margin-top: 14px;
+  padding-top: 12px;
   border-top: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   text-align: center;
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -804,8 +1185,8 @@ input, textarea, select, button {
   color: #563d82;
   border: 1px solid #d5c6f0;
   border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 12.5px;
+  padding: 6px 13px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
@@ -820,7 +1201,7 @@ input, textarea, select, button {
 }
 
 .auth-security-notice {
-  margin-top: 14px;
+  margin-top: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -830,22 +1211,151 @@ input, textarea, select, button {
   font-weight: 500;
 }
 
-@media (max-width: 860px) {
-  .auth-landing-shell {
+/* Bottom Full-Width 4-Pillar Value Strip */
+.saas-pillars-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-features-grid.saas-features-4col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  text-align: right;
+}
+
+.auth-feature-card.saas-pillar-card {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 16px;
+  padding: 16px 18px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.06);
+  transition: all 0.2s ease;
+}
+
+.auth-feature-card.saas-pillar-card:hover {
+  background: #ffffff;
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -8px rgba(30, 58, 138, 0.12);
+}
+
+.auth-feature-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.saas-pillar-card .auth-feature-card-header strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.saas-pillar-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.auth-feature-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.auth-feature-icon.icon-tracker {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.auth-feature-icon.icon-capture {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+
+.auth-feature-icon.icon-team {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.auth-feature-icon.icon-ai {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.auth-showcase-trust-strip.saas-bottom-trust-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.saas-bottom-trust-strip .auth-trust-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid #cbd5e1;
+  padding: 5px 13px;
+  border-radius: 999px;
+}
+
+@media (max-width: 1080px) {
+  .auth-landing-shell.saas-hero-shell {
     grid-template-columns: 1fr;
-    max-width: 520px;
-    border-radius: 20px;
   }
-  .auth-showcase-panel {
-    padding: 28px 20px 22px 20px;
-    gap: 16px;
+  .auth-features-grid.saas-features-4col {
+    grid-template-columns: repeat(2, 1fr);
   }
-  .auth-features-grid {
+}
+
+@media (max-width: 720px) {
+  .auth-page-wrapper {
+    padding: 12px 14px 36px 14px;
+  }
+  .saas-landing-navbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 16px;
+  }
+  .saas-navbar-actions {
+    justify-content: stretch;
+  }
+  .btn-saas-nav-video,
+  .btn-saas-nav-trial {
+    flex: 1;
+    justify-content: center;
+  }
+  .auth-showcase-panel.saas-hero-showcase {
+    padding: 24px 18px 20px 18px;
+  }
+  .saas-hero-headline {
+    font-size: 24px;
+  }
+  .saas-mockup-body {
     grid-template-columns: 1fr;
-    gap: 8px;
   }
-  .auth-login-panel {
-    padding: 28px 20px 24px 20px;
+  .auth-features-grid.saas-features-4col {
+    grid-template-columns: 1fr;
+  }
+  .auth-login-panel.saas-login-panel {
+    padding: 26px 20px 22px 20px;
   }
 }
 
