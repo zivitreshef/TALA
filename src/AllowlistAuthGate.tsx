@@ -13,9 +13,15 @@ import {
   EyeOff,
   Send,
   MessageSquare,
-  TrendingUp,
   BookOpen,
-  Loader2
+  Loader2,
+  CalendarCheck,
+  Mic,
+  Users,
+  CheckCircle2,
+  Smartphone,
+  ShieldCheck,
+  Play
 } from 'lucide-react';
 
 import { loginWithTala, prewarmTalaLogin, signOutFirebaseAuthSession } from './firebaseBackend';
@@ -196,8 +202,8 @@ export function AllowlistAuthGate({
         <div className="auth-showcase-panel">
           <div className="auth-showcase-top">
             <div className="auth-badge-pill">
-              <Sparkles size={13} />
-              <span>פלטפורמה פדגוגית מבוססת ענן ו-AI</span>
+              <Sparkles size={13} className="auth-badge-sparkle" />
+              <span>סביבת עבודה פדגוגית חכמה ומעקב שוטף</span>
             </div>
 
             <div className="auth-logo-frame">
@@ -206,68 +212,75 @@ export function AllowlistAuthGate({
 
             <h1 className="auth-title">מערכת TALA</h1>
             <p className="auth-subtitle">
-              תוכנית עבודה שנתית – תל"א (תוכנית לימודים אישית) / תח"י (תוכנית חינוכית יחידנית) ברוח הגישה האקולוגית
+              סביבת עבודה פדגוגית משותפת, יומן יעדים שוטף, תיעוד תצפיות מהיר ומאגר מטרות אקולוגי
             </p>
 
             <button
               type="button"
               className="btn-auth-watch-video"
               onClick={() => setShowIntroVideoModal(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '9px 18px',
-                fontSize: '13.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
-                marginTop: '10px',
-                transition: 'all 0.2s ease',
-                width: 'fit-content'
-              }}
               title="צפייה בסרטון היכרות והדרכה קצר על מערכת TALA"
             >
-              <BookOpen size={17} />
-              <span>🎥 צפייה בסרטון היכרות והדרכה (3 דק׳)</span>
+              <Play size={15} className="btn-auth-play-icon" />
+              <span>צפייה בסרטון היכרות והדרכה (3 דק׳)</span>
             </button>
           </div>
 
-          <div className="auth-features-list">
-            <div className="auth-feature-item">
-              <div className="auth-feature-icon">
-                <TrendingUp size={18} />
+          <div className="auth-features-grid">
+            <div className="auth-feature-card">
+              <div className="auth-feature-card-header">
+                <div className="auth-feature-icon icon-tracker">
+                  <CalendarCheck size={17} />
+                </div>
+                <strong>יומן יעדים ומעקב שוטף</strong>
               </div>
-              <div className="auth-feature-text">
-                <strong>מאגר מטרות ויעדים אקולוגי חכם</strong>
-                <span>מותאם לסביבות ההשתתפות בגן ובבית הספר ומדורג אוטומטית לפי שכיחות צוותית.</span>
-              </div>
+              <p>מעקב ביצוע רציף אחר מטרות ויעדים לאורך כל שנת הלימודים, ניהול סטטוס וציוני דרך.</p>
             </div>
 
-            <div className="auth-feature-item">
-              <div className="auth-feature-icon">
-                <Sparkles size={18} />
+            <div className="auth-feature-card">
+              <div className="auth-feature-card-header">
+                <div className="auth-feature-icon icon-capture">
+                  <Mic size={17} />
+                </div>
+                <strong>תיעוד תצפיות והקלטה קולית</strong>
               </div>
-              <div className="auth-feature-text">
-                <strong>בינה מלאכותית ושאלות מנחות</strong>
-                <span>הפקת תקציר מנהלים מקצועי וניסוח מטרות מותאם מגדרית מתוך תיאור תפקוד חופשי.</span>
-              </div>
+              <p>תפיסת רגעי למידה, התנהגות והצלחות בכיתה תוך שניות – ישירות מהנייד בקול ובטקסט.</p>
             </div>
 
-            <div className="auth-feature-item">
-              <div className="auth-feature-icon">
-                <BookOpen size={18} />
+            <div className="auth-feature-card">
+              <div className="auth-feature-card-header">
+                <div className="auth-feature-icon icon-team">
+                  <Users size={17} />
+                </div>
+                <strong>מוכנות לצוות ודוחות ישיבות</strong>
               </div>
-              <div className="auth-feature-text">
-                <strong>הגנת פרטיות וארכיון רב-שנתי בענן</strong>
-                <span>הפקת דוחות רשמיים להדפסה עם השחרת פרטים מזהים וראשי תיבות, ושמירה מאובטחת.</span>
-              </div>
+              <p>הפקת דוחות סיכום רב-מקצועיים ותמונת מצב כיתתית מרוכזת בלחיצה אחת לקראת ישיבות.</p>
             </div>
+
+            <div className="auth-feature-card">
+              <div className="auth-feature-card-header">
+                <div className="auth-feature-icon icon-ai">
+                  <Sparkles size={17} />
+                </div>
+                <strong>מאגר אקולוגי ובינה מלאכותית</strong>
+              </div>
+              <p>מאגר מטרות חכם בסביבות השתתפות טבעיות, ניסוח מותאם אישית ושאלות מנחות מסייעות.</p>
+            </div>
+          </div>
+
+          <div className="auth-showcase-trust-strip">
+            <span className="auth-trust-pill">
+              <CheckCircle2 size={12} />
+              <span>גישה אקולוגית</span>
+            </span>
+            <span className="auth-trust-pill">
+              <Smartphone size={12} />
+              <span>זמינות מכל מכשיר</span>
+            </span>
+            <span className="auth-trust-pill">
+              <ShieldCheck size={12} />
+              <span>הגנת פרטיות מלאה</span>
+            </span>
           </div>
         </div>
 
@@ -398,6 +411,11 @@ export function AllowlistAuthGate({
               <MessageSquare size={14} />
               <span>פנייה למנהל/ת המערכת</span>
             </button>
+          </div>
+
+          <div className="auth-security-notice">
+            <ShieldCheck size={13} />
+            <span>חיבור מאובטח • סביבת הוראה מוגנת</span>
           </div>
         </div>
       </div>
