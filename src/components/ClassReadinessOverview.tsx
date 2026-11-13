@@ -10,6 +10,7 @@ import {
 import {
   NO_FRAMEWORK_LABEL,
   getFrameworkKey,
+  compareFrameworks,
   computeStudentReadiness,
   computeClassReadinessSummary,
   filterStudentsByReadiness,
@@ -88,7 +89,7 @@ export default function ClassReadinessOverview({
       const fw = getFrameworkKey(st);
       if (fw) set.add(fw);
     });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'he'));
+    return Array.from(set).sort((a, b) => compareFrameworks(a, b));
   }, [safeStudents]);
 
   // Filter by framework first
