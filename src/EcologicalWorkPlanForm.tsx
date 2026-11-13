@@ -246,13 +246,23 @@ export default function EcologicalWorkPlanForm({
   const section2Ref = useRef<any>(null);
   const section3Ref = useRef<any>(null);
   const section4Ref = useRef<any>(null);
-    const evalReportSectionRef = useRef<any>(null);
+  const formNavRef = useRef<any>(null);
+  const evalReportSectionRef = useRef<any>(null);
   const statusReportSectionRef = useRef<any>(null);
-
-
 
   const [formData, setFormData] = useState(() => normalizeStudentForForm(student));
   const savedSnapshotRef = useRef(JSON.stringify(normalizeStudentForForm(student)));
+
+  // Real collaborators list excluding self-sharing
+  const effectiveSharedColleagues = useMemo(() => {
+    const myEmail = (currentUser?.email || '').trim().toLowerCase();
+    return (Array.isArray(formData.sharedWith) ? formData.sharedWith : []).filter(
+      (em: string) => {
+        const clean = String(em || '').trim().toLowerCase();
+        return clean && clean !== myEmail;
+      }
+    );
+  }, [formData.sharedWith, currentUser?.email]);
   const [hideStudentDetailsOnPrint, setHideStudentDetailsOnPrint] = useState(
     () => userPreferences?.defaultPrivacyMode === 'acronym'
   );
@@ -2919,14 +2929,14 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       )}
 
-      {/* Interactive 4-Step Form Stepper */}
-      <nav className="form-section-nav-bar" aria-label="שלבי התוכנית הפדגוגית">
+      {/* Interactive 5-Step Form Stepper */}
+      <nav ref={formNavRef} className="form-section-nav-bar" aria-label="שלבי התוכנית הפדגוגית">
         <button
           type="button"
           className={`section-nav-pill ${activeWorkPlanStep === 1 ? 'active' : ''}`}
           onClick={() => {
             setActiveWorkPlanStep(1);
-            setTimeout(() => section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            setShowEvalReportSection(false);
           }}
         >
           1. רקע ומסגרת
@@ -2936,7 +2946,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           className={`section-nav-pill ${activeWorkPlanStep === 2 ? 'active' : ''}`}
           onClick={() => {
             setActiveWorkPlanStep(2);
-            setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            setShowEvalReportSection(false);
           }}
         >
           2. פרופיל ומוקדי כוח
@@ -2946,7 +2956,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           className={`section-nav-pill ${activeWorkPlanStep === 3 ? 'active' : ''}`}
           onClick={() => {
             setActiveWorkPlanStep(3);
-            setTimeout(() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            setShowEvalReportSection(false);
           }}
         >
           3. מטרות ויעדים ({(formData.goals || []).filter((g: any) => g.title).length})
@@ -2956,22 +2966,20 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           className={`section-nav-pill ${activeWorkPlanStep === 4 ? 'active' : ''}`}
           onClick={() => {
             setActiveWorkPlanStep(4);
-            setTimeout(() => section4Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            setShowEvalReportSection(false);
           }}
         >
           4. המלצות וסיכום
         </button>
         <button
           type="button"
-          className="section-nav-pill"
+          className={`section-nav-pill ${activeWorkPlanStep === 5 ? 'active' : ''}`}
           onClick={() => {
             if (formData.isLocked) {
               handleAutoUnlockReport('evalSectionPill');
             }
+            setActiveWorkPlanStep(5);
             setShowEvalReportSection(true);
-            setTimeout(() => {
-              evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 50);
           }}
         >
           5. הערכת מחצית/שנה
@@ -3101,9 +3109,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#ede9fe' : '#f1f5f9',
-                  color: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#5b21b6' : '#334155',
-                  border: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+                  background: effectiveSharedColleagues.length > 0 ? '#ede9fe' : '#f1f5f9',
+                  color: effectiveSharedColleagues.length > 0 ? '#5b21b6' : '#334155',
+                  border: effectiveSharedColleagues.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
                   borderRadius: '8px',
                   padding: '6px 12px',
                   fontSize: '13px',
@@ -3115,8 +3123,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 <Users size={15} />
                 <span>
                   שיתוף צוות
-                  {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
-                    ? ` • ${formData.sharedWith.length}`
+                  {effectiveSharedColleagues.length > 0
+                    ? ` • ${effectiveSharedColleagues.length}`
                     : ''}
                 </span>
               </button>
@@ -4106,9 +4114,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#ede9fe' : '#f1f5f9',
-                color: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '#5b21b6' : '#334155',
-                border: Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
+                background: effectiveSharedColleagues.length > 0 ? '#ede9fe' : '#f1f5f9',
+                color: effectiveSharedColleagues.length > 0 ? '#5b21b6' : '#334155',
+                border: effectiveSharedColleagues.length > 0 ? '1px solid #c4b5fd' : '1px solid #cbd5e1',
                 borderRadius: '8px',
                 padding: '6px 12px',
                 fontSize: '13px',
@@ -4120,8 +4128,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <Users size={15} />
               <span>
                 שיתוף צוות
-                {Array.isArray(formData.sharedWith) && formData.sharedWith.length > 0
-                  ? ` • ${formData.sharedWith.length}`
+                {effectiveSharedColleagues.length > 0
+                  ? ` • ${effectiveSharedColleagues.length}`
                   : ''}
               </span>
             </button>
@@ -4712,7 +4720,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             className="btn-step-next"
             onClick={() => {
               setActiveWorkPlanStep(2);
-              setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+              formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           >
             <span>המשך לשלב 2: פרופיל ומוקדי כוח</span>
@@ -5559,7 +5567,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             className="btn-step-prev"
             onClick={() => {
               setActiveWorkPlanStep(1);
-              setTimeout(() => section1Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+              formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           >
             <ChevronRight size={16} />
@@ -5570,7 +5578,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             className="btn-step-next"
             onClick={() => {
               setActiveWorkPlanStep(3);
-              setTimeout(() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+              formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           >
             <span>המשך לשלב 3: מטרות ויעדים</span>
@@ -6899,7 +6907,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             className="btn-step-prev"
             onClick={() => {
               setActiveWorkPlanStep(2);
-              setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+              formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           >
             <ChevronRight size={16} />
@@ -6910,7 +6918,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             className="btn-step-next"
             onClick={() => {
               setActiveWorkPlanStep(4);
-              setTimeout(() => section4Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+              formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           >
             <span>המשך לשלב 4: המלצות וסיכום</span>
@@ -7145,20 +7153,34 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             className="btn-step-prev"
             onClick={() => {
               setActiveWorkPlanStep(3);
-              setTimeout(() => section3Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+              formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }}
           >
             <ChevronRight size={16} />
             <span>חזרה לשלב 3: מטרות ויעדים</span>
           </button>
-          <div></div>
+          <button
+            type="button"
+            className="btn-step-next"
+            onClick={() => {
+              if (formData.isLocked) {
+                handleAutoUnlockReport('evalSectionPill');
+              }
+              setActiveWorkPlanStep(5);
+              setShowEvalReportSection(true);
+              formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            <span>המשך לשלב 5: הערכת מחצית/שנה</span>
+            <ChevronLeft size={16} />
+          </button>
         </div>
       </section>
         </>
       )}
 
       {/* Separate Report Section: דוח הערכת מחצית / סוף שנה */}
-      {showEvalReportSection && (
+      {(showEvalReportSection || activeWorkPlanStep === 5) && (
         <section
           ref={evalReportSectionRef}
           className="form-section-card highlight-summary-section"
@@ -7174,7 +7196,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <button
               type="button"
               className="btn-preview-doc"
-              onClick={() => setShowEvalReportSection(false)}
+              onClick={() => {
+                setShowEvalReportSection(false);
+                if (activeWorkPlanStep === 5) {
+                  setActiveWorkPlanStep(4);
+                }
+              }}
             >
               <X size={15} />
               <span>סגור דוח הערכה</span>
@@ -7487,6 +7514,23 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               <Mail size={18} />
               <span>שלח דוח הערכה למייל</span>
             </button>
+          </div>
+
+          {/* Step 5 Footer Nav */}
+          <div className="section-step-nav-buttons" style={{ marginTop: '24px' }}>
+            <button
+              type="button"
+              className="btn-step-prev"
+              onClick={() => {
+                setActiveWorkPlanStep(4);
+                setShowEvalReportSection(false);
+                formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              <ChevronRight size={16} />
+              <span>חזרה לשלב 4: המלצות וסיכום</span>
+            </button>
+            <div></div>
           </div>
         </section>
       )}
