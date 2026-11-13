@@ -177,31 +177,40 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
 
   const gender = formData.gender || 'boy';
   const isGirl = gender === 'girl';
+  const toSafeString = (v: any): string => {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'string') return v;
+    if (Array.isArray(v)) {
+      return v.map((item) => (typeof item === 'string' ? item : (item?.text || item?.title || String(item ?? '')))).join('\n');
+    }
+    return String(v);
+  };
+
   const studentName =
     formData.name && formData.name !== 'תלמיד/ה חדש/ה'
-      ? formData.name.trim()
+      ? toSafeString(formData.name).trim()
       : isGirl
       ? 'התלמידה'
       : 'התלמיד';
 
-  const freeText = (formData.teacherFreeText || '').trim();
-  const strengthsExisting = (formData.strengthsExisting || '').trim();
-  const strengthsToEmpower = (formData.strengthsToEmpower || '').trim();
-  const studentGeneralBackground = (formData.studentGeneralBackground || '').trim();
-  const studentSupportReceived = (formData.studentSupportReceived || '').trim();
-  const studentMainGoal = (formData.studentMainGoal || '').trim();
+  const freeText = toSafeString(formData.teacherFreeText).trim();
+  const strengthsExisting = toSafeString(formData.strengthsExisting).trim();
+  const strengthsToEmpower = toSafeString(formData.strengthsToEmpower).trim();
+  const studentGeneralBackground = toSafeString(formData.studentGeneralBackground).trim();
+  const studentSupportReceived = toSafeString(formData.studentSupportReceived).trim();
+  const studentMainGoal = toSafeString(formData.studentMainGoal).trim();
   const profileTexts = Array.isArray(formData.talaProfileRows)
     ? formData.talaProfileRows
         .map((r) =>
-          [r?.strengthsAndFacilitators, r?.areasToStrengthenAndBarriers]
-            .filter((v) => (v || '').trim())
+          [toSafeString(r?.strengthsAndFacilitators), toSafeString(r?.areasToStrengthenAndBarriers)]
+            .filter((v) => v.trim())
             .join('. ')
         )
         .filter(Boolean)
     : [];
-  const recommendations = (formData.recommendations || '').trim();
-  const evalFreeText = (formData.evalReportFreeText || '').trim();
-  const evalSummary = (formData.evalReportSummary || '').trim();
+  const recommendations = toSafeString(formData.recommendations).trim();
+  const evalFreeText = toSafeString(formData.evalReportFreeText).trim();
+  const evalSummary = toSafeString(formData.evalReportSummary).trim();
   const validGoals = (formData.goals || []).filter((g) => !isGoalEmpty(g));
 
   const hasEvalData = Boolean(
@@ -515,16 +524,16 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
 
   // 11. מענים והתערבויות שניתנו
   const interventions = validGoals
-    .filter((g) => (g.opportunities || '').trim())
+    .filter((g) => toSafeString(g.opportunities).trim())
     .map((g) => {
-      const oppClean = (g.opportunities || '')
+      const oppClean = toSafeString(g.opportunities)
         .split('\n')
         .map((l) => l.replace(/^[•\-\*\s]+/, '').trim())
         .filter(Boolean)
         .join(', ');
-      const partnersTrimmed = (g.partners || '').trim();
+      const partnersTrimmed = toSafeString(g.partners).trim();
       const partnersInfo = partnersTrimmed ? ` (בשיתוף: ${partnersTrimmed})` : '';
-      const durationTrimmed = (g.duration || '').trim();
+      const durationTrimmed = toSafeString(g.duration).trim();
       const durationInfo = durationTrimmed ? ` [טווח/משך: ${durationTrimmed}]` : '';
       return `בסביבת "${g.environment}": ${oppClean}${partnersInfo}${durationInfo}`;
     });
@@ -601,17 +610,17 @@ export function generateStatusReportLocally(formData?: StatusReportFormData | nu
   // 15. מטרות להמשך
   if (validGoals.length > 0) {
     const goalsLines = validGoals.map((g) => {
-      const objClean = (g.objectives || '')
+      const objClean = toSafeString(g.objectives)
         .split('\n')
         .map((l) => l.replace(/^[•\-\*\s]+/, '').trim())
         .filter(Boolean)
         .join('; ');
-      const evalCrit = (g.evaluationCriteria || '').trim();
-      const status = (g.achievementStatus || '').trim();
-      const dur = (g.duration || '').trim();
+      const evalCrit = toSafeString(g.evaluationCriteria).trim();
+      const status = toSafeString(g.achievementStatus).trim();
+      const dur = toSafeString(g.duration).trim();
 
       const segments = [
-        `סביבת "${g.environment || ''}": ${(g.title || '').replace(/\.$/, '')}`
+        `סביבת "${g.environment || ''}": ${toSafeString(g.title).replace(/\.$/, '')}`
       ];
       if (status) segments.push(`(סטטוס: ${status})`);
       if (dur) segments.push(`[טווח יעד: ${dur}]`);

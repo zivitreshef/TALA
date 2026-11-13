@@ -38,9 +38,10 @@ export function escapeHtml(str?: unknown): string {
     .replace(/'/g, '&#39;');
 }
 
-export function toHebrewAcronym(fullName?: string | null): string {
-  if (!fullName || !fullName.trim()) return 'א.א.';
-  const parts = fullName
+export function toHebrewAcronym(fullName?: unknown): string {
+  const safeName = typeof fullName === 'string' ? fullName : String(fullName || '');
+  if (!safeName.trim()) return 'א.א.';
+  const parts = safeName
     .trim()
     .split(/\s+/)
     .filter(Boolean);
@@ -59,18 +60,29 @@ export function maskSensitiveValue(val?: unknown): string {
 }
 
 export function redactStudentNameInText(
-  text?: string | null,
-  studentFullName?: string | null,
+  text?: unknown,
+  studentFullName?: unknown,
   hideDetails: boolean = true
 ): string {
-  if (!text) return '';
-  if (!hideDetails || !studentFullName || !studentFullName.trim()) return text;
+  if (text === null || text === undefined) return '';
 
-  const acronym = toHebrewAcronym(studentFullName);
-  const parts = studentFullName.trim().split(/\s+/).filter((p) => p.length >= 2);
-  let result = text;
+  const safeText = typeof text === 'string'
+    ? text
+    : (Array.isArray(text)
+        ? text.map((item) => (typeof item === 'string' ? item : (item?.text || item?.title || String(item ?? '')))).join('\n')
+        : (typeof text === 'object' && text !== null ? (text as any).text || (text as any).title || String(text) : String(text)));
 
-  const fullTrimmed = studentFullName.trim();
+  if (!safeText) return '';
+  if (!hideDetails) return safeText;
+
+  const safeFullName = typeof studentFullName === 'string' ? studentFullName : String(studentFullName || '');
+  if (!safeFullName.trim()) return safeText;
+
+  const acronym = toHebrewAcronym(safeFullName);
+  const parts = safeFullName.trim().split(/\s+/).filter((p) => p.length >= 2);
+  let result = safeText;
+
+  const fullTrimmed = safeFullName.trim();
   if (fullTrimmed.length >= 2) {
     result = result.split(fullTrimmed).join(acronym);
   }
@@ -95,7 +107,7 @@ export function maskKnownStudentDetails(
   let maskedText = text;
   const replacements: Array<{ original: string; replacement: string }> = [];
 
-  const studentName = (formData.name || '').trim();
+  const studentName = String(formData.name || '').trim();
   const studentGender = formData.gender || 'boy';
   const resolvedStage =
     formData.stage === 'kindergarten' || formData.stage === 'school'
@@ -116,6 +128,14 @@ export function maskKnownStudentDetails(
     }
   }
 
+  // Helper to add safe replacement string
+  const addSafeReplacement = (rawVal: unknown, replacement: string) => {
+    const val = String(rawVal || '').trim();
+    if (val.length >= 2) {
+      replacements.push({ original: val, replacement });
+    }
+  };
+
   // 1. Student Name (full name first, then individual parts of length >= 2)
   if (studentName && studentName !== 'תלמיד/ה חדש/ה' && studentName.length >= 2) {
     replacements.push({ original: studentName, replacement: studentReplacement });
@@ -126,26 +146,26 @@ export function maskKnownStudentDetails(
   }
 
   // 2. Sensitive Personal Identifiers (length >= 2)
-  if (formData.idNumber && formData.idNumber.trim().length >= 2) replacements.push({ original: formData.idNumber.trim(), replacement: '████' });
-  if (formData.birthDate && formData.birthDate.trim().length >= 2) replacements.push({ original: formData.birthDate.trim(), replacement: '████' });
-  if (formData.address && formData.address.trim().length >= 2) replacements.push({ original: formData.address.trim(), replacement: '████' });
-  if (formData.phone && formData.phone.trim().length >= 2) replacements.push({ original: formData.phone.trim(), replacement: '████' });
+  addSafeReplacement(formData.idNumber, '████');
+  addSafeReplacement(formData.birthDate, '████');
+  addSafeReplacement(formData.address, '████');
+  addSafeReplacement(formData.phone, '████');
 
   // 3. Educational Framework and Staff Names (length >= 2)
-  if (formData.educationalFramework && formData.educationalFramework.trim().length >= 2) replacements.push({ original: formData.educationalFramework.trim(), replacement: 'המסגרת' });
-  if (formData.schoolName && formData.schoolName.trim().length >= 2) replacements.push({ original: formData.schoolName.trim(), replacement: 'המסגרת' });
-  if (formData.gradeClass && formData.gradeClass.trim().length >= 2) replacements.push({ original: formData.gradeClass.trim(), replacement: 'המסגרת' });
+  addSafeReplacement(formData.educationalFramework, 'המסגרת');
+  addSafeReplacement(formData.schoolName, 'המסגרת');
+  addSafeReplacement(formData.gradeClass, 'המסגרת');
 
   // Staff Names
-  if (formData.homeroomTeacher && formData.homeroomTeacher.trim().length >= 2) replacements.push({ original: formData.homeroomTeacher.trim(), replacement: 'איש צוות' });
-  if (formData.integrationTeacher && formData.integrationTeacher.trim().length >= 2) replacements.push({ original: formData.integrationTeacher.trim(), replacement: 'איש צוות' });
-  if (formData.learningSupportAssistant && formData.learningSupportAssistant.trim().length >= 2) replacements.push({ original: formData.learningSupportAssistant.trim(), replacement: 'איש צוות' });
-  if (formData.counselorName && formData.counselorName.trim().length >= 2) replacements.push({ original: formData.counselorName.trim(), replacement: 'איש צוות' });
-  if (formData.psychologistName && formData.psychologistName.trim().length >= 2) replacements.push({ original: formData.psychologistName.trim(), replacement: 'איש צוות' });
-  if (formData.matyaCoordinator && formData.matyaCoordinator.trim().length >= 2) replacements.push({ original: formData.matyaCoordinator.trim(), replacement: 'איש צוות' });
-  if (formData.emotionalTherapist && formData.emotionalTherapist.trim().length >= 2) replacements.push({ original: formData.emotionalTherapist.trim(), replacement: 'איש צוות' });
-  if (formData.paraMedicalTeam && formData.paraMedicalTeam.trim().length >= 2) replacements.push({ original: formData.paraMedicalTeam.trim(), replacement: 'איש צוות' });
-  if (formData.additionalPartners && formData.additionalPartners.trim().length >= 2) replacements.push({ original: formData.additionalPartners.trim(), replacement: 'איש צוות' });
+  addSafeReplacement(formData.homeroomTeacher, 'איש צוות');
+  addSafeReplacement(formData.integrationTeacher, 'איש צוות');
+  addSafeReplacement(formData.learningSupportAssistant, 'איש צוות');
+  addSafeReplacement(formData.counselorName, 'איש צוות');
+  addSafeReplacement(formData.psychologistName, 'איש צוות');
+  addSafeReplacement(formData.matyaCoordinator, 'איש צוות');
+  addSafeReplacement(formData.emotionalTherapist, 'איש צוות');
+  addSafeReplacement(formData.paraMedicalTeam, 'איש צוות');
+  addSafeReplacement(formData.additionalPartners, 'איש צוות');
 
   // Sort replacements by longest original string first to prevent partial matches
   replacements.sort((a, b) => b.original.length - a.original.length);

@@ -2860,6 +2860,20 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   <span>הורד קובץ Word (.doc)</span>
                 </button>
 
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  data-testid="export-menu-pdf-btn"
+                  onClick={async () => {
+                    setShowExportDropdown(false);
+                    handleSaveProgress();
+                    await downloadPdfFileDirectly('tala');
+                  }}
+                >
+                  <FileText size={15} style={{ color: '#dc2626' }} />
+                  <span>הורד קובץ PDF (.pdf)</span>
+                </button>
+
                 <div className="export-dropdown-divider" />
 
                 <label
@@ -3142,6 +3156,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               >
                 <Download size={16} />
                 <span>הורד קובץ Word</span>
+              </button>
+              <button
+                type="button"
+                className="btn-print-doc"
+                onClick={async () => {
+                  handleSaveProgress();
+                  await downloadPdfFileDirectly('tala');
+                }}
+                title="הורד כקובץ PDF"
+                style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}
+              >
+                <FileText size={16} />
+                <span>הורד קובץ PDF</span>
               </button>
               <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
                 <Printer size={16} />
@@ -3631,7 +3658,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                           {(formData.goals || []).map((g: any) => {
                             const objectivesWithDuration = [
                               getRedactedText(g.objectives),
-                              (g.duration || '').trim()
+                              String(g.duration || '').trim()
                                 ? `לו"ז: ${getRedactedText(g.duration)}`
                                 : ''
                             ]
@@ -3640,7 +3667,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                             return (
                               <tr key={g.id}>
                                 <td style={{ whiteSpace: 'pre-line' }}>
-                                  {(g.environment || '').trim() && (
+                                  {String(g.environment || '').trim() && (
                                     <div style={{ fontSize: '11.5px', color: '#475569', marginBottom: '3px' }}>
                                       [{g.environment}]
                                     </div>
@@ -3839,7 +3866,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               </>
             )}
 
-            {(formData.recommendations || '').trim() && (
+            {String(Array.isArray(formData.recommendations) ? formData.recommendations.join('\n') : (formData.recommendations || '')).trim() && (
               <table className="preview-doc-table" style={{ marginTop: '12px' }}>
                 <thead>
                   <tr>
@@ -3896,6 +3923,19 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   >
                     <Download size={15} style={{ color: '#059669' }} />
                     <span>הורד קובץ Word</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="export-dropdown-item"
+                    onClick={async () => {
+                      setShowBottomExportDropdown(false);
+                      handleSaveProgress();
+                      await downloadPdfFileDirectly('tala');
+                    }}
+                  >
+                    <FileText size={15} style={{ color: '#dc2626' }} />
+                    <span>הורד קובץ PDF</span>
                   </button>
 
                   <button
