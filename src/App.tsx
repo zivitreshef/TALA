@@ -1021,7 +1021,41 @@ export default function App() {
       if (chatEmailParam && !currentUser) {
         sessionStorage.setItem('tala_pending_admin_chat', chatEmailParam);
       }
+      const viewParam = urlParams.get('view') || urlParams.get('open');
+      if (viewParam && !currentUser) {
+        sessionStorage.setItem('tala_pending_deep_view', viewParam);
+      }
     } catch (_) {}
+  }, [currentUser]);
+
+  // Handle deep-link to directly open Class Readiness Overview (?view=class-readiness or ?open=readiness)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pendingView = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('tala_pending_deep_view') : null;
+      const targetView = (urlParams.get('view') || urlParams.get('open') || pendingView || '').toLowerCase().trim();
+
+      if (targetView === 'class-readiness' || targetView === 'readiness' || targetView === 'class_readiness') {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.removeItem('tala_pending_deep_view');
+        }
+        setSelectedStudentId(null);
+        setShowClassOverview(true);
+        setShowDailyTracker(false);
+        setShowGoalBankOverview(false);
+
+        if (urlParams.has('view') || urlParams.has('open')) {
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('view');
+          newUrl.searchParams.delete('open');
+          window.history.replaceState({}, document.title, newUrl.toString());
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to parse view deep link:', err);
+    }
   }, [currentUser]);
 
   useEffect(() => {
@@ -2654,7 +2688,7 @@ export default function App() {
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1>TALA – תכנית עבודה אקולוגית ותח"י</h1>
+              <h1>TALA – סביבת עבודה פדגוגית ומעקב שוטף</h1>
               <span
                 className="site-version-watermark"
                 dir="ltr"
@@ -2663,13 +2697,13 @@ export default function App() {
                 ver. {siteVersion}
               </span>
               {selectedStudent && (
-                <span className="header-active-student-pill" title={`עריכת תכנית: ${selectedStudent.name}`}>
-                  עריכת תכנית: {selectedStudent.name}
+                <span className="header-active-student-pill" title={`יומן פדגוגי וסביבת עבודה: ${selectedStudent.name}`}>
+                  יומן תוכנית פדגוגית: {selectedStudent.name}
                 </span>
               )}
             </div>
             <span className="brand-subtitle">
-              מערכת אינטראקטיבית לבניית תכנית עבודה משותפת, מאגר מטרות דינמי ושאלות מנחות ב-AI
+              סביבת עבודה משותפת, יומן יעדים שוטף, מאגר מטרות דינמי ושאלות מנחות בבינה מלאכותית
             </span>
           </div>
         </div>
@@ -2744,10 +2778,10 @@ export default function App() {
                 setShowDailyTracker(false);
                 setShowGoalBankOverview(false);
               }}
-              title="מבט על כיתתי על עמידה ביעדים ומועדי דיווח"
+              title="דוח מוכנות לישיבות צוות ומבט כיתתי מרוכז"
             >
               <UserCheck size={15} />
-              <span>מבט על</span>
+              <span>מוכנות לצוות</span>
             </button>
           </nav>
 
@@ -3683,9 +3717,9 @@ export default function App() {
                   <div className="inside-card-icon create-icon">
                     <GraduationCap size={26} />
                   </div>
-                  <h3>יצירת תוכנית לתלמיד/ה חדש/ה</h3>
+                  <h3>פתיחת יומן וסביבת עבודה לתלמיד/ה חדש/ה</h3>
                   <p>
-                    פתיחת גיליון תוכנית עבודה אקולוגית ותח"י חדשה מאפס, כולל הגדרת פרופיל תלמיד, תחומי תפקוד, בחירת מטרות מהמאגר ושאלות מנחות ב-AI.
+                    הקמת יומן פדגוגי וסביבת עבודה שוטפת, כולל פרופיל תלמיד, תחומי תפקוד, בחירת מטרות מהמאגר ושאלות מנחות בבינה מלאכותית.
                   </p>
                   <button
                     type="button"
@@ -3695,7 +3729,7 @@ export default function App() {
                     }}
                   >
                     <UserPlus size={18} />
-                    <span>צור תוכנית עבודה לתלמיד/ה חדש/ה</span>
+                    <span>פתיחת יומן וסביבת עבודה חדשה</span>
                   </button>
                 </div>
 
@@ -3704,9 +3738,9 @@ export default function App() {
                   <div className="inside-card-icon open-icon">
                     <BookOpen size={26} />
                   </div>
-                  <h3>פתיחת תוכנית של תלמיד/ה קיים/ת ({userStudents.length})</h3>
+                  <h3>יומן פדגוגי של תלמיד/ה קיים/ת ({userStudents.length})</h3>
                   <p>
-                    בחרי תלמיד/ה מתוך הרשימה להמשך עריכה, עדכון מטרות, הדפסה או שליחה למייל:
+                    בחרי תלמיד/ה לכניסה ישירה ליומן העבודה, מעקב יעדים, תיעוד תצפיות והפקת דוחות לצוות:
                   </p>
 
                   <div className="inside-landing-search">

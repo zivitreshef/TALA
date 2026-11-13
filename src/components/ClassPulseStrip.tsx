@@ -43,7 +43,7 @@ export const ClassPulseStrip: React.FC<ClassPulseStripProps> = ({
   const waitingList = Array.isArray(pulse.waiting) ? pulse.waiting : [];
 
   return (
-    <div className="class-pulse-strip" dir="rtl" aria-label="מבט על כיתתי">
+    <div className="class-pulse-strip" dir="rtl" aria-label="דופק כיתתי ומוכנות לצוות">
       {/* Top Banner / Opt-In if not enabled */}
       {showReminderPrompt && (
         <div className="class-pulse-reminder-banner">
