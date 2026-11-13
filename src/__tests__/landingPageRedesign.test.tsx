@@ -35,6 +35,28 @@ describe('Landing Page Redesign (v3 Pedagogical Workspace Spirit)', () => {
     expect(html).toContain('סביבת עבודה פדגוגית חכמה ומעקב שוטף');
     expect(html).toContain('מערכת TALA');
     expect(html).toContain('סביבת עבודה פדגוגית משותפת, יומן יעדים שוטף, תיעוד תצפיות מהיר ומאגר מטרות אקולוגי');
+    expect(html).toContain('הפכי שעות של ניירת וסיכומים');
+    expect(html).toContain('לדקות של עשייה פדגוגית ממוקדת');
+  });
+
+  it('renders the live interactive product UI mockup with voice capture and team readiness preview', () => {
+    const html = renderLandingPage();
+
+    expect(html).toContain('תצוגה חיה מסביבת העבודה • יומן פדגוגי ודופק כיתתי');
+    expect(html).toContain('תיעוד תצפית קולי מהיר מהכיתה');
+    expect(html).toContain('שויך אוטומטית ליעד: תקשורת ויוזמה חברתית');
+    expect(html).toContain('דוח מוכנות לישיבת צוות רב-מקצועית');
+    expect(html).toContain('85% הושגו');
+    expect(html).toContain('חיסכון של כ-4 שעות עבודה שבועיות');
+  });
+
+  it('renders dual conversion tracks for both returning teachers and prospective trial teachers', () => {
+    const html = renderLandingPage();
+
+    expect(html).toContain('בקשת גישה והתנסות ראשונית');
+    expect(html).toContain('עדיין אין לך חשבון במערכת?');
+    expect(html).toContain('פתיחת חשבון התנסות / בקשת גישה');
+    expect(html).toContain('כניסה למערכת TALA');
   });
 
   it('renders the 4 core pillars representing the active daily pedagogical toolkit', () => {
