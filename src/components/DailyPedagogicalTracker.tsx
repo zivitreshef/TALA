@@ -272,7 +272,7 @@ export default function DailyPedagogicalTracker({
   // Keep synced when targetStudentId changes
   useEffect(() => {
     if (targetStudentId) {
-      setNewTodoStudentId(targetStudentId);
+      setNewTodoStudentId((prev) => (prev !== targetStudentId ? targetStudentId : prev));
     }
   }, [targetStudentId]);
 
@@ -587,6 +587,40 @@ export default function DailyPedagogicalTracker({
   const entryStartTimeRef = React.useRef<number | null>(null);
   const hasDispatchedStartedRef = React.useRef(false);
   const currentEntryModeRef = React.useRef('text');
+  const aiNoteTextRef = React.useRef(aiNoteText);
+  aiNoteTextRef.current = aiNoteText;
+  const manualNoteRef = React.useRef(manualNote);
+  manualNoteRef.current = manualNote;
+  const pendingVoiceBlobRef = React.useRef(pendingVoiceBlob);
+  pendingVoiceBlobRef.current = pendingVoiceBlob;
+
+  // Progressive Linear AI Analysis State
+  const [aiAnalysisSeconds, setAiAnalysisSeconds] = useState(0);
+  const [aiAnalysisStepIdx, setAiAnalysisStepIdx] = useState(0);
+
+  const AI_OBSERVATION_STEPS = [
+    'שלב 1 מתוך 3: קורא את תוכן התצפית ומזהה הקשר פדגוגי...',
+    'שלב 2 מתוך 3: משווה מול מטרות ויעדי התלמיד/ה...',
+    'שלב 3 מתוך 3: מחשב התאמה פדגוגית ומנסח תובנה...'
+  ];
+
+  useEffect(() => {
+    if (!isAnalyzingAi) {
+      setAiAnalysisSeconds(0);
+      setAiAnalysisStepIdx(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setAiAnalysisSeconds((prev) => {
+        const next = prev + 1;
+        if (next < 3) setAiAnalysisStepIdx(0);
+        else if (next < 7) setAiAnalysisStepIdx(1);
+        else setAiAnalysisStepIdx(2);
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isAnalyzingAi]);
 
   useEffect(() => {
     if (activeStudentGoals.length > 0 && !selectedGoalId) {
@@ -594,9 +628,11 @@ export default function DailyPedagogicalTracker({
     }
   }, [activeStudentGoals, selectedGoalId]);
 
+  // Guard against redundant state updates causing infinite render loops
   useEffect(() => {
     if (selectedGoal) {
-      setManualProgress(selectedGoal.currentProgress ?? 60);
+      const targetProgress = selectedGoal.currentProgress ?? 60;
+      setManualProgress((prev) => (prev !== targetProgress ? targetProgress : prev));
     }
   }, [selectedGoal]);
 
@@ -616,11 +652,11 @@ export default function DailyPedagogicalTracker({
   };
 
   const checkAndDispatchAbandonment = () => {
-    if (hasDispatchedStartedRef.current && (aiNoteText.trim() || manualNote.trim())) {
+    if (hasDispatchedStartedRef.current && (aiNoteTextRef.current.trim() || manualNoteRef.current.trim())) {
       const timeSpentSec = entryStartTimeRef.current
         ? Math.max(1, Math.round((Date.now() - entryStartTimeRef.current) / 1000))
         : 5;
-      const mode = (pendingVoiceBlob || currentEntryModeRef.current === 'voice') ? 'voice' : 'text';
+      const mode = (pendingVoiceBlobRef.current || currentEntryModeRef.current === 'voice') ? 'voice' : 'text';
       try {
         usageTelemetryService.track(
           TELEMETRY_EVENTS.DAILY_TRACKING_ENTRY_ABANDONED,
@@ -636,11 +672,12 @@ export default function DailyPedagogicalTracker({
     }
   };
 
+  // Dispatch abandonment ONLY on true unmount with unsaved user text (never on keystrokes/state updates)
   useEffect(() => {
     return () => {
       checkAndDispatchAbandonment();
     };
-  }, [aiNoteText, manualNote]);
+  }, []);
 
   // Handle AI Analysis Execution
   const handleRunAiAnalysis = async () => {
@@ -1662,6 +1699,35 @@ export default function DailyPedagogicalTracker({
                     </button>
                   </div>
                 </div>
+
+                {/* Progressive AI Analyzing Skeleton Preview */}
+                {isAnalyzingAi && (
+                  <div className="ai-observation-skeleton-box" role="status" aria-live="polite">
+                    <div className="skeleton-stage-row">
+                      <Loader2 size={16} className="tala-spin-icon" />
+                      <Sparkles size={15} color="#4f46e5" />
+                      <span className="skeleton-stage-text">
+                        {pendingVoiceBlob && aiAnalysisSeconds < 3
+                          ? 'מתמלל הקלטה קולית באמצעות בינה מלאכותית...'
+                          : AI_OBSERVATION_STEPS[aiAnalysisStepIdx]}
+                      </span>
+                      <span className="skeleton-timer-text">({aiAnalysisSeconds} שניות)</span>
+                    </div>
+                    <div className="skeleton-track">
+                      <div
+                        className="skeleton-bar"
+                        style={{
+                          width: `${Math.min(94, Math.max(15, (aiAnalysisStepIdx + 1) * 30 + (aiAnalysisSeconds % 3) * 4))}%`
+                        }}
+                      />
+                    </div>
+                    <div className="skeleton-ghost-content">
+                      <div className="skeleton-ghost-pill" />
+                      <div className="skeleton-ghost-text-line" />
+                      <div className="skeleton-ghost-text-line short" />
+                    </div>
+                  </div>
+                )}
 
                 {/* No Match Info Notice */}
                 {aiNoMatchMessage && (
