@@ -17,11 +17,12 @@ import {
   Pause,
   Pencil,
   Check,
-  X
-
+  X,
+  WifiOff
 } from 'lucide-react';
 import type { PedagogicalSnippet } from '../../domain/types';
 import { createTeacherNoteSnippet, updateSnippet } from '../../domain/pedagogicalFeed';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
 export interface SnippetColorTheme {
   cardBorder: string;
@@ -287,15 +288,21 @@ export default function PedagogicalFeed({
     }, 3500);
   };
 
+  const { isOnline } = useOnlineStatus();
   const activeSourcesCount = snippets.length;
 
   const hasUnsavedNewNote = Boolean(newNoteText.trim() || pendingAudioBlob);
   const hasUnsavedEdit = Boolean(editingSnippetId && editingText.trim());
   const hasAnyContent = snippets.length > 0 || hasUnsavedNewNote || hasUnsavedEdit;
-  const isAiDisabled = isLocked || isAnalyzing || !hasAnyContent;
+  const isAiDisabled = isLocked || isAnalyzing || !hasAnyContent || !isOnline;
 
   const handleTriggerAiWithAutoCommit = async (): Promise<void> => {
     if (isAiDisabled) return;
+
+    if (!isOnline || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+      window.alert('אין חיבור לאינטרנט. הפקת יעדים ומטרות באמצעות בינה מלאכותית דורשת חיבור פעיל לרשת. כל התצפיות והטקסטים שרשמת שמורים בבטחה במכשירך ויסונכרנו לענן עם חזרת החיבור.');
+      return;
+    }
 
     let currentSnippets = [...snippets];
 
@@ -998,26 +1005,28 @@ export default function PedagogicalFeed({
               onClick={() => void handleTriggerAiWithAutoCommit()}
               disabled={isAiDisabled}
               title={
-                !hasAnyContent
+                !isOnline
+                  ? 'אין חיבור לאינטרנט – הנתונים שמורים במכשיר. הפקת יעדים ב-AI תתאפשר עם חידוש הרשת.'
+                  : !hasAnyContent
                   ? 'יש להקליד תצפית בתיבה או להעלות מסמך כדי להפעיל את ניתוח ה-AI'
                   : 'לחצי להפקת יעדים ומטרות מכל המקורות'
               }
-              aria-label="ניתוח כל המקורות ב-AI"
+              aria-label={!isOnline ? 'ממתין לחיבור רשת' : 'ניתוח כל המקורות ב-AI'}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '6px',
-                background: '#4f46e5',
+                background: !isOnline ? '#94a3b8' : '#4f46e5',
                 color: '#ffffff',
-                border: '1px solid #4338ca',
+                border: !isOnline ? '1px solid #64748b' : '1px solid #4338ca',
                 borderRadius: '7px',
                 padding: '6px 14px',
                 fontSize: '12.5px',
                 fontWeight: 600,
                 cursor: isAiDisabled ? 'not-allowed' : 'pointer',
-                opacity: isAiDisabled ? 0.6 : 1,
-                boxShadow: '0 1px 2px rgba(79, 70, 229, 0.18)',
+                opacity: isAiDisabled ? 0.7 : 1,
+                boxShadow: !isOnline ? 'none' : '0 1px 2px rgba(79, 70, 229, 0.18)',
                 transition: 'background-color 0.15s ease, box-shadow 0.15s ease'
               }}
             >
@@ -1025,6 +1034,11 @@ export default function PedagogicalFeed({
                 <>
                   <Loader2 size={14} className="tala-spin-icon" />
                   <span>מעבד את כל המקורות ב-AI...</span>
+                </>
+              ) : !isOnline ? (
+                <>
+                  <WifiOff size={14} />
+                  <span>ממתין לחיבור רשת</span>
                 </>
               ) : (
                 <>

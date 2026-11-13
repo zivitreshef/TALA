@@ -63,6 +63,8 @@ import {
 import AdminAllowlistModal from './components/modals/AdminAllowlistModal';
 import UpgradeBanner from './components/UpgradeBanner';
 import NewVersionBanner from './components/NewVersionBanner';
+import NetworkOfflineBanner from './components/NetworkOfflineBanner';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useAppVersionCheck } from './services/versionChecker';
 import { reloadApplication } from './services/appRefresh';
 import SessionEvictedModal from './components/modals/SessionEvictedModal';
@@ -374,6 +376,9 @@ export default function App() {
     } catch (_) {}
     return null;
   });
+
+  // Online / offline network resilience status
+  const { isOnline, justReconnected } = useOnlineStatus();
 
   // Automated new version detection & banner
   const {
@@ -2597,6 +2602,13 @@ export default function App() {
           </button>
         </div>
       )}
+      {/* Network Connectivity & Offline Resilience Banner */}
+      <NetworkOfflineBanner
+        isOnline={isOnline}
+        justReconnected={justReconnected}
+        onSaveCurrentWork={handleQuickSaveFromBanner}
+        isDirty={Boolean(unsavedDraftState?.isDirty)}
+      />
       {/* Real-Time Deployment & Upgrade Warning Banner */}
       <UpgradeBanner
         bannerData={upgradeBanner}
