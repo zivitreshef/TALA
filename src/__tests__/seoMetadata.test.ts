@@ -19,6 +19,8 @@ describe('SEO and Google Searchability Assets', () => {
     expect(content).toContain('<meta property="og:title"');
     expect(content).toContain('<meta property="og:description"');
     expect(content).toContain('<meta property="og:image"');
+    expect(content).toContain('סביבת עבודה יומיומית');
+    expect(content).toContain('הקלטות קוליות');
   });
 
   it('provides a valid robots.txt that allows crawling and points to sitemap', () => {
