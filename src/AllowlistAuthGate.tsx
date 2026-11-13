@@ -200,55 +200,57 @@ export function AllowlistAuthGate({
         />
       )}
       <div className="saas-landing-container">
-        {/* Top Full-Width Glassmorphic Navigation Bar */}
+        {/* Top Full-Bleed Warm Glassmorphic Navigation Bar */}
         <header className="saas-landing-navbar" aria-label="סרגל ניווט ראשי">
-          <div className="saas-navbar-brand">
-            <div className="auth-logo-frame saas-navbar-logo">
-              <img src="./tala-logo.png" alt="TALA Logo" className="auth-logo-img" />
-            </div>
-            <div className="saas-navbar-brand-text">
-              <div className="saas-navbar-title-row">
-                <span className="auth-title saas-brand-name">מערכת TALA</span>
-                <span className="auth-badge-pill saas-nav-badge">
-                  <Sparkles size={12} className="auth-badge-sparkle" />
-                  <span>סביבת עבודה פדגוגית חכמה ומעקב שוטף</span>
+          <div className="saas-navbar-inner">
+            <div className="saas-navbar-brand">
+              <div className="auth-logo-frame saas-navbar-logo">
+                <img src="./tala-logo.png" alt="TALA Logo" className="auth-logo-img" />
+              </div>
+              <div className="saas-navbar-brand-text">
+                <div className="saas-navbar-title-row">
+                  <span className="auth-title saas-brand-name">מערכת TALA</span>
+                  <span className="auth-badge-pill saas-nav-badge">
+                    <Sparkles size={12} className="auth-badge-sparkle" />
+                    <span>סביבת עבודה פדגוגית חכמה ומעקב שוטף</span>
+                  </span>
+                </div>
+                <span className="saas-navbar-tagline">
+                  צמח מתוך השטח • מותאם באהבה למורות שילוב, גננות שיח וצוותי חינוך מיוחד
                 </span>
               </div>
-              <span className="saas-navbar-tagline">
-                הכלי היומיומי למורות חינוך מיוחד, גננות שיח וצוותי שילוב
-              </span>
             </div>
-          </div>
 
-          <div className="saas-navbar-actions">
-            <button
-              type="button"
-              className="btn-saas-nav-video"
-              onClick={() => setShowIntroVideoModal(true)}
-              title="צפייה בסרטון היכרות והדרכה קצר על מערכת TALA"
-            >
-              <Play size={14} className="btn-auth-play-icon" />
-              <span>סרטון הדגמה (3 דק׳)</span>
-            </button>
-            <button
-              type="button"
-              className="btn-saas-nav-trial"
-              onClick={() => handleOpenContactAdmin('בקשת הרשאת גישה למערכת')}
-            >
-              <UserPlus size={15} />
-              <span>בקשת גישה והתנסות</span>
-            </button>
+            <div className="saas-navbar-actions">
+              <button
+                type="button"
+                className="btn-saas-nav-video"
+                onClick={() => setShowIntroVideoModal(true)}
+                title="צפייה בסרטון היכרות והדרכה קצר על מערכת TALA"
+              >
+                <Play size={14} className="btn-auth-play-icon" />
+                <span>סרטון הדגמה (3 דק׳)</span>
+              </button>
+              <button
+                type="button"
+                className="btn-saas-nav-trial"
+                onClick={() => handleOpenContactAdmin('בקשת הרשאת גישה למערכת')}
+              >
+                <UserPlus size={15} />
+                <span>בקשת גישה והתנסות</span>
+              </button>
+            </div>
           </div>
         </header>
 
         {/* Main Full-Width Hero & Login Split Showcase */}
         <div className="auth-landing-shell saas-hero-shell">
-          {/* Right Column: Hero Pitch + Live Interactive Product Mockup */}
-          <div className="auth-showcase-panel saas-hero-showcase">
+          {/* Right Column: Warm Human Hero Pitch + Authentic WhatsApp Voices + Live Workflow Preview */}
+          <div className="auth-showcase-panel saas-hero-showcase human-daylight-showcase">
             <div className="auth-showcase-top saas-hero-copy">
               <div className="saas-eyebrow-pill">
                 <Zap size={13} className="saas-eyebrow-icon" />
-                <span>סוף לניירת ולעבודה אל תוך הלילה • ארגז כלים פדגוגי חכם</span>
+                <span>נבנה מהשטח עבור צוותי חינוך מיוחד • סוף לניירת ולעבודה אל תוך הלילה</span>
               </div>
 
               <h1 className="saas-hero-headline">
@@ -258,7 +260,7 @@ export function AllowlistAuthGate({
 
               <p className="auth-subtitle saas-hero-subtitle">
                 סביבת עבודה פדגוגית משותפת, יומן יעדים שוטף, תיעוד תצפיות מהיר ומאגר מטרות אקולוגי –
-                הכל במקום אחד, נגיש מהטלפון בכיתה ומהמחשב בבית.
+                כלי עזר יומיומי חם, מונגש ופשוט שמלווה אותך מהטלפון בכיתה ומהמחשב בבית.
               </p>
 
               <div className="saas-hero-cta-group">
@@ -283,8 +285,64 @@ export function AllowlistAuthGate({
               </div>
             </div>
 
-            {/* Live Visual Product UI Mockup ("Show, Don't Tell") */}
-            <div className="saas-product-mockup" aria-label="הדמיית ממשק המערכת בפעולה">
+            {/* Authentic Voices from the Field: Real WhatsApp Messages from Teachers */}
+            <div className="saas-whatsapp-voices-section" aria-label="קולות אמיתיים מהשטח בוואטסאפ">
+              <div className="saas-whatsapp-header">
+                <span className="whatsapp-header-badge">💬 קולות אמיתיים מהשטח</span>
+                <span className="whatsapp-header-sub">
+                  הודעות וואטסאפ אמיתיות שקיבלנו ממורות וגננות שכבר עובדות עם TALA:
+                </span>
+              </div>
+
+              <div className="saas-whatsapp-grid">
+                <div className="whatsapp-bubble-card">
+                  <div className="whatsapp-sender-tag">מורה לחינוך מיוחד ושילוב</div>
+                  <p className="whatsapp-bubble-text">
+                    &ldquo;היי זיוית, רציתי לשתף אותך שהפקתי את התוכנית הראשונה מ-TALA ואני מרוצה. היתה לי חוויה טובה, מונגשת וממקדת. פיתחת כלי עזר נפלא! <strong>דוח מצב - וואו!!!</strong> אני נכנסת לראות... מטורף. תודה רבה 🥰&rdquo;
+                  </p>
+                  <div className="whatsapp-bubble-meta">
+                    <span>18:03</span>
+                    <span className="whatsapp-checks" aria-hidden="true">✓✓</span>
+                  </div>
+                </div>
+
+                <div className="whatsapp-bubble-card">
+                  <div className="whatsapp-sender-tag">גננת חינוך מיוחד</div>
+                  <p className="whatsapp-bubble-text">
+                    &ldquo;ישששש פתחתי שוב ולחצתי על עיבוד בלי לשנות כלום וזה הוסיף עוד מטרה בהתאם לבקשה 💃 וראיתי שהוספתם הקלטה מצויין 🎉🎉 <strong>זה הדבר הבא 😍 את חייבת לדחוף את זה!</strong> אמרתי לגננת הסמוכה שלידי שתיצור קשר להתחבר ולהתנסות 🙏&rdquo;
+                  </p>
+                  <div className="whatsapp-bubble-meta">
+                    <span>21:03</span>
+                    <span className="whatsapp-checks" aria-hidden="true">✓✓</span>
+                  </div>
+                </div>
+
+                <div className="whatsapp-bubble-card">
+                  <div className="whatsapp-sender-tag">מורת שילוב</div>
+                  <p className="whatsapp-bubble-text">
+                    &ldquo;תוכנה מדהימה, עוזרת לי לדייק את הדברים. <strong>השאלות המנחות הן מעולות לדייק את התפקוד כעת!!!</strong> 😉 וואו איזה שדרוגים פשוט מטורף ❤️&rdquo;
+                  </p>
+                  <div className="whatsapp-bubble-meta">
+                    <span>14:01</span>
+                    <span className="whatsapp-checks" aria-hidden="true">✓✓</span>
+                  </div>
+                </div>
+
+                <div className="whatsapp-bubble-card">
+                  <div className="whatsapp-sender-tag">רכזת וגננת שיח</div>
+                  <p className="whatsapp-bubble-text">
+                    &ldquo;קודם כל באהבה רבה ובכיף ❤️ גם אעביר תשלום שהאפליקציה לא תסגר לשימוש 😍 <strong>אני עפה על זה 💃💃💃</strong> ונמשיך לשווק בע״ה ❤️🙏 אתם אלופים ממש 👑&rdquo;
+                  </p>
+                  <div className="whatsapp-bubble-meta">
+                    <span>15:14</span>
+                    <span className="whatsapp-checks" aria-hidden="true">✓✓</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Soft Daylight Product Workflow Preview ("Show, Don't Tell") */}
+            <div className="saas-product-mockup daylight-mockup" aria-label="הדמיית ממשק המערכת בפעולה">
               <div className="saas-mockup-topbar">
                 <div className="saas-mockup-dots">
                   <span className="mockup-dot dot-red" />

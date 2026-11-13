@@ -50,6 +50,16 @@ describe('Landing Page Redesign (v3 Pedagogical Workspace Spirit)', () => {
     expect(html).toContain('חיסכון של כ-4 שעות עבודה שבועיות');
   });
 
+  it('renders authentic WhatsApp teacher testimonials from the field', () => {
+    const html = renderLandingPage();
+
+    expect(html).toContain('קולות אמיתיים מהשטח');
+    expect(html).toContain('דוח מצב - וואו!!!');
+    expect(html).toContain('וראיתי שהוספתם הקלטה מצויין');
+    expect(html).toContain('השאלות המנחות הן מעולות לדייק את התפקוד כעת!!!');
+    expect(html).toContain('אני עפה על זה');
+  });
+
   it('renders dual conversion tracks for both returning teachers and prospective trial teachers', () => {
     const html = renderLandingPage();
 
