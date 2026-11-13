@@ -1672,6 +1672,33 @@ input, textarea, select, button {
   color: #0f172a;
 }
 
+.btn-export-dropdown-bottom {
+  background: linear-gradient(135deg, #7c65b8 0%, #5b9bd5 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 3px 10px rgba(124, 101, 184, 0.26);
+  transition: all 0.15s ease;
+}
+
+.btn-export-dropdown-bottom:hover,
+.btn-export-dropdown-bottom.active {
+  background: linear-gradient(135deg, #6d54ab 0%, #4a88c4 100%);
+  box-shadow: 0 4px 14px rgba(124, 101, 184, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-export-dropdown-bottom .export-dropdown-arrow {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .export-dropdown-arrow {
   transition: transform 0.2s ease;
   color: #64748b;
@@ -1702,6 +1729,26 @@ input, textarea, select, button {
   from {
     opacity: 0;
     transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.export-dropdown-menu.drop-up {
+  top: auto;
+  bottom: calc(100% + 8px);
+  right: 0;
+  left: auto;
+  z-index: 60;
+  animation: exportDropUpFadeIn 0.15s ease-out;
+}
+
+@keyframes exportDropUpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
