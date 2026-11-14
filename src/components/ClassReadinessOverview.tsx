@@ -654,27 +654,29 @@ export default function ClassReadinessOverview({
 
                       {/* Status Report Column */}
                       <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            padding: '3px 10px',
-                            borderRadius: '6px',
-                            background: info.isLocked
-                              ? 'rgba(99, 102, 241, 0.12)'
-                              : info.hasStatusReport
-                                ? 'rgba(16, 185, 129, 0.12)'
-                                : '#f1f5f9',
-                            color: info.isLocked ? '#4338ca' : info.hasStatusReport ? '#047857' : '#64748b',
-                            fontWeight: 600,
-                            fontSize: '12px'
-                          }}
-                        >
-                          <span>
-                            {info.isLocked ? 'נעול' : info.hasStatusReport ? 'הופק' : 'פתוח'}
-                          </span>
-                        </div>
+                        {(() => {
+                          const isDone = Boolean(info.isLocked || info.hasStatusReport);
+                          return (
+                            <div
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '3px 10px',
+                                borderRadius: '6px',
+                                background: isDone ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.1)',
+                                color: isDone ? '#047857' : '#be123c',
+                                fontWeight: 600,
+                                fontSize: '12px'
+                              }}
+                            >
+                              {isDone ? <Check size={14} /> : <X size={14} />}
+                              <span>
+                                {info.isLocked ? 'נעול' : info.hasStatusReport ? 'הופק' : 'טרם ננעל'}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Final Status */}
