@@ -195,8 +195,25 @@ export default function DailyPedagogicalTracker({
       if (t && t.id && !taskMap.has(t.id)) taskMap.set(t.id, t);
     });
 
+    const cleanName = (n: string) => (n || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+    const reconcileTask = (t: any) => {
+      if (!t || !t.text || typeof t.text !== 'string') return t;
+      const matched = (students || []).find((s: any) => {
+        const cName = cleanName(s.name);
+        return cName && (t.text.startsWith(s.name) || t.text.startsWith(cName));
+      });
+      if (matched && matched.name && matched.name !== t.studentName) {
+        return {
+          ...t,
+          studentId: matched.id,
+          studentName: matched.name
+        };
+      }
+      return t;
+    };
+
     if (taskMap.size > 0) {
-      return Array.from(taskMap.values());
+      return Array.from(taskMap.values()).map(reconcileTask);
     }
 
     return [
@@ -320,10 +337,38 @@ export default function DailyPedagogicalTracker({
   const [taskToast, setTaskToast] = useState('');
 
   const handleAddAiTasks = (tasksToAdd: any[]) => {
-    const defaultStudent = students.find((s: any) => s.id === targetStudentId) || students[0];
+    const cleanStudentName = (n: string) => (n || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+
     const formatted = tasksToAdd.map((t: any, idx: any) => {
-      const stId = t.studentId || defaultStudent?.id || null;
-      const stObj = students.find((s: any) => s.id === stId);
+      // 1. Direct match by studentId
+      let matchedStudent = (students || []).find((s: any) => s.id === t.studentId);
+
+      // 2. Match by studentName (exact or without parentheses)
+      if (!matchedStudent && t.studentName && t.studentName !== 'תלמיד/ה') {
+        const raw = t.studentName.trim().toLowerCase();
+        const clean = cleanStudentName(t.studentName);
+        matchedStudent =
+          (students || []).find((s: any) => s.name.trim().toLowerCase() === raw) ||
+          (clean ? (students || []).find((s: any) => cleanStudentName(s.name) === clean) : undefined);
+      }
+
+      // 3. Match from task text (e.g. starts with "רונן רון:" or contains name)
+      if (!matchedStudent && t.text) {
+        matchedStudent = (students || []).find((s: any) => {
+          const cName = cleanStudentName(s.name);
+          return t.text.includes(s.name) || (cName && t.text.includes(cName));
+        });
+      }
+
+      // 4. Tracker explicitly selected student (if teacher explicitly selected one in the dropdown)
+      const explicitTrackerStudent = newTodoStudentId
+        ? (students || []).find((s: any) => s.id === newTodoStudentId)
+        : null;
+
+      const finalStudent = matchedStudent || explicitTrackerStudent || null;
+      const stId = finalStudent?.id || (t.studentId && (students || []).some((s: any) => s.id === t.studentId) ? t.studentId : null);
+      const stName = finalStudent?.name || (t.studentName && t.studentName !== 'תלמיד/ה' ? t.studentName : '');
+
       return {
         id: `todo_ai_${Date.now()}_${idx}`,
         text: t.text,
@@ -331,7 +376,7 @@ export default function DailyPedagogicalTracker({
         time: '',
         completed: false,
         studentId: stId,
-        studentName: stObj?.name || t.studentName || defaultStudent?.name || '',
+        studentName: stName,
         isAiGenerated: true
       };
     });
@@ -942,8 +987,25 @@ export default function DailyPedagogicalTracker({
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
 
-  // Filter tasks for selected date
-  const filteredTodos = todos.filter((t: any) => t.date === selectedDate);
+  // Filter tasks for selected date with safe student display reconciliation
+  const cleanStudentName = (n: string) => (n || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+  const filteredTodos = todos
+    .filter((t: any) => t.date === selectedDate)
+    .map((todo: any) => {
+      if (!todo || !todo.text || typeof todo.text !== 'string') return todo;
+      const matched = (students || []).find((s: any) => {
+        const cName = cleanStudentName(s.name);
+        return cName && (todo.text.startsWith(s.name) || todo.text.startsWith(cName));
+      });
+      if (matched && matched.name && matched.name !== todo.studentName) {
+        return {
+          ...todo,
+          studentId: matched.id,
+          studentName: matched.name
+        };
+      }
+      return todo;
+    });
   const filteredEvents = events.filter((ev: any) => ev.date === selectedDate);
 
   return (
@@ -2182,6 +2244,7 @@ export default function DailyPedagogicalTracker({
         students={students}
         events={events}
         selectedDate={selectedDate}
+        initialStudentId={newTodoStudentId || undefined}
         onAddTasks={handleAddAiTasks}
       />
     </div>

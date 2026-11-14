@@ -47,6 +47,7 @@ export interface AddedPedagogicalTask {
   text: string;
   date: string;
   studentId: string;
+  studentName?: string;
   isAiGenerated: boolean;
 }
 
@@ -56,6 +57,7 @@ export interface PedagogicalTasksModalProps {
   students?: PedagogicalModalStudent[];
   events?: PedagogicalModalEvent[];
   selectedDate?: string;
+  initialStudentId?: string;
   onAddTasks: (tasks: AddedPedagogicalTask[]) => void;
 }
 
@@ -112,15 +114,20 @@ export default function PedagogicalTasksModal({
   students = [],
   events = [],
   selectedDate = '',
+  initialStudentId,
   onAddTasks
 }: PedagogicalTasksModalProps): React.JSX.Element | null {
-  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(() => {
-    // Pre-select students who have events scheduled on selectedDate, or all if none
+  const getInitialSelectedIds = (): Set<string> => {
+    if (initialStudentId && students.some((s) => s.id === initialStudentId)) {
+      return new Set([initialStudentId]);
+    }
     const todayIds = (events || [])
       .filter((ev) => ev.date === selectedDate && ev.studentId)
       .map((ev) => ev.studentId as string);
     return new Set(todayIds.length > 0 ? todayIds : students.map((s) => s.id));
-  });
+  };
+
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(getInitialSelectedIds);
 
   const [focusInstruction, setFocusInstruction] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,6 +137,18 @@ export default function PedagogicalTasksModal({
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedPedagogicalTask[]>([]);
   const [generationError, setGenerationError] = useState('');
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelectedStudentIds(getInitialSelectedIds());
+      setStep('select');
+      setIsGenerating(false);
+      setIsSubmitting(false);
+      setSubmitSuccess(false);
+      setGeneratedTasks([]);
+      setGenerationError('');
+    }
+  }, [isOpen, initialStudentId, selectedDate]);
 
   const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
 
@@ -182,7 +201,8 @@ export default function PedagogicalTasksModal({
           (ev) => (ev.studentId === s.id || ev.studentName === s.name) && ev.date === selectedDate
         );
 
-        return `תלמיד/ה: ${s.name} (מסגרת: ${s.educationalFramework || 'חינוך'})
+        return `מזהה תלמיד (studentId): "${s.id}"
+שם תלמיד/ה: ${s.name} (מסגרת: ${s.educationalFramework || 'חינוך'})
 ${scheduled ? `מפגש מתוכנן להיום: ${scheduled.title} בשעה ${scheduled.startTime || 'מתוזמן'}` : 'אין מפגש מתוזמן ביומן להיום'}
 יעדים בתוכנית תל"א:
 ${goalsStr || '  * אין יעדים מוגדרים'}`;
@@ -197,14 +217,14 @@ ${studentsContext}
 
 הנחיות מחייבות:
 1. חולל משימה פדגוגית ממוקדת אחת בלבד לכל תלמיד ברשימה.
-2. המשימה חייבת לפתוח בשם התלמיד (למשל: "איתי לוי: תרגול ממוקד של...").
+2. המשימה חייבת לפתוח בשם התלמיד (למשל: "${targetStudents[0]?.name || 'שם התלמיד'}: תרגול ממוקד של...").
 3. המשימה צריכה להיות ישימה, קצרה וקשורה ליעד שדורש תצפית או למפגש המתוכנן.
-4. החזר פלט בפורמט JSON בלבד (ללא מרקדאון של backticks, ללא הסברים):
+4. החזר פלט בפורמט JSON בלבד כמערך אובייקטים (ללא markdown backticks וללא הסברים):
 [
   {
-    "studentId": "מזהה_תלמיד",
-    "studentName": "שם התלמיד",
-    "task": "שם התלמיד: תיאור משימה פדגוגית קונקרטית"
+    "studentId": "${targetStudents[0]?.id || 'id'}",
+    "studentName": "${targetStudents[0]?.name || 'שם התלמיד'}",
+    "task": "${targetStudents[0]?.name || 'שם התלמיד'}: תיאור משימה פדגוגית קונקרטית"
   }
 ]`;
 
@@ -213,16 +233,16 @@ ${studentsContext}
         payload: { prompt },
         hints: { model: 'gemini-2.5-flash' }
       })) as
-        | { tasks?: Array<{ studentId: string; studentName?: string; task?: string }>; raw?: string }
-        | Array<{ studentId: string; studentName?: string; task?: string }>
+        | { tasks?: Array<{ studentId: string; studentName?: string; task?: string; text?: string; description?: string }>; raw?: string }
+        | Array<{ studentId: string; studentName?: string; task?: string; text?: string; description?: string }>
         | string
         | null;
 
-      let parsed: Array<{ studentId: string; studentName?: string; task?: string }> = [];
+      let parsed: Array<{ studentId: string; studentName?: string; task?: string; text?: string; description?: string }> = [];
       if (Array.isArray(response)) {
-        parsed = response as Array<{ studentId: string; studentName?: string; task?: string }>;
+        parsed = response as Array<{ studentId: string; studentName?: string; task?: string; text?: string; description?: string }>;
       } else if (response && typeof response === 'object' && Array.isArray((response as { tasks?: unknown[] }).tasks)) {
-        parsed = (response as { tasks: Array<{ studentId: string; studentName?: string; task?: string }> }).tasks;
+        parsed = (response as { tasks: Array<{ studentId: string; studentName?: string; task?: string; text?: string; description?: string }> }).tasks;
       } else if ((response as { raw?: string })?.raw) {
         const cleaned = (response as { raw: string }).raw.replace(/```json/gi, '').replace(/```/g, '').trim();
         try {
@@ -239,15 +259,76 @@ ${studentsContext}
         }
       }
 
+      const cleanStudentName = (name?: string) =>
+        (name || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+
+      const resolveStudent = (
+        item: { studentId?: string; studentName?: string; task?: string; text?: string; description?: string },
+        idx: number
+      ): PedagogicalModalStudent | undefined => {
+        // 1. Direct match by studentId
+        if (item.studentId && item.studentId !== 'מזהה_תלמיד') {
+          const byId =
+            targetStudents.find((s) => s.id === item.studentId) ||
+            students.find((s) => s.id === item.studentId);
+          if (byId) return byId;
+        }
+
+        // 2. Direct or clean match by studentName
+        if (item.studentName && item.studentName.trim() && item.studentName !== 'תלמיד/ה') {
+          const raw = item.studentName.trim().toLowerCase();
+          const clean = cleanStudentName(item.studentName);
+          const byName =
+            targetStudents.find((s) => s.name.trim().toLowerCase() === raw) ||
+            students.find((s) => s.name.trim().toLowerCase() === raw) ||
+            (clean ? targetStudents.find((s) => cleanStudentName(s.name) === clean) : undefined) ||
+            (clean ? students.find((s) => cleanStudentName(s.name) === clean) : undefined);
+          if (byName) return byName;
+        }
+
+        // 3. Match from task text
+        const taskText = item.task || item.text || item.description || '';
+        if (taskText) {
+          const byTask =
+            targetStudents.find((s) => {
+              const cName = cleanStudentName(s.name);
+              return taskText.includes(s.name) || (cName && taskText.includes(cName));
+            }) ||
+            students.find((s) => {
+              const cName = cleanStudentName(s.name);
+              return taskText.includes(s.name) || (cName && taskText.includes(cName));
+            });
+          if (byTask) return byTask;
+        }
+
+        // 4. If exactly one student was targeted, every generated task belongs to this student
+        if (targetStudents.length === 1) {
+          return targetStudents[0];
+        }
+
+        // 5. Positional fallback if index matches
+        if (targetStudents[idx]) {
+          return targetStudents[idx];
+        }
+
+        return undefined;
+      };
+
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const formatted: GeneratedPedagogicalTask[] = parsed.map((item, idx) => ({
-          id: `task_${item.studentId || idx}_${Date.now()}`,
-          studentId: item.studentId,
-          studentName: item.studentName || 'תלמיד/ה',
-          text: item.task || `${item.studentName}: משימה פדגוגית`,
-          date: selectedDate,
-          selected: true
-        }));
+        const formatted: GeneratedPedagogicalTask[] = parsed.map((item, idx) => {
+          const matchedStudent = resolveStudent(item, idx);
+          const studentId = matchedStudent?.id || (item.studentId && item.studentId !== 'מזהה_תלמיד' ? item.studentId : '');
+          const studentName = matchedStudent?.name || item.studentName || 'תלמיד/ה';
+          const taskContent = item.task || item.text || item.description || `${studentName}: משימה פדגוגית`;
+          return {
+            id: `task_${studentId || idx}_${Date.now()}_${idx}`,
+            studentId,
+            studentName,
+            text: taskContent,
+            date: selectedDate,
+            selected: true
+          };
+        });
         setGeneratedTasks(formatted);
       } else {
         setGeneratedTasks(generatePedagogicalTasksHeuristic(targetStudents, events, selectedDate, focusInstruction));
@@ -290,6 +371,7 @@ ${studentsContext}
         text: t.text.trim(),
         date: selectedDate,
         studentId: t.studentId,
+        studentName: t.studentName,
         isAiGenerated: true
       }));
 
