@@ -54,7 +54,7 @@ describe('Landing Page Redesign (v3 Pedagogical Workspace Spirit)', () => {
     const html = renderLandingPage();
 
     expect(html).toContain('קולות אמיתיים מהשטח');
-    expect(html).toContain('הודעות וואטסאפ והקלטות קוליות אותנטיות ללא עריכה');
+    expect(html).toContain('הודעות וואטסאפ אותנטיות כפי שנשלחו מהשטח ללא עריכה');
     expect(html).toContain('0:41');
     expect(html).toContain('0:30');
     expect(html).toContain('דוח מצב - וואו!!!');
