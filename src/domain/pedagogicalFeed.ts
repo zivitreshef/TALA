@@ -19,6 +19,21 @@ export function createTeacherNoteSnippet(
   };
 }
 
+export function createParentVoiceSnippet(
+  content: string,
+  authorName = 'הורי התלמיד/ה',
+  createdAt?: string
+): PedagogicalSnippet {
+  return {
+    id: createSnippetId(),
+    sourceType: 'teacher_note',
+    sourceTitle: 'קול ההורים',
+    content: (content || '').trim(),
+    authorName: (authorName || 'הורי התלמיד/ה').trim(),
+    createdAt: createdAt || new Date().toISOString()
+  };
+}
+
 export interface CreateDocumentSnippetParams {
   sourceTitle: string;
   content: string;

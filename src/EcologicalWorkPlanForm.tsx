@@ -128,7 +128,8 @@ import {
   addSnippet,
   removeSnippet,
   updateSnippet,
-  createTeacherNoteSnippet
+  createTeacherNoteSnippet,
+  createParentVoiceSnippet
 } from './domain/pedagogicalFeed';
 import type { PedagogicalSnippet } from './domain/types';
 import { removeDiagnosticDocumentFromStudent } from './domain/diagnosticIntake';
@@ -983,11 +984,31 @@ export default function EcologicalWorkPlanForm({
     setFormData((prev: any) => applyFieldChange(prev, field, value));
   };
 
-  // Append parent / student answers to the teacher free text, then surface that section
+  // Append parent / student answers to the pedagogicalSnippets feed AND teacherFreeText, then surface that section
   const handleMergeParentVoice = (block: any) => {
     if (formData.isLocked || !block) return;
-    handleFieldChange('teacherFreeText', appendToFreeText(formData.teacherFreeText, block));
+
+    const currentList =
+      formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
+        ? formData.pedagogicalSnippets
+        : activeSnippets;
+
+    const parentSnippet = createParentVoiceSnippet(String(block));
+    const nextSnippets = addSnippet(currentList, parentSnippet);
+    const updatedFreeText = appendToFreeText(formData.teacherFreeText, block);
+
+    const nextData = {
+      ...formData,
+      teacherFreeText: updatedFreeText,
+      pedagogicalSnippets: nextSnippets,
+      hasParentVoice: true,
+      lastSavedAt: new Date().toISOString()
+    };
+
+    setFormData(nextData);
+    onSaveStudentPlan?.(nextData);
     setIsFreeTextCollapsed(false);
+    setActiveWorkPlanStep(2);
     setTimeout(() => section2Ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
   };
 
