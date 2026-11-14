@@ -54,10 +54,23 @@ export const TeamMeetingReportModal: React.FC<TeamMeetingReportModalProps> = ({
 
   // Derive active coverage
   const studentsWithRecentObs = new Set(
-    (summaryData.recentObservations || []).map((o: any) => o.studentId).filter(Boolean)
+    (summaryData.recentObservations || []).map((o: any) => o.studentId || o.studentName).filter(Boolean)
   );
   const coveredCount = studentsWithRecentObs.size;
   const totalStudentsCount = students.length;
+
+  // Group gaps by student to eliminate duplicates and cleanly list specific goals per student
+  const gapMap = new Map<string, PedagogicalGap[]>();
+  gaps.forEach((gap) => {
+    const stName = gap.studentName || 'תלמיד/ה';
+    const list = gapMap.get(stName) || [];
+    list.push(gap);
+    gapMap.set(stName, list);
+  });
+  const gapsByStudent = Array.from(gapMap.entries()).map(([studentName, studentGaps]) => ({
+    studentName,
+    gaps: studentGaps
+  }));
 
   const getEmailHtml = () => {
     return buildPedagogicalReminderEmailHtml({
@@ -111,9 +124,12 @@ export const TeamMeetingReportModal: React.FC<TeamMeetingReportModalProps> = ({
     }
 
     if (gaps.length > 0) {
-      lines.push('יעדים ללא תיעוד לאחרונה (21+ יום):');
-      gaps.slice(0, 10).forEach((gap) => {
-        lines.push(`• ${gap.studentName} - ${gap.goalTitle} (${gap.daysSinceObservation ?? 'טרם תועד'} ימים)`);
+      lines.push('יעדים ללא תיעוד לאחרונה (מעל 21 יום):');
+      gaps.forEach((gap) => {
+        const timeText = gap.daysSinceObservation !== undefined
+          ? `לפני ${gap.daysSinceObservation} ימים`
+          : 'טרם תועד';
+        lines.push(`• ${gap.studentName} - ${gap.goalTitle} (${timeText})`);
       });
     }
 
@@ -260,15 +276,27 @@ export const TeamMeetingReportModal: React.FC<TeamMeetingReportModalProps> = ({
           {gaps.length > 0 && (
             <div className="team-report-section">
               <h4 className="team-report-section-title">יעדים ללא תיעוד לאחרונה (מעל 21 יום)</h4>
-              <div className="team-report-attention-list">
-                {gaps.slice(0, 8).map((gap, idx) => (
-                  <div key={`${gap.studentName}_${gap.goalTitle}_${idx}`} className="team-report-attention-item">
-                    <span className="team-report-st-name">{gap.studentName}</span>
-                    <span className="team-report-st-days">
-                      {gap.daysSinceObservation === undefined
-                        ? 'טרם תועד'
-                        : `לפני ${gap.daysSinceObservation} ימים`}
-                    </span>
+              <div className="team-report-attention-groups">
+                {gapsByStudent.map(({ studentName, gaps: studentGaps }) => (
+                  <div key={studentName} className="team-report-student-gap-card">
+                    <div className="team-report-st-header">
+                      <span className="team-report-st-name">{studentName}</span>
+                      <span className="team-report-st-count">
+                        {studentGaps.length === 1 ? 'יעד אחד ממתין' : `${studentGaps.length} יעדים ממתינים`}
+                      </span>
+                    </div>
+                    <div className="team-report-student-goals-list">
+                      {studentGaps.map((gap, idx) => (
+                        <div key={`${gap.goalTitle}_${idx}`} className="team-report-attention-item">
+                          <span className="team-report-goal-title">{gap.goalTitle}</span>
+                          <span className="team-report-st-days">
+                            {gap.daysSinceObservation === undefined
+                              ? 'טרם תועד'
+                              : `לפני ${gap.daysSinceObservation} ימים`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
