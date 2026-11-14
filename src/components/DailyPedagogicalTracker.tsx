@@ -459,10 +459,10 @@ export default function DailyPedagogicalTracker({
     startTime: '10:00',
     endTime: '10:45',
     studentId: students[0]?.id || '',
-    location: 'חדר טיפולים / כיתה'
+    location: ''
   });
 
-  const handleOpenNewEventModal = () => { void handleOpenNewEventModal;
+  const handleOpenNewEventModal = () => {
     setEditingEventId(null);
     setNewEventForm({
       title: '',
@@ -471,8 +471,8 @@ export default function DailyPedagogicalTracker({
       date: selectedDate,
       startTime: '10:00',
       endTime: '10:45',
-      studentId: students[0]?.id || '',
-      location: 'חדר טיפולים / כיתה'
+      studentId: newTodoStudentId || students[0]?.id || '',
+      location: ''
     });
     setShowScheduleModal(true);
   };
@@ -488,7 +488,7 @@ export default function DailyPedagogicalTracker({
       startTime: ev.startTime || '10:00',
       endTime: ev.endTime || '10:45',
       studentId: matchedSt?.id || students[0]?.id || '',
-      location: ev.location || 'חדר טיפולים / כיתה'
+      location: ev.location || ''
     });
     setShowScheduleModal(true);
   };
@@ -506,6 +506,7 @@ export default function DailyPedagogicalTracker({
     const chosenType = (newEventForm.type || 'פגישה').trim();
     const chosenTitle = (newEventForm.title || chosenType).trim();
     const chosenColor = newEventForm.color || '#2563eb';
+    const chosenLocation = (newEventForm.location || '').trim();
     const st = students.find((s: any) => s.id === newEventForm.studentId);
 
     if (editingEventId) {
@@ -522,7 +523,7 @@ export default function DailyPedagogicalTracker({
                 endTime: newEventForm.endTime,
                 studentName: st?.name || ev.studentName || '',
                 studentId: st?.id || ev.studentId || '',
-                location: newEventForm.location
+                location: chosenLocation
               }
             : ev
         )
@@ -538,7 +539,7 @@ export default function DailyPedagogicalTracker({
         endTime: newEventForm.endTime,
         studentName: st?.name || '',
         studentId: st?.id || '',
-        location: newEventForm.location
+        location: chosenLocation
       };
       setEvents((prev: any) => [...prev, ev]);
     }
@@ -1306,16 +1307,7 @@ export default function DailyPedagogicalTracker({
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setNewEventForm((prev: any) => ({
-                      ...prev,
-                      date: selectedDate,
-                      title: '',
-                      type: eventTypes[0]?.name || 'שיעור פרטני',
-                      color: eventTypes[0]?.color || '#2563eb'
-                    }));
-                    setShowScheduleModal(true);
-                  }}
+                  onClick={handleOpenNewEventModal}
                   className="btn-open-schedule-modal"
                 >
                   <Plus size={15} style={{ color: '#4a88c7' }} />
@@ -1370,7 +1362,7 @@ export default function DailyPedagogicalTracker({
                           )}
                         </div>
                         <div className="agenda-item-sub">
-                          תלמיד/ה: {ev.studentName} {ev.location ? `• ${ev.location}` : ''}
+                          תלמיד/ה: {ev.studentName} {ev.location && ev.location.trim() ? `• ${ev.location.trim()}` : ''}
                         </div>
                       </div>
                     </div>
@@ -2110,7 +2102,7 @@ export default function DailyPedagogicalTracker({
               </div>
 
               <div className="modal-field-group">
-                <label>כותרת האירוע (אופציונלי):</label>
+                <label>כותרת האירוע:</label>
                 <input
                   type="text"
                   placeholder="לדוגמה: דיון תוכנית עבודה, צפייה בהפסקת חצר..."
@@ -2131,6 +2123,54 @@ export default function DailyPedagogicalTracker({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="modal-field-group">
+                <label>מיקום האירוע:</label>
+                <input
+                  type="text"
+                  placeholder="לדוגמה: חדר טיפולים, כיתת שילוב, חצר..."
+                  value={newEventForm.location}
+                  onChange={(e: any) => setNewEventForm({ ...newEventForm, location: e.target.value })}
+                />
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  {['חדר טיפולים', 'כיתת שילוב', 'חצר', 'כיתת אם', 'חדר מורים'].map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => setNewEventForm({ ...newEventForm, location: loc })}
+                      style={{
+                        fontSize: '11px',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        border: newEventForm.location === loc ? '1px solid #4a88c7' : '1px solid #e2e8f0',
+                        backgroundColor: newEventForm.location === loc ? '#e9f2fb' : '#f8fafc',
+                        color: newEventForm.location === loc ? '#2b4c73' : '#64748b',
+                        cursor: 'pointer',
+                        fontWeight: newEventForm.location === loc ? '700' : 'normal'
+                      }}
+                    >
+                      {loc}
+                    </button>
+                  ))}
+                  {newEventForm.location && (
+                    <button
+                      type="button"
+                      onClick={() => setNewEventForm({ ...newEventForm, location: '' })}
+                      style={{
+                        fontSize: '11px',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        border: '1px dashed #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        color: '#94a3b8',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ללא מיקום
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="modal-date-and-time-section">
