@@ -50,14 +50,32 @@ describe('Landing Page Redesign (v3 Pedagogical Workspace Spirit)', () => {
     expect(html).toContain('חיסכון של כ-4 שעות עבודה שבועיות');
   });
 
-  it('renders authentic WhatsApp teacher testimonials from the field', () => {
+  it('renders authentic WhatsApp teacher testimonials from the field with voice notes', () => {
     const html = renderLandingPage();
 
     expect(html).toContain('קולות אמיתיים מהשטח');
+    expect(html).toContain('הודעות וואטסאפ והקלטות קוליות אותנטיות ללא עריכה');
+    expect(html).toContain('0:41');
+    expect(html).toContain('0:30');
     expect(html).toContain('דוח מצב - וואו!!!');
     expect(html).toContain('וראיתי שהוספתם הקלטה מצויין');
     expect(html).toContain('השאלות המנחות הן מעולות לדייק את התפקוד כעת!!!');
     expect(html).toContain('אני עפה על זה');
+  });
+
+  it('renders the verified pedagogical survey results card with 5.0/5 rating and 100% recommendation', () => {
+    const html = renderLandingPage();
+
+    expect(html).toContain('סקר שביעות רצון פדגוגי');
+    expect(html).toContain('5.0 / 5.0');
+    expect(html).toContain('האם תמליצי לקולגות ולמנהלת לרכוש גישה ל-TALA?');
+    expect(html).toContain('כן, סביר שאמליץ לקולגות ולמנהלת לרכוש גישה להמשך שימוש במערכת');
+    expect(html).toContain('1. קלות ונוחות השימוש בממשק המערכת');
+    expect(html).toContain('2. יצירה והקמה מהירה של כרטיס תלמיד/ה');
+    expect(html).toContain('3. ניסוח ובניית מטרות ויעדים עם מאגר מטרות ובינה מלאכותית');
+    expect(html).toContain('4. הפקת דוחות – תל״א/תח״י, דו״ח מצב ודוח הערכה');
+    expect(html).toContain('5. שיתוף תלמיד/ה ועבודה משותפת עם קולגות בצוות');
+    expect(html).toContain('משוב מאומת • גננת חנ״מ, מתי״א קרית שמונה');
   });
 
   it('renders dual conversion tracks for both returning teachers and prospective trial teachers', () => {
