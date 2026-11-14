@@ -471,9 +471,11 @@ export default function EcologicalWorkPlanForm({
   const exportDropdownRef = useRef<any>(null);
   const [showBottomExportDropdown, setShowBottomExportDropdown] = useState(false);
   const bottomExportDropdownRef = useRef<any>(null);
+  const [showFullDocExportDropdown, setShowFullDocExportDropdown] = useState(false);
+  const fullDocExportDropdownRef = useRef<any>(null);
 
   useEffect(() => {
-    if (!showExportDropdown && !showBottomExportDropdown) return;
+    if (!showExportDropdown && !showBottomExportDropdown && !showFullDocExportDropdown) return;
     const handleClickOutside = (e: any) => {
       if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) {
         setShowExportDropdown(false);
@@ -481,11 +483,15 @@ export default function EcologicalWorkPlanForm({
       if (bottomExportDropdownRef.current && !bottomExportDropdownRef.current.contains(e.target)) {
         setShowBottomExportDropdown(false);
       }
+      if (fullDocExportDropdownRef.current && !fullDocExportDropdownRef.current.contains(e.target)) {
+        setShowFullDocExportDropdown(false);
+      }
     };
     const handleKeyDown = (e: any) => {
       if (e.key === 'Escape') {
         setShowExportDropdown(false);
         setShowBottomExportDropdown(false);
+        setShowFullDocExportDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -494,7 +500,7 @@ export default function EcologicalWorkPlanForm({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showExportDropdown, showBottomExportDropdown]);
+  }, [showExportDropdown, showBottomExportDropdown, showFullDocExportDropdown]);
 
   // State for Collapsible Mid-Year / End-of-Year Evaluation per goal card (Option A)
   const [expandedEvalMap, setExpandedEvalMap] = useState<any>({});
@@ -3177,32 +3183,88 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 </span>
               </button>
             )}
-              <button
-                type="button"
-                className="btn-print-doc"
-                onClick={() => downloadWordFile('tala')}
-                title="הורד כקובץ Word ניתן לעריכה"
-              >
-                <Download size={16} />
-                <span>הורד קובץ Word</span>
-              </button>
-              <button
-                type="button"
-                className="btn-print-doc"
-                onClick={async () => {
-                  handleSaveProgress();
-                  await downloadPdfFileDirectly('tala');
-                }}
-                title="הורד כקובץ PDF"
-                style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}
-              >
-                <FileText size={16} />
-                <span>הורד קובץ PDF</span>
-              </button>
-              <button type="button" className="btn-print-doc" onClick={handlePrintDocument}>
-                <Printer size={16} />
-                <span>שלח להדפסה כעת</span>
-              </button>
+              {/* Unified Export & Print Dropdown in Full Document Preview */}
+              <div className="export-dropdown-wrapper" ref={fullDocExportDropdownRef}>
+                <button
+                  type="button"
+                  className={`btn-export-dropdown ${showFullDocExportDropdown ? 'active' : ''}`}
+                  onClick={() => setShowFullDocExportDropdown((prev) => !prev)}
+                  title="הדפסה, הורדת Word ושליחה למייל"
+                  aria-expanded={showFullDocExportDropdown}
+                >
+                  <Printer size={15} />
+                  <span>הדפסה וייצוא</span>
+                  <ChevronDown size={14} className={`export-dropdown-arrow ${showFullDocExportDropdown ? 'open' : ''}`} />
+                </button>
+
+                {showFullDocExportDropdown && (
+                  <div className="export-dropdown-menu" role="menu">
+                    <button
+                      type="button"
+                      className="export-dropdown-item"
+                      onClick={() => {
+                        setShowFullDocExportDropdown(false);
+                        handlePrintDocument();
+                      }}
+                    >
+                      <Printer size={15} style={{ color: '#2563eb' }} />
+                      <span>הדפס מסמך</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="export-dropdown-item"
+                      onClick={() => {
+                        setShowFullDocExportDropdown(false);
+                        handleOpenEmailModal('tala');
+                      }}
+                    >
+                      <Mail size={15} style={{ color: '#7c3aed' }} />
+                      <span>שלח למייל (Word / PDF)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="export-dropdown-item"
+                      onClick={() => {
+                        setShowFullDocExportDropdown(false);
+                        downloadWordFile('tala');
+                      }}
+                    >
+                      <Download size={15} style={{ color: '#059669' }} />
+                      <span>הורד קובץ Word (.doc)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="export-dropdown-item"
+                      onClick={async () => {
+                        setShowFullDocExportDropdown(false);
+                        handleSaveProgress();
+                        await downloadPdfFileDirectly('tala');
+                      }}
+                    >
+                      <FileText size={15} style={{ color: '#dc2626' }} />
+                      <span>הורד קובץ PDF (.pdf)</span>
+                    </button>
+
+                    <div className="export-dropdown-divider" />
+
+                    <label
+                      className={`export-dropdown-privacy ${hideStudentDetailsOnPrint ? 'checked' : 'unchecked'}`}
+                      title="כאשר מסומן, בהדפסה ובייצוא יוצגו ראשי תיבות במקום שם הילד ויושחרו פרטים מזהים"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={hideStudentDetailsOnPrint}
+                        onChange={(e) => setHideStudentDetailsOnPrint(e.target.checked)}
+                      />
+                      {hideStudentDetailsOnPrint ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                      <span>הסתר פרטים מזהים בהדפסה</span>
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

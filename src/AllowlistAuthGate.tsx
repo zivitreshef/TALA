@@ -27,7 +27,8 @@ import {
   Award,
   Star,
   Calendar,
-  FileText
+  FileText,
+  ZoomIn
 } from 'lucide-react';
 
 import { loginWithTala, prewarmTalaLogin, signOutFirebaseAuthSession } from './firebaseBackend';
@@ -117,6 +118,16 @@ export function AllowlistAuthGate({
 
   // Active module tab in the live product screenshots showcase
   const [activePreviewTab, setActivePreviewTab] = useState<'tracker' | 'workplan' | 'readiness' | 'email' | 'mobile'>('tracker');
+  const [fullscreenPreview, setFullscreenPreview] = useState<{ src: string; title: string; caption: string } | null>(null);
+
+  useEffect(() => {
+    if (!fullscreenPreview) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreenPreview(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fullscreenPreview]);
 
   // Pre-warm login backend container and resolve IP while teacher views the login screen
   useEffect(() => {
@@ -485,18 +496,45 @@ export function AllowlistAuthGate({
                 })}
               </div>
 
-              {/* Active Tab Screenshot Display */}
+              {/* Active Tab Screenshot Display (Zero Jump, Smooth Crossfade & Fullscreen Zoom) */}
               <div className="preview-image-container">
                 {PREVIEW_TABS.map((tab) => {
                   if (tab.id !== activePreviewTab) return null;
                   return (
                     <div key={tab.id} className="preview-image-wrapper">
-                      <img
-                        src={tab.img}
-                        alt={tab.label}
-                        className="preview-real-screenshot"
-                        loading="lazy"
-                      />
+                      <div
+                        className="preview-image-clickable"
+                        onClick={() =>
+                          setFullscreenPreview({
+                            src: tab.img,
+                            title: tab.label,
+                            caption: tab.caption
+                          })
+                        }
+                        title="לחצי להגדלת התמונה במסך מלא"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setFullscreenPreview({
+                              src: tab.img,
+                              title: tab.label,
+                              caption: tab.caption
+                            });
+                          }
+                        }}
+                      >
+                        <img
+                          src={tab.img}
+                          alt={tab.label}
+                          className="preview-real-screenshot"
+                          loading="lazy"
+                        />
+                        <div className="preview-zoom-overlay">
+                          <ZoomIn size={16} />
+                          <span>לחצי להגדלת התמונה במסך מלא</span>
+                        </div>
+                      </div>
                       <div className="preview-screenshot-caption">
                         <span className="caption-dot" />
                         <span>{tab.caption}</span>
@@ -1007,6 +1045,57 @@ export function AllowlistAuthGate({
                 onClick={() => setShowIntroVideoModal(false)}
               >
                 סגור נגן
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Screenshot Lightbox Modal */}
+      {fullscreenPreview && (
+        <div
+          className="modal-backdrop screenshot-lightbox-backdrop"
+          onClick={() => setFullscreenPreview(null)}
+          dir="rtl"
+          role="dialog"
+          aria-modal="true"
+          aria-label={fullscreenPreview.title}
+        >
+          <div
+            className="screenshot-lightbox-container"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="screenshot-lightbox-header">
+              <div className="screenshot-lightbox-title-box">
+                <span className="live-pulse-dot" />
+                <h3>{fullscreenPreview.title}</h3>
+              </div>
+              <button
+                type="button"
+                className="btn-icon-close"
+                onClick={() => setFullscreenPreview(null)}
+                aria-label="סגירת תצוגה מוגדלת"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="screenshot-lightbox-image-wrap">
+              <img
+                src={fullscreenPreview.src}
+                alt={fullscreenPreview.title}
+                className="screenshot-lightbox-img"
+              />
+            </div>
+
+            <div className="screenshot-lightbox-footer">
+              <span className="screenshot-lightbox-caption">{fullscreenPreview.caption}</span>
+              <button
+                type="button"
+                className="btn-primary-sm"
+                onClick={() => setFullscreenPreview(null)}
+              >
+                סגור תצוגה
               </button>
             </div>
           </div>
