@@ -724,12 +724,13 @@ input, textarea, select, button {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: #25d366;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.4);
 }
 
 .whatsapp-chat-title-group {
@@ -1254,8 +1255,8 @@ input, textarea, select, button {
 
 .btn-auth-submit.compact {
   margin-top: 2px;
-  padding: 9.5px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  padding: 10px;
+  background: linear-gradient(135deg, #2b4c73 0%, #3d6391 52%, #5c4b85 100%);
   color: #fff;
   border: none;
   border-radius: 9px;
@@ -1266,13 +1267,14 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  box-shadow: 0 4px 14px rgba(30, 58, 138, 0.22);
-  transition: transform 0.12s, box-shadow 0.12s;
+  box-shadow: 0 4px 14px rgba(43, 76, 115, 0.22);
+  transition: transform 0.12s, box-shadow 0.12s, background 0.15s;
 }
 
 .btn-auth-submit.compact:hover:not(:disabled) {
+  background: linear-gradient(135deg, #345a87 0%, #4671a3 52%, #685594 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 6px 18px rgba(43, 76, 115, 0.3);
 }
 
 .btn-auth-submit.compact:disabled {
