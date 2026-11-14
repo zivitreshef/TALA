@@ -38,6 +38,27 @@ export function escapeHtml(str?: unknown): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Decodes HTML entities (such as &quot;, &#39;, &amp;) back to normal characters for clean UI rendering.
+ */
+export function decodeHtmlEntities(str?: unknown): string {
+  if (str == null) return '';
+  let res = String(str);
+  res = res
+    .replace(/&amp;#39;/g, "'")
+    .replace(/&amp;quot;/g, '"')
+    .replace(/&amp;apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;lt;/g, '<')
+    .replace(/&amp;gt;/g, '>')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+  return res;
+}
+
 export function toHebrewAcronym(fullName?: unknown): string {
   const safeName = typeof fullName === 'string' ? fullName : String(fullName || '');
   if (!safeName.trim()) return 'א.א.';
