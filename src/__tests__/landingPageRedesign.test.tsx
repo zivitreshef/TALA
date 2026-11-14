@@ -50,6 +50,9 @@ describe('Landing Page Redesign (v3 Pedagogical Workspace Spirit)', () => {
     expect(html).toContain('סיכום שבועי במייל');
     expect(html).toContain('מרחב מובייל בכיתה');
     expect(html).toContain('tala-daily-tracker.jpg');
+    expect(html).toContain('preview-image-clickable');
+    expect(html).toContain('preview-zoom-overlay');
+    expect(html).toContain('לחצי להגדלת התמונה במסך מלא');
     expect(html).toContain('חיסכון של כ-4 שעות שבועיות');
   });
 
