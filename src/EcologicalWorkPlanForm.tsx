@@ -410,6 +410,10 @@ export default function EcologicalWorkPlanForm({
     };
   }, [isReverseEngineering]);
 
+  // Master Mode State: 'workPlan' (Steps 1-4) or 'reports' (Periodic Evaluation & Status Report)
+  const [activeDocumentMode, setActiveDocumentMode] = useState<'workPlan' | 'reports'>('workPlan');
+  const [activeReportTab, setActiveReportTab] = useState<'eval' | 'status'>('eval');
+
   // State for Work Plan Wizard / Stepper Navigation (1 = Details, 2 = Profile/Strengths, 3 = Goals, 4 = Recommendations/Summary)
   const [activeWorkPlanStep, setActiveWorkPlanStep] = useState<number>(() => {
     // If goals already exist, start on goals step, otherwise start on details
@@ -427,24 +431,28 @@ export default function EcologicalWorkPlanForm({
   // State for Separate Status Report ("דו"ח מצב")
   const [showStatusReportSection, setShowStatusReportSection] = useState(false);
   const [isGeneratingStatusReport, setIsGeneratingStatusReport] = useState(false);
-    const [statusReportBanner, setStatusReportBanner] = useState('');
+  const [statusReportBanner, setStatusReportBanner] = useState('');
   
   // Auto-scroll smooth effect when onboarding tour step advances or "הראה לי במסך" is pressed
   useEffect(() => {
     if (activeOnboardingStep) {
       if (activeOnboardingStep === 2) {
+        setActiveDocumentMode('workPlan');
         setActiveWorkPlanStep(1);
         section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       } else if (activeOnboardingStep === 3) {
+        setActiveDocumentMode('workPlan');
         setActiveWorkPlanStep(2);
         setIsFreeTextCollapsed(false);
         setTimeout(() => section2Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 80);
       } else if (activeOnboardingStep === 4) {
+        setActiveDocumentMode('workPlan');
         setActiveWorkPlanStep(3);
         section3Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       } else if (activeOnboardingStep === 6 || activeOnboardingStep === 10) {
         window.scrollTo?.({ top: 0, behavior: 'smooth' });
       } else if (activeOnboardingStep === 7) {
+        setActiveDocumentMode('workPlan');
         const pvEl = document.querySelector('[data-testid="onboarding-step7-parent-voice"]');
         if (pvEl?.scrollIntoView) {
           pvEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -452,9 +460,13 @@ export default function EcologicalWorkPlanForm({
           section1Ref.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
         }
       } else if (activeOnboardingStep === 8) {
+        setActiveDocumentMode('reports');
+        setActiveReportTab('eval');
         setShowEvalReportSection(true);
         setTimeout(() => evalReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 90);
       } else if (activeOnboardingStep === 9) {
+        setActiveDocumentMode('reports');
+        setActiveReportTab('status');
         setShowStatusReportSection(true);
         setTimeout(() => statusReportSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 90);
       }
@@ -694,7 +706,7 @@ export default function EcologicalWorkPlanForm({
       clearTimeout(timer);
       window.removeEventListener('resize', resizeAllTextareas);
     };
-  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection, showStatusReportSection, isFreeTextCollapsed, isAdditionalInfoOpen]);
+  }, [formData, openPickerGoalId, activeAiGoalId, showFullDocPreview, expandedEvalMap, showEvalReportSection, showStatusReportSection, isFreeTextCollapsed, isAdditionalInfoOpen, activeDocumentMode, activeReportTab]);
 
   // Sorted goal bank (most common first, lowest rated at the bottom)
   const combinedGoalBank = React.useMemo(() => {
@@ -2956,61 +2968,141 @@ ${JSON.stringify(studentCardPayload, null, 2)}
         </div>
       )}
 
-      {/* Interactive 5-Step Form Stepper */}
-      <nav ref={formNavRef} className="form-section-nav-bar" aria-label="שלבי התוכנית הפדגוגית">
+      {/* Level 1: Master Document Mode Tabs */}
+      <div className="workplan-mode-tabs-container" role="tablist" aria-label="מצב מסמך ראשי">
         <button
           type="button"
-          className={`section-nav-pill ${activeWorkPlanStep === 1 ? 'active' : ''}`}
+          role="tab"
+          aria-selected={activeDocumentMode === 'workPlan'}
+          className={`workplan-mode-tab ${activeDocumentMode === 'workPlan' ? 'active' : ''}`}
           onClick={() => {
-            setActiveWorkPlanStep(1);
+            setActiveDocumentMode('workPlan');
             setShowEvalReportSection(false);
+            setShowStatusReportSection(false);
+            formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
         >
-          1. רקע ומסגרת
+          <BookOpen size={17} />
+          <span>תוכנית עבודה שנתית</span>
         </button>
+
         <button
           type="button"
-          className={`section-nav-pill ${activeWorkPlanStep === 2 ? 'active' : ''}`}
-          onClick={() => {
-            setActiveWorkPlanStep(2);
-            setShowEvalReportSection(false);
-          }}
-        >
-          2. פרופיל ומוקדי כוח
-        </button>
-        <button
-          type="button"
-          className={`section-nav-pill ${activeWorkPlanStep === 3 ? 'active' : ''}`}
-          onClick={() => {
-            setActiveWorkPlanStep(3);
-            setShowEvalReportSection(false);
-          }}
-        >
-          3. מטרות ויעדים ({(formData.goals || []).filter((g: any) => g.title).length})
-        </button>
-        <button
-          type="button"
-          className={`section-nav-pill ${activeWorkPlanStep === 4 ? 'active' : ''}`}
-          onClick={() => {
-            setActiveWorkPlanStep(4);
-            setShowEvalReportSection(false);
-          }}
-        >
-          4. המלצות וסיכום
-        </button>
-        <button
-          type="button"
-          className={`section-nav-pill ${activeWorkPlanStep === 5 ? 'active' : ''}`}
+          role="tab"
+          aria-selected={activeDocumentMode === 'reports'}
+          className={`workplan-mode-tab reports-mode ${activeDocumentMode === 'reports' ? 'active' : ''}`}
           onClick={() => {
             if (formData.isLocked) {
               handleAutoUnlockReport('evalSectionPill');
             }
-            setActiveWorkPlanStep(5);
+            setActiveDocumentMode('reports');
             setShowEvalReportSection(true);
+            setShowStatusReportSection(false);
+            formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }}
         >
-          5. הערכת מחצית/שנה
+          <ClipboardList size={17} />
+          <span>דוחות תקופתיים ומעקב</span>
         </button>
+      </div>
+
+      {/* Level 2: Sub-Stepper based on master tab */}
+      <nav ref={formNavRef} className="form-section-nav-bar" aria-label="שלבי התוכנית הפדגוגית">
+        {activeDocumentMode === 'workPlan' ? (
+          <>
+            <button
+              type="button"
+              className={`section-nav-pill ${activeWorkPlanStep === 1 ? 'active' : ''}`}
+              onClick={() => {
+                setActiveWorkPlanStep(1);
+                setShowEvalReportSection(false);
+              }}
+            >
+              1. רקע ומסגרת
+            </button>
+            <button
+              type="button"
+              className={`section-nav-pill ${activeWorkPlanStep === 2 ? 'active' : ''}`}
+              onClick={() => {
+                setActiveWorkPlanStep(2);
+                setShowEvalReportSection(false);
+              }}
+            >
+              2. פרופיל ומוקדי כוח
+            </button>
+            <button
+              type="button"
+              className={`section-nav-pill ${activeWorkPlanStep === 3 ? 'active' : ''}`}
+              onClick={() => {
+                setActiveWorkPlanStep(3);
+                setShowEvalReportSection(false);
+              }}
+            >
+              3. מטרות ויעדים ({(formData.goals || []).filter((g: any) => g.title).length})
+            </button>
+            <button
+              type="button"
+              className={`section-nav-pill ${activeWorkPlanStep === 4 ? 'active' : ''}`}
+              onClick={() => {
+                setActiveWorkPlanStep(4);
+                setShowEvalReportSection(false);
+              }}
+            >
+              4. המלצות וסיכום
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={`section-nav-pill purple-report ${activeReportTab === 'eval' ? 'active' : ''}`}
+              onClick={() => {
+                if (formData.isLocked) {
+                  handleAutoUnlockReport('evalSectionPill');
+                }
+                setActiveReportTab('eval');
+                setShowEvalReportSection(true);
+                setShowStatusReportSection(false);
+              }}
+            >
+              <FileText size={15} />
+              <span>דוח הערכת מחצית ושנה</span>
+            </button>
+
+            <button
+              type="button"
+              className={`section-nav-pill blue-report ${activeReportTab === 'status' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveReportTab('status');
+                setShowStatusReportSection(true);
+                setShowEvalReportSection(false);
+                const currentSections = Array.isArray(formData.statusReportSections)
+                  ? formData.statusReportSections.filter((s: any) => (s.content || '').trim())
+                  : [];
+                if (currentSections.length === 0 && !isGeneratingStatusReport) {
+                  handleGenerateStatusReport();
+                }
+              }}
+            >
+              <ClipboardList size={15} />
+              <span>דו״ח מצב תפקודי</span>
+            </button>
+
+            <button
+              type="button"
+              className="section-nav-pill"
+              style={{ marginRight: 'auto', background: '#ffffff' }}
+              onClick={() => {
+                setActiveDocumentMode('workPlan');
+                setShowEvalReportSection(false);
+                setShowStatusReportSection(false);
+              }}
+            >
+              <ChevronRight size={14} />
+              <span>חזרה לתוכנית עבודה שנתית</span>
+            </button>
+          </>
+        )}
       </nav>
 
       {/* Document Title Banner */}
@@ -4079,18 +4171,21 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 if (formData.isLocked) {
                   handleAutoUnlockReport('evalSectionDocPreview');
                 }
-                setShowEvalReportSection((prev) => {
-                  const next = !prev;
-                  if (next) {
-                    setTimeout(() => {
-                      evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 80);
-                  }
-                  return next;
-                });
+                if (activeDocumentMode === 'reports' && activeReportTab === 'eval') {
+                  setActiveDocumentMode('workPlan');
+                  setShowEvalReportSection(false);
+                } else {
+                  setActiveDocumentMode('reports');
+                  setActiveReportTab('eval');
+                  setShowEvalReportSection(true);
+                  setShowStatusReportSection(false);
+                  setTimeout(() => {
+                    evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 80);
+                }
               }}
               style={
-                showEvalReportSection
+                activeDocumentMode === 'reports' && activeReportTab === 'eval'
                   ? {
                       background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)',
                       color: '#ffffff',
@@ -4124,9 +4219,14 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="button"
               className="btn-print-doc"
               onClick={() => {
-                const next = !showStatusReportSection;
-                setShowStatusReportSection(next);
-                if (next) {
+                if (activeDocumentMode === 'reports' && activeReportTab === 'status') {
+                  setActiveDocumentMode('workPlan');
+                  setShowStatusReportSection(false);
+                } else {
+                  setActiveDocumentMode('reports');
+                  setActiveReportTab('status');
+                  setShowStatusReportSection(true);
+                  setShowEvalReportSection(false);
                   const currentSections = Array.isArray(formData.statusReportSections)
                     ? formData.statusReportSections.filter((s: any) => (s.content || '').trim())
                     : [];
@@ -4140,7 +4240,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 }
               }}
               style={
-                showStatusReportSection
+                activeDocumentMode === 'reports' && activeReportTab === 'status'
                   ? {
                       background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
                       color: '#ffffff',
@@ -4162,7 +4262,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           <section
             className="form-section-card"
             ref={section1Ref}
-            style={{ display: activeWorkPlanStep === 1 ? 'block' : 'none' }}
+            style={{ display: activeDocumentMode === 'workPlan' && activeWorkPlanStep === 1 ? 'block' : 'none' }}
           >
         <div className="section-header-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <h3>1. פרטים אישיים של הילד/ה ומסגרת חינוכית</h3>
@@ -4810,7 +4910,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       <section
         className="form-section-card highlight-summary-section"
         ref={section2Ref}
-        style={{ display: activeWorkPlanStep === 2 ? 'block' : 'none' }}
+        style={{ display: activeDocumentMode === 'workPlan' && activeWorkPlanStep === 2 ? 'block' : 'none' }}
       >
         <div className="section-header-line">
           <h3>
@@ -5668,7 +5768,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       <section
         className="form-section-card"
         ref={section3Ref}
-        style={{ display: activeWorkPlanStep === 3 ? 'block' : 'none' }}
+        style={{ display: activeDocumentMode === 'workPlan' && activeWorkPlanStep === 3 ? 'block' : 'none' }}
       >
         <div className="section-header-line">
           <div>
@@ -7008,7 +7108,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
       <section
         className="form-section-card"
         ref={section4Ref}
-        style={{ display: activeWorkPlanStep === 4 ? 'block' : 'none' }}
+        style={{ display: activeDocumentMode === 'workPlan' && activeWorkPlanStep === 4 ? 'block' : 'none' }}
       >
         <div className="section-header-line">
           <h3>4. המלצות</h3>
@@ -7162,18 +7262,21 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               if (formData.isLocked) {
                 handleAutoUnlockReport('evalSectionBottom');
               }
-              setShowEvalReportSection((prev) => {
-                const next = !prev;
-                if (next) {
-                  setTimeout(() => {
-                    evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 80);
-                }
-                return next;
-              });
+              if (activeDocumentMode === 'reports' && activeReportTab === 'eval') {
+                setActiveDocumentMode('workPlan');
+                setShowEvalReportSection(false);
+              } else {
+                setActiveDocumentMode('reports');
+                setActiveReportTab('eval');
+                setShowEvalReportSection(true);
+                setShowStatusReportSection(false);
+                setTimeout(() => {
+                  evalReportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 80);
+              }
             }}
             style={
-              showEvalReportSection
+              activeDocumentMode === 'reports' && activeReportTab === 'eval'
                 ? {
                     background: 'linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%)',
                     color: '#ffffff',
@@ -7191,9 +7294,14 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             type="button"
             className="btn-print-doc"
             onClick={() => {
-              const next = !showStatusReportSection;
-              setShowStatusReportSection(next);
-              if (next) {
+              if (activeDocumentMode === 'reports' && activeReportTab === 'status') {
+                setActiveDocumentMode('workPlan');
+                setShowStatusReportSection(false);
+              } else {
+                setActiveDocumentMode('reports');
+                setActiveReportTab('status');
+                setShowStatusReportSection(true);
+                setShowEvalReportSection(false);
                 const currentSections = Array.isArray(formData.statusReportSections)
                   ? formData.statusReportSections.filter((s: any) => (s.content || '').trim())
                   : [];
@@ -7207,7 +7315,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               }
             }}
             style={
-              showStatusReportSection
+              activeDocumentMode === 'reports' && activeReportTab === 'status'
                 ? {
                     background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
                     color: '#ffffff',
@@ -7236,28 +7344,75 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             <ChevronRight size={16} />
             <span>חזרה לשלב 3: מטרות ויעדים</span>
           </button>
-          <button
-            type="button"
-            className="btn-step-next"
-            onClick={() => {
-              if (formData.isLocked) {
-                handleAutoUnlockReport('evalSectionPill');
-              }
-              setActiveWorkPlanStep(5);
-              setShowEvalReportSection(true);
-              formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-          >
-            <span>המשך לשלב 5: הערכת מחצית/שנה</span>
-            <ChevronLeft size={16} />
-          </button>
+
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn-print-doc"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 18px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13.5px',
+                border: '1.5px solid #d8b4fe',
+                background: '#fdf4ff',
+                color: '#7e22ce',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onClick={() => {
+                if (formData.isLocked) {
+                  handleAutoUnlockReport('evalSectionPill');
+                }
+                setActiveDocumentMode('reports');
+                setActiveReportTab('eval');
+                setShowEvalReportSection(true);
+                setShowStatusReportSection(false);
+                formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              <FileText size={16} />
+              <span>מעבר לדוחות תקופתיים ומעקב</span>
+              <ChevronLeft size={16} />
+            </button>
+
+            <button
+              type="button"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 20px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13.5px',
+                border: 'none',
+                background: formData.isLocked ? '#059669' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#ffffff',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
+              }}
+              onClick={() => {
+                handleSaveProgress();
+                if (!formData.isLocked) {
+                  handleToggleReportLock();
+                }
+              }}
+            >
+              <CheckCircle2 size={16} />
+              <span>{formData.isLocked ? 'תוכנית העבודה נעולה ומאושרת' : 'סיום ונעילת תוכנית עבודה'}</span>
+            </button>
+          </div>
         </div>
       </section>
         </>
       )}
 
       {/* Separate Report Section: דוח הערכת מחצית / סוף שנה */}
-      {(showEvalReportSection || activeWorkPlanStep === 5) && (
+      {activeDocumentMode === 'reports' && activeReportTab === 'eval' && (
         <section
           ref={evalReportSectionRef}
           className="form-section-card highlight-summary-section"
@@ -7274,14 +7429,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               type="button"
               className="btn-preview-doc"
               onClick={() => {
+                setActiveDocumentMode('workPlan');
                 setShowEvalReportSection(false);
-                if (activeWorkPlanStep === 5) {
-                  setActiveWorkPlanStep(4);
-                }
               }}
             >
-              <X size={15} />
-              <span>סגור דוח הערכה</span>
+              <ChevronRight size={15} />
+              <span>חזרה לתוכנית עבודה שנתית</span>
             </button>
           </div>
 
@@ -7593,27 +7746,50 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </button>
           </div>
 
-          {/* Step 5 Footer Nav */}
+          {/* Evaluation Report Footer Nav */}
           <div className="section-step-nav-buttons" style={{ marginTop: '24px' }}>
             <button
               type="button"
               className="btn-step-prev"
               onClick={() => {
+                setActiveDocumentMode('workPlan');
                 setActiveWorkPlanStep(4);
-                setShowEvalReportSection(false);
                 formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }}
             >
               <ChevronRight size={16} />
-              <span>חזרה לשלב 4: המלצות וסיכום</span>
+              <span>חזרה לתוכנית עבודה שנתית</span>
             </button>
-            <div></div>
+            <button
+              type="button"
+              className="btn-step-next"
+              style={{
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                color: '#ffffff',
+                borderColor: '#1d4ed8'
+              }}
+              onClick={() => {
+                setActiveReportTab('status');
+                setShowStatusReportSection(true);
+                setShowEvalReportSection(false);
+                const currentSections = Array.isArray(formData.statusReportSections)
+                  ? formData.statusReportSections.filter((s: any) => (s.content || '').trim())
+                  : [];
+                if (currentSections.length === 0 && !isGeneratingStatusReport) {
+                  handleGenerateStatusReport();
+                }
+                formNavRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              <span>מעבר לדו״ח מצב תפקודי</span>
+              <ChevronLeft size={16} />
+            </button>
           </div>
         </section>
       )}
 
       {/* Separate Report Section: דו"ח מצב חינוכי-תפקודי עדכני */}
-      {showStatusReportSection && (
+      {activeDocumentMode === 'reports' && activeReportTab === 'status' && (
         <div style={{ position: 'relative' }}>
           {activeOnboardingStep === 9 && (
             <div className="onboarding-tour-arrow-box" style={{ top: '-44px', right: '20px', zIndex: 10 }}>
@@ -7627,7 +7803,10 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             isGeneratingStatusReport={isGeneratingStatusReport}
             statusReportBanner={statusReportBanner}
             onGenerateStatusReport={handleGenerateStatusReport}
-            onClose={() => setShowStatusReportSection(false)}
+            onClose={() => {
+              setActiveDocumentMode('workPlan');
+              setShowStatusReportSection(false);
+            }}
             onRemoveStatusSection={handleRemoveStatusSection}
             onUpdateStatusSectionContent={handleUpdateStatusSectionContent}
             onAddManualStatusSection={handleAddManualStatusSection}
