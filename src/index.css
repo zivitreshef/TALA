@@ -366,7 +366,7 @@ input, textarea, select, button {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* === AUTH GATE (FULL-WIDTH WARM HUMAN SAAS SHOWCASE LANDING PAGE) === */
+/* === AUTH GATE (FULL-WIDTH CRISP HUMAN SAAS SHOWCASE LANDING PAGE) === */
 .auth-page-wrapper {
   min-height: 100vh;
   display: flex;
@@ -374,10 +374,10 @@ input, textarea, select, button {
   align-items: center;
   justify-content: flex-start;
   background:
-    radial-gradient(circle at 15% 12%, rgba(254, 240, 138, 0.25) 0%, transparent 42%),
-    radial-gradient(circle at 85% 16%, rgba(167, 243, 208, 0.28) 0%, transparent 45%),
-    radial-gradient(circle at 50% 88%, rgba(221, 214, 254, 0.24) 0%, transparent 48%),
-    linear-gradient(160deg, #fffdf9 0%, #f4fbf7 52%, #f5f3ff 100%);
+    radial-gradient(circle at 10% 12%, rgba(219, 234, 254, 0.7) 0%, transparent 45%),
+    radial-gradient(circle at 90% 16%, rgba(237, 233, 254, 0.65) 0%, transparent 45%),
+    radial-gradient(circle at 50% 90%, rgba(224, 242, 254, 0.45) 0%, transparent 50%),
+    linear-gradient(165deg, #f8fafc 0%, #f1f5f9 45%, #f8faff 100%);
   padding: 0 0 40px 0;
 }
 
@@ -689,93 +689,186 @@ input, textarea, select, button {
   color: #059669;
 }
 
-/* Authentic WhatsApp Teacher Voices Section */
-.saas-whatsapp-voices-section {
+/* Authentic WhatsApp Teacher Voices Section (True WhatsApp Feel) */
+.saas-whatsapp-voices-section.authentic-whatsapp-theme {
   position: relative;
   z-index: 1;
-  background: linear-gradient(135deg, #efeae2 0%, #f4f1ea 100%);
-  border: 1px solid #dfd8cc;
+  background: #efeae2;
+  background-image: radial-gradient(#d6cdc0 1px, transparent 1px);
+  background-size: 16px 16px;
+  border: 1.5px solid #dcd5ca;
   border-radius: 20px;
-  padding: 16px 18px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
 }
 
-.saas-whatsapp-header {
+.saas-whatsapp-chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 12px;
+  background: #075e54;
+  color: #ffffff;
+  padding: 10px 18px;
 }
 
-.whatsapp-header-pill {
-  display: inline-flex;
+.whatsapp-chat-header-info {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  background: #dcfce7;
-  color: #14532d;
-  border: 1px solid #86efac;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 12.5px;
-  font-weight: 800;
+  gap: 11px;
 }
 
-.whatsapp-header-sub {
-  font-size: 12px;
-  color: #57534e;
-  font-weight: 600;
+.whatsapp-chat-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.whatsapp-chat-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: right;
+}
+
+.whatsapp-chat-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.whatsapp-chat-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.whatsapp-chat-verified-badge {
+  background: #25d366;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+.whatsapp-chat-status {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.whatsapp-chat-header-date span {
+  background: rgba(0, 0, 0, 0.22);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
 }
 
 .saas-whatsapp-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  padding: 15px;
 }
 
 .whatsapp-bubble-card {
+  position: relative;
   background: #ffffff;
-  border: 1px solid rgba(21, 128, 61, 0.14);
-  border-radius: 16px 4px 16px 16px;
-  padding: 12px 14px 10px 14px;
+  border-radius: 12px 2px 12px 12px;
+  padding: 11px 13px 8px 13px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 6px;
   text-align: right;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.14);
+  border: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.whatsapp-bubble-card:nth-child(even) {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
+.whatsapp-bubble-card.whatsapp-outgoing-bubble {
+  background: #d9fdd3;
+  border-radius: 2px 12px 12px 12px;
 }
 
 .whatsapp-bubble-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.09);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
 }
 
 .whatsapp-sender-tag {
   font-size: 11.5px;
   font-weight: 800;
-  color: #0d9488;
+  color: #128c7e;
+  margin-bottom: 2px;
 }
 
-.whatsapp-bubble-card:nth-child(even) .whatsapp-sender-tag {
-  color: #15803d;
+.whatsapp-bubble-card.whatsapp-outgoing-bubble .whatsapp-sender-tag {
+  color: #075e54;
+}
+
+.whatsapp-voice-player-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.035);
+  padding: 6px 10px;
+  border-radius: 8px;
+  direction: ltr;
+}
+
+.whatsapp-play-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #25d366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.35);
+}
+
+.whatsapp-play-triangle {
+  margin-left: 2px;
+}
+
+.whatsapp-voice-waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+
+.whatsapp-voice-waveform span {
+  width: 3px;
+  background: #00a884;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.whatsapp-voice-duration {
+  font-size: 11px;
+  color: #667781;
+  font-weight: 700;
 }
 
 .whatsapp-bubble-text {
   margin: 0;
   font-size: 12.8px;
   line-height: 1.5;
-  color: #1e293b;
-  font-weight: 500;
+  color: #111b21;
+  font-weight: 450;
 }
 
 .whatsapp-bubble-meta {
@@ -784,12 +877,12 @@ input, textarea, select, button {
   justify-content: flex-end;
   gap: 4px;
   font-size: 10.5px;
-  color: #64748b;
+  color: #667781;
   margin-top: 2px;
 }
 
 .whatsapp-checks {
-  color: #0ea5e9;
+  color: #53bdeb;
   font-weight: 800;
   letter-spacing: -1.5px;
 }
@@ -1040,19 +1133,25 @@ input, textarea, select, button {
   flex-shrink: 0;
 }
 
-/* Left Column: Elevated Login & Onboarding Card */
-.auth-login-panel.saas-login-panel {
-  position: relative;
-  overflow: hidden;
-  padding: 34px 30px 26px 30px;
+/* Left Column Layout: Compact Login (~40% Shorter) + Verified Survey Results Card */
+.auth-left-column {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 16px;
+}
+
+.auth-login-panel.saas-login-panel.compact-login-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 22px 14px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
   background: #ffffff;
-  border-radius: 26px;
+  border-radius: 20px;
   text-align: right;
   box-shadow:
-    0 24px 60px -12px rgba(15, 23, 42, 0.16),
+    0 16px 40px -12px rgba(15, 23, 42, 0.1),
     0 0 0 1px rgba(203, 213, 225, 0.85);
 }
 
@@ -1061,120 +1160,129 @@ input, textarea, select, button {
   top: 0;
   right: 0;
   left: 0;
-  height: 6px;
+  height: 5px;
   background: var(--stained-glass-gradient);
   z-index: 3;
 }
 
-.saas-login-status-pill {
-  display: inline-flex;
+.compact-login-top-row {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  background: #f1f5f9;
-  color: #334155;
-  border: 1px solid #cbd5e1;
-  border-radius: 999px;
-  padding: 4px 11px;
-  font-size: 11.5px;
-  font-weight: 700;
-  width: fit-content;
-  margin-bottom: 10px;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 8px;
 }
 
-.auth-login-header {
-  margin-bottom: 16px;
-}
-
-.auth-login-header h2 {
-  margin: 0 0 5px 0;
-  font-size: 24px;
+.auth-login-header.compact h2 {
+  margin: 0;
+  font-size: 20px;
   color: var(--primary-deep);
   font-weight: 800;
 }
 
-.auth-login-header p {
-  margin: 0;
-  font-size: 13px;
+.auth-login-header.compact p {
+  margin: 1px 0 0 0;
+  font-size: 11.5px;
   color: var(--text-muted);
 }
 
-.auth-error-banner {
+.saas-login-status-pill.compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.auth-error-banner.compact {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   background: #fdf2f2;
   border: 1px solid #f3b4b4;
   color: #a82b2b;
-  padding: 11px 14px;
-  border-radius: 10px;
-  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
   font-weight: 600;
-  margin-bottom: 14px;
   text-align: right;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
-.auth-form {
+.auth-form.compact-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 9px;
   text-align: right;
 }
 
-.form-field {
+.form-field.compact {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 }
 
-.form-field label {
-  font-size: 13px;
+.form-field.compact label {
+  font-size: 12px;
   font-weight: 700;
-  color: var(--text-main);
+  color: #334155;
 }
 
-.form-field input,
-.form-field textarea,
-.form-field select {
-  padding: 10px 12px;
+.form-field.compact input {
+  padding: 8px 12px;
   border: 1.5px solid var(--border);
-  border-radius: 10px;
-  font-size: 14px;
-  background: #f9fbff;
+  border-radius: 9px;
+  font-size: 13.5px;
+  background: #f8fafc;
   color: var(--text-main);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
 }
 
-.form-field input:focus,
-.form-field textarea:focus,
-.form-field select:focus {
+.form-field.compact input:focus {
   background: #ffffff;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(74, 136, 199, 0.16);
 }
 
-.input-with-icon {
-  position: relative;
+.btn-auth-submit.compact {
+  margin-top: 2px;
+  padding: 9.5px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-shadow: 0 4px 14px rgba(30, 58, 138, 0.22);
+  transition: transform 0.12s, box-shadow 0.12s;
 }
 
-.input-with-icon .field-icon {
+.btn-auth-submit.compact:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
+}
+
+.btn-auth-submit.compact:disabled {
+  opacity: 0.82;
+  cursor: wait;
+}
+
+.password-eye-toggle-btn.compact {
   position: absolute;
-  right: 12px;
-  color: var(--primary);
-  pointer-events: none;
-}
-
-.input-with-icon input {
-  width: 100%;
-  padding-right: 38px;
-}
-
-.password-eye-toggle-btn {
-  position: absolute;
-  left: 8px;
+  left: 7px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
@@ -1184,146 +1292,277 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5px;
+  padding: 4px;
   border-radius: 6px;
-  transition: background-color 0.15s, color 0.15s;
 }
 
-.password-eye-toggle-btn:hover {
-  background: #eef3fb;
-  color: var(--primary-deep);
-}
-
-.btn-auth-submit {
-  margin-top: 4px;
-  padding: 12.5px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-  color: #fff;
-  border: none;
-  border-radius: 11px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
-  transition: transform 0.12s, box-shadow 0.12s;
-}
-
-.btn-auth-submit:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.34);
-}
-
-.btn-auth-submit:disabled {
-  opacity: 0.82;
-  cursor: wait;
-  transform: none;
-}
-
-.auth-form .input-with-icon input:disabled {
-  background-color: #f8fafc;
-  cursor: not-allowed;
-  opacity: 0.8;
-}
-
-/* Inviting New Teacher Trial Callout inside Login Card */
-.saas-new-teacher-box {
-  margin-top: 16px;
-  padding: 13px 14px;
+/* Compact New Teacher Onboarding Strip */
+.saas-new-teacher-box.compact {
+  margin-top: 1px;
+  padding: 8px 12px;
   background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
   border: 1.5px solid #86efac;
-  border-radius: 14px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.saas-new-teacher-text.compact {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 1px;
   text-align: right;
 }
 
-.saas-new-teacher-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.saas-new-teacher-text strong {
-  font-size: 13px;
+.saas-new-teacher-text.compact strong {
+  font-size: 12px;
   color: #065f46;
   font-weight: 800;
 }
 
-.saas-new-teacher-text span {
-  font-size: 11.5px;
-  color: #334155;
-  line-height: 1.4;
+.saas-new-teacher-text.compact span {
+  font-size: 11px;
+  color: #475569;
 }
 
-.btn-saas-open-trial {
-  width: 100%;
+.btn-saas-open-trial.compact {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 5px;
   background: #059669;
   color: #ffffff;
   border: none;
-  border-radius: 9px;
-  padding: 8.5px 12px;
-  font-size: 12.5px;
+  border-radius: 8px;
+  padding: 6.5px 12px;
+  font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background-color 0.15s, transform 0.15s;
 }
 
-.btn-saas-open-trial:hover {
+.btn-saas-open-trial.compact:hover {
   background: #047857;
   transform: translateY(-1px);
 }
 
-.auth-contact-admin-footer {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-soft);
+.auth-contact-admin-footer.compact {
+  margin-top: 3px;
+  padding-top: 7px;
+  border-top: 1px solid #f1f5f9;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  text-align: center;
-  font-size: 12px;
+  gap: 5px;
+  font-size: 11.5px;
   color: var(--text-muted);
 }
 
-.btn-link-contact-admin {
-  background: #f3eefc;
-  color: #563d82;
-  border: 1px solid #d5c6f0;
-  border-radius: 8px;
-  padding: 6px 13px;
-  font-size: 12px;
+.auth-contact-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.btn-link-contact-admin.compact {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  transition: background-color 0.15s, border-color 0.15s;
+  gap: 5px;
+  transition: all 0.15s;
 }
 
-.btn-link-contact-admin:hover {
-  background: #e7ddf9;
-  border-color: #bfa8e8;
+.btn-link-contact-admin.compact:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
-.auth-security-notice {
-  margin-top: 10px;
+.auth-security-notice.compact {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 11.5px;
+  gap: 5px;
+  font-size: 11px;
   color: #64748b;
   font-weight: 500;
+}
+
+/* Authentic Social Proof: Verified Survey Results Card */
+.saas-survey-card {
+  background: linear-gradient(145deg, #ffffff 0%, #fbfcfe 60%, #f5f8ff 100%);
+  border: 1.5px solid #dce4ee;
+  border-radius: 20px;
+  padding: 15px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: right;
+  box-shadow: 0 10px 26px -8px rgba(15, 23, 42, 0.07);
+}
+
+.survey-card-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 9px;
+}
+
+.survey-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.survey-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  padding: 2.5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  width: fit-content;
+}
+
+.survey-badge-icon {
+  color: #d97706;
+}
+
+.survey-heading {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.survey-score-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.survey-score-stars {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.star-gold {
+  filter: drop-shadow(0 1px 2px rgba(245, 158, 11, 0.3));
+}
+
+.survey-score-number {
+  font-size: 14px;
+  font-weight: 900;
+  color: #b45309;
+}
+
+.survey-recommendation-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 10px;
+  padding: 8px 11px;
+}
+
+.survey-recommendation-bulb {
+  font-size: 15px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.survey-recommendation-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #14532d;
+  margin-bottom: 1px;
+}
+
+.survey-recommendation-text p {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: #166534;
+  font-style: italic;
+}
+
+.survey-metrics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5.5px;
+}
+
+.survey-metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 7px;
+  padding: 5px 9px;
+  font-size: 11.5px;
+}
+
+.survey-metric-label {
+  color: #334155;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.survey-metric-rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.metric-stars {
+  font-size: 11px;
+  letter-spacing: -1px;
+}
+
+.metric-grade {
+  font-size: 11.5px;
+  color: #059669;
+  font-weight: 800;
+}
+
+.survey-verified-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #475569;
+  font-weight: 600;
+  padding-top: 4px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.survey-verified-check {
+  color: #10b981;
+  flex-shrink: 0;
 }
 
 /* Bottom Full-Width 4-Pillar Value Strip */
@@ -1474,8 +1713,22 @@ input, textarea, select, button {
   .auth-features-grid.saas-features-4col {
     grid-template-columns: 1fr;
   }
-  .auth-login-panel.saas-login-panel {
-    padding: 26px 20px 22px 20px;
+  .auth-login-panel.saas-login-panel.compact-login-panel {
+    padding: 16px 16px 14px 16px;
+  }
+  .saas-new-teacher-box.compact {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: right;
+  }
+  .auth-contact-admin-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    text-align: center;
+  }
+  .btn-link-contact-admin.compact {
+    justify-content: center;
   }
 }
 

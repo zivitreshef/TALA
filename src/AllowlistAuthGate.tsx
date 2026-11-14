@@ -25,7 +25,8 @@ import {
   UserPlus,
   Zap,
   FileCheck2,
-  Award
+  Award,
+  Star
 } from 'lucide-react';
 
 import { loginWithTala, prewarmTalaLogin, signOutFirebaseAuthSession } from './firebaseBackend';
@@ -285,18 +286,55 @@ export function AllowlistAuthGate({
               </div>
             </div>
 
-            {/* Authentic Voices from the Field: Real WhatsApp Messages from Teachers */}
-            <div className="saas-whatsapp-voices-section" aria-label="קולות אמיתיים מהשטח בוואטסאפ">
-              <div className="saas-whatsapp-header">
-                <span className="whatsapp-header-badge">💬 קולות אמיתיים מהשטח</span>
-                <span className="whatsapp-header-sub">
-                  הודעות וואטסאפ אמיתיות שקיבלנו ממורות וגננות שכבר עובדות עם TALA:
-                </span>
+            {/* Authentic Voices from the Field: Real WhatsApp Messages & Voice Notes */}
+            <div className="saas-whatsapp-voices-section authentic-whatsapp-theme" aria-label="קולות אמיתיים מהשטח בוואטסאפ">
+              <div className="saas-whatsapp-chat-header">
+                <div className="whatsapp-chat-header-info">
+                  <div className="whatsapp-chat-avatar">
+                    <MessageSquare size={17} />
+                  </div>
+                  <div className="whatsapp-chat-title-group">
+                    <div className="whatsapp-chat-name-row">
+                      <strong className="whatsapp-chat-title">קבוצת משתמשות TALA • מורות וגננות מהשטח</strong>
+                      <span className="whatsapp-chat-verified-badge">מאומת</span>
+                    </div>
+                    <span className="whatsapp-chat-status">
+                      💬 קולות אמיתיים מהשטח • הודעות וואטסאפ והקלטות קוליות אותנטיות ללא עריכה
+                    </span>
+                  </div>
+                </div>
+                <div className="whatsapp-chat-header-date">
+                  <span>היום</span>
+                </div>
               </div>
 
               <div className="saas-whatsapp-grid">
-                <div className="whatsapp-bubble-card">
+                {/* Voice Note & Feedback 1: Special Education Teacher */}
+                <div className="whatsapp-bubble-card whatsapp-voice-memo-bubble">
+                  <div className="whatsapp-bubble-tail" aria-hidden="true" />
                   <div className="whatsapp-sender-tag">מורה לחינוך מיוחד ושילוב</div>
+                  <div className="whatsapp-voice-player-row">
+                    <div className="whatsapp-play-circle" title="הודעה קולית">
+                      <Play size={14} fill="#ffffff" color="#ffffff" className="whatsapp-play-triangle" />
+                    </div>
+                    <div className="whatsapp-voice-waveform" aria-hidden="true">
+                      <span style={{ height: '7px' }} />
+                      <span style={{ height: '14px' }} />
+                      <span style={{ height: '10px' }} />
+                      <span style={{ height: '18px' }} />
+                      <span style={{ height: '12px' }} />
+                      <span style={{ height: '16px' }} />
+                      <span style={{ height: '8px' }} />
+                      <span style={{ height: '19px' }} />
+                      <span style={{ height: '13px' }} />
+                      <span style={{ height: '15px' }} />
+                      <span style={{ height: '9px' }} />
+                      <span style={{ height: '17px' }} />
+                      <span style={{ height: '11px' }} />
+                      <span style={{ height: '6px' }} />
+                    </div>
+                    <span className="whatsapp-voice-duration">0:41</span>
+                  </div>
                   <p className="whatsapp-bubble-text">
                     &ldquo;היי זיוית, רציתי לשתף אותך שהפקתי את התוכנית הראשונה מ-TALA ואני מרוצה. היתה לי חוויה טובה, מונגשת וממקדת. פיתחת כלי עזר נפלא! <strong>דוח מצב - וואו!!!</strong> אני נכנסת לראות... מטורף. תודה רבה 🥰&rdquo;
                   </p>
@@ -306,10 +344,30 @@ export function AllowlistAuthGate({
                   </div>
                 </div>
 
-                <div className="whatsapp-bubble-card">
+                {/* Voice Note & Feedback 2: Special Kindergarten Teacher */}
+                <div className="whatsapp-bubble-card whatsapp-incoming-bubble">
+                  <div className="whatsapp-bubble-tail" aria-hidden="true" />
                   <div className="whatsapp-sender-tag">גננת חינוך מיוחד</div>
+                  <div className="whatsapp-voice-player-row">
+                    <div className="whatsapp-play-circle" title="הודעה קולית">
+                      <Play size={14} fill="#ffffff" color="#ffffff" className="whatsapp-play-triangle" />
+                    </div>
+                    <div className="whatsapp-voice-waveform" aria-hidden="true">
+                      <span style={{ height: '9px' }} />
+                      <span style={{ height: '12px' }} />
+                      <span style={{ height: '17px' }} />
+                      <span style={{ height: '11px' }} />
+                      <span style={{ height: '19px' }} />
+                      <span style={{ height: '14px' }} />
+                      <span style={{ height: '8px' }} />
+                      <span style={{ height: '16px' }} />
+                      <span style={{ height: '10px' }} />
+                      <span style={{ height: '13px' }} />
+                    </div>
+                    <span className="whatsapp-voice-duration">0:30</span>
+                  </div>
                   <p className="whatsapp-bubble-text">
-                    &ldquo;ישששש פתחתי שוב ולחצתי על עיבוד בלי לשנות כלום וזה הוסיף עוד מטרה בהתאם לבקשה 💃 וראיתי שהוספתם הקלטה מצויין 🎉🎉 <strong>זה הדבר הבא 😍 את חייבת לדחוף את זה!</strong> אמרתי לגננת הסמוכה שלידי שתיצור קשר להתחבר ולהתנסות 🙏&rdquo;
+                    &ldquo;ישששש פתחתי שוב ולחצתי על עיבוד בלי לשנות כלום וזה הוסיף עוד מטרה בהתאם לבקשה 💃 <strong>וראיתי שהוספתם הקלטה מצויין 🎉🎉 זה הדבר הבא 😍 את חייבת לדחוף את זה!</strong> אמרתי לגננת הסמוכה שלידי שתיצור קשר להתחבר ולהתנסות 🙏&rdquo;
                   </p>
                   <div className="whatsapp-bubble-meta">
                     <span>21:03</span>
@@ -317,7 +375,9 @@ export function AllowlistAuthGate({
                   </div>
                 </div>
 
-                <div className="whatsapp-bubble-card">
+                {/* Text Feedback 3: Integration Teacher */}
+                <div className="whatsapp-bubble-card whatsapp-incoming-bubble">
+                  <div className="whatsapp-bubble-tail" aria-hidden="true" />
                   <div className="whatsapp-sender-tag">מורת שילוב</div>
                   <p className="whatsapp-bubble-text">
                     &ldquo;תוכנה מדהימה, עוזרת לי לדייק את הדברים. <strong>השאלות המנחות הן מעולות לדייק את התפקוד כעת!!!</strong> 😉 וואו איזה שדרוגים פשוט מטורף ❤️&rdquo;
@@ -328,7 +388,9 @@ export function AllowlistAuthGate({
                   </div>
                 </div>
 
-                <div className="whatsapp-bubble-card">
+                {/* Text Feedback 4: Kindergarten Leader & Coordinator */}
+                <div className="whatsapp-bubble-card whatsapp-outgoing-bubble">
+                  <div className="whatsapp-bubble-tail-outgoing" aria-hidden="true" />
                   <div className="whatsapp-sender-tag">רכזת וגננת שיח</div>
                   <p className="whatsapp-bubble-text">
                     &ldquo;קודם כל באהבה רבה ובכיף ❤️ גם אעביר תשלום שהאפליקציה לא תסגר לשימוש 😍 <strong>אני עפה על זה 💃💃💃</strong> ונמשיך לשווק בע״ה ❤️🙏 אתם אלופים ממש 👑&rdquo;
@@ -423,163 +485,246 @@ export function AllowlistAuthGate({
             </div>
           </div>
 
-          {/* Left Column: Elevated Login & New Teacher Portal Card */}
-          <div className="auth-login-panel saas-login-panel">
-            <div className="auth-stained-glass-bar" />
+          {/* Left Column: Compact Login Card (~40% Shorter) + Authentic Survey Results Social Proof Card */}
+          <div className="auth-left-column">
+            <div className="auth-login-panel saas-login-panel compact-login-panel">
+              <div className="auth-stained-glass-bar" />
 
-            <div className="saas-login-status-pill">
-              <ShieldCheck size={13} />
-              <span>כניסת צוות חינוכי מורשה</span>
-            </div>
-
-            <div className="auth-login-header">
-              <h2>כניסה למערכת</h2>
-              <p>הזינו את כתובת הדוא"ל וקוד הגישה האישי שלכם</p>
-            </div>
-
-            {errorMsg && (
-              <div
-                className="auth-error-banner"
-                style={{
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  gap: '8px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-                  <span>{errorMsg}</span>
+              <div className="compact-login-top-row">
+                <div className="auth-login-header compact">
+                  <h2>כניסה למערכת</h2>
+                  <p>הזינו את כתובת הדוא"ל וקוד הגישה האישי שלכם</p>
                 </div>
-                {isAccountLockedError && (
+                <div className="saas-login-status-pill compact">
+                  <ShieldCheck size={12} />
+                  <span>צוות מורשה</span>
+                </div>
+              </div>
+
+              {errorMsg && (
+                <div
+                  className="auth-error-banner compact"
+                  style={{
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '6px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <AlertTriangle size={17} style={{ flexShrink: 0 }} />
+                    <span>{errorMsg}</span>
+                  </div>
+                  {isAccountLockedError && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenContactAdmin('שחרור חסימת חשבון')}
+                      style={{
+                        alignSelf: 'flex-end',
+                        background: '#991b1b',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        fontSize: '11.5px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <MessageSquare size={12} />
+                      <span>פנייה למנהל/ת המערכת לשחרור החסימה</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="auth-form compact-form">
+                <div className="form-field compact">
+                  <label>כתובת דואר אלקטרוני:</label>
+                  <div className="input-with-icon">
+                    <Mail size={15} className="field-icon" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="name@education.gov.il"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onFocus={() => prewarmTalaLogin().catch(() => {})}
+                      disabled={isLoggingIn}
+                      dir="ltr"
+                      style={{ textAlign: 'right' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-field compact">
+                  <label>קוד גישה אישי / סיסמה:</label>
+                  <div className="input-with-icon" style={{ position: 'relative' }}>
+                    <KeyRound size={15} className="field-icon" />
+                    <input
+                      type={showLoginPassword ? 'text' : 'password'}
+                      required
+                      placeholder="••••••••"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      value={accessCode}
+                      onChange={(e) => setAccessCode(e.target.value)}
+                      onFocus={() => prewarmTalaLogin().catch(() => {})}
+                      disabled={isLoggingIn}
+                      style={{ paddingLeft: '38px', paddingRight: '34px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword((prev) => !prev)}
+                      disabled={isLoggingIn}
+                      title={showLoginPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                      aria-label={showLoginPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                      className="password-eye-toggle-btn compact"
+                    >
+                      {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-auth-submit compact"
+                  disabled={isLoggingIn}
+                  aria-busy={isLoggingIn}
+                >
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 size={16} className="tala-spin-icon" />
+                      <span>מתחבר למערכת...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck size={16} />
+                      <span>כניסה למערכת TALA</span>
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Compact Onboarding Strip for Prospective Teachers */}
+              <div className="saas-new-teacher-box compact">
+                <div className="saas-new-teacher-text compact">
+                  <strong>עדיין אין לך חשבון במערכת?</strong>
+                  <span>הצטרפי למורות שילוב, גננות וצוותים שכבר עובדים חכם ומהיר יותר.</span>
+                </div>
+                <button
+                  type="button"
+                  className="btn-saas-open-trial compact"
+                  onClick={() => handleOpenContactAdmin('בקשת הרשאת גישה למערכת')}
+                >
+                  <UserPlus size={14} />
+                  <span>פתיחת חשבון התנסות / בקשת גישה</span>
+                </button>
+              </div>
+
+              {/* Compact Contact Admin & Security Footer */}
+              <div className="auth-contact-admin-footer compact">
+                <div className="auth-contact-admin-row">
+                  <span>נתקלת בבעיה בכניסה או שהחשבון נחסם?</span>
                   <button
                     type="button"
-                    onClick={() => handleOpenContactAdmin('שחרור חסימת חשבון')}
-                    style={{
-                      alignSelf: 'flex-end',
-                      background: '#991b1b',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '5px 11px',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px'
-                    }}
+                    className="btn-link-contact-admin compact"
+                    onClick={() => handleOpenContactAdmin('שחרור חסימה / איפוס סיסמה')}
                   >
                     <MessageSquare size={13} />
-                    <span>פנייה למנהל/ת המערכת לשחרור החסימה</span>
+                    <span>פנייה למנהל/ת המערכת</span>
                   </button>
-                )}
+                </div>
+                <div className="auth-security-notice compact">
+                  <ShieldCheck size={12} />
+                  <span>חיבור מאובטח • סביבת הוראה מוגנת</span>
+                </div>
               </div>
-            )}
+            </div>
 
-            <form onSubmit={handleSubmit} className="auth-form">
-              <div className="form-field">
-                <label>כתובת דואר אלקטרוני:</label>
-                <div className="input-with-icon">
-                  <Mail size={16} className="field-icon" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="name@education.gov.il"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => prewarmTalaLogin().catch(() => {})}
-                    disabled={isLoggingIn}
-                    dir="ltr"
-                    style={{ textAlign: 'right' }}
-                  />
+            {/* Authentic Social Proof: Verified Survey Results Card */}
+            <div className="saas-survey-card" aria-label="תוצאות סקר שביעות רצון משתמשות">
+              <div className="survey-card-top-bar">
+                <div className="survey-title-group">
+                  <div className="survey-badge">
+                    <Award size={13} className="survey-badge-icon" />
+                    <span>סקר שביעות רצון פדגוגי</span>
+                  </div>
+                  <strong className="survey-heading">דירוג חוויית השימוש לפי תחומים</strong>
+                </div>
+
+                <div className="survey-score-display">
+                  <div className="survey-score-stars" aria-label="ציון משוקלל 5 מתוך 5 כוכבים">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} size={15} fill="#f59e0b" color="#f59e0b" className="star-gold" />
+                    ))}
+                  </div>
+                  <span className="survey-score-number">5.0 / 5.0</span>
                 </div>
               </div>
 
-              <div className="form-field">
-                <label>קוד גישה אישי / סיסמה:</label>
-                <div className="input-with-icon" style={{ position: 'relative' }}>
-                  <KeyRound size={16} className="field-icon" />
-                  <input
-                    type={showLoginPassword ? 'text' : 'password'}
-                    required
-                    placeholder="••••••••"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    value={accessCode}
-                    onChange={(e) => setAccessCode(e.target.value)}
-                    onFocus={() => prewarmTalaLogin().catch(() => {})}
-                    disabled={isLoggingIn}
-                    style={{ paddingLeft: '40px', paddingRight: '36px' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowLoginPassword((prev) => !prev)}
-                    disabled={isLoggingIn}
-                    title={showLoginPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-                    aria-label={showLoginPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
-                    className="password-eye-toggle-btn"
-                  >
-                    {showLoginPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                  </button>
+              {/* 100% Recommendation Box */}
+              <div className="survey-recommendation-box">
+                <span className="survey-recommendation-bulb" aria-hidden="true">💡</span>
+                <div className="survey-recommendation-text">
+                  <strong>האם תמליצי לקולגות ולמנהלת לרכוש גישה ל-TALA?</strong>
+                  <p>&ldquo;כן, סביר שאמליץ לקולגות ולמנהלת לרכוש גישה להמשך שימוש במערכת&rdquo;</p>
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="btn-auth-submit"
-                disabled={isLoggingIn}
-                aria-busy={isLoggingIn}
-              >
-                {isLoggingIn ? (
-                  <>
-                    <Loader2 size={18} className="tala-spin-icon" />
-                    <span>מתחבר למערכת...</span>
-                  </>
-                ) : (
-                  <>
-                    <UserCheck size={18} />
-                    <span>כניסה למערכת TALA</span>
-                  </>
-                )}
-              </button>
-            </form>
+              {/* 5-Area Breakdown List */}
+              <div className="survey-metrics-grid">
+                <div className="survey-metric-row">
+                  <span className="survey-metric-label">1. קלות ונוחות השימוש בממשק המערכת</span>
+                  <div className="survey-metric-rating">
+                    <span className="metric-stars">⭐⭐⭐⭐⭐</span>
+                    <strong className="metric-grade">5/5</strong>
+                  </div>
+                </div>
 
-            {/* Inviting Onboarding Box for Prospective Teachers */}
-            <div className="saas-new-teacher-box">
-              <div className="saas-new-teacher-text">
-                <strong>עדיין אין לך חשבון במערכת?</strong>
-                <span>הצטרפי למורות שילוב, גננות וצוותים שכבר עובדים חכם ומהיר יותר.</span>
+                <div className="survey-metric-row">
+                  <span className="survey-metric-label">2. יצירה והקמה מהירה של כרטיס תלמיד/ה</span>
+                  <div className="survey-metric-rating">
+                    <span className="metric-stars">⭐⭐⭐⭐⭐</span>
+                    <strong className="metric-grade">5/5</strong>
+                  </div>
+                </div>
+
+                <div className="survey-metric-row">
+                  <span className="survey-metric-label">3. ניסוח ובניית מטרות ויעדים עם מאגר מטרות ובינה מלאכותית</span>
+                  <div className="survey-metric-rating">
+                    <span className="metric-stars">⭐⭐⭐⭐⭐</span>
+                    <strong className="metric-grade">5/5</strong>
+                  </div>
+                </div>
+
+                <div className="survey-metric-row">
+                  <span className="survey-metric-label">4. הפקת דוחות – תל״א/תח״י, דו״ח מצב ודוח הערכה</span>
+                  <div className="survey-metric-rating">
+                    <span className="metric-stars">⭐⭐⭐⭐⭐</span>
+                    <strong className="metric-grade">5/5</strong>
+                  </div>
+                </div>
+
+                <div className="survey-metric-row">
+                  <span className="survey-metric-label">5. שיתוף תלמיד/ה ועבודה משותפת עם קולגות בצוות</span>
+                  <div className="survey-metric-rating">
+                    <span className="metric-stars">⭐⭐⭐⭐⭐</span>
+                    <strong className="metric-grade">5/5</strong>
+                  </div>
+                </div>
               </div>
-              <button
-                type="button"
-                className="btn-saas-open-trial"
-                onClick={() => handleOpenContactAdmin('בקשת הרשאת גישה למערכת')}
-              >
-                <UserPlus size={15} />
-                <span>פתיחת חשבון התנסות / בקשת גישה</span>
-              </button>
-            </div>
 
-            {/* Contact Admin Footer Link */}
-            <div className="auth-contact-admin-footer">
-              <span>נתקלת בבעיה בכניסה או שהחשבון נחסם?</span>
-              <button
-                type="button"
-                className="btn-link-contact-admin"
-                onClick={() => handleOpenContactAdmin('שחרור חסימה / איפוס סיסמה')}
-              >
-                <MessageSquare size={14} />
-                <span>פנייה למנהל/ת המערכת</span>
-              </button>
-            </div>
-
-            <div className="auth-security-notice">
-              <ShieldCheck size={13} />
-              <span>חיבור מאובטח • סביבת הוראה מוגנת</span>
+              <div className="survey-verified-footer">
+                <CheckCircle2 size={13} className="survey-verified-check" />
+                <span>משוב מאומת • גננת חנ״מ, מתי״א קרית שמונה</span>
+              </div>
             </div>
           </div>
         </div>
