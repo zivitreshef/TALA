@@ -125,6 +125,40 @@ export function getIsraeliHolidayOrVacation(dateStr?: string | null): string | n
 }
 
 /**
+ * Extracts and normalizes timestamp in milliseconds from an observation entry or pedagogical task.
+ * Supports timestamp (ISO/number), dateIso, date (YYYY-MM-DD, DD/MM/YYYY, DD.MM.YYYY),
+ * createdAt, and completedAt.
+ */
+export function extractObservationTimestampMs(obs?: Record<string, unknown> | null): number | null {
+  if (!obs || typeof obs !== 'object') return null;
+  const raw = obs.timestamp ?? obs.dateIso ?? obs.date ?? obs.createdAt ?? obs.completedAt;
+  if (!raw) return null;
+  if (raw instanceof Date) {
+    const t = raw.getTime();
+    return Number.isNaN(t) ? null : t;
+  }
+  if (typeof raw === 'number' && !Number.isNaN(raw) && raw > 0) {
+    return raw;
+  }
+  const str = String(raw).trim();
+  const ms = new Date(str).getTime();
+  if (!Number.isNaN(ms)) return ms;
+
+  // Handle Israeli date formats (DD/MM/YYYY or DD.MM.YYYY)
+  const parts = str.split(/[./-]/).map(Number);
+  if (parts.length === 3 && !parts.some(Number.isNaN)) {
+    if (parts[0] > 1000) {
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
+      if (!Number.isNaN(d.getTime())) return d.getTime();
+    } else {
+      const d = new Date(parts[2], parts[1] - 1, parts[0]);
+      if (!Number.isNaN(d.getTime())) return d.getTime();
+    }
+  }
+  return null;
+}
+
+/**
  * Calculates observation gaps for students' active goals.
  * Returns goals that have not had an observation within the threshold days.
  */
@@ -146,11 +180,9 @@ export function getObservationGaps(
       let latestObservationMs: number | null = null;
 
       for (const obs of observations) {
-        if (obs.timestamp) {
-          const obsMs = new Date(String(obs.timestamp)).getTime();
-          if (!Number.isNaN(obsMs) && (latestObservationMs === null || obsMs > latestObservationMs)) {
-            latestObservationMs = obsMs;
-          }
+        const obsMs = extractObservationTimestampMs(obs);
+        if (obsMs !== null && (latestObservationMs === null || obsMs > latestObservationMs)) {
+          latestObservationMs = obsMs;
         }
       }
 
@@ -161,9 +193,9 @@ export function getObservationGaps(
         ? (student.dailyTasks as Record<string, unknown>[])
         : [];
       for (const t of studentTasks) {
-        if (t.completed && (t.completedAt || t.date)) {
-          const tMs = new Date(String(t.completedAt || t.date)).getTime();
-          if (!Number.isNaN(tMs) && (latestObservationMs === null || tMs > latestObservationMs)) {
+        if (t.completed) {
+          const tMs = extractObservationTimestampMs(t as Record<string, unknown>);
+          if (tMs !== null && (latestObservationMs === null || tMs > latestObservationMs)) {
             if (!t.goalId || t.goalId === goal.id) {
               latestObservationMs = tMs;
             }
@@ -231,8 +263,7 @@ export function getPedagogicalAccomplishmentsSummary(
       const isCompleted = Boolean(task.completed);
       const taskDate = String(task.date || '');
       const completedAt = task.completedAt ? String(task.completedAt) : undefined;
-      const dateToCompare = completedAt || taskDate;
-      const taskMs = dateToCompare ? new Date(dateToCompare).getTime() : NaN;
+      const taskMs = extractObservationTimestampMs(task as Record<string, unknown>);
 
       const taskItem: CompletedTaskSummary = {
         id: typeof task.id === 'string' ? task.id : undefined,
@@ -247,7 +278,7 @@ export function getPedagogicalAccomplishmentsSummary(
       };
 
       if (isCompleted) {
-        if (!Number.isNaN(taskMs)) {
+        if (taskMs !== null) {
           if (nowMs - taskMs <= windowMs) {
             completedTasks.push(taskItem);
           }
@@ -283,10 +314,8 @@ export function getPedagogicalAccomplishmentsSummary(
 
       const observations = Array.isArray(goal.observations) ? goal.observations : [];
       for (const obs of observations) {
-        const stamp = obs.timestamp || obs.date;
-        if (!stamp) continue;
-        const obsMs = new Date(stamp).getTime();
-        if (Number.isNaN(obsMs)) continue;
+        const obsMs = extractObservationTimestampMs(obs as Record<string, unknown>);
+        if (obsMs === null) continue;
 
         if (nowMs - obsMs <= windowMs) {
           recentObservations.push({
@@ -309,10 +338,8 @@ export function getPedagogicalAccomplishmentsSummary(
       ? (student.dailyPedagogicalEntries as Record<string, unknown>[])
       : [];
     for (const entry of dailyEntries) {
-      const stamp = entry.timestamp || entry.date;
-      if (!stamp) continue;
-      const entryMs = new Date(String(stamp)).getTime();
-      if (Number.isNaN(entryMs) || nowMs - entryMs > windowMs) continue;
+      const entryMs = extractObservationTimestampMs(entry as Record<string, unknown>);
+      if (entryMs === null || nowMs - entryMs > windowMs) continue;
       recentObservations.push({
         studentId: typeof student.id === 'string' ? student.id : undefined,
         studentName: String(student.name || 'תלמיד/ה'),
