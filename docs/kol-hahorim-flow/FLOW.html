@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>זרימת קול ההורים</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #fff;
+      --text: #1a2332;
+      --muted: #5a6577;
+      --line: #d8dee8;
+      --accent: #5b4fc9;
+      --accent-soft: #eeebfb;
+      --stamp: #0d6e6e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    header {
+      background: linear-gradient(120deg, #2c3a6b, #5b4fc9);
+      color: #fff;
+      padding: 2rem 1.25rem 1.75rem;
+    }
+    header h1 { margin: 0 0 .35rem; font-size: 1.75rem; }
+    header p { margin: 0; opacity: .9; }
+    main {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+    .overview {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .overview table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .95rem;
+    }
+    .overview th, .overview td {
+      padding: .65rem .85rem;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+    }
+    .overview th { background: var(--accent-soft); color: var(--accent); }
+    .overview tr:last-child td { border-bottom: 0; }
+    .stamp {
+      display: inline-block;
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: .85rem;
+      color: var(--stamp);
+      background: #e7f6f5;
+      padding: .15rem .5rem;
+      border-radius: 6px;
+    }
+    .step {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.1rem 1.15rem 1.25rem;
+      margin-bottom: 1.15rem;
+    }
+    .step h2 {
+      margin: 0 0 .35rem;
+      font-size: 1.2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      align-items: baseline;
+    }
+    .step .num {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .step ul { margin: .5rem 0 1rem; padding-inline-start: 1.2rem; }
+    .step li { margin: .25rem 0; }
+    .step img {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    .muted { color: var(--muted); font-size: .92rem; }
+    .summary {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1.1rem 1.15rem;
+      margin-top: .5rem;
+    }
+    .summary pre {
+      margin: .75rem 0 0;
+      padding: .9rem 1rem;
+      background: #f0f2f7;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: .9rem;
+      line-height: 1.45;
+      direction: ltr;
+      text-align: left;
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: .85rem;
+      padding: 1rem 1.25rem 2rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>זרימת «קול ההורים»</h1>
+    <p>תהליך שליחת שאלון להורים וקבלת מענה · לפי צילומי מסך (05.11.2026)</p>
+    <p style="margin-top:.4rem;opacity:.85;font-size:.95rem">דוגמה: תלמיד — יונתן · שנת לימודים תשפ״ו (2025–2026)</p>
+  </header>
+
+  <main>
+    <section class="overview" aria-label="סקירת שלבים">
+      <table>
+        <thead>
+          <tr>
+            <th>שלב</th>
+            <th>שעה</th>
+            <th>מי</th>
+            <th>מה קורה</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>15:44:31</td><td>צוות</td><td>התאמת שאלות ויצירת קישור</td></tr>
+          <tr><td>2</td><td>15:44:47</td><td>צוות</td><td>העתקה / שליחה בוואטסאפ</td></tr>
+          <tr><td>3</td><td>15:45:05</td><td>מערכת</td><td>סטטוס «ממתינים למענה»</td></tr>
+          <tr><td>4</td><td>15:45:31</td><td>הורה</td><td>פתיחת השאלון</td></tr>
+          <tr><td>5</td><td>15:45:49</td><td>הורה</td><td>מילוי תשובות</td></tr>
+          <tr><td>6</td><td>15:45:57</td><td>הורה</td><td>אישור שליחה</td></tr>
+          <tr><td>7</td><td>15:46:06</td><td>מערכת</td><td>סטטוס «התקבל מענה»</td></tr>
+          <tr><td>8</td><td>15:46:18</td><td>צוות</td><td>צפייה במענה והחלטה: לתאר / לארכב</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <article class="step" id="step-1">
+      <h2><span class="num">שלב 1</span> התאמת שאלות ויצירת קישור</h2>
+      <p><span class="stamp">15:44:31</span></p>
+      <p class="muted">במסך קול ההורים (עבור יונתן) נפתח אזור קישור להורים.</p>
+      <ul>
+        <li>עריכת ניסוח השאלות, מחיקה או הוספה (עד 5)</li>
+        <li>אפשרות שחזור ברירת מחדל</li>
+        <li>לחיצה על <strong>יצירת קישור להורים</strong></li>
+      </ul>
+      <img src="01-customize-questions.png" alt="שלב 1 — התאמת שאלות ויצירת קישור" />
+    </article>
+
+    <article class="step" id="step-2">
+      <h2><span class="num">שלב 2</span> שיתוף הקישור</h2>
+      <p><span class="stamp">15:44:47</span></p>
+      <p class="muted">נוצר קישור חד־פעמי (תקף ל־7 ימים).</p>
+      <ul>
+        <li><strong>העתק קישור</strong></li>
+        <li><strong>שליחה בוואטסאפ</strong></li>
+        <li><strong>ביטול הקישור</strong></li>
+      </ul>
+      <img src="02-share-link.png" alt="שלב 2 — שיתוף הקישור" />
+    </article>
+
+    <article class="step" id="step-3">
+      <h2><span class="num">שלב 3</span> ממתינים למענה</h2>
+      <p><span class="stamp">15:45:05</span></p>
+      <p class="muted">בכרטיס התלמיד מוצג כפתור סטטוס <strong>ממתינים למענה</strong> (צהוב), לצד שיתוף צוות ומסמכי אבחון.</p>
+      <img src="03-waiting-response.png" alt="שלב 3 — ממתינים למענה" />
+    </article>
+
+    <article class="step" id="step-4">
+      <h2><span class="num">שלב 4</span> ההורה פותח את השאלון</h2>
+      <p><span class="stamp">15:45:31</span></p>
+      <p class="muted">ההורה נכנס לקישור (מסך share-input).</p>
+      <ul>
+        <li>כותרת: «נשמח לשמוע אתכם על יונתן»</li>
+        <li>שלוש שאלות קצרות; אפשר לענות רק על חלק</li>
+        <li>כפתור <strong>שליחה</strong></li>
+        <li>הבהרה: התשובות לצוות החינוכי בלבד; הקישור חד־פעמי ופוג לאחר שליחה</li>
+      </ul>
+      <img src="04-parent-form-empty.png" alt="שלב 4 — שאלון ריק" />
+    </article>
+
+    <article class="step" id="step-5">
+      <h2><span class="num">שלב 5</span> מילוי תשובות</h2>
+      <p><span class="stamp">15:45:49</span></p>
+      <p class="muted">ההורה ממלא את השדות ולוחץ <strong>שליחה</strong>.</p>
+      <img src="05-parent-form-filled.png" alt="שלב 5 — שאלון ממולא" />
+    </article>
+
+    <article class="step" id="step-6">
+      <h2><span class="num">שלב 6</span> אישור להורה</h2>
+      <p><span class="stamp">15:45:57</span></p>
+      <p class="muted">מסך תודה: התשובות נשלחו לצוות החינוכי וישמשו בבניית התוכנית.</p>
+      <img src="06-thank-you.png" alt="שלב 6 — תודה" />
+    </article>
+
+    <article class="step" id="step-7">
+      <h2><span class="num">שלב 7</span> התקבל מענה (צד צוות)</h2>
+      <p><span class="stamp">15:46:06</span></p>
+      <p class="muted">בכרטיס התלמיד הסטטוס מתחלף ל־<strong>התקבל מענה</strong> (ירוק).</p>
+      <img src="07-response-received-badge.png" alt="שלב 7 — התקבל מענה" />
+    </article>
+
+    <article class="step" id="step-8">
+      <h2><span class="num">שלב 8</span> צפייה במענה והחלטה</h2>
+      <p><span class="stamp">15:46:18</span></p>
+      <p class="muted">במסך קול ההורים מוצג המענה מההורים.</p>
+      <ul>
+        <li><strong>שלבי בתיאור החופשי של המורה</strong> — שילוב המענה בתיאור</li>
+        <li><strong>העברה לארכיון בלבד</strong> — שמירה בלי שילוב בתיאור</li>
+      </ul>
+      <img src="08-review-answers.png" alt="שלב 8 — סקירת מענה" />
+    </article>
+
+    <section class="summary">
+      <h2 style="margin:0 0 .35rem;font-size:1.15rem">סיכום</h2>
+      <p class="muted" style="margin:0">כללי קישור: חד־פעמי · תקף ל־7 ימים · פג תוקף לאחר שליחה.</p>
+      <pre>צוות: התאמת שאלות → יצירת קישור → שיתוף
+        ↓
+מערכת: ממתינים למענה
+        ↓
+הורה: פתיחה → מילוי → שליחה → תודה
+        ↓
+מערכת: התקבל מענה
+        ↓
+צוות: צפייה → שילוב בתיאור / ארכיון</pre>
+    </section>
+  </main>
+
+  <footer>מסמך סטטי · תמונות מקומיות בתיקייה זו · נפתח בדפדפן בלי שרת</footer>
+</body>
+</html>
