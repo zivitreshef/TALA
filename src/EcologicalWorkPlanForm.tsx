@@ -2436,7 +2436,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
   const getStatusReportTitle = () => buildStatusReportTitle();
   const getDisplayStudentName = () => buildDisplayStudentName(formData, hideStudentDetailsOnPrint);
   const getDisplayMaskedField = (val: any) => buildDisplayMaskedField(val, hideStudentDetailsOnPrint);
-  const getRedactedText = (text: any) => buildRedactedText(text, formData, hideStudentDetailsOnPrint);
+  const getRedactedText = (text: any) => buildRedactedText(text, formData, hideStudentDetailsOnPrint, false);
   const getSafeReportFilename = (ext = 'doc', mode = 'tala') => buildSafeReportFilename(formData, hideStudentDetailsOnPrint, ext, mode);
   
   const getExportPayload = (baseData = formData) => ({
@@ -4113,12 +4113,6 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 }
                 const targetGoalId = (formData.goals && formData.goals[0]?.id) || 'goal-1';
                 setObservationModalGoalId(targetGoalId);
-              }}
-              style={{
-                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                color: '#15803d',
-                borderColor: '#86efac',
-                fontWeight: 600
               }}
               title="תיעוד תצפית מהירה מהשטח"
             >
