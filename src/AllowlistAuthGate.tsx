@@ -24,9 +24,10 @@ import {
   Play,
   UserPlus,
   Zap,
-  FileCheck2,
   Award,
-  Star
+  Star,
+  Calendar,
+  FileText
 } from 'lucide-react';
 
 import { loginWithTala, prewarmTalaLogin, signOutFirebaseAuthSession } from './firebaseBackend';
@@ -45,6 +46,44 @@ export interface AllowlistAuthGateProps {
   onSubmitAdminRequest?: (req: any) => void;
   [key: string]: any;
 }
+
+const PREVIEW_TABS = [
+  {
+    id: 'tracker',
+    label: 'יומן ומעקב שוטף',
+    icon: Calendar,
+    img: './screenshots/tala-daily-tracker.jpg',
+    caption: 'יומן פדגוגי חי, מעקב יעדים יומי ותיעוד תצפיות ישיר מהשטח עם סנכרון ללוח השנה'
+  },
+  {
+    id: 'workplan',
+    label: 'תוכנית שנתית ותל״א',
+    icon: FileText,
+    img: './screenshots/tala-annual-workplan.jpg',
+    caption: 'תוכנית עבודה שנתית מפורטת, מטרות אקולוגיות ופרופיל תלמיד/ה בלחיצת כפתור'
+  },
+  {
+    id: 'readiness',
+    label: 'מוכנות לישיבות צוות',
+    icon: Users,
+    img: './screenshots/tala-team-meeting-report.jpg',
+    caption: 'דוח מוכנות רב-מקצועי ומדדי התקדמות המרכזים את נתוני התלמיד/ה לקראת ישיבת הצוות'
+  },
+  {
+    id: 'email',
+    label: 'סיכום שבועי במייל',
+    icon: Mail,
+    img: './screenshots/tala-weekly-summary-email.jpg',
+    caption: 'סיכום פדגוגי שבועי אוטומטי ישירות לתיבת המייל עם תובנות, הישגים ותמונת מצב מרוכזת'
+  },
+  {
+    id: 'mobile',
+    label: 'מרחב מובייל בכיתה',
+    icon: Smartphone,
+    img: './screenshots/tala-mobile-classroom.jpg',
+    caption: 'ממשק מותאם ונגיש לשימוש ישיר מהטלפון הנייד בזמן אמת בכיתה, בחצר ובטיפולים'
+  }
+];
 
 export function AllowlistAuthGate({
   allowedUsers = [],
@@ -75,6 +114,9 @@ export function AllowlistAuthGate({
   const [pendingUser, setPendingUser] = useState<any>(null);
   const [takeoverLoading, setTakeoverLoading] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Active module tab in the live product screenshots showcase
+  const [activePreviewTab, setActivePreviewTab] = useState<'tracker' | 'workplan' | 'readiness' | 'email' | 'mobile'>('tracker');
 
   // Pre-warm login backend container and resolve IP while teacher views the login screen
   useEffect(() => {
@@ -301,7 +343,7 @@ export function AllowlistAuthGate({
                       <span className="whatsapp-chat-verified-badge">מאומת</span>
                     </div>
                     <span className="whatsapp-chat-status">
-                      💬 קולות אמיתיים מהשטח • הודעות וואטסאפ אותנטיות כפי שנשלחו מהשטח ללא עריכה
+                      💬 משובים אותנטיים מצוותי חינוך • הודעות וואטסאפ כפי שנשלחו מהשטח
                     </span>
                   </div>
                 </div>
@@ -405,8 +447,8 @@ export function AllowlistAuthGate({
               </div>
             </div>
 
-            {/* Soft Daylight Product Workflow Preview ("Show, Don't Tell") */}
-            <div className="saas-product-mockup daylight-mockup" aria-label="הדמיית ממשק המערכת בפעולה">
+            {/* Authentic Live Product Showcase with Real Screenshots ("Show, Don't Tell") */}
+            <div className="saas-product-mockup daylight-mockup real-screenshots-showcase" aria-label="תצוגת יכולות המערכת מתוך השטח">
               <div className="saas-mockup-topbar">
                 <div className="saas-mockup-dots">
                   <span className="mockup-dot dot-red" />
@@ -414,74 +456,60 @@ export function AllowlistAuthGate({
                   <span className="mockup-dot dot-green" />
                 </div>
                 <span className="saas-mockup-window-title">
-                  תצוגה חיה מסביבת העבודה • יומן פדגוגי ודופק כיתתי
+                  טעימה אמיתית מהשטח • ממשק המערכת בפעולה
                 </span>
                 <span className="saas-mockup-live-badge">
                   <span className="live-pulse-dot" />
-                  מסונכרן בענן
+                  צילומי מסך חיים
                 </span>
               </div>
 
-              <div className="saas-mockup-body">
-                {/* Simulated Live Card 1: Voice Observation Capture */}
-                <div className="saas-mockup-card mockup-voice-card">
-                  <div className="saas-mockup-card-head">
-                    <div className="mockup-icon-badge badge-rose">
-                      <Mic size={15} />
-                    </div>
-                    <div className="mockup-head-titles">
-                      <strong>תיעוד תצפית קולי מהיר מהכיתה</strong>
-                      <span>הוקלט מהנייד בסוף השיעור • 00:14 שניות</span>
-                    </div>
-                  </div>
-                  <div className="saas-mockup-quote">
-                    &ldquo;דניאל יזם שיחה עם חבר בהפסקה, ביקש להצטרף למשחק הכדורגל והמתין לתורו בסבלנות.&rdquo;
-                  </div>
-                  <div className="saas-mockup-tags">
-                    <span className="mockup-tag tag-sky">
-                      <CheckCircle2 size={11} />
-                      שויך אוטומטית ליעד: תקשורת ויוזמה חברתית
-                    </span>
-                    <span className="mockup-tag tag-emerald">
-                      <Sparkles size={11} />
-                      סטטוס יעד: התקדמות משמעותית
-                    </span>
-                  </div>
-                </div>
+              {/* Interactive Tabs Bar */}
+              <div className="preview-tabs-bar" role="tablist" aria-label="בחירת מודול לצפייה">
+                {PREVIEW_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activePreviewTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`preview-tab-btn ${isActive ? 'active' : ''}`}
+                      onClick={() => setActivePreviewTab(tab.id as any)}
+                    >
+                      <Icon size={14} className="preview-tab-icon" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-                {/* Simulated Live Card 2: 1-Click Team Readiness Report */}
-                <div className="saas-mockup-card mockup-report-card">
-                  <div className="saas-mockup-card-head">
-                    <div className="mockup-icon-badge badge-emerald">
-                      <FileCheck2 size={15} />
+              {/* Active Tab Screenshot Display */}
+              <div className="preview-image-container">
+                {PREVIEW_TABS.map((tab) => {
+                  if (tab.id !== activePreviewTab) return null;
+                  return (
+                    <div key={tab.id} className="preview-image-wrapper">
+                      <img
+                        src={tab.img}
+                        alt={tab.label}
+                        className="preview-real-screenshot"
+                        loading="lazy"
+                      />
+                      <div className="preview-screenshot-caption">
+                        <span className="caption-dot" />
+                        <span>{tab.caption}</span>
+                      </div>
                     </div>
-                    <div className="mockup-head-titles">
-                      <strong>דוח מוכנות לישיבת צוות רב-מקצועית</strong>
-                      <span>סיכום חכם בלחיצת כפתור • מוכן להדפסה</span>
-                    </div>
-                  </div>
-                  <div className="saas-mockup-progress-box">
-                    <div className="mockup-progress-labels">
-                      <span>עמידה ביעדי התוכנית הפדגוגית</span>
-                      <strong>85% הושגו</strong>
-                    </div>
-                    <div className="mockup-progress-track">
-                      <div className="mockup-progress-fill" style={{ width: '85%' }} />
-                    </div>
-                  </div>
-                  <div className="saas-mockup-ai-summary">
-                    <Sparkles size={13} className="ai-summary-icon" />
-                    <span>
-                      <strong>תקציר בינה מלאכותית לצוות:</strong> ניכרת קפיצה ביכולת הוויסות והיוזמה החברתית במרחב הכיתתי.
-                    </span>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
 
               <div className="saas-mockup-footer-metric">
                 <Award size={15} className="metric-award-icon" />
                 <span>
-                  מורות מדווחות על <strong>חיסכון של כ-4 שעות עבודה שבועיות</strong> בתיעוד, מיפוי והכנת דוחות לצוות ולהורים
+                  מורות וגננות מדווחות על <strong>חיסכון של כ-4 שעות שבועיות</strong> בריכוז תיעוד, הכנת תל״א והפקת דוחות
                 </span>
               </div>
             </div>

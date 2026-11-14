@@ -428,8 +428,8 @@ input, textarea, select, button {
   height: 56px;
   border-radius: 50%;
   padding: 2.5px;
-  background: linear-gradient(135deg, #34d399 0%, #38bdf8 50%, #a78bfa 100%);
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.2);
+  background: linear-gradient(135deg, #2b4c73 0%, #38bdf8 50%, #5c4b85 100%);
+  box-shadow: 0 6px 16px rgba(43, 76, 115, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -475,9 +475,9 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, #ecfdf5 0%, #f0f9ff 100%);
-  border: 1px solid #a7f3d0;
-  color: #065f46;
+  background: linear-gradient(135deg, #f0f7ff 0%, #f5f3ff 100%);
+  border: 1px solid #cbd5e1;
+  color: #2b4c73;
   padding: 4px 12px;
   border-radius: 999px;
   font-size: 12px;
@@ -486,7 +486,7 @@ input, textarea, select, button {
 }
 
 .auth-badge-sparkle {
-  color: #10b981;
+  color: #5c4b85;
 }
 
 .saas-navbar-tagline {
@@ -527,7 +527,7 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: linear-gradient(135deg, #2b4c73 0%, #3d6391 55%, #5c4b85 100%);
   color: #ffffff;
   border: none;
   border-radius: 999px;
@@ -535,14 +535,14 @@ input, textarea, select, button {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  box-shadow: 0 4px 12px rgba(43, 76, 115, 0.25);
   transition: all 0.18s ease;
 }
 
 .btn-saas-nav-trial:hover {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #325784 0%, #466f9f 55%, #695696 100%);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.35);
+  box-shadow: 0 6px 16px rgba(43, 76, 115, 0.35);
 }
 
 /* Wide Full-Screen Hero & Login Split Grid */
@@ -564,10 +564,10 @@ input, textarea, select, button {
 
 /* Right Hero Showcase Panel: Warm, Soft, Human Daylight Aesthetic */
 .auth-showcase-panel.saas-hero-showcase {
-  background: linear-gradient(145deg, #ffffff 0%, #f7fcf9 55%, #f5f8ff 100%);
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 55%, #f0f7ff 100%);
   color: #1e293b;
   border-radius: 28px;
-  border: 1.5px solid #d8e6df;
+  border: 1.5px solid #e2e8f0;
   padding: 34px 36px 30px 36px;
   display: flex;
   flex-direction: column;
@@ -587,7 +587,7 @@ input, textarea, select, button {
   left: -10%;
   width: 380px;
   height: 380px;
-  background: radial-gradient(circle, rgba(167, 243, 208, 0.32) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(186, 230, 253, 0.35) 0%, transparent 70%);
   pointer-events: none;
   border-radius: 50%;
 }
@@ -602,9 +602,9 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #065f46;
+  background: #f0f7ff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 12.5px;
@@ -613,7 +613,7 @@ input, textarea, select, button {
 }
 
 .saas-eyebrow-icon {
-  color: #059669;
+  color: #0284c7;
 }
 
 .saas-hero-headline {
@@ -626,7 +626,7 @@ input, textarea, select, button {
 }
 
 .saas-hero-highlight {
-  background: linear-gradient(90deg, #047857 0%, #0284c7 60%, #6d28d9 100%);
+  background: linear-gradient(90deg, #2b4c73 0%, #0284c7 50%, #5c4b85 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -652,7 +652,7 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: linear-gradient(135deg, #2b4c73 0%, #3d6391 55%, #5c4b85 100%);
   color: #ffffff;
   border: none;
   border-radius: 12px;
@@ -660,14 +660,14 @@ input, textarea, select, button {
   font-size: 14.5px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.28);
+  box-shadow: 0 8px 20px rgba(43, 76, 115, 0.28);
   transition: all 0.2s ease;
 }
 
 .btn-saas-primary-trial:hover {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #325784 0%, #466f9f 55%, #695696 100%);
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(5, 150, 105, 0.36);
+  box-shadow: 0 10px 24px rgba(43, 76, 115, 0.36);
 }
 
 .btn-auth-watch-video {
@@ -695,7 +695,7 @@ input, textarea, select, button {
 
 .btn-auth-play-icon {
   flex-shrink: 0;
-  color: #059669;
+  color: #2b4c73;
 }
 
 /* Authentic WhatsApp Teacher Voices Section (True WhatsApp Feel) */
@@ -718,7 +718,7 @@ input, textarea, select, button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: #075e54;
+  background: linear-gradient(135deg, #1e3a47 0%, #2b4c73 60%, #3d6391 100%);
   color: #ffffff;
   padding: 10px 18px;
 }
@@ -953,9 +953,9 @@ input, textarea, select, button {
   gap: 5px;
   font-size: 11px;
   font-weight: 700;
-  color: #065f46;
-  background: #d1fae5;
-  border: 1px solid #6ee7b7;
+  color: #1e40af;
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
   padding: 2px 9px;
   border-radius: 999px;
 }
@@ -964,165 +964,109 @@ input, textarea, select, button {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 6px #10b981;
+  background: #3b82f6;
+  box-shadow: 0 0 6px #3b82f6;
 }
 
-.saas-mockup-body {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 14px;
-  background: #ffffff;
-}
-
-.saas-mockup-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 13px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 9px;
-  text-align: right;
-}
-
-.saas-mockup-card-head {
+/* Authentic Screenshots Interactive Showcase */
+.preview-tabs-bar {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 
-.mockup-icon-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
+.preview-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.preview-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+  min-height: 38px;
+}
+
+.preview-tab-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+
+.preview-tab-btn.active {
+  background: linear-gradient(135deg, #2b4c73 0%, #3d6391 55%, #5c4b85 100%);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 3px 10px rgba(43, 76, 115, 0.25);
+}
+
+.preview-tab-icon {
+  flex-shrink: 0;
+}
+
+.preview-image-container {
+  padding: 14px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.preview-image-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-real-screenshot {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  max-height: 480px;
+  object-fit: contain;
+  display: block;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+}
+
+.preview-screenshot-caption {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.mockup-icon-badge.badge-rose {
-  background: #ffe4e6;
-  color: #e11d48;
-  border: 1px solid #fecdd3;
-}
-
-.mockup-icon-badge.badge-emerald {
-  background: #d1fae5;
-  color: #059669;
-  border: 1px solid #a7f3d0;
-}
-
-.mockup-head-titles {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.mockup-head-titles strong {
+  gap: 8px;
   font-size: 12.5px;
-  color: #0f172a;
-  font-weight: 800;
-}
-
-.mockup-head-titles span {
-  font-size: 11px;
-  color: #64748b;
-}
-
-.saas-mockup-quote {
-  font-size: 12px;
-  line-height: 1.5;
-  color: #1e293b;
-  background: #f0f9ff;
-  border-right: 3px solid #0284c7;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-style: italic;
-}
-
-.saas-mockup-tags {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.mockup-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3.5px 9px;
-  border-radius: 6px;
-  width: fit-content;
-}
-
-.mockup-tag.tag-sky {
-  background: #e0f2fe;
-  color: #0369a1;
-}
-
-.mockup-tag.tag-emerald {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.saas-mockup-progress-box {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 8px 10px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.mockup-progress-labels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11.5px;
   color: #334155;
+  font-weight: 600;
+  text-align: center;
+  padding: 4px 10px;
 }
 
-.mockup-progress-labels strong {
-  color: #059669;
-}
-
-.mockup-progress-track {
-  width: 100%;
-  height: 7px;
-  background: #e2e8f0;
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.mockup-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #0284c7 0%, #10b981 100%);
-  border-radius: 999px;
-}
-
-.saas-mockup-ai-summary {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: #334155;
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
-  padding: 8px 10px;
-  border-radius: 8px;
-}
-
-.ai-summary-icon {
-  color: #7c3aed;
+.caption-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
 .saas-mockup-footer-metric {
@@ -1131,15 +1075,15 @@ input, textarea, select, button {
   justify-content: center;
   gap: 8px;
   padding: 10px 14px;
-  background: #ecfdf5;
-  border-top: 1px solid #a7f3d0;
+  background: #f0f7ff;
+  border-top: 1px solid #bae6fd;
   font-size: 12.5px;
-  color: #065f46;
+  color: #0369a1;
   text-align: center;
 }
 
 .metric-award-icon {
-  color: #059669;
+  color: #2b4c73;
   flex-shrink: 0;
 }
 
@@ -1201,9 +1145,9 @@ input, textarea, select, button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: #f0f7ff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
   border-radius: 999px;
   padding: 3px 9px;
   font-size: 11px;
@@ -1358,8 +1302,8 @@ input, textarea, select, button {
 .saas-new-teacher-box.compact {
   margin-top: 1px;
   padding: 8px 12px;
-  background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%);
-  border: 1.5px solid #86efac;
+  background: linear-gradient(135deg, #f8fafc 0%, #f0f7ff 100%);
+  border: 1.5px solid #cbd5e1;
   border-radius: 11px;
   display: flex;
   align-items: center;
@@ -1376,7 +1320,7 @@ input, textarea, select, button {
 
 .saas-new-teacher-text.compact strong {
   font-size: 12px;
-  color: #065f46;
+  color: #1e293b;
   font-weight: 800;
 }
 
@@ -1390,7 +1334,7 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  background: #059669;
+  background: linear-gradient(135deg, #2b4c73 0%, #3d6391 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -1400,12 +1344,13 @@ input, textarea, select, button {
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: background-color 0.15s, transform 0.15s;
+  transition: background-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
 .btn-saas-open-trial.compact:hover {
-  background: #047857;
+  background: linear-gradient(135deg, #345a87 0%, #4671a3 100%);
   transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(43, 76, 115, 0.25);
 }
 
 .auth-contact-admin-footer.compact {
@@ -1535,8 +1480,9 @@ input, textarea, select, button {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  background: #f0fdf4;
-  border: 1px solid #86efac;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-right: 3.5px solid #2b4c73;
   border-radius: 10px;
   padding: 8px 11px;
 }
@@ -1551,7 +1497,7 @@ input, textarea, select, button {
   display: block;
   font-size: 12px;
   font-weight: 800;
-  color: #14532d;
+  color: #1e293b;
   margin-bottom: 1px;
 }
 
@@ -1559,7 +1505,7 @@ input, textarea, select, button {
   margin: 0;
   font-size: 11.5px;
   line-height: 1.4;
-  color: #166534;
+  color: #475569;
   font-style: italic;
 }
 
@@ -1863,10 +1809,28 @@ input, textarea, select, button {
     font-size: 10px;
     padding: 2px 6px;
   }
-  .saas-mockup-body {
-    grid-template-columns: 1fr;
-    padding: 10px;
-    gap: 10px;
+  .preview-tabs-bar {
+    gap: 6px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .preview-tab-btn {
+    font-size: 11.5px;
+    padding: 6px 11px;
+    min-height: 38px;
+    gap: 5px;
+  }
+  .preview-image-container {
+    padding: 8px;
+  }
+  .preview-real-screenshot {
+    max-height: 380px;
+    border-radius: 8px;
+  }
+  .preview-screenshot-caption {
+    font-size: 11.5px;
+    padding: 4px 6px;
   }
   .auth-features-grid.saas-features-4col {
     grid-template-columns: 1fr;
@@ -1888,6 +1852,53 @@ input, textarea, select, button {
   }
   .btn-link-contact-admin.compact {
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .saas-landing-navbar {
+    padding: 8px 10px;
+  }
+  .auth-title.saas-brand-name {
+    font-size: 18px;
+  }
+  .auth-badge-pill.saas-nav-badge {
+    font-size: 10.5px;
+    padding: 2px 7px;
+  }
+  .saas-navbar-tagline {
+    font-size: 11.5px;
+  }
+  .auth-login-panel.saas-login-panel.compact-login-panel {
+    padding: 14px 12px 12px 12px;
+  }
+  .form-field.compact input {
+    font-size: 16px !important;
+    padding: 9px 11px;
+  }
+  .btn-auth-submit.compact {
+    min-height: 44px;
+    font-size: 14.5px;
+  }
+  .btn-saas-open-trial.compact {
+    min-height: 40px;
+    font-size: 12px;
+  }
+  .btn-saas-primary-trial,
+  .btn-auth-watch-video {
+    min-height: 44px;
+    font-size: 13.5px;
+  }
+  .preview-real-screenshot {
+    max-height: 300px;
+  }
+  .preview-tabs-bar {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+  .preview-tab-btn {
+    font-size: 11px;
+    padding: 5px 9px;
   }
 }
 

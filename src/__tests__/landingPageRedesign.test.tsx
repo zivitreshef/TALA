@@ -39,22 +39,26 @@ describe('Landing Page Redesign (v3 Pedagogical Workspace Spirit)', () => {
     expect(html).toContain('לדקות של עשייה פדגוגית ממוקדת');
   });
 
-  it('renders the live interactive product UI mockup with voice capture and team readiness preview', () => {
+  it('renders the live interactive product showcase with real screenshots tabs and mobile view', () => {
     const html = renderLandingPage();
 
-    expect(html).toContain('תצוגה חיה מסביבת העבודה • יומן פדגוגי ודופק כיתתי');
-    expect(html).toContain('תיעוד תצפית קולי מהיר מהכיתה');
-    expect(html).toContain('שויך אוטומטית ליעד: תקשורת ויוזמה חברתית');
-    expect(html).toContain('דוח מוכנות לישיבת צוות רב-מקצועית');
-    expect(html).toContain('85% הושגו');
-    expect(html).toContain('חיסכון של כ-4 שעות עבודה שבועיות');
+    expect(html).toContain('טעימה אמיתית מהשטח • ממשק המערכת בפעולה');
+    expect(html).toContain('צילומי מסך חיים');
+    expect(html).toContain('יומן ומעקב שוטף');
+    expect(html).toContain('תוכנית שנתית ותל״א');
+    expect(html).toContain('מוכנות לישיבות צוות');
+    expect(html).toContain('סיכום שבועי במייל');
+    expect(html).toContain('מרחב מובייל בכיתה');
+    expect(html).toContain('tala-daily-tracker.jpg');
+    expect(html).toContain('חיסכון של כ-4 שעות שבועיות');
   });
 
   it('renders authentic WhatsApp teacher testimonials from the field with voice notes', () => {
     const html = renderLandingPage();
 
-    expect(html).toContain('קולות אמיתיים מהשטח');
-    expect(html).toContain('הודעות וואטסאפ אותנטיות כפי שנשלחו מהשטח ללא עריכה');
+    expect(html).toContain('קבוצת משתמשות TALA • מורות וגננות מהשטח');
+    expect(html).toContain('משובים אותנטיים מצוותי חינוך');
+    expect(html).toContain('הודעות וואטסאפ כפי שנשלחו מהשטח');
     expect(html).toContain('0:41');
     expect(html).toContain('0:30');
     expect(html).toContain('דוח מצב - וואו!!!');

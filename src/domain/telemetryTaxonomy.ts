@@ -5,7 +5,7 @@
  * onboarding, friction, and technical health.
  */
 
-export const CURRENT_APP_VERSION = '3.0.25';
+export const CURRENT_APP_VERSION = '3.0.26';
 
 export const TELEMETRY_CATEGORIES = Object.freeze({
   ENGAGEMENT: 'engagement',
