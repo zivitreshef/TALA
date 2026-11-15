@@ -17,6 +17,7 @@ import { buildPedagogicalReminderEmailHtml, sendPedagogicalReminderEmailInBackgr
 import { openHtmlPrintWindow } from '../../export/wordAndPrintBuilders';
 import { usageTelemetryService } from '../../services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from '../../domain/telemetryTaxonomy';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import './TeamMeetingReportModal.css';
 
 export interface TeamMeetingReportModalProps {
@@ -34,11 +35,16 @@ export const TeamMeetingReportModal: React.FC<TeamMeetingReportModalProps> = ({
   userPreferences,
   currentUser
 }) => {
+  const { shouldRender, isClosing } = useModalAnimation({
+    isOpen,
+    onClose
+  });
+
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [copied, setCopied] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  if (!isOpen) return null;
+  if (!shouldRender) return null;
 
   const summaryData = getPedagogicalAccomplishmentsSummary(students, 7);
   const rawGaps = getObservationGaps(students, 21);
@@ -189,7 +195,7 @@ export const TeamMeetingReportModal: React.FC<TeamMeetingReportModalProps> = ({
 
   return (
     <div
-      className="team-report-backdrop"
+      className={`team-report-backdrop ${isClosing ? 'is-closing' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="team-report-title"
@@ -197,7 +203,7 @@ export const TeamMeetingReportModal: React.FC<TeamMeetingReportModalProps> = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="team-report-card" dir="rtl">
+      <div className={`team-report-card ${isClosing ? 'is-closing' : ''}`} dir="rtl">
         {/* Header */}
         <div className="team-report-header">
           <div className="team-report-title-group">

@@ -280,7 +280,7 @@ export function LogoutUnsavedModal({
   onDiscardAndLogout,
   onSaveAndLogout
 }: LogoutUnsavedModalProps): React.JSX.Element | null {
-  if (!isOpen) return null;
+  if (!isOpen && !isClosing) return null;
 
   return (
     <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose} dir="rtl">

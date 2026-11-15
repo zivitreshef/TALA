@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Mic,
   Edit3,
@@ -8,6 +8,7 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
+import { useModalAnimation } from '../../hooks/useModalAnimation';
 import VoiceObservationRecorder from '../voice/VoiceObservationRecorder';
 import { captureObservation, getActiveGoals } from '../../domain/observationCapture';
 import { useCaptureTelemetry } from '../../hooks/useCaptureTelemetry';
@@ -46,10 +47,6 @@ export const QuickCaptureModal: React.FC<QuickCaptureModalProps> = ({
     () => obsMode
   );
 
-  if (!isOpen || !student) {
-    return null;
-  }
-
   const handleClose = () => {
     if (isAnalyzing) return;
     setNoteText('');
@@ -57,6 +54,20 @@ export const QuickCaptureModal: React.FC<QuickCaptureModalProps> = ({
     setFeedback(null);
     onClose();
   };
+
+  const { shouldRender, isClosing } = useModalAnimation({
+    isOpen: Boolean(isOpen && student),
+    onClose: handleClose
+  });
+
+  const [activeStudent, setActiveStudent] = useState(student);
+  useEffect(() => {
+    if (student) setActiveStudent(student);
+  }, [student]);
+
+  if (!shouldRender || !activeStudent) {
+    return null;
+  }
 
   const handleSave = () => {
     const trimmed = noteText.trim();
@@ -116,7 +127,7 @@ export const QuickCaptureModal: React.FC<QuickCaptureModalProps> = ({
 
   return (
     <div
-      className="quick-capture-backdrop"
+      className={`quick-capture-backdrop ${isClosing ? 'is-closing' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="quick-capture-title"
@@ -124,7 +135,7 @@ export const QuickCaptureModal: React.FC<QuickCaptureModalProps> = ({
         if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div className="quick-capture-card" dir="rtl">
+      <div className={`quick-capture-card ${isClosing ? 'is-closing' : ''}`} dir="rtl">
         {/* Header */}
         <div className="quick-capture-header">
           <div className="quick-capture-title-group">
@@ -132,7 +143,7 @@ export const QuickCaptureModal: React.FC<QuickCaptureModalProps> = ({
               תיעוד מהיר
             </h3>
             <span className="quick-capture-student-name">
-              עבור {student.name || 'תלמיד/ה'}
+              עבור {activeStudent.name || 'תלמיד/ה'}
             </span>
           </div>
           <button

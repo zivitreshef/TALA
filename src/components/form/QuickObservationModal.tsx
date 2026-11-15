@@ -25,6 +25,7 @@ export interface AddObservationPayload {
 export interface QuickObservationModalProps {
   goalRow?: GoalRowItem | null;
   isOpen?: boolean;
+  isClosing?: boolean;
   authorName?: string;
   onAddObservation?: (payload: AddObservationPayload) => void;
   onDeleteObservation?: (obsId: string) => void;
@@ -34,18 +35,21 @@ export interface QuickObservationModalProps {
 export default function QuickObservationModal({
   goalRow,
   isOpen = true,
+  isClosing: propIsClosing,
   authorName = '',
   onAddObservation,
   onDeleteObservation,
   onClose
 }: QuickObservationModalProps): React.JSX.Element | null {
-  const { shouldRender, isClosing } = useModalAnimation({ isOpen, onClose });
+  const anim = useModalAnimation({ isOpen, onClose });
+  const effectiveClosing = propIsClosing ?? anim.isClosing;
+  const effectiveShouldRender = propIsClosing !== undefined ? true : anim.shouldRender;
   const [supportLevel, setSupportLevel] = useState<string>('תיווך חלקי');
   const [note, setNote] = useState<string>('');
   const [targetEvalField, setTargetEvalField] = useState<string>('midYearEvaluation');
   const [savedToast, setSavedToast] = useState<boolean>(false);
 
-  if (!shouldRender) return null;
+  if (!effectiveShouldRender) return null;
 
   const observations: ObservationEntry[] = Array.isArray(goalRow?.observations) ? goalRow.observations : [];
 
@@ -63,9 +67,9 @@ export default function QuickObservationModal({
   };
 
   return (
-    <div className={`modal-backdrop ${isClosing ? 'is-closing' : ''}`} onClick={onClose}>
+    <div className={`modal-backdrop ${effectiveClosing ? 'is-closing' : ''}`} onClick={onClose}>
       <div
-        className={`modal-card email-report-modal ${isClosing ? 'is-closing' : ''}`}
+        className={`modal-card email-report-modal ${effectiveClosing ? 'is-closing' : ''}`}
         dir="rtl"
         style={{ maxWidth: '520px', width: '95%' }}
         onClick={(e) => e.stopPropagation()}

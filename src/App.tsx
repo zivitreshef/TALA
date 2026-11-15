@@ -701,6 +701,10 @@ export default function App() {
     isOpen: showIntroVideoModal,
     onClose: () => setShowIntroVideoModal(false)
   });
+  const logoutUnsavedModalAnim = useModalAnimation({
+    isOpen: showLogoutUnsavedModal,
+    onClose: () => setShowLogoutUnsavedModal(false)
+  });
 
   // Guided Onboarding Journey State (Milestone 1)
   const [onboardingState, setOnboardingState] = useState(() => {
@@ -4750,13 +4754,16 @@ export default function App() {
       )}
 
       {/* Unsaved Changes on Logout Confirmation Popup Modal */}
-      <LogoutUnsavedModal
-        isOpen={showLogoutUnsavedModal}
-        draftStudentName={unsavedDraftState.draftData?.name}
-        onClose={() => setShowLogoutUnsavedModal(false)}
-        onDiscardAndLogout={performLogout}
-        onSaveAndLogout={handleSaveAndLogout}
-      />
+      {logoutUnsavedModalAnim.shouldRender && (
+        <LogoutUnsavedModal
+          isOpen={!logoutUnsavedModalAnim.isClosing}
+          isClosing={logoutUnsavedModalAnim.isClosing}
+          draftStudentName={unsavedDraftState.draftData?.name}
+          onClose={() => setShowLogoutUnsavedModal(false)}
+          onDiscardAndLogout={performLogout}
+          onSaveAndLogout={handleSaveAndLogout}
+        />
+      )}
       {/* Complete Guided Onboarding Workspace & Navigator */}
       {SHOW_NEW_USER_JOURNEY && currentUser && (
         <>
