@@ -127,7 +127,7 @@ export function BaselineFrequencyBarChart({
       </div>
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        style={{ width: '100%', height: 'auto', display: 'block' }}
+        style={{ width: '100%', height: 'auto', display: 'block', direction: 'ltr' }}
         role="img"
         aria-label={title}
       >
@@ -285,10 +285,10 @@ export function FunctionDistributionHorizontalBarChart({
   const keys: Array<keyof typeof FUNCTION_LABELS> = ['escape', 'attention', 'tangible', 'sensory'];
   const chartTitle = title || `התפלגות התפקוד המשוער של ההתנהגות (מתוך ${totalEvents} אירועים)`;
 
-  const width = 650;
-  const height = 300;
-  const padding = { top: 50, right: 180, bottom: 50, left: 40 };
-  const chartW = width - padding.right - padding.left;
+  const width = 680;
+  const height = 290;
+  const padding = { top: 40, right: 45, bottom: 55, left: 195 };
+  const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
   const rowHeight = chartH / keys.length;
 
@@ -308,10 +308,23 @@ export function FunctionDistributionHorizontalBarChart({
       </div>
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        style={{ width: '100%', height: 'auto', display: 'block' }}
+        style={{ width: '100%', height: 'auto', display: 'block', direction: 'ltr' }}
         role="img"
         aria-label={chartTitle}
       >
+        {/* Y Axis Vertical Label on the far left */}
+        <text
+          transform={`rotate(-90 16 ${padding.top + chartH / 2})`}
+          x={16}
+          y={padding.top + chartH / 2}
+          fill="#94a3b8"
+          fontSize="11"
+          fontWeight="600"
+          textAnchor="middle"
+        >
+          תפקוד ההתנהגות
+        </text>
+
         {/* Vertical Grid Lines (0% to 100%) */}
         {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((pct) => {
           const x = padding.left + (pct / 100) * chartW;
@@ -338,6 +351,16 @@ export function FunctionDistributionHorizontalBarChart({
           );
         })}
 
+        {/* Y-Axis Line */}
+        <line
+          x1={padding.left}
+          y1={padding.top}
+          x2={padding.left}
+          y2={padding.top + chartH}
+          stroke="#475569"
+          strokeWidth="1.5"
+        />
+
         {/* Horizontal Bars */}
         {keys.map((k, idx) => {
           const pct = Math.min(100, Math.max(0, safeDist[k] ?? 0));
@@ -348,12 +371,12 @@ export function FunctionDistributionHorizontalBarChart({
 
           return (
             <g key={k}>
-              {/* Category label on the right */}
+              {/* Category label on the left of Y-axis line */}
               <text
-                x={width - 15}
+                x={padding.left - 12}
                 y={y + barH / 2 + 4}
                 fill="#e2e8f0"
-                fontSize="12"
+                fontSize="12.5"
                 fontWeight="600"
                 textAnchor="end"
               >
@@ -408,16 +431,6 @@ export function FunctionDistributionHorizontalBarChart({
           textAnchor="middle"
         >
           אחוז מכלל האירועים (%)
-        </text>
-        <text
-          x={width - 25}
-          y={padding.top - 14}
-          fill="#94a3b8"
-          fontSize="11"
-          fontWeight="600"
-          textAnchor="end"
-        >
-          תפקוד ההתנהגות
         </text>
       </svg>
     </div>
@@ -549,7 +562,7 @@ export function ProgressMonitoringDualLineChart({
 
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        style={{ width: '100%', height: 'auto', display: 'block' }}
+        style={{ width: '100%', height: 'auto', display: 'block', direction: 'ltr' }}
         role="img"
         aria-label={title}
       >

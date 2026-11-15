@@ -95,7 +95,7 @@ export function generateBaselineBarChartSvg(
       <div style="text-align: center; margin-bottom: 6px;">
         <span style="font-weight: 700; font-size: 13px; color: ${textColor}; font-family: Arial, sans-serif;">${title}</span>
       </div>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width: 100%; max-width: ${width}px; height: auto; display: block; margin: 0 auto;">
+      <svg dir="ltr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width: 100%; max-width: ${width}px; height: auto; display: block; margin: 0 auto; direction: ltr;">
         ${gridLines}
         ${bars}
         <!-- Average line -->
@@ -136,9 +136,9 @@ export function generateFunctionDistributionSvg(
     'sensory'
   ];
 
-  const width = options.width || 640;
+  const width = options.width || 660;
   const height = options.height || 260;
-  const padding = { top: 40, right: 170, bottom: 45, left: 35 };
+  const padding = { top: 40, right: 40, bottom: 45, left: 190 };
   const chartW = width - padding.right - padding.left;
   const chartH = height - padding.top - padding.bottom;
   const rowHeight = chartH / keys.length;
@@ -173,8 +173,8 @@ export function generateFunctionDistributionSvg(
 
       return `
         <g>
-          <!-- Function Label on the Right -->
-          <text x="${width - 10}" y="${y + barH / 2 + 4}" fill="${textColor}" font-size="11.5" font-weight="600" text-anchor="end" font-family="Arial, sans-serif">${label}</text>
+          <!-- Category label on the left of Y-axis line -->
+          <text x="${padding.left - 12}" y="${y + barH / 2 + 4}" fill="${textColor}" font-size="11.5" font-weight="600" text-anchor="end" font-family="Arial, sans-serif">${label}</text>
           <!-- Track -->
           <rect x="${padding.left}" y="${y}" width="${chartW}" height="${barH}" rx="4" ry="4" fill="${trackFill}" />
           <!-- Active bar -->
@@ -191,11 +191,14 @@ export function generateFunctionDistributionSvg(
       <div style="text-align: center; margin-bottom: 6px;">
         <span style="font-weight: 700; font-size: 13px; color: ${textColor}; font-family: Arial, sans-serif;">${title}</span>
       </div>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width: 100%; max-width: ${width}px; height: auto; display: block; margin: 0 auto;">
+      <svg dir="ltr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width: 100%; max-width: ${width}px; height: auto; display: block; margin: 0 auto; direction: ltr;">
+        <!-- Y Axis Vertical Title -->
+        <text transform="rotate(-90 14 ${padding.top + chartH / 2})" x="14" y="${padding.top + chartH / 2}" fill="${subtextColor}" font-size="11" font-weight="600" text-anchor="middle" font-family="Arial, sans-serif">תפקוד ההתנהגות</text>
         ${gridLines}
+        <!-- Y Axis Line -->
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${padding.top + chartH}" stroke="#cbd5e1" stroke-width="1.5" />
         ${bars}
         <text x="${padding.left + chartW / 2}" y="${height - 8}" fill="${subtextColor}" font-size="11" font-weight="600" text-anchor="middle" font-family="Arial, sans-serif">אחוז מכלל האירועים (%)</text>
-        <text x="${width - 15}" y="${padding.top - 12}" fill="${subtextColor}" font-size="11" font-weight="600" text-anchor="end" font-family="Arial, sans-serif">תפקוד ההתנהגות</text>
       </svg>
     </div>
   `.trim();
@@ -362,7 +365,7 @@ export function generateProgressMonitoringDualLineSvg(
           </span>
         </div>
       </div>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width: 100%; max-width: ${width}px; height: auto; display: block; margin: 0 auto;">
+      <svg dir="ltr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width: 100%; max-width: ${width}px; height: auto; display: block; margin: 0 auto; direction: ltr;">
         ${gridLines}
         ${dividerHtml}
         <!-- Paths -->
