@@ -242,6 +242,31 @@ describe('TypeScript Migration Phase 3 Batch 5 Test Suite', () => {
       expect(html).toContain('שמור את כל ההגדרות');
     });
 
+    it('renders behavior analyst title and hides private goal bank tab for behavior_analyst', () => {
+      const analystUser = {
+        name: 'מיכל דליות',
+        email: 'mreshef@bmc.com',
+        title: 'מנתחת התנהגות',
+        group: 'מתי"א מעלות',
+        role: 'behavior_analyst'
+      };
+      const html = renderToStaticMarkup(
+        <TeacherPreferencesModal
+          isOpen={true}
+          onClose={() => {}}
+          currentUser={analystUser}
+          userPreferences={DEFAULT_USER_PREFERENCES}
+          onSavePreferences={() => {}}
+        />
+      );
+      expect(html).toContain('אזור אישי והגדרות מנתחת התנהגות – מיכל דליות');
+      expect(html).not.toContain('אזור אישי והגדרות מורה');
+      expect(html).toContain('ברירות מחדל לדוחות');
+      expect(html).not.toContain('בנק מטרות אישי');
+      expect(html).toContain('התראות ותקשורת');
+      expect(html).toContain('פרופיל מקצועי וחתימה');
+    });
+
     it('returns null when closed', () => {
       const props: TeacherPreferencesModalProps = {
         isOpen: false,

@@ -127,6 +127,7 @@ export interface TeacherPreferencesCurrentUser {
   email?: string;
   title?: string;
   group?: string;
+  role?: string;
   notifyOnSharedReport?: boolean;
   isTrialUser?: boolean;
   [key: string]: unknown;
@@ -173,6 +174,12 @@ export default function TeacherPreferencesModal({
     }
     return 0;
   });
+
+  useEffect(() => {
+    if (currentUser?.role === 'behavior_analyst' && activeTab === 1) {
+      setActiveTab(0);
+    }
+  }, [currentUser?.role, activeTab]);
 
   // Local draft state for preferences
   const [draftPrefs, setDraftPrefs] = useState<UserPreferences>(() =>
@@ -518,10 +525,12 @@ export default function TeacherPreferencesModal({
             <FileText size={22} style={{ color: '#ffffff' }} />
             <div>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
-                אזור אישי והגדרות מורה – {currentUser.name || currentUser.email}
+                {currentUser.role === 'behavior_analyst'
+                  ? `אזור אישי והגדרות מנתחת התנהגות – ${currentUser.name || currentUser.email}`
+                  : `אזור אישי והגדרות מורה – ${currentUser.name || currentUser.email}`}
               </h3>
               <div style={{ fontSize: '12px', color: '#eef3fb', marginTop: '2px' }}>
-                {currentUser.title || 'מורת שילוב / גננת'} • {currentUser.group || 'מתי"א מרכז'}
+                {currentUser.title || (currentUser.role === 'behavior_analyst' ? 'מנתחת התנהגות' : 'מורת שילוב / גננת')} • {currentUser.group || 'מתי"א מרכז'}
               </div>
             </div>
           </div>
@@ -570,28 +579,30 @@ export default function TeacherPreferencesModal({
             <span>ברירות מחדל לדוחות</span>
           </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab(1)}
-            data-testid="tab-private-goals"
-            style={{
-              padding: '12px 14px',
-              fontSize: '13.5px',
-              fontWeight: 700,
-              color: activeTab === 1 ? '#2b4c73' : '#64748b',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 1 ? '3px solid #3b6ea5' : '3px solid transparent',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <Bookmark size={16} />
-            <span>בנק מטרות אישי ({draftPrefs.privateGoals?.length || 0})</span>
-          </button>
+          {currentUser.role !== 'behavior_analyst' && (
+            <button
+              type="button"
+              onClick={() => setActiveTab(1)}
+              data-testid="tab-private-goals"
+              style={{
+                padding: '12px 14px',
+                fontSize: '13.5px',
+                fontWeight: 700,
+                color: activeTab === 1 ? '#2b4c73' : '#64748b',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === 1 ? '3px solid #3b6ea5' : '3px solid transparent',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Bookmark size={16} />
+              <span>בנק מטרות אישי ({draftPrefs.privateGoals?.length || 0})</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -873,7 +884,8 @@ export default function TeacherPreferencesModal({
           </div>
 
           {/* TAB 1: PRIVATE GOAL BANK */}
-          <div style={{ display: activeTab === 1 ? 'flex' : 'none', flexDirection: 'column', gap: '16px' }}>
+          {currentUser.role !== 'behavior_analyst' && (
+            <div style={{ display: activeTab === 1 ? 'flex' : 'none', flexDirection: 'column', gap: '16px' }}>
             <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '12px 14px' }}>
               <strong style={{ fontSize: '13.5px', color: '#1e3a8a' }}>🔒 בנק המטרות האישי והפרטי שלך:</strong>
               <p style={{ fontSize: '12.5px', color: '#334155', margin: '4px 0 0 0' }}>
@@ -1011,6 +1023,7 @@ export default function TeacherPreferencesModal({
               )}
             </div>
           </div>
+        )}
 
           {/* TAB 2: NOTIFICATIONS & COMMUNICATION */}
           <div style={{ display: activeTab === 2 ? 'flex' : 'none', flexDirection: 'column', gap: '16px' }}>

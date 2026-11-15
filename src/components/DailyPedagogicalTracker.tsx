@@ -418,6 +418,52 @@ export default function DailyPedagogicalTracker({
       const saved = localStorage.getItem(STORAGE_EVENTS_KEY);
       if (saved) return JSON.parse(saved);
     } catch {}
+
+    if (currentUser?.role === 'behavior_analyst') {
+      return [
+        {
+          id: 'ev_ba_1',
+          title: 'תצפית התנהגותית במליאה: איתי לוי',
+          date: todayStr,
+          startTime: '09:00',
+          endTime: '09:45',
+          type: 'תצפית שטח',
+          color: '#2563eb',
+          studentName: 'איתי לוי'
+        },
+        {
+          id: 'ev_ba_2',
+          title: 'תצפית מפגש בוקר וויסות: נועם שרון',
+          date: todayStr,
+          startTime: '10:00',
+          endTime: '10:45',
+          type: 'תצפית שטח',
+          color: '#059669',
+          studentName: 'נועם שרון'
+        },
+        {
+          id: 'ev_ba_3',
+          title: 'פגישת מעקב ודיוק פרוטוקול: דניאל מזרחי',
+          date: todayStr,
+          startTime: '11:30',
+          endTime: '12:15',
+          type: 'פגישת צוות',
+          color: '#8b5cf6',
+          studentName: 'דניאל מזרחי'
+        },
+        {
+          id: 'ev_ba_4',
+          title: 'הדרכת צוות שילוב וסייעות',
+          date: todayStr,
+          startTime: '13:00',
+          endTime: '13:45',
+          type: 'פגישת צוות',
+          color: '#d97706',
+          studentName: 'איתי לוי'
+        }
+      ];
+    }
+
     return [
       {
         id: 'ev_1',
