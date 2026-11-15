@@ -40,6 +40,15 @@ describe('Paid License Agreement Domain Rules', () => {
     };
     expect(mustUserAcceptPaidLicense(mainAdminUser)).toBe(false);
 
+    // 3b. Developer / primary admin email never blocked by paid license even in non-admin roles (e.g. behavior_analyst)
+    const devUser: AllowedUserRecord = {
+      ...baseTeacher,
+      email: 'moti_reshef@bmc.com',
+      role: 'behavior_analyst',
+      subscriptionType: 'annual_paid'
+    };
+    expect(mustUserAcceptPaidLicense(devUser)).toBe(false);
+
     // 4. Paid user who has not accepted license MUST accept it
     const paidUser: AllowedUserRecord = {
       ...baseTeacher,
