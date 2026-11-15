@@ -546,7 +546,10 @@ export function subscribeToTalaBackend({
                 console.warn('Could not seed initial students to Firestore:', e);
               }
             }
-            emit(querySnap.docs.map((d) => d.data()));
+            emit(querySnap.docs.map((d) => {
+              const data = d.data();
+              return { ...data, id: data?.id || d.id };
+            }));
           },
           listenError('tala_students', true)
         )
@@ -554,28 +557,37 @@ export function subscribeToTalaBackend({
     } else {
       const owned = new Map<string, any>();
       const shared = new Map<string, any>();
-      let readyCount = 0;
-      const mark = (map: Map<string, any>, snap: any, first: { done?: boolean }) => {
-        map.clear();
-        snap.forEach((d: any) => map.set(d.id, d.data()));
-        if (first.done !== true) {
-          first.done = true;
-          readyCount += 1;
-        }
-        if (readyCount === 2) emit([...new Map([...shared, ...owned]).values()]);
+      const emitCombined = () => {
+        emit([...new Map([...shared, ...owned]).values()]);
       };
-      const ownedFirst: { done?: boolean } = {};
-      const sharedFirst: { done?: boolean } = {};
       unsubscribers.push(
         onSnapshot(
           query(studentsColRef, where('ownerEmail', '==', me)),
-          (snap) => mark(owned, snap, ownedFirst),
+          (snap) => {
+            owned.clear();
+            snap.forEach((d: any) => {
+              const data = d.data();
+              if (data) owned.set(d.id, { ...data, id: data.id || d.id });
+            });
+            emitCombined();
+          },
           listenError('tala_students (owned)', true)
         ),
         onSnapshot(
           query(studentsColRef, where('sharedWith', 'array-contains', me)),
-          (snap) => mark(shared, snap, sharedFirst),
-          listenError('tala_students (shared)', true)
+          (snap) => {
+            shared.clear();
+            snap.forEach((d: any) => {
+              const data = d.data();
+              if (data) shared.set(d.id, { ...data, id: data.id || d.id });
+            });
+            emitCombined();
+          },
+          (err) => {
+            console.warn('Firestore tala_students (shared) listener error (non-fatal):', err);
+            // Non-fatal: still keep owned students visible even if shared query fails
+            emitCombined();
+          }
         )
       );
     }
