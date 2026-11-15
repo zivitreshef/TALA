@@ -101,4 +101,46 @@ describe('Paid License Agreement Domain Rules', () => {
     expect(upgraded.paidLicenseVersion).toBeNull();
     expect(mustUserAcceptPaidLicense(upgraded)).toBe(true);
   });
+
+  it('ensures cloud function SELF_FIELDS preserves paid license fields for non-admin self-updates', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const functionsIndexPath = path.resolve(__dirname, '../../functions/index.js');
+    const fileContent = fs.readFileSync(functionsIndexPath, 'utf-8');
+
+    // Extract SELF_FIELDS declaration
+    const match = fileContent.match(/const\s+SELF_FIELDS\s*=\s*(\[[^\]]+\]);/);
+    expect(match).not.toBeNull();
+
+    const rawArrayString = match![1];
+    expect(rawArrayString).toContain('"paidLicenseAccepted"');
+    expect(rawArrayString).toContain('"paidLicenseAcceptedAt"');
+    expect(rawArrayString).toContain('"paidLicenseVersion"');
+
+    // Simulate Cloud Function non-admin self-update sanitization
+    const selfFields: string[] = JSON.parse(rawArrayString);
+    const pick = (o: Record<string, any>, keys: string[]) => {
+      const r: Record<string, any> = {};
+      for (const k of keys) {
+        if (o && k in o) r[k] = o[k];
+      }
+      return r;
+    };
+
+    const teacherUpdate = {
+      email: 'teacher@school.org',
+      role: 'admin', // Malicious elevation attempt: must be stripped
+      active: true, // System flag: must be stripped
+      paidLicenseAccepted: true,
+      paidLicenseAcceptedAt: '2026-11-15T20:00:00.000Z',
+      paidLicenseVersion: '1.0'
+    };
+
+    const sanitizedPatch = pick(teacherUpdate, selfFields);
+    expect(sanitizedPatch.paidLicenseAccepted).toBe(true);
+    expect(sanitizedPatch.paidLicenseAcceptedAt).toBe('2026-11-15T20:00:00.000Z');
+    expect(sanitizedPatch.paidLicenseVersion).toBe('1.0');
+    expect(sanitizedPatch.role).toBeUndefined();
+    expect(sanitizedPatch.active).toBeUndefined();
+  });
 });
