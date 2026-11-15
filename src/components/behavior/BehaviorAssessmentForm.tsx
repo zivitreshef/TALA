@@ -34,6 +34,17 @@ import {
 } from '../../services/behaviorAiService';
 import BehaviorStudentDetailsCard, { type BehaviorStudentDetailsData } from './BehaviorStudentDetailsCard';
 import type { StaffMergePayload } from '../form/StaffVoiceControl';
+import ParentVoiceControl from '../form/ParentVoiceControl';
+import PedagogicalFeed from '../form/PedagogicalFeed';
+import DiagnosticIntakeModal from '../form/DiagnosticIntakeModal';
+import {
+  addSnippet,
+  removeSnippet,
+  updateSnippet,
+  createParentVoiceSnippet
+} from '../../domain/pedagogicalFeed';
+import { BaselineFrequencyBarChart, FunctionDistributionHorizontalBarChart } from './BehaviorCharts';
+import type { PedagogicalSnippet } from '../../domain/types';
 import './BehaviorAssessmentForm.css';
 
 export interface BehaviorAssessmentFormProps {
@@ -114,6 +125,43 @@ export default function BehaviorAssessmentForm({
 
   const isReportLocked = Boolean(report.isLocked);
 
+  // Pedagogical Feed & Diagnostic Intake State
+  const [activeSnippets, setActiveSnippets] = useState<PedagogicalSnippet[]>(
+    () => student.pedagogicalSnippets || []
+  );
+  const [isPedagogicalFeedOpen, setIsPedagogicalFeedOpen] = useState<boolean>(true);
+  const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState<boolean>(false);
+
+  const handleAddSnippet = (snippet: PedagogicalSnippet) => {
+    setActiveSnippets((prev) => addSnippet(prev, snippet));
+    setIsDirty(true);
+  };
+
+  const handleUpdateSnippet = (snippetId: string, updatedContent: string) => {
+    setActiveSnippets((prev) => updateSnippet(prev, snippetId, updatedContent));
+    setIsDirty(true);
+  };
+
+  const handleRemoveSnippet = (snippetId: string) => {
+    setActiveSnippets((prev) => removeSnippet(prev, snippetId));
+    setIsDirty(true);
+  };
+
+  const handleMergeParentVoice = (mergedText: string) => {
+    setReport((prev) => ({
+      ...prev,
+      backgroundInfo: (prev.backgroundInfo ? prev.backgroundInfo + '\n\n' : '') + mergedText,
+      updatedAt: new Date().toISOString()
+    }));
+    const parentSnippet = createParentVoiceSnippet(
+      mergedText,
+      currentUser?.name || 'הורי התלמיד',
+      new Date().toISOString()
+    );
+    setActiveSnippets((prev) => addSnippet(prev, parentSnippet));
+    setIsDirty(true);
+  };
+
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
 
@@ -178,7 +226,12 @@ export default function BehaviorAssessmentForm({
     if (!aiPromptNotes.trim()) return;
     setIsAiGenerating(true);
     try {
-      const draft = await generateBehaviorAssessmentDraft(aiPromptNotes, student);
+      const studentWithSnippets: StudentProfile = {
+        ...student,
+        ...studentDetails,
+        pedagogicalSnippets: activeSnippets
+      };
+      const draft = await generateBehaviorAssessmentDraft(aiPromptNotes, studentWithSnippets);
       if (draft) {
         setReport((prev) => ({
           ...prev,
@@ -347,6 +400,7 @@ export default function BehaviorAssessmentForm({
     const updatedStudent: StudentProfile = {
       ...student,
       ...studentDetails,
+      pedagogicalSnippets: activeSnippets,
       behaviorAssessment: report,
       updatedAt: new Date().toISOString()
     };
@@ -547,6 +601,88 @@ export default function BehaviorAssessmentForm({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Pedagogical Feed, Voice Capture & Diagnostic Documents Section */}
+      <section className="behavior-card" style={{ marginBottom: '1.25rem' }}>
+        <div
+          className="behavior-card-header"
+          onClick={() => setIsPedagogicalFeedOpen((prev) => !prev)}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          <div className="behavior-card-title-wrap">
+            <span className="behavior-section-badge" style={{ background: '#0d9488', color: '#ffffff' }}>
+              <Sparkles size={14} />
+            </span>
+            <h2 className="behavior-card-title">ציר תובנות פדגוגי ומסמכי רקע</h2>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '2px 9px', borderRadius: '999px' }}>
+              {activeSnippets.length} תובנות ומסמכים
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+            <ParentVoiceControl
+              student={student}
+              currentUser={currentUser}
+              disabled={isReportLocked}
+              mode="behavior"
+              onMerge={handleMergeParentVoice}
+            />
+            <button
+              type="button"
+              className="btn-collapse-toggle-32"
+              onClick={() => setIsPedagogicalFeedOpen((prev) => !prev)}
+              aria-label={isPedagogicalFeedOpen ? 'כיווץ ציר תובנות' : 'הרחבת ציר תובנות'}
+            >
+              {isPedagogicalFeedOpen ? <Minus size={16} /> : <Plus size={16} />}
+            </button>
+          </div>
+        </div>
+
+        {isPedagogicalFeedOpen && (
+          <div className="behavior-card-body">
+            <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#64748b' }}>
+              איסוף תצפיות יומיומיות, הקלטות קוליות, חוות דעת מקצועיות ומסמכי אבחון. כל המידע המצטבר מוזן ישירות כהקשר למנוע הבינה המלאכותית בעת ניסוח הדוח.
+            </p>
+            <PedagogicalFeed
+              snippets={activeSnippets}
+              onAddSnippet={handleAddSnippet}
+              onUpdateSnippet={handleUpdateSnippet}
+              onRemoveSnippet={handleRemoveSnippet}
+              onOpenUploadModal={() => setShowDiagnosticIntakeModal(true)}
+              onTriggerAiAnalysis={(overrideSnippets) => {
+                if (overrideSnippets) {
+                  setActiveSnippets(overrideSnippets);
+                }
+                setShowAiModal(true);
+              }}
+              isAnalyzing={isAiGenerating}
+              isLocked={isReportLocked}
+              currentUserName={currentUser?.name}
+            />
+          </div>
+        )}
+      </section>
+
+      {/* Diagnostic Intake Modal */}
+      {showDiagnosticIntakeModal && (
+        <DiagnosticIntakeModal
+          formData={{
+            id: student.id,
+            name: student.name,
+            gender: (student as any).gender || 'boy',
+            pedagogicalSnippets: activeSnippets
+          }}
+          isOpen={showDiagnosticIntakeModal}
+          onApplyIntake={(_updated, newSnippet) => {
+            if (newSnippet) {
+              setActiveSnippets((prev) => addSnippet(prev, newSnippet));
+              setIsDirty(true);
+            }
+            setShowDiagnosticIntakeModal(false);
+          }}
+          onClose={() => setShowDiagnosticIntakeModal(false)}
+          authorName={currentUser?.name}
+        />
       )}
 
       {/* Section 1: פרטי רקע והערכה */}
@@ -958,6 +1094,11 @@ export default function BehaviorAssessmentForm({
                 </div>
               </form>
             )}
+
+            {/* Visual Chart 1: Baseline Frequency Bar Chart */}
+            <div style={{ marginTop: '24px' }}>
+              <BaselineFrequencyBarChart data={report.baselineData} />
+            </div>
           </div>
         )}
       </section>
@@ -1013,6 +1154,18 @@ export default function BehaviorAssessmentForm({
                 <option value="sensory">ויסות או גירוי חושי</option>
                 <option value="other">אחר או משולב</option>
               </select>
+            </div>
+
+            {/* Visual Chart 2: Hypothesized Function Horizontal Bar Chart */}
+            <div style={{ marginTop: '16px', marginBottom: '1.25rem' }}>
+              <FunctionDistributionHorizontalBarChart
+                mainFunction={report.mainHypothesizedFunction}
+                totalEvents={
+                  report.baselineData.length > 0
+                    ? report.baselineData.reduce((acc, b) => acc + (Number(b.value) || 0), 0)
+                    : 38
+                }
+              />
             </div>
 
             <div className="behavior-field-group">

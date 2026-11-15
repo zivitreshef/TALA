@@ -432,6 +432,9 @@ export interface OngoingTrackingPoint {
   targetBehaviorOccurrences: number;
   replacementBehaviorUsed: boolean | number;
   reinforcementDelivered: boolean;
+  sessionOrPeriod?: string;
+  targetBehaviorCount?: number;
+  replacementBehaviorCount?: number;
   notes?: string;
 }
 

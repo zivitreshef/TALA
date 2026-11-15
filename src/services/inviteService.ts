@@ -29,7 +29,7 @@ export interface CreateInviteParams {
   studentId: string;
   childFirstName: string;
   gender?: string;
-  inviteType?: 'parent' | 'staff';
+  inviteType?: 'parent' | 'staff' | 'behavior_parent';
   recipientRole?: string;
   recipientName?: string;
   customQuestions?: string[];

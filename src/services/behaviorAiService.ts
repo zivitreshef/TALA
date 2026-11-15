@@ -2,6 +2,7 @@ import { callAiJson, StudentAiContext } from './aiJsonClient';
 import { callAiProxyEndpoint } from './aiProxyClient';
 import { maskPromptForAi } from '../goalBankData';
 import { BehaviorFunction, BehaviorMeasurementType, StudentProfile } from '../domain/types';
+import { aggregateSnippetsForAiPrompt } from '../domain/pedagogicalFeed';
 
 export type StudentBehaviorAiContext = StudentProfile | StudentAiContext | Record<string, unknown>;
 
@@ -36,6 +37,11 @@ export async function generateBehaviorAssessmentDraft(
   rawNotes: string,
   student: StudentBehaviorAiContext = {}
 ): Promise<GeneratedAssessmentDraft | null> {
+  const snippetsContext =
+    Array.isArray((student as any).pedagogicalSnippets) && (student as any).pedagogicalSnippets.length > 0
+      ? `\n\nמידע נוסף, תובנות שנאספו בציר, הקלטות קול וקול ההורה:\n"""\n${aggregateSnippetsForAiPrompt((student as any).pedagogicalSnippets)}\n"""`
+      : '';
+
   const prompt = `
 אתה מנתח התנהגות מוסמך ומומחה בניתוח התנהגות יישומי (ABA) במסגרות החינוך המיוחד בישראל.
 על סמך התיאור החופשי הבא של התנהגות התלמיד, נתח ובנה טיוטה מקיפה ומקצועית לדוח הערכת תפקוד התנהגותי.
@@ -63,7 +69,7 @@ export async function generateBehaviorAssessmentDraft(
 
 תיאור התצפיות והמקרה:
 """
-${rawNotes}
+${rawNotes || 'תצפיות והערכת תפקוד התנהגותי'}${snippetsContext}
 """
 `;
 

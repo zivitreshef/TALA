@@ -28,6 +28,7 @@ import {
 import { suggestInterventionStrategies } from '../../services/behaviorAiService';
 import BehaviorStudentDetailsCard, { type BehaviorStudentDetailsData } from './BehaviorStudentDetailsCard';
 import type { StaffMergePayload } from '../form/StaffVoiceControl';
+import { ProgressMonitoringDualLineChart } from './BehaviorCharts';
 import './BehaviorAssessmentForm.css';
 import './BehaviorInterventionPlanForm.css';
 
@@ -1095,6 +1096,14 @@ export default function BehaviorInterventionPlanForm({
                 </div>
               </form>
             )}
+
+            {/* Visual Chart 3: Progress Monitoring Baseline vs. Intervention Dual Line Chart */}
+            <div style={{ marginTop: '24px' }}>
+              <ProgressMonitoringDualLineChart
+                baselinePoints={student.behaviorAssessment?.baselineData || []}
+                ongoingPoints={plan.ongoingTracking}
+              />
+            </div>
           </div>
         )}
       </section>
