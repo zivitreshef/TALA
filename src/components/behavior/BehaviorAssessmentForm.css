@@ -1,0 +1,373 @@
+/* ==========================================================================
+   Behavior Assessment Form (הערכת תפקוד התנהגותי)
+   Enterprise Pedagogical Design System Compliance
+   ========================================================================== */
+
+.behavior-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  direction: rtl;
+  text-align: right;
+  font-family: inherit;
+  color: var(--text-main, #24344d);
+}
+
+/* Header & Action Bar */
+.behavior-form-header {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #d3dff0);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(36, 52, 77, 0.05);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.behavior-form-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.behavior-form-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--primary-light, #eaf3fc);
+  color: var(--primary, #4a88c7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.behavior-form-heading {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main, #24344d);
+}
+
+.behavior-form-subheading {
+  margin: 0.2rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted, #5c6f8c);
+}
+
+.behavior-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-behavior-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border: 1px solid transparent;
+}
+
+.btn-behavior-primary {
+  background: var(--primary, #4a88c7);
+  color: #ffffff;
+  border-color: var(--primary, #4a88c7);
+}
+
+.btn-behavior-primary:hover {
+  background: var(--primary-hover, #3872ad);
+}
+
+.btn-behavior-secondary {
+  background: var(--bg-warm-subtle, #eef3fb);
+  color: var(--text-main, #24344d);
+  border-color: var(--border, #d3dff0);
+}
+
+.btn-behavior-secondary:hover {
+  background: #e2ecf9;
+}
+
+/* Collapsible Card Architecture */
+.behavior-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #d3dff0);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(36, 52, 77, 0.04);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.behavior-card-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.1rem 1.25rem;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+  transition: background 0.15s ease;
+}
+
+.behavior-card-header:hover {
+  background: var(--bg-warm-subtle, #f8fafd);
+}
+
+.behavior-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.behavior-section-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary-light, #eaf3fc);
+  color: var(--primary, #4a88c7);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.behavior-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main, #24344d);
+}
+
+/* Mandatory 32x32px square collapse toggle button */
+.btn-collapse-toggle-32 {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--bg-warm-subtle, #eef3fb);
+  border: 1px solid var(--border, #d3dff0);
+  color: var(--text-muted, #5c6f8c);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.btn-collapse-toggle-32:hover {
+  background: var(--primary-light, #eaf3fc);
+  color: var(--primary, #4a88c7);
+  border-color: var(--primary, #4a88c7);
+}
+
+.behavior-card-body {
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-top: 1px solid var(--border-soft, #e4ecf7);
+  background: #ffffff;
+}
+
+/* Form Grid & Inputs */
+.behavior-form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.behavior-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.behavior-field-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-main, #24344d);
+}
+
+.behavior-input,
+.behavior-select,
+.behavior-textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border, #d3dff0);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-main, #24344d);
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.behavior-input:focus,
+.behavior-select:focus,
+.behavior-textarea:focus {
+  border-color: var(--primary, #4a88c7);
+  box-shadow: 0 0 0 3px rgba(74, 136, 199, 0.15);
+}
+
+.behavior-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Target Behaviors List */
+.behavior-targets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.behavior-target-row {
+  border: 1px solid var(--border-soft, #e4ecf7);
+  background: #fbfcfe;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.behavior-target-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.behavior-target-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main, #24344d);
+}
+
+.behavior-target-def {
+  font-size: 0.85rem;
+  color: var(--text-muted, #5c6f8c);
+}
+
+.behavior-target-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--primary-deep, #2b4c73);
+  margin-top: 0.2rem;
+}
+
+/* Baseline Table */
+.baseline-table-wrapper {
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid var(--border, #d3dff0);
+  border-radius: 8px;
+}
+
+.baseline-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: right;
+  font-size: 0.875rem;
+}
+
+.baseline-data-table th {
+  background: var(--bg-warm-subtle, #eef3fb);
+  padding: 0.75rem 0.85rem;
+  font-weight: 600;
+  color: var(--text-main, #24344d);
+  border-bottom: 1px solid var(--border, #d3dff0);
+}
+
+.baseline-data-table td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--border-soft, #e4ecf7);
+}
+
+.baseline-data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.baseline-data-table tr:hover td {
+  background: #fbfcfe;
+}
+
+/* Baseline Statistics Banner */
+.baseline-stats-banner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.85rem;
+  background: var(--primary-light, #eaf3fc);
+  border: 1px solid #c9dff7;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin: 1rem 0;
+}
+
+.baseline-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.baseline-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #5c6f8c);
+  font-weight: 600;
+}
+
+.baseline-stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary-deep, #2b4c73);
+}
+
+/* Empty State */
+.behavior-empty-box {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-muted, #5c6f8c);
+  font-size: 0.875rem;
+  background: #fbfcfe;
+  border: 1px dashed var(--border, #d3dff0);
+  border-radius: 8px;
+  margin: 0.5rem 0 1rem;
+}
+
+/* Print Stylesheet */
+@media print {
+  .behavior-form-actions,
+  .btn-collapse-toggle-32,
+  .btn-behavior-action {
+    display: none !important;
+  }
+
+  .behavior-card {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .behavior-card-body {
+    display: block !important;
+  }
+}
