@@ -10,7 +10,10 @@ import {
   Loader2,
   X,
   Lock,
-  Unlock
+  Unlock,
+  FileDown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   BehaviorAssessmentReport,
@@ -43,6 +46,12 @@ import {
   updateSnippet,
   createParentVoiceSnippet
 } from '../../domain/pedagogicalFeed';
+import {
+  buildBehaviorAssessmentWordDocumentHtml,
+  buildBehaviorAssessmentPrintHtml,
+  openHtmlPrintWindow,
+  getSafeReportFilename
+} from '../../export/wordAndPrintBuilders';
 import { BaselineFrequencyBarChart, FunctionDistributionHorizontalBarChart } from './BehaviorCharts';
 import type { PedagogicalSnippet } from '../../domain/types';
 import './BehaviorAssessmentForm.css';
@@ -413,8 +422,39 @@ export default function BehaviorAssessmentForm({
     }, 3500);
   };
 
+  const [hideDetailsOnExport, setHideDetailsOnExport] = useState(false);
+
   const handlePrint = () => {
-    window.print();
+    const exportStudent: StudentProfile = {
+      ...student,
+      ...studentDetails,
+      behaviorAssessment: report
+    };
+    const printHtml = buildBehaviorAssessmentPrintHtml(exportStudent, hideDetailsOnExport);
+    openHtmlPrintWindow(printHtml);
+  };
+
+  const handleDownloadWord = () => {
+    const exportStudent: StudentProfile = {
+      ...student,
+      ...studentDetails,
+      behaviorAssessment: report
+    };
+    const wordHtml = buildBehaviorAssessmentWordDocumentHtml(exportStudent, hideDetailsOnExport);
+    const blob = new Blob(['\ufeff', wordHtml], {
+      type: 'application/msword;charset=utf-8'
+    });
+    const filename = getSafeReportFilename(exportStudent, hideDetailsOnExport, 'doc', 'behavior_assessment');
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
   };
 
   return (
@@ -464,6 +504,15 @@ export default function BehaviorAssessmentForm({
           </button>
           <button
             type="button"
+            className={`btn-behavior-action ${hideDetailsOnExport ? 'btn-behavior-primary' : 'btn-behavior-secondary'}`}
+            onClick={() => setHideDetailsOnExport((prev) => !prev)}
+            title={hideDetailsOnExport ? 'פרטים מזהים מוסתרים בהדפסה ובייצוא' : 'הסתרת פרטים מזהים בהדפסה ובייצוא'}
+          >
+            {hideDetailsOnExport ? <EyeOff size={16} /> : <Eye size={16} />}
+            <span>{hideDetailsOnExport ? 'פרטים מוסתרים' : 'הסתרת פרטים'}</span>
+          </button>
+          <button
+            type="button"
             disabled={isReportLocked}
             className="btn-behavior-action btn-behavior-ai"
             onClick={() => setShowAiModal(true)}
@@ -471,6 +520,15 @@ export default function BehaviorAssessmentForm({
           >
             <Sparkles size={16} />
             <span>ניסוח בעזרת בינה מלאכותית</span>
+          </button>
+          <button
+            type="button"
+            className="btn-behavior-action btn-behavior-secondary"
+            onClick={handleDownloadWord}
+            title="הורדת דוח בפורמט וורד"
+          >
+            <FileDown size={16} />
+            <span>הורדת וורד</span>
           </button>
           <button
             type="button"

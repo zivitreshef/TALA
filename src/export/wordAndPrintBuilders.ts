@@ -12,6 +12,12 @@ import {
   buildDefaultTalaProfileRows
 } from '../goalBankData';
 import { formatDateWithPreferences } from '../domain/userPreferences';
+import {
+  generateBaselineBarChartSvg,
+  generateFunctionDistributionSvg,
+  generateProgressMonitoringDualLineSvg,
+  BEHAVIOR_FUNCTION_HEBREW_LABELS
+} from './behaviorChartsSvg';
 
 export function getDisplayReportDate(formData: any = {}) {
   if (!formData.date) return '__________';
@@ -144,6 +150,14 @@ export function getStatusReportTitle() {
   return 'דו"ח מצב חינוכי-תפקודי עדכני';
 }
 
+export function getBehaviorAssessmentTitle() {
+  return 'דוח הערכת תפקוד התנהגותי';
+}
+
+export function getBehaviorPlanTitle() {
+  return 'תוכנית התערבות התנהגותית';
+}
+
 export function getDisplayStudentName(formData: any = {}, hideDetails = false) {
   if (hideDetails) {
     return toHebrewAcronym(formData.name);
@@ -182,6 +196,10 @@ export function getSafeReportFilename(formData: any = {}, hideDetails = false, e
       ? 'דוח_מצב'
       : mode === 'eval'
       ? 'דוח_הערכת_מחצית_וסוף_שנה'
+      : mode === 'behavior_assessment'
+      ? 'דוח_הערכת_תפקוד_התנהגותי'
+      : mode === 'behavior_plan'
+      ? 'תוכנית_התערבות_התנהגותית'
       : 'תוכנית_עבודה';
   return `${prefix}_${displayName}_${yearStr}.${ext}`;
 }
@@ -1653,3 +1671,1037 @@ export function buildStatusReportPrintHtml(formData: any = {}, hideDetails = fal
     </html>
   `;
 }
+
+// ============================================================================
+// Behavior Assessment & Behavior Intervention Plan (Stage 4 Export Builders)
+// ============================================================================
+
+export function buildBehaviorAssessmentWordDocumentHtml(formData: any = {}, hideDetails = false) {
+  const displayName = getDisplayStudentName(formData, hideDetails);
+  const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
+  const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
+  const displayFramework = hideDetails
+    ? maskSensitiveValue(formData.educationalFramework)
+    : formData.educationalFramework || '__________';
+  const displayAddress = getDisplayMaskedField(formData.address, hideDetails);
+  const displayPhone = getDisplayMaskedField(formData.phone, hideDetails);
+  const docTitle = getBehaviorAssessmentTitle();
+
+  const report = formData.behaviorAssessment || formData || {};
+  const assessorName = report.assessorName || formData.teacherName || 'מנתחת התנהגות מוסמכת';
+  const assessmentDate = report.assessmentDate || formData.reportDate || formData.date || '__________';
+
+  const backgroundText = getRedactedText(report.backgroundInfo || formData.studentGeneralBackground || '—', formData, hideDetails);
+  const antecedentText = getRedactedText(report.antecedentAnalysis || '—', formData, hideDetails);
+  const hypothesisNarrative = getRedactedText(report.functionalHypothesisNarrative || '—', formData, hideDetails);
+  const recommendationsText = getRedactedText(report.initialRecommendations || '—', formData, hideDetails);
+
+  const targetBehaviors: any[] = Array.isArray(report.targetBehaviors) ? report.targetBehaviors : [];
+  const baselineData: any[] = Array.isArray(report.baselineData) ? report.baselineData : [];
+
+  const measurementLabels: Record<string, string> = {
+    frequency: 'תדירות',
+    duration: 'משך זמן',
+    interval: 'מרווחי זמן'
+  };
+
+  const targetsHtml = targetBehaviors.length > 0
+    ? targetBehaviors.map((t, idx) => `
+        <tr>
+          <td style="border:1px solid #cbd5e1; padding:6pt; font-weight:bold; color:#1e3a5f; text-align:center;">${idx + 1}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt; font-weight:bold; color:#1e293b;">${escapeHtml(t.name || '—')}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt;">${getRedactedText(t.operationalDefinition || '—', formData, hideDetails)}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt; text-align:center;">${measurementLabels[t.measurementType] || 'תדירות'}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt; text-align:center;">${t.baselineAverage ?? '—'}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt; text-align:center; font-weight:bold; color:#2563eb;">${t.targetGoal ?? '—'}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="6" style="border:1px solid #cbd5e1; padding:8pt; text-align:center; color:#64748b;">טרם הוגדרו התנהגויות יעד</td></tr>`;
+
+  // Baseline statistics
+  const baselineValues = baselineData.map((b) => Number(b.value) || 0);
+  const baselineSum = baselineValues.reduce((a, b) => a + b, 0);
+  const baselineAvg = baselineValues.length > 0 ? Math.round((baselineSum / baselineValues.length) * 10) / 10 : 0;
+  const baselineMin = baselineValues.length > 0 ? Math.min(...baselineValues) : 0;
+  const baselineMax = baselineValues.length > 0 ? Math.max(...baselineValues) : 0;
+
+  const baselineRowsHtml = baselineData.length > 0
+    ? baselineData.map((b, idx) => `
+        <tr>
+          <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center;">${idx + 1}</td>
+          <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center;">${escapeHtml(b.date || '—')}</td>
+          <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center;">${escapeHtml(b.sessionOrPeriod || '—')}</td>
+          <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center; font-weight:bold; color:#1e40af;">${b.value ?? 0}</td>
+          <td style="border:1px solid #cbd5e1; padding:5pt;">${getRedactedText(b.notes || '—', formData, hideDetails)}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="5" style="border:1px solid #cbd5e1; padding:8pt; text-align:center; color:#64748b;">טרם נרשמו נתוני תצפית לקו בסיס</td></tr>`;
+
+  const mainFunctionLabel = BEHAVIOR_FUNCTION_HEBREW_LABELS[report.mainHypothesizedFunction || 'escape'] || 'הימנעות ממטלה';
+
+  return `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:w="urn:schemas-microsoft-com:office:word"
+          xmlns="http://www.w3.org/TR/REC-html40"
+          lang="he" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+      <title>${docTitle} - ${displayName}</title>
+      <!--[if gte mso 9]>
+      <xml>
+        <w:WordDocument>
+          <w:View>Print</w:View>
+          <w:Zoom>100</w:Zoom>
+          <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+      </xml>
+      <![endif]-->
+      <style>
+        @page WordSection1 {
+          size: 595.3pt 841.9pt;
+          mso-page-orientation: portrait;
+          margin: 36.0pt 36.0pt 36.0pt 36.0pt;
+        }
+        div.WordSection1 { page: WordSection1; direction: rtl; text-align: right; font-family: Arial, sans-serif; }
+      </style>
+    </head>
+    <body lang="he" dir="rtl" style="direction:rtl; text-align:right; font-family:Arial, sans-serif; color:#243b47;">
+      <div class="WordSection1" dir="rtl">
+        <div style="background-color:#1e3a5f; color:#ffffff; padding:12pt 16pt; margin-bottom:10pt; text-align:center;">
+          <h1 style="margin:0; font-size:16pt;">${docTitle}</h1>
+          <div style="font-size:10.5pt; margin-top:4pt;">משרד החינוך • השירות הפסיכולוגי החינוכי ומתי"א • הערכת תפקוד התנהגותי</div>
+        </div>
+
+        <div style="background-color:#f8fafc; border:1px solid #3b82f6; border-right:4px solid #1d4ed8; padding:8pt 12pt; margin-bottom:12pt; font-size:10.5pt;">
+          <strong>שם התלמיד/ה:</strong> ${displayName} &nbsp;|&nbsp;
+          <strong>ת.ז:</strong> ${displayId} &nbsp;|&nbsp;
+          <strong>תאריך לידה:</strong> ${displayBirthDate} &nbsp;|&nbsp;
+          <strong>מסגרת חינוכית:</strong> ${displayFramework}
+          ${formData.gradeClass ? ` &nbsp;|&nbsp; <strong>כיתה:</strong> ${escapeHtml(formData.gradeClass)}` : ''}
+          <br/>
+          <strong>תאריך הערכה:</strong> ${assessmentDate} &nbsp;|&nbsp;
+          <strong>מנתחת התנהגות:</strong> ${escapeHtml(assessorName)}
+          ${formData.address ? ` &nbsp;|&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
+          ${formData.phone ? ` &nbsp;|&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
+        </div>
+
+        <!-- 1. Background & Diagnostics -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          1. רקע פדגוגי, מסמכים נלווים ומאפייני התלמיד
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10.5pt; line-height:1.55;">
+          ${backgroundText.replace(/\n/g, '<br/>')}
+        </div>
+
+        <!-- 2. Target Behaviors -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          2. התנהגויות מטרה והגדרות אופרציונליות
+        </div>
+        <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:12pt; font-size:10pt;">
+          <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
+            <th style="width:5%;">#</th>
+            <th style="width:22%;">התנהגות יעד</th>
+            <th style="width:43%;">הגדרה אופרציונלית מדידה ונצפית</th>
+            <th style="width:12%;">שיטת מדידה</th>
+            <th style="width:9%;">ממוצע בסיס</th>
+            <th style="width:9%;">יעד מבוקש</th>
+          </tr>
+          ${targetsHtml}
+        </table>
+
+        <!-- 3. Baseline Data & Statistics -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          3. נתוני קו בסיס וניתוח כמותי
+        </div>
+        <table dir="rtl" border="1" cellspacing="0" cellpadding="5" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:6pt; font-size:9.5pt;">
+          <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
+            <th style="width:6%;">#</th>
+            <th style="width:18%;">תאריך</th>
+            <th style="width:26%;">שיעור / פעילות</th>
+            <th style="width:16%;">מופעים</th>
+            <th style="width:34%;">הערות והקשר</th>
+          </tr>
+          ${baselineRowsHtml}
+        </table>
+        ${baselineData.length > 0 ? `
+          <div style="background-color:#f1f5f9; border:1px solid #cbd5e1; padding:6pt 10pt; margin-bottom:12pt; font-size:10pt;">
+            <strong>סיכום סטטיסטי לקו הבסיס:</strong>
+            סה"כ מפגשי תצפית: <strong>${baselineData.length}</strong> |
+            ממוצע אירועים: <strong>${baselineAvg}</strong> |
+            טווח מופעים: <strong>${baselineMin} עד ${baselineMax}</strong>
+          </div>
+        ` : ''}
+
+        <!-- 4. Antecedents & Hypothesized Function -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          4. ניתוח תנאים מקדימים והשערת תפקוד ההתנהגות
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:8pt; font-size:10.5pt; line-height:1.55;">
+          <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">תנאים מקדימים וטריגרים סביבתיים:</div>
+          ${antecedentText.replace(/\n/g, '<br/>')}
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:8pt; font-size:10.5pt; line-height:1.55;">
+          <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">תפקוד מרכזי משוער:</div>
+          <strong>${mainFunctionLabel}</strong>
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10.5pt; line-height:1.55;">
+          <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">נרטיב השערה תפקודית:</div>
+          ${hypothesisNarrative.replace(/\n/g, '<br/>')}
+        </div>
+
+        <!-- 5. Recommendations -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          5. המלצות ראשוניות להתערבות
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:16pt; font-size:10.5pt; line-height:1.55;">
+          ${recommendationsText.replace(/\n/g, '<br/>')}
+        </div>
+
+        <!-- Signatures -->
+        <table dir="rtl" border="0" style="width:100%; margin-top:16pt; font-weight:bold; color:#1e3a5f; font-size:10.5pt;">
+          <tr>
+            <td style="width:25%; text-align:right;">חתימת מנתחת התנהגות: ______________</td>
+            <td style="width:25%; text-align:right;">חתימת מחנכת הכיתה: ______________</td>
+            <td style="width:25%; text-align:right;">חתימת שפ"ח / מתי"א: ______________</td>
+            <td style="width:25%; text-align:right;">חתימת הורים: ______________</td>
+          </tr>
+        </table>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+export function buildBehaviorAssessmentPrintHtml(formData: any = {}, hideDetails = false, logoUrl = '') {
+  const displayName = getDisplayStudentName(formData, hideDetails);
+  const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
+  const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
+  const displayFramework = hideDetails
+    ? maskSensitiveValue(formData.educationalFramework)
+    : formData.educationalFramework || '__________';
+  const displayAddress = getDisplayMaskedField(formData.address, hideDetails);
+  const displayPhone = getDisplayMaskedField(formData.phone, hideDetails);
+  const docTitle = getBehaviorAssessmentTitle();
+
+  const report = formData.behaviorAssessment || formData || {};
+  const assessorName = report.assessorName || formData.teacherName || 'מנתחת התנהגות מוסמכת';
+  const assessmentDate = report.assessmentDate || formData.reportDate || formData.date || '__________';
+
+  const backgroundText = getRedactedText(report.backgroundInfo || formData.studentGeneralBackground || '—', formData, hideDetails);
+  const antecedentText = getRedactedText(report.antecedentAnalysis || '—', formData, hideDetails);
+  const hypothesisNarrative = getRedactedText(report.functionalHypothesisNarrative || '—', formData, hideDetails);
+  const recommendationsText = getRedactedText(report.initialRecommendations || '—', formData, hideDetails);
+
+  const targetBehaviors: any[] = Array.isArray(report.targetBehaviors) ? report.targetBehaviors : [];
+  const baselineData: any[] = Array.isArray(report.baselineData) ? report.baselineData : [];
+
+  const measurementLabels: Record<string, string> = {
+    frequency: 'תדירות',
+    duration: 'משך זמן',
+    interval: 'מרווחי זמן'
+  };
+
+  const targetsHtml = targetBehaviors.length > 0
+    ? targetBehaviors.map((t, idx) => `
+        <tr>
+          <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+          <td style="font-weight:700; color:#1e293b;">${escapeHtml(t.name || '—')}</td>
+          <td>${getRedactedText(t.operationalDefinition || '—', formData, hideDetails)}</td>
+          <td style="text-align:center;">${measurementLabels[t.measurementType] || 'תדירות'}</td>
+          <td style="text-align:center;">${t.baselineAverage ?? '—'}</td>
+          <td style="text-align:center; font-weight:700; color:#2563eb;">${t.targetGoal ?? '—'}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="6" style="text-align:center; color:#64748b;">טרם הוגדרו התנהגויות יעד</td></tr>`;
+
+  // Baseline statistics
+  const baselineValues = baselineData.map((b) => Number(b.value) || 0);
+  const baselineSum = baselineValues.reduce((a, b) => a + b, 0);
+  const baselineAvg = baselineValues.length > 0 ? Math.round((baselineSum / baselineValues.length) * 10) / 10 : 0;
+  const baselineMin = baselineValues.length > 0 ? Math.min(...baselineValues) : 0;
+  const baselineMax = baselineValues.length > 0 ? Math.max(...baselineValues) : 0;
+
+  const baselineRowsHtml = baselineData.length > 0
+    ? baselineData.map((b, idx) => `
+        <tr>
+          <td style="text-align:center;">${idx + 1}</td>
+          <td style="text-align:center;">${escapeHtml(b.date || '—')}</td>
+          <td style="text-align:center;">${escapeHtml(b.sessionOrPeriod || '—')}</td>
+          <td style="text-align:center; font-weight:700; color:#1e40af;">${b.value ?? 0}</td>
+          <td>${getRedactedText(b.notes || '—', formData, hideDetails)}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="5" style="text-align:center; color:#64748b;">טרם נרשמו נתוני תצפית לקו בסיס</td></tr>`;
+
+  const mainFunctionLabel = BEHAVIOR_FUNCTION_HEBREW_LABELS[report.mainHypothesizedFunction || 'escape'] || 'הימנעות ממטלה';
+
+  // Crisp Vector SVG Charts
+  const baselineChartSvg = generateBaselineBarChartSvg(baselineData, { isPrint: true });
+  const functionDistributionSvg = generateFunctionDistributionSvg(
+    undefined,
+    report.mainHypothesizedFunction || 'escape',
+    baselineSum || 38,
+    { isPrint: true }
+  );
+
+  return `
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+      <head>
+        <meta charset="utf-8" />
+        <title>${docTitle.replace(/\s+/g, '_')}_${displayName.replace(/\s+/g, '_')}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+          body {
+            font-family: 'Rubik', Arial, sans-serif;
+            direction: rtl;
+            text-align: right;
+            color: #243b47;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            font-size: 13px;
+            line-height: 1.55;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .stained-glass-strip {
+            height: 6px;
+            width: 100%;
+            background: linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%);
+            border-radius: 6px 6px 0 0;
+          }
+          .print-banner {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2b4c73 55%, #1e40af 100%);
+            color: #ffffff;
+            padding: 14px 20px;
+            border-bottom: 4px solid #93c5fd;
+            border-radius: 0 0 10px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+          }
+          .print-banner-center {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+          }
+          .print-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #93c5fd;
+            background: #f4f7fc;
+          }
+          .doc-main-title {
+            margin: 0;
+            font-size: 19px;
+            font-weight: 700;
+            color: #ffffff;
+          }
+          .doc-meta-side {
+            font-size: 12.5px;
+            color: #eff6ff;
+          }
+          .student-details-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 10px 14px;
+            border: 1.5px solid #3b82f6;
+            border-right: 5px solid #1d4ed8;
+            background: #eff6ff;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            font-size: 12.5px;
+          }
+          .behavior-section-box {
+            border: 1px solid #cbd5e1;
+            border-right: 4px solid #2563eb;
+            background: #fbfdff;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+          }
+          .behavior-section-title {
+            font-weight: 700;
+            font-size: 14px;
+            color: #1e3a5f;
+            margin-bottom: 6px;
+          }
+          .behavior-section-body {
+            white-space: pre-line;
+            color: #1e293b;
+            font-size: 13px;
+            line-height: 1.55;
+          }
+          .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 12px;
+          }
+          .data-table th, .data-table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+            text-align: right;
+          }
+          .data-table th {
+            background-color: #eff6ff;
+            color: #1e40af;
+            font-weight: 700;
+          }
+          .signatures-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 24px;
+            font-weight: 600;
+            color: #1e3a5f;
+            page-break-inside: avoid;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="stained-glass-strip"></div>
+        <div class="print-banner">
+          <div class="doc-meta-side"><strong>תאריך:</strong> ${assessmentDate}</div>
+          <div class="print-banner-center">
+            ${logoUrl ? `<img src="${logoUrl}" alt="TALA Logo" class="print-logo" />` : ''}
+            <h1 class="doc-main-title">${docTitle}</h1>
+          </div>
+          <div class="doc-meta-side"><strong>מנתחת התנהגות:</strong> ${escapeHtml(assessorName)}</div>
+        </div>
+
+        <div class="student-details-bar">
+          <div><strong>שם התלמיד/ה:</strong> ${displayName}</div>
+          <div><strong>ת.ז:</strong> ${displayId}</div>
+          <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
+          <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
+          ${formData.gradeClass ? `<div><strong>כיתה:</strong> ${escapeHtml(formData.gradeClass)}</div>` : ''}
+          ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
+          ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
+        </div>
+
+        <!-- 1. Background -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">1. רקע פדגוגי, מסמכים נלווים ומאפייני התלמיד</div>
+          <div class="behavior-section-body">${backgroundText}</div>
+        </div>
+
+        <!-- 2. Target Behaviors -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">2. התנהגויות מטרה והגדרות אופרציונליות</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:5%;">#</th>
+                <th style="width:22%;">התנהגות יעד</th>
+                <th style="width:43%;">הגדרה אופרציונלית מדידה ונצפית</th>
+                <th style="width:12%;">שיטת מדידה</th>
+                <th style="width:9%;">ממוצע בסיס</th>
+                <th style="width:9%;">יעד מבוקש</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${targetsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 3. Baseline Data & Chart -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">3. נתוני קו בסיס וניתוח כמותי</div>
+          ${baselineChartSvg}
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:6%;">#</th>
+                <th style="width:18%;">תאריך</th>
+                <th style="width:26%;">שיעור / פעילות</th>
+                <th style="width:16%;">מופעים</th>
+                <th style="width:34%;">הערות והקשר</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${baselineRowsHtml}
+            </tbody>
+          </table>
+          ${baselineData.length > 0 ? `
+            <div style="background:#f1f5f9; border-radius:6px; padding:6px 10px; margin-top:6px; font-size:12px;">
+              <strong>סיכום נתונים:</strong> סה"כ תצפיות: <strong>${baselineData.length}</strong> | ממוצע: <strong>${baselineAvg}</strong> | טווח: <strong>${baselineMin} עד ${baselineMax}</strong>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 4. Antecedents & Function -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">4. ניתוח תנאים מקדימים והשערת תפקוד ההתנהגות</div>
+          <div style="margin-bottom:8px;">
+            <strong>תנאים מקדימים וטריגרים סביבתיים:</strong>
+            <div class="behavior-section-body">${antecedentText}</div>
+          </div>
+          <div style="margin-bottom:8px;">
+            <strong>תפקוד מרכזי משוער:</strong> ${mainFunctionLabel}
+          </div>
+          ${functionDistributionSvg}
+          <div style="margin-top:8px;">
+            <strong>נרטיב השערה תפקודית:</strong>
+            <div class="behavior-section-body">${hypothesisNarrative}</div>
+          </div>
+        </div>
+
+        <!-- 5. Recommendations -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">5. המלצות ראשוניות להתערבות</div>
+          <div class="behavior-section-body">${recommendationsText}</div>
+        </div>
+
+        <!-- Signatures -->
+        <div class="signatures-row">
+          <div>חתימת מנתחת התנהגות: _________________________</div>
+          <div>חתימת מחנכת הכיתה: _________________________</div>
+          <div>חתימת הורים: _________________________</div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+export function buildBehaviorPlanWordDocumentHtml(formData: any = {}, hideDetails = false) {
+  const displayName = getDisplayStudentName(formData, hideDetails);
+  const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
+  const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
+  const displayFramework = hideDetails
+    ? maskSensitiveValue(formData.educationalFramework)
+    : formData.educationalFramework || '__________';
+  const displayAddress = getDisplayMaskedField(formData.address, hideDetails);
+  const displayPhone = getDisplayMaskedField(formData.phone, hideDetails);
+  const docTitle = getBehaviorPlanTitle();
+
+  const plan = formData.behaviorPlan || formData || {};
+  const analystName = plan.analystName || formData.teacherName || 'מנתחת התנהגות מוסמכת';
+  const effectiveDate = plan.effectiveDate || formData.reportDate || formData.date || '__________';
+  const reviewDate = plan.reviewDate || '__________';
+
+  const antecedentStrategies = getRedactedText(plan.antecedentStrategies || '—', formData, hideDetails);
+  const preferredReinforcers = getRedactedText(plan.reinforcementSystem?.preferredReinforcers || '—', formData, hideDetails);
+  const scheduleOfReinforcement = getRedactedText(plan.reinforcementSystem?.scheduleOfReinforcement || '—', formData, hideDetails);
+  const staffResponse = getRedactedText(plan.reactiveProtocol?.staffResponse || '—', formData, hideDetails);
+  const crisisSafetyPlan = getRedactedText(plan.reactiveProtocol?.crisisSafetyPlan || '—', formData, hideDetails);
+
+  const targetBehaviors: any[] = Array.isArray(plan.targetBehaviors) ? plan.targetBehaviors : [];
+  const replacementBehaviors: any[] = Array.isArray(plan.replacementBehaviors) ? plan.replacementBehaviors : [];
+  const ongoingTracking: any[] = Array.isArray(plan.ongoingTracking) ? plan.ongoingTracking : [];
+
+  const targetsHtml = targetBehaviors.length > 0
+    ? targetBehaviors.map((t, idx) => `
+        <tr>
+          <td style="border:1px solid #cbd5e1; padding:6pt; font-weight:bold; color:#1e3a5f; text-align:center;">${idx + 1}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt; font-weight:bold; color:#1e293b;">${escapeHtml(t.name || '—')}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt;">${getRedactedText(t.operationalDefinition || '—', formData, hideDetails)}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt; text-align:center;">${t.baselineAverage ?? '—'}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt; text-align:center; font-weight:bold; color:#2563eb;">${t.targetGoal ?? '—'}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="5" style="border:1px solid #cbd5e1; padding:8pt; text-align:center; color:#64748b;">טרם הוגדרו התנהגויות יעד</td></tr>`;
+
+  const replacementsHtml = replacementBehaviors.length > 0
+    ? replacementBehaviors.map((r, idx) => `
+        <tr>
+          <td style="border:1px solid #cbd5e1; padding:6pt; font-weight:bold; color:#1e3a5f; text-align:center;">${idx + 1}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt; font-weight:bold; color:#1e40af;">${getRedactedText(r.replacementSkill || '—', formData, hideDetails)}</td>
+          <td style="border:1px solid #cbd5e1; padding:6pt;">${getRedactedText(r.teachingStrategies || '—', formData, hideDetails)}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="3" style="border:1px solid #cbd5e1; padding:8pt; text-align:center; color:#64748b;">טרם הוגדרו התנהגויות חלופיות</td></tr>`;
+
+  const trackingRowsHtml = ongoingTracking.length > 0
+    ? ongoingTracking.map((p, idx) => {
+        const challenging = Number(p.targetBehaviorOccurrences ?? p.targetBehaviorCount) || 0;
+        const replacement = typeof p.replacementBehaviorUsed === 'number'
+          ? p.replacementBehaviorUsed
+          : (p.replacementBehaviorCount ?? (p.replacementBehaviorUsed ? 'כן' : 'לא'));
+        const reinforcement = p.reinforcementDelivered ? 'כן' : 'לא';
+
+        return `
+          <tr>
+            <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center;">${idx + 1}</td>
+            <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center;">${escapeHtml(p.date || '—')}</td>
+            <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center;">${escapeHtml(p.period || p.sessionOrPeriod || '—')}</td>
+            <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center; font-weight:bold; color:#ea580c;">${challenging}</td>
+            <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center; font-weight:bold; color:#2563eb;">${replacement}</td>
+            <td style="border:1px solid #cbd5e1; padding:5pt; text-align:center;">${reinforcement}</td>
+            <td style="border:1px solid #cbd5e1; padding:5pt;">${getRedactedText(p.notes || '—', formData, hideDetails)}</td>
+          </tr>
+        `;
+      }).join('')
+    : `<tr><td colspan="7" style="border:1px solid #cbd5e1; padding:8pt; text-align:center; color:#64748b;">טרם נרשמו נקודות מעקב שוטף</td></tr>`;
+
+  return `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:w="urn:schemas-microsoft-com:office:word"
+          xmlns="http://www.w3.org/TR/REC-html40"
+          lang="he" dir="rtl">
+    <head>
+      <meta charset="utf-8" />
+      <title>${docTitle} - ${displayName}</title>
+      <!--[if gte mso 9]>
+      <xml>
+        <w:WordDocument>
+          <w:View>Print</w:View>
+          <w:Zoom>100</w:Zoom>
+          <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+      </xml>
+      <![endif]-->
+      <style>
+        @page WordSection1 {
+          size: 595.3pt 841.9pt;
+          mso-page-orientation: portrait;
+          margin: 36.0pt 36.0pt 36.0pt 36.0pt;
+        }
+        div.WordSection1 { page: WordSection1; direction: rtl; text-align: right; font-family: Arial, sans-serif; }
+      </style>
+    </head>
+    <body lang="he" dir="rtl" style="direction:rtl; text-align:right; font-family:Arial, sans-serif; color:#243b47;">
+      <div class="WordSection1" dir="rtl">
+        <div style="background-color:#1e3a5f; color:#ffffff; padding:12pt 16pt; margin-bottom:10pt; text-align:center;">
+          <h1 style="margin:0; font-size:16pt;">${docTitle}</h1>
+          <div style="font-size:10.5pt; margin-top:4pt;">משרד החינוך • מתי"א ושפ"ח • פרוטוקול התערבות והוראת התנהגויות חלופיות</div>
+        </div>
+
+        <div style="background-color:#f8fafc; border:1px solid #3b82f6; border-right:4px solid #1d4ed8; padding:8pt 12pt; margin-bottom:12pt; font-size:10.5pt;">
+          <strong>שם התלמיד/ה:</strong> ${displayName} &nbsp;|&nbsp;
+          <strong>ת.ז:</strong> ${displayId} &nbsp;|&nbsp;
+          <strong>תאריך לידה:</strong> ${displayBirthDate} &nbsp;|&nbsp;
+          <strong>מסגרת חינוכית:</strong> ${displayFramework}
+          <br/>
+          <strong>תאריך תחילה:</strong> ${effectiveDate} &nbsp;|&nbsp;
+          <strong>מועד הערכה מחודשת:</strong> ${reviewDate} &nbsp;|&nbsp;
+          <strong>מנתחת התנהגות:</strong> ${escapeHtml(analystName)}
+          ${formData.address ? ` &nbsp;|&nbsp; <strong>כתובת:</strong> ${displayAddress}` : ''}
+          ${formData.phone ? ` &nbsp;|&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
+        </div>
+
+        <!-- 1. Target Behaviors -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          1. התנהגויות יעד והגדרות אופרציונליות
+        </div>
+        <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:12pt; font-size:10pt;">
+          <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
+            <th style="width:5%;">#</th>
+            <th style="width:25%;">התנהגות יעד</th>
+            <th style="width:50%;">הגדרה אופרציונלית מדידה ונצפית</th>
+            <th style="width:10%;">ממוצע בסיס</th>
+            <th style="width:10%;">יעד מבוקש</th>
+          </tr>
+          ${targetsHtml}
+        </table>
+
+        <!-- 2. Replacement Behaviors -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          2. תוכנית התנהגויות חלופיות ומיומנויות להוראה
+        </div>
+        <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:12pt; font-size:10pt;">
+          <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
+            <th style="width:6%;">#</th>
+            <th style="width:34%;">התנהגות חלופית רצויה</th>
+            <th style="width:60%;">אסטרטגיות הוראה ותרגול יזום</th>
+          </tr>
+          ${replacementsHtml}
+        </table>
+
+        <!-- 3. Antecedent Strategies -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          3. אסטרטגיות מניעה והתאמות סביבתיות לתנאים מקדימים
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10.5pt; line-height:1.55;">
+          ${antecedentStrategies.replace(/\n/g, '<br/>')}
+        </div>
+
+        <!-- 4. Reinforcement System -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          4. מערך חיזוקים ועידוד
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:6pt; font-size:10.5pt; line-height:1.55;">
+          <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">מחזקים מועדפים:</div>
+          ${preferredReinforcers.replace(/\n/g, '<br/>')}
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10.5pt; line-height:1.55;">
+          <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">לוח זמנים ותדירות חיזוק:</div>
+          ${scheduleOfReinforcement.replace(/\n/g, '<br/>')}
+        </div>
+
+        <!-- 5. Reactive & Safety Protocol -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          5. פרוטוקול תגובה במצבי משבר ובטיחות
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:6pt; font-size:10.5pt; line-height:1.55;">
+          <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">תגובת הצוות בעת התרחשות ההתנהגות:</div>
+          ${staffResponse.replace(/\n/g, '<br/>')}
+        </div>
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10.5pt; line-height:1.55;">
+          <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">תוכנית בטיחות והתמודדות במשבר:</div>
+          ${crisisSafetyPlan.replace(/\n/g, '<br/>')}
+        </div>
+
+        <!-- 6. Ongoing Tracking -->
+        <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+          6. טבלת מעקב שוטף ולוח התקדמות
+        </div>
+        <table dir="rtl" border="1" cellspacing="0" cellpadding="5" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:16pt; font-size:9.5pt;">
+          <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
+            <th style="width:5%;">#</th>
+            <th style="width:14%;">תאריך</th>
+            <th style="width:20%;">שיעור / פעילות</th>
+            <th style="width:13%;">אירועים מאתגרים</th>
+            <th style="width:14%;">התנהגות חלופית</th>
+            <th style="width:10%;">חיזוק ניתן</th>
+            <th style="width:24%;">הערות</th>
+          </tr>
+          ${trackingRowsHtml}
+        </table>
+
+        <!-- Signatures -->
+        <table dir="rtl" border="0" style="width:100%; margin-top:16pt; font-weight:bold; color:#1e3a5f; font-size:10.5pt;">
+          <tr>
+            <td style="width:25%; text-align:right;">חתימת מנתחת התנהגות: ______________</td>
+            <td style="width:25%; text-align:right;">חתימת מנהלת / מתי"א: ______________</td>
+            <td style="width:25%; text-align:right;">חתימת מחנכת הכיתה: ______________</td>
+            <td style="width:25%; text-align:right;">חתימת הורים: ______________</td>
+          </tr>
+        </table>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+export function buildBehaviorPlanPrintHtml(formData: any = {}, hideDetails = false, logoUrl = '') {
+  const displayName = getDisplayStudentName(formData, hideDetails);
+  const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
+  const displayBirthDate = getDisplayMaskedField(formData.birthDate, hideDetails);
+  const displayFramework = hideDetails
+    ? maskSensitiveValue(formData.educationalFramework)
+    : formData.educationalFramework || '__________';
+  const displayAddress = getDisplayMaskedField(formData.address, hideDetails);
+  const displayPhone = getDisplayMaskedField(formData.phone, hideDetails);
+  const docTitle = getBehaviorPlanTitle();
+
+  const plan = formData.behaviorPlan || formData || {};
+  const analystName = plan.analystName || formData.teacherName || 'מנתחת התנהגות מוסמכת';
+  const effectiveDate = plan.effectiveDate || formData.reportDate || formData.date || '__________';
+  const reviewDate = plan.reviewDate || '__________';
+
+  const antecedentStrategies = getRedactedText(plan.antecedentStrategies || '—', formData, hideDetails);
+  const preferredReinforcers = getRedactedText(plan.reinforcementSystem?.preferredReinforcers || '—', formData, hideDetails);
+  const scheduleOfReinforcement = getRedactedText(plan.reinforcementSystem?.scheduleOfReinforcement || '—', formData, hideDetails);
+  const staffResponse = getRedactedText(plan.reactiveProtocol?.staffResponse || '—', formData, hideDetails);
+  const crisisSafetyPlan = getRedactedText(plan.reactiveProtocol?.crisisSafetyPlan || '—', formData, hideDetails);
+
+  const targetBehaviors: any[] = Array.isArray(plan.targetBehaviors) ? plan.targetBehaviors : [];
+  const replacementBehaviors: any[] = Array.isArray(plan.replacementBehaviors) ? plan.replacementBehaviors : [];
+  const ongoingTracking: any[] = Array.isArray(plan.ongoingTracking) ? plan.ongoingTracking : [];
+
+  const targetsHtml = targetBehaviors.length > 0
+    ? targetBehaviors.map((t, idx) => `
+        <tr>
+          <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+          <td style="font-weight:700; color:#1e293b;">${escapeHtml(t.name || '—')}</td>
+          <td>${getRedactedText(t.operationalDefinition || '—', formData, hideDetails)}</td>
+          <td style="text-align:center;">${t.baselineAverage ?? '—'}</td>
+          <td style="text-align:center; font-weight:700; color:#2563eb;">${t.targetGoal ?? '—'}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="5" style="text-align:center; color:#64748b;">טרם הוגדרו התנהגויות יעד</td></tr>`;
+
+  const replacementsHtml = replacementBehaviors.length > 0
+    ? replacementBehaviors.map((r, idx) => `
+        <tr>
+          <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+          <td style="font-weight:700; color:#1e40af;">${getRedactedText(r.replacementSkill || '—', formData, hideDetails)}</td>
+          <td>${getRedactedText(r.teachingStrategies || '—', formData, hideDetails)}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="3" style="text-align:center; color:#64748b;">טרם הוגדרו התנהגויות חלופיות</td></tr>`;
+
+  const trackingRowsHtml = ongoingTracking.length > 0
+    ? ongoingTracking.map((p, idx) => {
+        const challenging = Number(p.targetBehaviorOccurrences ?? p.targetBehaviorCount) || 0;
+        const replacement = typeof p.replacementBehaviorUsed === 'number'
+          ? p.replacementBehaviorUsed
+          : (p.replacementBehaviorCount ?? (p.replacementBehaviorUsed ? 'כן' : 'לא'));
+        const reinforcement = p.reinforcementDelivered ? 'כן' : 'לא';
+
+        return `
+          <tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td style="text-align:center;">${escapeHtml(p.date || '—')}</td>
+            <td style="text-align:center;">${escapeHtml(p.period || p.sessionOrPeriod || '—')}</td>
+            <td style="text-align:center; font-weight:700; color:#ea580c;">${challenging}</td>
+            <td style="text-align:center; font-weight:700; color:#2563eb;">${replacement}</td>
+            <td style="text-align:center;">${reinforcement}</td>
+            <td>${getRedactedText(p.notes || '—', formData, hideDetails)}</td>
+          </tr>
+        `;
+      }).join('')
+    : `<tr><td colspan="7" style="text-align:center; color:#64748b;">טרם נרשמו נקודות מעקב שוטף</td></tr>`;
+
+  // Dual Line SVG Chart comparing Baseline vs. Intervention
+  const baselineData = formData.behaviorAssessment?.baselineData || [];
+  const progressChartSvg = generateProgressMonitoringDualLineSvg(baselineData, ongoingTracking, { isPrint: true });
+
+  return `
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+      <head>
+        <meta charset="utf-8" />
+        <title>${docTitle.replace(/\s+/g, '_')}_${displayName.replace(/\s+/g, '_')}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+          body {
+            font-family: 'Rubik', Arial, sans-serif;
+            direction: rtl;
+            text-align: right;
+            color: #243b47;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            font-size: 13px;
+            line-height: 1.55;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .stained-glass-strip {
+            height: 6px;
+            width: 100%;
+            background: linear-gradient(90deg, #7ec8e3 0%, #64a8e0 25%, #8b80d6 50%, #a98eda 75%, #c5aef2 100%);
+            border-radius: 6px 6px 0 0;
+          }
+          .print-banner {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2b4c73 55%, #1e40af 100%);
+            color: #ffffff;
+            padding: 14px 20px;
+            border-bottom: 4px solid #93c5fd;
+            border-radius: 0 0 10px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+          }
+          .print-banner-center {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+          }
+          .print-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #93c5fd;
+            background: #f4f7fc;
+          }
+          .doc-main-title {
+            margin: 0;
+            font-size: 19px;
+            font-weight: 700;
+            color: #ffffff;
+          }
+          .doc-meta-side {
+            font-size: 12.5px;
+            color: #eff6ff;
+          }
+          .student-details-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 10px 14px;
+            border: 1.5px solid #3b82f6;
+            border-right: 5px solid #1d4ed8;
+            background: #eff6ff;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            font-size: 12.5px;
+          }
+          .behavior-section-box {
+            border: 1px solid #cbd5e1;
+            border-right: 4px solid #2563eb;
+            background: #fbfdff;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+          }
+          .behavior-section-title {
+            font-weight: 700;
+            font-size: 14px;
+            color: #1e3a5f;
+            margin-bottom: 6px;
+          }
+          .behavior-section-body {
+            white-space: pre-line;
+            color: #1e293b;
+            font-size: 13px;
+            line-height: 1.55;
+          }
+          .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 12px;
+          }
+          .data-table th, .data-table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px 8px;
+            text-align: right;
+          }
+          .data-table th {
+            background-color: #eff6ff;
+            color: #1e40af;
+            font-weight: 700;
+          }
+          .signatures-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 24px;
+            font-weight: 600;
+            color: #1e3a5f;
+            page-break-inside: avoid;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="stained-glass-strip"></div>
+        <div class="print-banner">
+          <div class="doc-meta-side"><strong>תאריך תחילה:</strong> ${effectiveDate}</div>
+          <div class="print-banner-center">
+            ${logoUrl ? `<img src="${logoUrl}" alt="TALA Logo" class="print-logo" />` : ''}
+            <h1 class="doc-main-title">${docTitle}</h1>
+          </div>
+          <div class="doc-meta-side"><strong>מנתחת התנהגות:</strong> ${escapeHtml(analystName)}</div>
+        </div>
+
+        <div class="student-details-bar">
+          <div><strong>שם התלמיד/ה:</strong> ${displayName}</div>
+          <div><strong>ת.ז:</strong> ${displayId}</div>
+          <div><strong>ת.ל:</strong> ${displayBirthDate}</div>
+          <div><strong>מסגרת חינוכית:</strong> ${displayFramework}</div>
+          <div><strong>מועד הערכה מחודשת:</strong> ${reviewDate}</div>
+          ${formData.address ? `<div><strong>כתובת:</strong> ${displayAddress}</div>` : ''}
+          ${formData.phone ? `<div><strong>טלפון:</strong> ${displayPhone}</div>` : ''}
+        </div>
+
+        <!-- 1. Targets -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">1. התנהגויות יעד והגדרות אופרציונליות</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:5%;">#</th>
+                <th style="width:25%;">התנהגות יעד</th>
+                <th style="width:50%;">הגדרה אופרציונלית מדידה ונצפית</th>
+                <th style="width:10%;">ממוצע בסיס</th>
+                <th style="width:10%;">יעד מבוקש</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${targetsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 2. Replacement Behaviors -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">2. תוכנית התנהגויות חלופיות ומיומנויות להוראה</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:6%;">#</th>
+                <th style="width:34%;">התנהגות חלופית רצויה</th>
+                <th style="width:60%;">אסטרטגיות הוראה ותרגול יזום</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${replacementsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 3. Antecedents -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">3. אסטרטגיות מניעה והתאמות סביבתיות לתנאים מקדימים</div>
+          <div class="behavior-section-body">${antecedentStrategies}</div>
+        </div>
+
+        <!-- 4. Reinforcement -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">4. מערך חיזוקים ועידוד</div>
+          <div style="margin-bottom:8px;">
+            <strong>מחזקים מועדפים:</strong>
+            <div class="behavior-section-body">${preferredReinforcers}</div>
+          </div>
+          <div>
+            <strong>לוח זמנים ותדירות חיזוק:</strong>
+            <div class="behavior-section-body">${scheduleOfReinforcement}</div>
+          </div>
+        </div>
+
+        <!-- 5. Reactive Protocol -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">5. פרוטוקול תגובה במצבי משבר ובטיחות</div>
+          <div style="margin-bottom:8px;">
+            <strong>תגובת הצוות בעת התרחשות ההתנהגות:</strong>
+            <div class="behavior-section-body">${staffResponse}</div>
+          </div>
+          <div>
+            <strong>תוכנית בטיחות והתמודדות במשבר:</strong>
+            <div class="behavior-section-body">${crisisSafetyPlan}</div>
+          </div>
+        </div>
+
+        <!-- 6. Progress Monitoring Chart & Log -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">6. טבלת מעקב שוטף ולוח התקדמות מול קו הבסיס</div>
+          ${progressChartSvg}
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:5%;">#</th>
+                <th style="width:14%;">תאריך</th>
+                <th style="width:20%;">שיעור / פעילות</th>
+                <th style="width:13%;">אירועים מאתגרים</th>
+                <th style="width:14%;">התנהגות חלופית</th>
+                <th style="width:10%;">חיזוק ניתן</th>
+                <th style="width:24%;">הערות</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${trackingRowsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Signatures -->
+        <div class="signatures-row">
+          <div>חתימת מנתחת התנהגות: _________________________</div>
+          <div>חתימת מחנכת הכיתה: _________________________</div>
+          <div>חתימת מנהלת / מתי"א: _________________________</div>
+          <div>חתימת הורים: _________________________</div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+

@@ -10,7 +10,10 @@ import {
   Loader2,
   X,
   Lock,
-  Unlock
+  Unlock,
+  FileDown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   BehaviorInterventionPlan,
@@ -29,6 +32,12 @@ import { suggestInterventionStrategies } from '../../services/behaviorAiService'
 import BehaviorStudentDetailsCard, { type BehaviorStudentDetailsData } from './BehaviorStudentDetailsCard';
 import type { StaffMergePayload } from '../form/StaffVoiceControl';
 import { ProgressMonitoringDualLineChart } from './BehaviorCharts';
+import {
+  buildBehaviorPlanWordDocumentHtml,
+  buildBehaviorPlanPrintHtml,
+  openHtmlPrintWindow,
+  getSafeReportFilename
+} from '../../export/wordAndPrintBuilders';
 import './BehaviorAssessmentForm.css';
 import './BehaviorInterventionPlanForm.css';
 
@@ -333,8 +342,39 @@ export default function BehaviorInterventionPlanForm({
     }, 3500);
   };
 
+  const [hideDetailsOnExport, setHideDetailsOnExport] = useState(false);
+
   const handlePrint = () => {
-    window.print();
+    const exportStudent: StudentProfile = {
+      ...student,
+      ...studentDetails,
+      behaviorPlan: plan
+    };
+    const printHtml = buildBehaviorPlanPrintHtml(exportStudent, hideDetailsOnExport);
+    openHtmlPrintWindow(printHtml);
+  };
+
+  const handleDownloadWord = () => {
+    const exportStudent: StudentProfile = {
+      ...student,
+      ...studentDetails,
+      behaviorPlan: plan
+    };
+    const wordHtml = buildBehaviorPlanWordDocumentHtml(exportStudent, hideDetailsOnExport);
+    const blob = new Blob(['\ufeff', wordHtml], {
+      type: 'application/msword;charset=utf-8'
+    });
+    const filename = getSafeReportFilename(exportStudent, hideDetailsOnExport, 'doc', 'behavior_plan');
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
   };
 
   return (
@@ -384,6 +424,15 @@ export default function BehaviorInterventionPlanForm({
           </button>
           <button
             type="button"
+            className={`btn-behavior-action ${hideDetailsOnExport ? 'btn-behavior-primary' : 'btn-behavior-secondary'}`}
+            onClick={() => setHideDetailsOnExport((prev) => !prev)}
+            title={hideDetailsOnExport ? 'פרטים מזהים מוסתרים בהדפסה ובייצוא' : 'הסתרת פרטים מזהים בהדפסה ובייצוא'}
+          >
+            {hideDetailsOnExport ? <EyeOff size={16} /> : <Eye size={16} />}
+            <span>{hideDetailsOnExport ? 'פרטים מוסתרים' : 'הסתרת פרטים'}</span>
+          </button>
+          <button
+            type="button"
             disabled={isPlanLocked}
             className="btn-behavior-action btn-behavior-ai"
             onClick={() => setShowAiModal(true)}
@@ -391,6 +440,15 @@ export default function BehaviorInterventionPlanForm({
           >
             <Sparkles size={16} />
             <span>סיוע בינה מלאכותית</span>
+          </button>
+          <button
+            type="button"
+            className="btn-behavior-action btn-behavior-secondary"
+            onClick={handleDownloadWord}
+            title="הורדת תוכנית בפורמט וורד"
+          >
+            <FileDown size={16} />
+            <span>הורדת וורד</span>
           </button>
           <button
             type="button"
