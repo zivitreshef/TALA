@@ -630,7 +630,12 @@ export const CURRENT_PAID_LICENSE_VERSION = '1.0';
  */
 export function mustUserAcceptPaidLicense(user?: Partial<AllowedUserRecord> | null): boolean {
   if (!user || typeof user !== 'object') return false;
-  if (user.role === 'admin' || user.email?.toLowerCase() === 'zivit.reshef@gmail.com') {
+  const emailLower = (user.email || '').trim().toLowerCase();
+  if (
+    user.role === 'admin' ||
+    emailLower === 'zivit.reshef@gmail.com' ||
+    emailLower === 'moti_reshef@bmc.com'
+  ) {
     return false;
   }
   // Check if user is a paid subscriber
@@ -696,7 +701,12 @@ export function isPaidUserExpired(user?: Partial<AllowedUserRecord> | null, now:
  */
 export function getPaidRemainingDays(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): number | null {
   if (!user || user.isTrialUser) return null;
-  if (user.role === 'admin' || user.email?.toLowerCase() === 'zivit.reshef@gmail.com') {
+  const emailLower = (user.email || '').trim().toLowerCase();
+  if (
+    user.role === 'admin' ||
+    emailLower === 'zivit.reshef@gmail.com' ||
+    emailLower === 'moti_reshef@bmc.com'
+  ) {
     return Infinity;
   }
   const nowDate = now instanceof Date ? now : new Date(now);
@@ -740,7 +750,12 @@ export type UserSubscriptionStatus =
  */
 export function getUserSubscriptionStatus(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): UserSubscriptionStatus {
   if (!user) return 'unknown';
-  if (user.email?.toLowerCase() === 'zivit.reshef@gmail.com' || user.role === 'admin') {
+  const emailLower = (user.email || '').trim().toLowerCase();
+  if (
+    emailLower === 'zivit.reshef@gmail.com' ||
+    emailLower === 'moti_reshef@bmc.com' ||
+    user.role === 'admin'
+  ) {
     return 'admin';
   }
   if (user.lockedOut) return 'locked_out';
@@ -846,7 +861,12 @@ export const DAILY_EMAIL_QUOTA_LIMIT = 100;
  */
 export function getUserEffectiveDailyAiQuota(user?: Partial<AllowedUserRecord> | null): number {
   if (!user) return DEFAULT_USER_DAILY_AI_QUOTA;
-  if (user.role === 'admin' || user.email?.toLowerCase() === 'zivit.reshef@gmail.com') {
+  const emailLower = (user.email || '').trim().toLowerCase();
+  if (
+    user.role === 'admin' ||
+    emailLower === 'zivit.reshef@gmail.com' ||
+    emailLower === 'moti_reshef@bmc.com'
+  ) {
     return Infinity;
   }
   const custom = Number(user.dailyAiQuotaLimit);

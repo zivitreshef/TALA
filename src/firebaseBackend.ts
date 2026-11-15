@@ -411,7 +411,7 @@ export function subscribeToTalaBackend({
     } catch (_) {}
     onSyncStatusChange?.({ connected: true, status: 'connecting' });
 
-    if (isAdmin) {
+    if (sawAll) {
       // 1a. Allowed users (admin only). Writes go through the talaConfigWrite function.
       unsubscribers.push(
         onSnapshot(

@@ -832,7 +832,10 @@ export default function App() {
     if (!currentUser?.email) return undefined;
     let didInitialUsersMerge = false;
     const meKey = currentUser.email.trim().toLowerCase();
-    const isAdminUser = currentUser.role === 'admin' || meKey === 'zivit.reshef@gmail.com';
+    const isAdminUser =
+      currentUser.role === 'admin' ||
+      meKey === 'zivit.reshef@gmail.com' ||
+      meKey === 'moti_reshef@bmc.com';
     // Non-admins get a public directory + their own profile (never the password hashes).
     let directoryUsers: any[] = [];
     let myProfile: any = null;
@@ -1182,7 +1185,8 @@ export default function App() {
         (matchingUser.trialExpiresAt || '') !== (currentUser.trialExpiresAt || '') ||
         (matchingUser.trialDays || 0) !== (currentUser.trialDays || 0) ||
         (matchingUser.paidExpiresAt || '') !== (currentUser.paidExpiresAt || '') ||
-        (matchingUser.subscriptionType || '') !== (currentUser.subscriptionType || '') ||
+        (matchingUser.subscriptionType || (matchingUser.isTrialUser ? 'trial' : 'annual_paid')) !==
+          (currentUser.subscriptionType || (currentUser.isTrialUser ? 'trial' : 'annual_paid')) ||
         Boolean(matchingUser.paidLicenseAccepted) !== Boolean(currentUser.paidLicenseAccepted) ||
         (matchingUser.paidLicenseVersion || '') !== (currentUser.paidLicenseVersion || '') ||
         (matchingUser.notifyOnSharedReport !== false) !==
@@ -4138,7 +4142,9 @@ export default function App() {
           currentUser &&
             !currentUser.mustChangePassword &&
             currentUser.isTrialUser &&
-            (currentUser.mustSignNda || !currentUser.ndaSigned)
+            (currentUser.mustSignNda || !currentUser.ndaSigned) &&
+            currentUser.email?.toLowerCase() !== 'zivit.reshef@gmail.com' &&
+            currentUser.email?.toLowerCase() !== 'moti_reshef@bmc.com'
         )}
         currentUser={currentUser}
         onCompleteNda={handleCompleteTrialNda}
