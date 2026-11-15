@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 export interface UseModalAnimationOptions {
   isOpen: boolean;
   onClose?: () => void;
-  closeDuration?: number; // default 160ms
+  closeDuration?: number; // default 200ms
   preventScroll?: boolean; // default true
   closeOnEsc?: boolean; // default true
 }
@@ -94,13 +94,13 @@ export function isReducedMotion(): boolean {
 
 /**
  * useModalAnimation
- * Standardizes modal open (220ms ease-out) and close (160ms ease-in) transitions,
+ * Standardizes modal open (280ms ease-out) and close (200ms ease-in) transitions,
  * backdrop animation, scroll-lock reference counting, and ESC dismiss stack.
  */
 export function useModalAnimation({
   isOpen,
   onClose,
-  closeDuration = 160,
+  closeDuration = 200,
   preventScroll = true,
   closeOnEsc = true
 }: UseModalAnimationOptions): UseModalAnimationReturn {

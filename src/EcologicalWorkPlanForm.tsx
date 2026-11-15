@@ -534,6 +534,17 @@ export default function EcologicalWorkPlanForm({
       setSelectedIntakeDoc(null);
     }
   });
+  const observationModalAnim = useModalAnimation({
+    isOpen: Boolean(observationModalGoalId),
+    onClose: () => setObservationModalGoalId(null)
+  });
+  const [cachedObsGoal, setCachedObsGoal] = useState<any>(null);
+  useEffect(() => {
+    if (observationModalGoalId) {
+      const g = (formData.goals || []).find((item: any) => item.id === observationModalGoalId);
+      if (g) setCachedObsGoal(g);
+    }
+  }, [observationModalGoalId, formData.goals]);
   const [emailRecipient, setEmailRecipient] = useState('');
   const [emailFormat, setEmailFormat] = useState('docx'); // 'docx' | 'pdf'
   const [emailStatusMsg, setEmailStatusMsg] = useState('');
@@ -8024,54 +8035,52 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           onClose={() => setShowMinistryCopyModal(false)}
         />
       )}
-      {observationModalGoalId &&
-        (() => {
-          const targetGoal = (formData.goals || []).find((g: any) => g.id === observationModalGoalId);
-          if (!targetGoal) return null;
-          return (
-            <QuickObservationModal
-              goalRow={targetGoal}
-              authorName={currentUser?.name || currentUser?.email || ''}
-              onAddObservation={(obsInput) => {
-                const { updatedGoal } = addObservationToGoal(targetGoal, obsInput);
-                const nextGoals = (formData.goals || []).map((g: any) =>
-                  g.id === targetGoal.id ? updatedGoal : g
-                );
-                const nextData = {
-                  ...formData,
-                  isLocked: false,
-                  lockedAt: '',
-                  lockedBy: '',
-                  goals: nextGoals,
-                  lastSavedAt: new Date().toISOString()
-                };
-                setFormData(nextData);
-                onSaveStudentPlan?.(nextData);
-                if (onDraftStateChange) {
-                  onDraftStateChange({ isDirty: false, draftData: nextData });
-                }
-              }}
-              onDeleteObservation={(obsId) => {
-                const nextGoals = (formData.goals || []).map((g: any) =>
-                  g.id === targetGoal.id
-                    ? {
-                        ...g,
-                        observations: (g.observations || []).filter((o: any) => o.id !== obsId)
-                      }
-                    : g
-                );
-                const nextData = {
-                  ...formData,
-                  goals: nextGoals,
-                  lastSavedAt: new Date().toISOString()
-                };
-                setFormData(nextData);
-                onSaveStudentPlan?.(nextData);
-              }}
-              onClose={() => setObservationModalGoalId(null)}
-            />
-          );
-        })()}
+      {observationModalAnim.shouldRender && cachedObsGoal && (
+        <QuickObservationModal
+          goalRow={cachedObsGoal}
+          isOpen={!observationModalAnim.isClosing}
+          isClosing={observationModalAnim.isClosing}
+          authorName={currentUser?.name || currentUser?.email || ''}
+          onAddObservation={(obsInput) => {
+            const targetGoal = (formData.goals || []).find((g: any) => g.id === cachedObsGoal.id) || cachedObsGoal;
+            const { updatedGoal } = addObservationToGoal(targetGoal, obsInput);
+            const nextGoals = (formData.goals || []).map((g: any) =>
+              g.id === targetGoal.id ? updatedGoal : g
+            );
+            const nextData = {
+              ...formData,
+              isLocked: false,
+              lockedAt: '',
+              lockedBy: '',
+              goals: nextGoals,
+              lastSavedAt: new Date().toISOString()
+            };
+            setFormData(nextData);
+            onSaveStudentPlan?.(nextData);
+            if (onDraftStateChange) {
+              onDraftStateChange({ isDirty: false, draftData: nextData });
+            }
+          }}
+          onDeleteObservation={(obsId) => {
+            const nextGoals = (formData.goals || []).map((g: any) =>
+              g.id === cachedObsGoal.id
+                ? {
+                    ...g,
+                    observations: (g.observations || []).filter((o: any) => o.id !== obsId)
+                  }
+                : g
+            );
+            const nextData = {
+              ...formData,
+              goals: nextGoals,
+              lastSavedAt: new Date().toISOString()
+            };
+            setFormData(nextData);
+            onSaveStudentPlan?.(nextData);
+          }}
+          onClose={() => setObservationModalGoalId(null)}
+        />
+      )}
       {diagnosticIntakeModalAnim.shouldRender && (
         <DiagnosticIntakeModal
           formData={formData}

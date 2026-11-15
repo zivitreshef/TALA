@@ -252,13 +252,13 @@ describe('TALA Consistent Modal Animation System Suite', () => {
       const cssContent = fs.readFileSync(cssPath, 'utf-8');
 
       // 1. Duration & Easing Variables
-      expect(cssContent).toContain('--modal-anim-open-duration: 220ms;');
-      expect(cssContent).toContain('--modal-anim-close-duration: 160ms;');
-      expect(cssContent).toContain('--modal-anim-backdrop-open-duration: 200ms;');
-      expect(cssContent).toContain('--modal-anim-backdrop-close-duration: 160ms;');
+      expect(cssContent).toContain('--modal-anim-open-duration: 280ms;');
+      expect(cssContent).toContain('--modal-anim-close-duration: 200ms;');
+      expect(cssContent).toContain('--modal-anim-backdrop-open-duration: 260ms;');
+      expect(cssContent).toContain('--modal-anim-backdrop-close-duration: 200ms;');
       expect(cssContent).toContain('--modal-anim-easing-open: cubic-bezier(0.16, 1, 0.3, 1);');
-      expect(cssContent).toContain('--modal-anim-easing-close: cubic-bezier(0.7, 0, 0.84, 0);');
-      expect(cssContent).toContain('--modal-backdrop-bg: rgba(0, 0, 0, 0.40);');
+      expect(cssContent).toContain('--modal-anim-easing-close: cubic-bezier(0.4, 0, 0.2, 1);');
+      expect(cssContent).toContain('--modal-backdrop-bg: rgba(15, 23, 42, 0.48);');
 
       // 2. Keyframes
       expect(cssContent).toContain('@keyframes talaModalBackdropIn');
@@ -267,11 +267,14 @@ describe('TALA Consistent Modal Animation System Suite', () => {
       expect(cssContent).toContain('@keyframes talaModalCardOut');
 
       // 3. Opening scales & opacities
-      expect(cssContent).toContain('transform: scale(0.96);');
-      expect(cssContent).toContain('transform: scale(1);');
+      expect(cssContent).toContain('transform: translateY(16px) scale(0.96);');
+      expect(cssContent).toContain('transform: translateY(0) scale(1);');
 
       // 4. Closing scales & opacities
-      expect(cssContent).toContain('transform: scale(0.98);');
+      expect(cssContent).toContain('transform: translateY(10px) scale(0.97);');
+
+      // 4b. Backdrop blur
+      expect(cssContent).toContain('backdrop-filter: blur(4px);');
 
       // 5. Pointer events safety while closing
       expect(cssContent).toContain('pointer-events: none !important;');
@@ -284,6 +287,22 @@ describe('TALA Consistent Modal Animation System Suite', () => {
       // 7. Scroll lock class
       expect(cssContent).toContain('body.modal-open {');
       expect(cssContent).toContain('overflow: hidden !important;');
+    });
+
+    it('verifies QuickCaptureModal.css and TeamMeetingReportModal.css use unified modal animations', () => {
+      const qcCssPath = path.resolve(__dirname, '../components/modals/QuickCaptureModal.css');
+      const qcCachedContent = fs.readFileSync(qcCssPath, 'utf-8');
+      expect(qcCachedContent).toContain('animation: talaModalBackdropIn');
+      expect(qcCachedContent).toContain('animation: talaModalBackdropOut');
+      expect(qcCachedContent).toContain('animation: talaModalCardIn');
+      expect(qcCachedContent).toContain('animation: talaModalCardOut');
+
+      const tmCssPath = path.resolve(__dirname, '../components/modals/TeamMeetingReportModal.css');
+      const tmCachedContent = fs.readFileSync(tmCssPath, 'utf-8');
+      expect(tmCachedContent).toContain('animation: talaModalBackdropIn');
+      expect(tmCachedContent).toContain('animation: talaModalBackdropOut');
+      expect(tmCachedContent).toContain('animation: talaModalCardIn');
+      expect(tmCachedContent).toContain('animation: talaModalCardOut');
     });
   });
 
