@@ -21,8 +21,10 @@ import {
   UserCheck,
   ClipboardList,
   Check,
-  ExternalLink
+  ExternalLink,
+  TrendingDown
 } from 'lucide-react';
+import { OngoingTrackingPoint, BehaviorObservation } from '../domain/types';
 import {
   getObservationGaps,
   createOutlook365CalendarUrl,
@@ -566,8 +568,8 @@ export default function DailyPedagogicalTracker({
     return getObservationGaps(students, 21, new Date());
   }, [students]);
 
-  // Dual-Mode Goal Updating State
-  const [updaterMode, setUpdaterMode] = useState('ai'); // 'ai' | 'manual'
+  // Goal and Behavior Updating Mode State
+  const [updaterMode, setUpdaterMode] = useState<'ai' | 'manual' | 'behavior'>('ai');
 // targetStudent declared above
 
   // AI Free-text Note Mode State
@@ -593,6 +595,82 @@ export default function DailyPedagogicalTracker({
   const [manualSupportLevel, setManualSupportLevel] = useState('תיווך חלקי');
   const [manualNote, setManualNote] = useState('');
   const [saveToast, setSaveToast] = useState('');
+
+  // Behavior Tracking State
+  const [behaviorOccurrences, setBehaviorOccurrences] = useState<number>(1);
+  const [behaviorReplacementUsed, setBehaviorReplacementUsed] = useState<boolean>(true);
+  const [behaviorReinforcementDelivered, setBehaviorReinforcementDelivered] = useState<boolean>(true);
+  const [behaviorNoteText, setBehaviorNoteText] = useState<string>('');
+  const [behaviorPeriod, setBehaviorPeriod] = useState<string>('שיעור 1');
+  const [behaviorIntensity] = useState<'mild' | 'moderate' | 'severe'>('moderate');
+  const [behaviorSuccessToast, setBehaviorSuccessToast] = useState<string>('');
+
+  const handleSaveBehaviorObservation = () => {
+    if (!targetStudent) return;
+
+    const newTrackingPoint: OngoingTrackingPoint = {
+      id: 'track_' + Date.now(),
+      date: selectedDate || todayStr,
+      period: behaviorPeriod.trim(),
+      targetBehaviorOccurrences: Number(behaviorOccurrences) || 0,
+      replacementBehaviorUsed: behaviorReplacementUsed,
+      reinforcementDelivered: behaviorReinforcementDelivered,
+      notes: behaviorNoteText.trim() || undefined
+    };
+
+    const existingPlan = targetStudent.behaviorPlan || {
+      targetBehaviors: [],
+      replacementBehaviors: [],
+      antecedentStrategies: '',
+      reinforcementSystem: { preferredReinforcers: '', scheduleOfReinforcement: '' },
+      reactiveProtocol: { staffResponse: '' },
+      ongoingTracking: []
+    };
+
+    const updatedPlan = {
+      ...existingPlan,
+      ongoingTracking: [newTrackingPoint, ...(existingPlan.ongoingTracking || [])],
+      updatedAt: new Date().toISOString()
+    };
+
+    let updatedObservations = Array.isArray(targetStudent.behaviorObservations)
+      ? [...targetStudent.behaviorObservations]
+      : [];
+
+    if (behaviorNoteText.trim()) {
+      const newObs: BehaviorObservation = {
+        id: 'obs_' + Date.now(),
+        timestamp: Date.now(),
+        dateTime: `${selectedDate || todayStr} ${new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`,
+        location: 'כיתה',
+        activity: behaviorPeriod.trim(),
+        antecedent: '',
+        behavior: behaviorNoteText.trim(),
+        intensity: behaviorIntensity,
+        consequence: behaviorReinforcementDelivered ? 'חיזוק ניתן' : 'ללא חיזוק',
+        perceivedFunction: (targetStudent.behaviorAssessment?.mainHypothesizedFunction as any) || 'escape',
+        notes: behaviorNoteText.trim()
+      };
+      updatedObservations = [newObs, ...updatedObservations];
+    }
+
+    const updatedStudent = {
+      ...targetStudent,
+      behaviorPlan: updatedPlan,
+      behaviorObservations: updatedObservations,
+      updatedAt: new Date().toISOString()
+    };
+
+    onUpdateStudent?.(updatedStudent);
+
+    setBehaviorSuccessToast('אירוע התנהגותי נרשם בהצלחה ועודכן בגרף ההתערבות');
+    setBehaviorNoteText('');
+    setBehaviorOccurrences(1);
+
+    setTimeout(() => {
+      setBehaviorSuccessToast('');
+    }, 4000);
+  };
 
   // Daily Tracking Telemetry State & Refs
   const entryStartTimeRef = React.useRef<number | null>(null);
@@ -1639,6 +1717,14 @@ export default function DailyPedagogicalTracker({
                 >
                   יעד ממוקד ידני
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setUpdaterMode('behavior')}
+                  className={`btn-mode-toggle ${updaterMode === 'behavior' ? 'active' : ''}`}
+                >
+                  <TrendingDown size={13} />
+                  <span>אירוע התנהגותי</span>
+                </button>
               </div>
             </div>
 
@@ -1986,11 +2072,149 @@ export default function DailyPedagogicalTracker({
               </form>
             )}
 
+            {/* MODE 3: BEHAVIOR OBSERVATION & TRACKING */}
+            {updaterMode === 'behavior' && (
+              <div className="manual-goal-form" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <TrendingDown size={18} style={{ color: '#0d9488' }} />
+                    <strong style={{ fontSize: '14px', color: '#1e293b' }}>
+                      רישום אירוע התנהגותי ומעקב שוטף
+                    </strong>
+                  </div>
+                  <VoiceObservationRecorder
+                    baseText={behaviorNoteText}
+                    onTranscript={(fullText) => setBehaviorNoteText(fullText)}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                      שיעור / פעילות / מסגרת זמן:
+                    </label>
+                    <input
+                      type="text"
+                      value={behaviorPeriod}
+                      onChange={(e) => setBehaviorPeriod(e.target.value)}
+                      placeholder="לדוגמה: שיעור 2, הפסקה, מפגש בוקר"
+                      className="manual-note-input"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                      מספר מופעי התנהגות מטרה:
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setBehaviorOccurrences(Math.max(0, behaviorOccurrences - 1))}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: '#f8fafc',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px'
+                        }}
+                      >
+                        -
+                      </button>
+                      <span style={{ fontSize: '16px', fontWeight: 700, minWidth: '32px', textAlign: 'center' }}>
+                        {behaviorOccurrences}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBehaviorOccurrences(behaviorOccurrences + 1)}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '6px',
+                          border: '1px solid #0d9488',
+                          background: '#f0fdfa',
+                          color: '#0d9488',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px'
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}>
+                    <input
+                      type="checkbox"
+                      checked={behaviorReplacementUsed}
+                      onChange={(e) => setBehaviorReplacementUsed(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: '#0d9488' }}
+                    />
+                    <span>התנהגות חלופית הופגנה על ידי התלמיד</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}>
+                    <input
+                      type="checkbox"
+                      checked={behaviorReinforcementDelivered}
+                      onChange={(e) => setBehaviorReinforcementDelivered(e.target.checked)}
+                      style={{ width: '16px', height: '16px', accentColor: '#0d9488' }}
+                    />
+                    <span>ניתן חיזוק חיובי על פי התוכנית</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    תיאור האירוע / תצפית קצרה (ניתן גם להקליט):
+                  </label>
+                  <textarea
+                    value={behaviorNoteText}
+                    onChange={(e) => setBehaviorNoteText(e.target.value)}
+                    placeholder="תאר/י בקצרה מה קדם להתנהגות, כיצד הגיב התלמיד, ואיזה מענה ניתן..."
+                    rows={2}
+                    className="manual-note-input"
+                    style={{ width: '100%', resize: 'vertical' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={handleSaveBehaviorObservation}
+                    className="btn-manual-save"
+                    style={{ background: '#0d9488', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Check size={15} />
+                    <span>שמור אירוע התנהגותי</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Save Toast Feedback */}
             {saveToast && (
               <div className="tracker-save-toast">
                 <Check size={17} style={{ color: '#16a34a' }} />
                 <span>{saveToast}</span>
+              </div>
+            )}
+            {behaviorSuccessToast && (
+              <div className="tracker-save-toast" style={{ borderColor: '#0d9488' }}>
+                <Check size={17} style={{ color: '#0d9488' }} />
+                <span>{behaviorSuccessToast}</span>
               </div>
             )}
           </div>
