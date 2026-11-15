@@ -90,7 +90,7 @@ exports.aiGenerateV2=require("firebase-functions/v2/https").onRequest({region:"u
 
 // ---- talaConfigWrite: the only write path to tala_config/allowed_users & admin_requests ----
 const PRIMARY_ADMIN="zivit.reshef@gmail.com";
-const SELF_FIELDS=["passwordHash","passwordSalt","mustChangePassword","mustSignNda","ndaSigned","ndaSignedAt","ndaSignedDate","ndaSignerIdNumber","paidLicenseAccepted","paidLicenseAcceptedAt","paidLicenseVersion","surveyCompleted","surveyCompletedAt","surveyDismissed","dismissedSharedReportIds","notifyOnSharedReport","adminAlerts"];
+const SELF_FIELDS=["passwordHash","passwordSalt","mustChangePassword","mustSignNda","ndaSigned","ndaSignedAt","ndaSignedDate","ndaSignerIdNumber","paidLicenseAccepted","paidLicenseAcceptedAt","paidLicenseVersion","surveyCompleted","surveyCompletedAt","surveyDismissed","onboardingDismissed","whatsNewDismissed","dismissedSharedReportIds","notifyOnSharedReport","adminAlerts"];
 const OTHER_FIELDS=["dismissedSharedReportIds"]; // any signed-in user may re-notify a colleague
 const pick=(o,keys)=>{const r={};for(const k of keys)if(o&&k in o)r[k]=o[k];return r;};
 const lc=(s)=>String(s||"").trim().toLowerCase();

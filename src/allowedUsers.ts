@@ -251,6 +251,8 @@ export interface AllowedUserRecord {
   paidLicenseAccepted?: boolean;
   paidLicenseAcceptedAt?: string | null;
   paidLicenseVersion?: string | null;
+  onboardingDismissed?: boolean;
+  whatsNewDismissed?: boolean;
   lockedOut?: boolean;
   lockedOutAt?: string;
   failedLoginAttempts?: number;

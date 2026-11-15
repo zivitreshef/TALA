@@ -751,6 +751,9 @@ export default function App() {
       if (savedUser) {
         const parsed = JSON.parse(savedUser);
         if (parsed?.email) {
+          if (parsed.whatsNewDismissed || parsed.onboardingDismissed) {
+            return true;
+          }
           return localStorage.getItem(`tala_whats_new_help_journey_v1_${parsed.email.trim().toLowerCase()}`) === 'true';
         }
       }
@@ -761,18 +764,61 @@ export default function App() {
   useEffect(() => {
     if (!currentUser?.email) return;
     const st = getOnboardingState(currentUser.email);
+
+    // Auto-heal and synchronize dismissal across localStorage and cloud user profile
+    const dismissedKey = `tala_whats_new_help_journey_v1_${currentUser.email.trim().toLowerCase()}`;
+    let isLocalWhatsNewDismissed = false;
+    try {
+      isLocalWhatsNewDismissed = localStorage.getItem(dismissedKey) === 'true';
+    } catch (_) {}
+    const isLocalOnboardingDismissed = Boolean(st?.isDismissed);
+
+    // 1. If cloud user profile already has onboarding or banner dismissed, honor it locally
+    if (currentUser.onboardingDismissed && !st.isDismissed) {
+      st.isDismissed = true;
+      saveOnboardingState(currentUser.email, { isDismissed: true });
+    }
+
+    const isEffectivelyWhatsNewDismissed = Boolean(
+      currentUser.whatsNewDismissed ||
+      currentUser.onboardingDismissed ||
+      isLocalWhatsNewDismissed
+    );
+
+    if (isEffectivelyWhatsNewDismissed && !isLocalWhatsNewDismissed) {
+      try {
+        localStorage.setItem(dismissedKey, 'true');
+      } catch (_) {}
+    }
+    setWhatsNewDismissed(isEffectivelyWhatsNewDismissed);
+
+    // 2. If user already dismissed it locally in a previous session but cloud profile lacks it, sync to cloud
+    if (
+      (isLocalOnboardingDismissed || isLocalWhatsNewDismissed) &&
+      (!currentUser.onboardingDismissed || !currentUser.whatsNewDismissed)
+    ) {
+      const patch: any = {};
+      if (isLocalOnboardingDismissed && !currentUser.onboardingDismissed) {
+        patch.onboardingDismissed = true;
+      }
+      if (isLocalWhatsNewDismissed && !currentUser.whatsNewDismissed) {
+        patch.whatsNewDismissed = true;
+      }
+      if (Object.keys(patch).length > 0) {
+        const updatedList = patchUserByEmail(allowedUsers, currentUser.email, patch);
+        handleUpdateAllowedUsers(updatedList);
+        const updatedCurrent = { ...currentUser, ...patch };
+        setCurrentUser(updatedCurrent);
+        safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+      }
+    }
+
     setOnboardingState(st);
     if (st.mode === 'demo') {
       const demo = getDemoStudent(currentUser.email);
       setDemoStudent(demo);
     }
-    try {
-      const dismissedKey = `tala_whats_new_help_journey_v1_${currentUser.email.trim().toLowerCase()}`;
-      setWhatsNewDismissed(localStorage.getItem(dismissedKey) === 'true');
-    } catch (_) {
-      setWhatsNewDismissed(false);
-    }
-  }, [currentUser?.email]);
+  }, [currentUser?.email, currentUser?.onboardingDismissed, currentUser?.whatsNewDismissed]);
 
   const handleDismissWhatsNewBanner = () => {
     setWhatsNewDismissed(true);
@@ -783,6 +829,14 @@ export default function App() {
           'true'
         );
       } catch (_) {}
+
+      const updatedList = patchUserByEmail(allowedUsers, currentUser.email, {
+        whatsNewDismissed: true
+      });
+      handleUpdateAllowedUsers(updatedList);
+      const updatedCurrent = { ...currentUser, whatsNewDismissed: true };
+      setCurrentUser(updatedCurrent);
+      safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
     }
   };
 
@@ -1188,7 +1242,9 @@ export default function App() {
         Boolean(matchingUser.paidLicenseAccepted) !== Boolean(currentUser.paidLicenseAccepted) ||
         (matchingUser.paidLicenseVersion || '') !== (currentUser.paidLicenseVersion || '') ||
         (matchingUser.notifyOnSharedReport !== false) !==
-          (currentUser.notifyOnSharedReport !== false)
+          (currentUser.notifyOnSharedReport !== false) ||
+        Boolean(matchingUser.onboardingDismissed) !== Boolean(currentUser.onboardingDismissed) ||
+        Boolean(matchingUser.whatsNewDismissed) !== Boolean(currentUser.whatsNewDismissed)
       ) {
         const syncedUser = {
           ...currentUser,
@@ -1208,6 +1264,8 @@ export default function App() {
           paidLicenseAccepted: Boolean(matchingUser.paidLicenseAccepted),
           paidLicenseAcceptedAt: matchingUser.paidLicenseAcceptedAt || null,
           paidLicenseVersion: matchingUser.paidLicenseVersion || null,
+          onboardingDismissed: Boolean(matchingUser.onboardingDismissed),
+          whatsNewDismissed: Boolean(matchingUser.whatsNewDismissed),
           mustSignNda: Boolean(matchingUser.mustSignNda),
           ndaSigned: Boolean(matchingUser.ndaSigned),
           ndaSignedAt: matchingUser.ndaSignedAt,
@@ -2180,6 +2238,16 @@ export default function App() {
     }
     setOnboardingState(nextState);
 
+    if (currentUser?.onboardingDismissed) {
+      const updatedList = patchUserByEmail(allowedUsers, currentUser.email, {
+        onboardingDismissed: false
+      });
+      handleUpdateAllowedUsers(updatedList);
+      const updatedCurrent = { ...currentUser, onboardingDismissed: false };
+      setCurrentUser(updatedCurrent);
+      safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+    }
+
     if (nextState.mode === 'demo') {
       const demo = getDemoStudent(currentUser.email);
       setDemoStudent(demo);
@@ -2212,6 +2280,17 @@ export default function App() {
         userToggledDock: true
       });
       setOnboardingState(nextState);
+
+      if (currentUser?.onboardingDismissed) {
+        const updatedList = patchUserByEmail(allowedUsers, currentUser.email, {
+          onboardingDismissed: false
+        });
+        handleUpdateAllowedUsers(updatedList);
+        const updatedCurrent = { ...currentUser, onboardingDismissed: false };
+        setCurrentUser(updatedCurrent);
+        safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+      }
+
       setTimeout(() => triggerOnboardingDomSpotlight(), 150);
     } else {
       // Real student mode
@@ -2230,6 +2309,17 @@ export default function App() {
         userToggledDock: true
       });
       setOnboardingState(nextState);
+
+      if (currentUser?.onboardingDismissed) {
+        const updatedList = patchUserByEmail(allowedUsers, currentUser.email, {
+          onboardingDismissed: false
+        });
+        handleUpdateAllowedUsers(updatedList);
+        const updatedCurrent = { ...currentUser, onboardingDismissed: false };
+        setCurrentUser(updatedCurrent);
+        safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+      }
+
       setTimeout(() => triggerOnboardingDomSpotlight(), 150);
     }
   };
@@ -2374,6 +2464,17 @@ export default function App() {
     if (!currentUser?.email) return;
     const nextState = resumeOnboarding(currentUser.email);
     setOnboardingState(nextState);
+
+    if (currentUser.onboardingDismissed) {
+      const updatedList = patchUserByEmail(allowedUsers, currentUser.email, {
+        onboardingDismissed: false
+      });
+      handleUpdateAllowedUsers(updatedList);
+      const updatedCurrent = { ...currentUser, onboardingDismissed: false };
+      setCurrentUser(updatedCurrent);
+      safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+    }
+
     const stepDef = getStepById(nextState.currentStep);
     if (stepDef) {
       handleExecuteOnboardingAction(stepDef);
@@ -2394,6 +2495,20 @@ export default function App() {
       const nextState = dismissOnboarding(currentUser.email);
       setOnboardingState(nextState);
     }, 200);
+
+    const updatedList = patchUserByEmail(allowedUsers, currentUser.email, {
+      onboardingDismissed: true,
+      whatsNewDismissed: true
+    });
+    handleUpdateAllowedUsers(updatedList);
+    const updatedCurrent = {
+      ...currentUser,
+      onboardingDismissed: true,
+      whatsNewDismissed: true
+    };
+    setCurrentUser(updatedCurrent);
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+    setWhatsNewDismissed(true);
   };
 
   const handleNavigateBackToStudents = () => {
