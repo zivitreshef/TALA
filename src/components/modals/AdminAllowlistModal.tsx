@@ -976,7 +976,13 @@ export default function AdminAllowlistModal({
       : (editUserForm.email || '').trim().toLowerCase();
     const cleanTitle = (editUserForm.title || '').trim() || 'צוות חינוכי';
     const cleanGroup = (editUserForm.group || '').trim();
-    const nextRole = isMainAdmin ? 'admin' : editUserForm.role === 'admin' ? 'admin' : 'teacher';
+    const nextRole = isMainAdmin
+      ? 'admin'
+      : editUserForm.role === 'admin'
+        ? 'admin'
+        : editUserForm.role === 'behavior_analyst'
+          ? 'behavior_analyst'
+          : 'teacher';
 
     if (!cleanName || !cleanEmail) {
       setEditUserError('נא להזין שם מלא וכתובת אימייל תקינה.');
@@ -1616,7 +1622,7 @@ export default function AdminAllowlistModal({
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
                   <Plus size={15} />
-                  <span>{showAddUserForm ? 'סגור טופס הוספה' : 'הוסף מורה חדש/ה'}</span>
+                  <span>{showAddUserForm ? 'סגור טופס הוספה' : 'הוספת משתמש/ת חדש/ה'}</span>
                 </button>
               </div>
 
@@ -1655,9 +1661,28 @@ export default function AdminAllowlistModal({
                       required
                       style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
                     />
+                    <select
+                      value={newUser.role}
+                      onChange={(e: any) => {
+                        const r = e.target.value;
+                        setNewUser({
+                          ...newUser,
+                          role: r,
+                          title:
+                            r === 'behavior_analyst' && (!newUser.title || newUser.title === 'גננת / מורה להוראה מותאמת')
+                              ? 'מנתחת התנהגות'
+                              : newUser.title
+                        });
+                      }}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', background: '#fff' }}
+                    >
+                      <option value="teacher">הרשאה: מורה / גננת</option>
+                      <option value="behavior_analyst">הרשאה: מנתח/ת התנהגות</option>
+                      <option value="admin">הרשאה: מנהל מערכת</option>
+                    </select>
                     <input
                       type="text"
-                      placeholder="תפקיד (גננת שילוב / מורת מתי״א)"
+                      placeholder="תפקיד (גננת שילוב / מנתחת התנהגות)"
                       value={newUser.title}
                       onChange={(e: any) => setNewUser({ ...newUser, title: e.target.value })}
                       style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
@@ -1923,6 +1948,7 @@ export default function AdminAllowlistModal({
                                     style={{ padding: '3px 6px', borderRadius: '6px', fontSize: '11px' }}
                                   >
                                     <option value="teacher">מורה / גננת</option>
+                                    <option value="behavior_analyst">מנתח/ת התנהגות</option>
                                     <option value="admin">מנהל מערכת</option>
                                   </select>
                                 )}
@@ -1932,6 +1958,21 @@ export default function AdminAllowlistModal({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                                   <strong>{u.name}</strong>
                                   {u.role === 'admin' && <span className="badge-admin">Admin</span>}
+                                  {u.role === 'behavior_analyst' && (
+                                    <span
+                                      style={{
+                                        background: '#ccfbf1',
+                                        color: '#0f766e',
+                                        border: '1px solid #99f6e4',
+                                        borderRadius: '4px',
+                                        padding: '1px 6px',
+                                        fontSize: '10.5px',
+                                        fontWeight: 700
+                                      }}
+                                    >
+                                      מנתח/ת התנהגות
+                                    </span>
+                                  )}
                                   {getUserPresenceBadge(u.email)}
                                   {detailsSavedToastId === u.id && (
                                     <span style={{ color: '#059669', fontSize: '11px', fontWeight: 700 }}>✓ נשמר</span>
