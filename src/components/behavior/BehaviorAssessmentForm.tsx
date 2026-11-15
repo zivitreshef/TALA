@@ -8,7 +8,9 @@ import {
   FileText,
   Sparkles,
   Loader2,
-  X
+  X,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import {
   BehaviorAssessmentReport,
@@ -30,10 +32,13 @@ import {
   formulateHypothesisNarrative,
   suggestInterventionStrategies
 } from '../../services/behaviorAiService';
+import BehaviorStudentDetailsCard, { type BehaviorStudentDetailsData } from './BehaviorStudentDetailsCard';
+import type { StaffMergePayload } from '../form/StaffVoiceControl';
 import './BehaviorAssessmentForm.css';
 
 export interface BehaviorAssessmentFormProps {
   student: StudentProfile;
+  allStudents?: StudentProfile[];
   currentUser?: {
     name?: string;
     email?: string;
@@ -47,6 +52,7 @@ export interface BehaviorAssessmentFormProps {
 
 export default function BehaviorAssessmentForm({
   student,
+  allStudents = [],
   currentUser,
   onSaveStudentPlan,
   onGoBack,
@@ -68,6 +74,45 @@ export default function BehaviorAssessmentForm({
       assessmentDate: new Date().toISOString().split('T')[0]
     };
   });
+
+  // Local student metadata state for editing details & team
+  const [studentDetails, setStudentDetails] = useState<BehaviorStudentDetailsData>(() => ({
+    id: student.id,
+    name: student.name || '',
+    idNumber: student.idNumber || '',
+    birthDate: student.birthDate || '',
+    educationalFramework: student.educationalFramework || '',
+    schoolYear: student.schoolYear || '',
+    reportDate: student.reportDate || report.assessmentDate || new Date().toISOString().split('T')[0],
+    address: student.address || '',
+    phone: student.phone || '',
+    schoolName: student.schoolName || '',
+    gradeClass: student.gradeClass || '',
+    educatorName: student.educatorName || '',
+    assistantName: student.assistantName || '',
+    educationalCounselor: student.educationalCounselor || '',
+    supportTeacher: student.supportTeacher || '',
+    psychologistName: student.psychologistName || '',
+    otherStaff: student.otherStaff || '',
+    ownerEmail: (student as any).ownerEmail
+  }));
+
+  const handleStudentDetailChange = (field: string, value: any) => {
+    setStudentDetails((prev) => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  };
+
+  const handleMergeStaffFeedback = (payload: StaffMergePayload) => {
+    const addition = `\n[משוב מצוות: ${payload.authorName} (${payload.recipientRole})]: ${payload.observationNote || payload.mergedText}`;
+    setReport((prev) => ({
+      ...prev,
+      backgroundInfo: (prev.backgroundInfo ? prev.backgroundInfo + '\n' : '') + addition,
+      updatedAt: new Date().toISOString()
+    }));
+    setIsDirty(true);
+  };
+
+  const isReportLocked = Boolean(report.isLocked);
 
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
@@ -301,6 +346,7 @@ export default function BehaviorAssessmentForm({
   const handleSave = () => {
     const updatedStudent: StudentProfile = {
       ...student,
+      ...studentDetails,
       behaviorAssessment: report,
       updatedAt: new Date().toISOString()
     };
@@ -345,6 +391,26 @@ export default function BehaviorAssessmentForm({
           )}
           <button
             type="button"
+            className={`btn-behavior-action ${isReportLocked ? 'btn-behavior-locked' : 'btn-behavior-secondary'}`}
+            onClick={() => {
+              const nextLocked = !isReportLocked;
+              setReport((prev) => ({
+                ...prev,
+                isLocked: nextLocked,
+                lockedAt: nextLocked ? new Date().toISOString() : undefined,
+                lockedBy: nextLocked ? (currentUser?.name || 'מנתחת התנהגות') : undefined,
+                updatedAt: new Date().toISOString()
+              }));
+              setIsDirty(true);
+            }}
+            title={isReportLocked ? 'המסמך נעול לעריכה - לחץ לשחרור' : 'נעילת המסמך לעריכה'}
+          >
+            {isReportLocked ? <Lock size={16} /> : <Unlock size={16} />}
+            <span>{isReportLocked ? 'מסמך נעול' : 'נעילת מסמך'}</span>
+          </button>
+          <button
+            type="button"
+            disabled={isReportLocked}
             className="btn-behavior-action btn-behavior-ai"
             onClick={() => setShowAiModal(true)}
             title="ניסוח דוח בעזרת בינה מלאכותית"
@@ -382,6 +448,40 @@ export default function BehaviorAssessmentForm({
           )}
         </div>
       </header>
+
+      {isReportLocked && (
+        <div
+          className="behavior-locked-notice-banner"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#fef3c7',
+            border: '1px solid #f59e0b',
+            color: '#92400e',
+            padding: '10px 16px',
+            borderRadius: '10px',
+            fontSize: '0.875rem',
+            fontWeight: 600
+          }}
+        >
+          <Lock size={16} />
+          <span>
+            מסמך זה נעול לעריכה{report.lockedBy ? ` על ידי ${report.lockedBy}` : ''}. כדי לערוך, לחצי על כפתור ״מסמך נעול״ בסרגל הפעולות.
+          </span>
+        </div>
+      )}
+
+      {/* Student Details and Team Card */}
+      <BehaviorStudentDetailsCard
+        studentData={studentDetails}
+        onChangeField={handleStudentDetailChange}
+        allStudents={allStudents}
+        currentUser={currentUser}
+        disabled={isReportLocked}
+        onMergeStaffFeedback={handleMergeStaffFeedback}
+        titlePrefix="פרטי התלמיד והמסגרת החינוכית"
+      />
 
       {/* AI Assistant Modal */}
       {showAiModal && (
@@ -473,6 +573,7 @@ export default function BehaviorAssessmentForm({
                 <input
                   type="text"
                   className="behavior-input"
+                  disabled={isReportLocked}
                   value={report.assessorName || ''}
                   onChange={(e) => handleFieldChange('assessorName', e.target.value)}
                   placeholder="למשל: דנה כהן"
@@ -484,6 +585,7 @@ export default function BehaviorAssessmentForm({
                 <input
                   type="date"
                   className="behavior-input"
+                  disabled={isReportLocked}
                   value={report.assessmentDate || ''}
                   onChange={(e) => handleFieldChange('assessmentDate', e.target.value)}
                 />
@@ -497,6 +599,7 @@ export default function BehaviorAssessmentForm({
               <textarea
                 className="behavior-textarea"
                 rows={3}
+                disabled={isReportLocked}
                 value={report.backgroundInfo || ''}
                 onChange={(e) => handleFieldChange('backgroundInfo', e.target.value)}
                 placeholder="פירוט תנאים סביבתיים, דפוסי שינה, תרופות, שינויים במערכת ומקורות מידע שנאספו..."
@@ -546,11 +649,12 @@ export default function BehaviorAssessmentForm({
                     </div>
                     <button
                       type="button"
+                      disabled={isReportLocked}
                       className="btn-collapse-toggle-32"
                       onClick={() => handleRemoveTargetBehavior(target.id)}
                       title="מחיקת התנהגות יעד"
                     >
-                      <Trash2 size={15} color="#d9534f" />
+                      <Trash2 size={15} color={isReportLocked ? '#94a3b8' : '#d9534f'} />
                     </button>
                   </div>
                 ))}
@@ -560,6 +664,7 @@ export default function BehaviorAssessmentForm({
             {!showAddTargetForm ? (
               <button
                 type="button"
+                disabled={isReportLocked}
                 className="btn-behavior-action btn-behavior-secondary"
                 onClick={() => setShowAddTargetForm(true)}
               >
@@ -744,11 +849,12 @@ export default function BehaviorAssessmentForm({
                         <td>
                           <button
                             type="button"
+                            disabled={isReportLocked}
                             className="btn-collapse-toggle-32"
                             onClick={() => handleRemoveBaselinePoint(point.id)}
                             title="מחיקת רשומת קו בסיס"
                           >
-                            <Trash2 size={14} color="#d9534f" />
+                            <Trash2 size={14} color={isReportLocked ? '#94a3b8' : '#d9534f'} />
                           </button>
                         </td>
                       </tr>
@@ -761,6 +867,7 @@ export default function BehaviorAssessmentForm({
             {!showAddBaselineForm ? (
               <button
                 type="button"
+                disabled={isReportLocked}
                 className="btn-behavior-action btn-behavior-secondary"
                 onClick={() => setShowAddBaselineForm(true)}
               >
@@ -880,6 +987,7 @@ export default function BehaviorAssessmentForm({
               <textarea
                 className="behavior-textarea"
                 rows={3}
+                disabled={isReportLocked}
                 value={report.antecedentAnalysis || ''}
                 onChange={(e) => handleFieldChange('antecedentAnalysis', e.target.value)}
                 placeholder="זיהוי זמנים מועדים, מעברים בין פעילויות, דרישות לימודיות מורכבות, או גורמים סביבתיים..."
@@ -890,6 +998,7 @@ export default function BehaviorAssessmentForm({
               <label className="behavior-field-label">תפקיד ההתנהגות המרכזי שזוהה</label>
               <select
                 className="behavior-select"
+                disabled={isReportLocked}
                 value={report.mainHypothesizedFunction || 'escape'}
                 onChange={(e) =>
                   handleFieldChange(
@@ -922,7 +1031,7 @@ export default function BehaviorAssessmentForm({
                   type="button"
                   className="btn-behavior-inline-ai"
                   onClick={handleFormulateHypothesis}
-                  disabled={isFormulatingHypothesis}
+                  disabled={isFormulatingHypothesis || isReportLocked}
                   title="ניסוח משפט השערה בעזרת בינה מלאכותית"
                 >
                   {isFormulatingHypothesis ? (
@@ -936,6 +1045,7 @@ export default function BehaviorAssessmentForm({
               <textarea
                 className="behavior-textarea"
                 rows={3}
+                disabled={isReportLocked}
                 value={report.functionalHypothesisNarrative || ''}
                 onChange={(e) =>
                   handleFieldChange('functionalHypothesisNarrative', e.target.value)
@@ -981,7 +1091,7 @@ export default function BehaviorAssessmentForm({
                   type="button"
                   className="btn-behavior-inline-ai"
                   onClick={handleSuggestRecommendations}
-                  disabled={isSuggestingRecommendations}
+                  disabled={isSuggestingRecommendations || isReportLocked}
                   title="הצעת עוגנים והמלצות בעזרת בינה מלאכותית"
                 >
                   {isSuggestingRecommendations ? (
@@ -995,6 +1105,7 @@ export default function BehaviorAssessmentForm({
               <textarea
                 className="behavior-textarea"
                 rows={4}
+                disabled={isReportLocked}
                 value={report.initialRecommendations || ''}
                 onChange={(e) =>
                   handleFieldChange('initialRecommendations', e.target.value)

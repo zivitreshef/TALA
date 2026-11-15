@@ -8,7 +8,9 @@ import {
   TrendingDown,
   Sparkles,
   Loader2,
-  X
+  X,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import {
   BehaviorInterventionPlan,
@@ -24,11 +26,14 @@ import {
   getMeasurementTypeLabelHebrew
 } from '../../domain/behaviorAnalysis';
 import { suggestInterventionStrategies } from '../../services/behaviorAiService';
+import BehaviorStudentDetailsCard, { type BehaviorStudentDetailsData } from './BehaviorStudentDetailsCard';
+import type { StaffMergePayload } from '../form/StaffVoiceControl';
 import './BehaviorAssessmentForm.css';
 import './BehaviorInterventionPlanForm.css';
 
 export interface BehaviorInterventionPlanFormProps {
   student: StudentProfile;
+  allStudents?: StudentProfile[];
   currentUser?: {
     name?: string;
     email?: string;
@@ -42,6 +47,7 @@ export interface BehaviorInterventionPlanFormProps {
 
 export default function BehaviorInterventionPlanForm({
   student,
+  allStudents = [],
   currentUser,
   onSaveStudentPlan,
   onGoBack,
@@ -71,6 +77,45 @@ export default function BehaviorInterventionPlanForm({
       updatedAt: new Date().toISOString()
     };
   });
+
+  // Local student metadata state for editing details & team
+  const [studentDetails, setStudentDetails] = useState<BehaviorStudentDetailsData>(() => ({
+    id: student.id,
+    name: student.name || '',
+    idNumber: student.idNumber || '',
+    birthDate: student.birthDate || '',
+    educationalFramework: student.educationalFramework || '',
+    schoolYear: student.schoolYear || '',
+    reportDate: student.reportDate || plan.effectiveDate || new Date().toISOString().split('T')[0],
+    address: student.address || '',
+    phone: student.phone || '',
+    schoolName: student.schoolName || '',
+    gradeClass: student.gradeClass || '',
+    educatorName: student.educatorName || '',
+    assistantName: student.assistantName || '',
+    educationalCounselor: student.educationalCounselor || '',
+    supportTeacher: student.supportTeacher || '',
+    psychologistName: student.psychologistName || '',
+    otherStaff: student.otherStaff || '',
+    ownerEmail: (student as any).ownerEmail
+  }));
+
+  const handleStudentDetailChange = (field: string, value: any) => {
+    setStudentDetails((prev) => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  };
+
+  const handleMergeStaffFeedback = (payload: StaffMergePayload) => {
+    const addition = `\n[משוב מצוות: ${payload.authorName} (${payload.recipientRole})]: ${payload.observationNote || payload.mergedText}`;
+    setPlan((prev) => ({
+      ...prev,
+      antecedentStrategies: (prev.antecedentStrategies ? prev.antecedentStrategies + '\n' : '') + addition,
+      updatedAt: new Date().toISOString()
+    }));
+    setIsDirty(true);
+  };
+
+  const isPlanLocked = Boolean(plan.isLocked);
 
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
@@ -274,6 +319,7 @@ export default function BehaviorInterventionPlanForm({
   const handleSave = () => {
     const updatedStudent: StudentProfile = {
       ...student,
+      ...studentDetails,
       behaviorPlan: plan,
       updatedAt: new Date().toISOString()
     };
@@ -318,6 +364,26 @@ export default function BehaviorInterventionPlanForm({
           )}
           <button
             type="button"
+            className={`btn-behavior-action ${isPlanLocked ? 'btn-behavior-locked' : 'btn-behavior-secondary'}`}
+            onClick={() => {
+              const nextLocked = !isPlanLocked;
+              setPlan((prev) => ({
+                ...prev,
+                isLocked: nextLocked,
+                lockedAt: nextLocked ? new Date().toISOString() : undefined,
+                lockedBy: nextLocked ? (currentUser?.name || 'מנתחת התנהגות') : undefined,
+                updatedAt: new Date().toISOString()
+              }));
+              setIsDirty(true);
+            }}
+            title={isPlanLocked ? 'המסמך נעול לעריכה - לחץ לשחרור' : 'נעילת המסמך לעריכה'}
+          >
+            {isPlanLocked ? <Lock size={16} /> : <Unlock size={16} />}
+            <span>{isPlanLocked ? 'מסמך נעול' : 'נעילת מסמך'}</span>
+          </button>
+          <button
+            type="button"
+            disabled={isPlanLocked}
             className="btn-behavior-action btn-behavior-ai"
             onClick={() => setShowAiModal(true)}
             title="הצעת תוכנית התערבות בעזרת בינה מלאכותית"
@@ -355,6 +421,40 @@ export default function BehaviorInterventionPlanForm({
           )}
         </div>
       </header>
+
+      {isPlanLocked && (
+        <div
+          className="behavior-locked-notice-banner"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#fef3c7',
+            border: '1px solid #f59e0b',
+            color: '#92400e',
+            padding: '10px 16px',
+            borderRadius: '10px',
+            fontSize: '0.875rem',
+            fontWeight: 600
+          }}
+        >
+          <Lock size={16} />
+          <span>
+            מסמך זה נעול לעריכה{plan.lockedBy ? ` על ידי ${plan.lockedBy}` : ''}. כדי לערוך, לחצי על כפתור ״מסמך נעול״ בסרגל הפעולות.
+          </span>
+        </div>
+      )}
+
+      {/* Student Details and Team Card */}
+      <BehaviorStudentDetailsCard
+        studentData={studentDetails}
+        onChangeField={handleStudentDetailChange}
+        allStudents={allStudents}
+        currentUser={currentUser}
+        disabled={isPlanLocked}
+        onMergeStaffFeedback={handleMergeStaffFeedback}
+        titlePrefix="פרטי התלמיד והמסגרת החינוכית"
+      />
 
       {/* AI Modal Confirmation */}
       {showAiModal && (
@@ -432,6 +532,7 @@ export default function BehaviorInterventionPlanForm({
                 <input
                   type="text"
                   className="behavior-input"
+                  disabled={isPlanLocked}
                   value={plan.analystName || ''}
                   onChange={(e) => handleFieldChange('analystName', e.target.value)}
                   placeholder="למשל: דנה כהן"
@@ -443,6 +544,7 @@ export default function BehaviorInterventionPlanForm({
                 <input
                   type="date"
                   className="behavior-input"
+                  disabled={isPlanLocked}
                   value={plan.effectiveDate || ''}
                   onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
                 />
@@ -454,6 +556,7 @@ export default function BehaviorInterventionPlanForm({
               <input
                 type="date"
                 className="behavior-input"
+                disabled={isPlanLocked}
                 value={plan.reviewDate || ''}
                 onChange={(e) => handleFieldChange('reviewDate', e.target.value)}
               />
@@ -533,11 +636,12 @@ export default function BehaviorInterventionPlanForm({
                     <strong>מיומנות חלופית: {rep.replacementSkill}</strong>
                     <button
                       type="button"
+                      disabled={isPlanLocked}
                       className="btn-collapse-toggle-32"
                       onClick={() => handleRemoveReplacement(idx)}
                       title="מחיקה"
                     >
-                      <Trash2 size={14} color="#d9534f" />
+                      <Trash2 size={14} color={isPlanLocked ? '#94a3b8' : '#d9534f'} />
                     </button>
                   </div>
                   {rep.teachingStrategies && (
@@ -552,6 +656,7 @@ export default function BehaviorInterventionPlanForm({
             {!showAddReplacementForm ? (
               <button
                 type="button"
+                disabled={isPlanLocked}
                 className="btn-behavior-action btn-behavior-secondary"
                 onClick={() => setShowAddReplacementForm(true)}
               >
@@ -641,6 +746,7 @@ export default function BehaviorInterventionPlanForm({
               <textarea
                 className="behavior-textarea"
                 rows={4}
+                disabled={isPlanLocked}
                 value={plan.antecedentStrategies || ''}
                 onChange={(e) => handleFieldChange('antecedentStrategies', e.target.value)}
                 placeholder="פירוט התאמות: מיקום ישיבה מותאם, לוח זמנים חזותי, פירוק משימות למקטעים קצרים, מתן אפשרות בחירה והכנה מראש..."
@@ -679,6 +785,7 @@ export default function BehaviorInterventionPlanForm({
                 <textarea
                   className="behavior-textarea"
                   rows={3}
+                  disabled={isPlanLocked}
                   value={plan.reinforcementSystem.preferredReinforcers || ''}
                   onChange={(e) =>
                     handleNestedFieldChange(
@@ -696,6 +803,7 @@ export default function BehaviorInterventionPlanForm({
                 <textarea
                   className="behavior-textarea"
                   rows={3}
+                  disabled={isPlanLocked}
                   value={plan.reinforcementSystem.scheduleOfReinforcement || ''}
                   onChange={(e) =>
                     handleNestedFieldChange(
@@ -716,6 +824,7 @@ export default function BehaviorInterventionPlanForm({
               <textarea
                 className="behavior-textarea"
                 rows={3}
+                disabled={isPlanLocked}
                 value={plan.reactiveProtocol.staffResponse || ''}
                 onChange={(e) =>
                   handleNestedFieldChange(
@@ -735,6 +844,7 @@ export default function BehaviorInterventionPlanForm({
               <textarea
                 className="behavior-textarea"
                 rows={2}
+                disabled={isPlanLocked}
                 value={plan.reactiveProtocol.crisisSafetyPlan || ''}
                 onChange={(e) =>
                   handleNestedFieldChange(
@@ -841,11 +951,12 @@ export default function BehaviorInterventionPlanForm({
                         <td>
                           <button
                             type="button"
+                            disabled={isPlanLocked}
                             className="btn-collapse-toggle-32"
                             onClick={() => handleRemoveTrackingPoint(point.id)}
                             title="מחיקת רשומת מעקב"
                           >
-                            <Trash2 size={14} color="#d9534f" />
+                            <Trash2 size={14} color={isPlanLocked ? '#94a3b8' : '#d9534f'} />
                           </button>
                         </td>
                       </tr>
@@ -858,6 +969,7 @@ export default function BehaviorInterventionPlanForm({
             {!showAddTrackingForm ? (
               <button
                 type="button"
+                disabled={isPlanLocked}
                 className="btn-behavior-action btn-behavior-secondary"
                 onClick={() => setShowAddTrackingForm(true)}
               >
