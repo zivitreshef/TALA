@@ -1,0 +1,196 @@
+/* ==========================================================================
+   Behavior Intervention Plan Form (תוכנית התערבות התנהגותית)
+   Enterprise Pedagogical Design System Compliance
+   ========================================================================== */
+
+.plan-form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  direction: rtl;
+  text-align: right;
+  font-family: inherit;
+  color: var(--text-main, #24344d);
+}
+
+.plan-form-header {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #d3dff0);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(36, 52, 77, 0.05);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.plan-form-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.plan-form-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #16a34a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plan-form-heading {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main, #24344d);
+}
+
+.plan-form-subheading {
+  margin: 0.2rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted, #5c6f8c);
+}
+
+.plan-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Card Sections */
+.plan-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border, #d3dff0);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(36, 52, 77, 0.04);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.plan-card-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.1rem 1.25rem;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+  transition: background 0.15s ease;
+}
+
+.plan-card-header:hover {
+  background: var(--bg-warm-subtle, #f8fafd);
+}
+
+.plan-card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.plan-section-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f0fdf4;
+  color: #16a34a;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.plan-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main, #24344d);
+}
+
+.plan-card-body {
+  padding: 1.25rem 1.5rem 1.5rem;
+  border-top: 1px solid var(--border-soft, #e4ecf7);
+  background: #ffffff;
+}
+
+/* Progress and Comparison Dashboard Banner */
+.plan-progress-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.85rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  margin: 1rem 0;
+}
+
+.plan-progress-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.plan-progress-label {
+  font-size: 0.75rem;
+  color: #166534;
+  font-weight: 600;
+}
+
+.plan-progress-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.plan-progress-value.positive {
+  color: #16a34a;
+}
+
+.plan-progress-value.negative {
+  color: #dc2626;
+}
+
+/* Replacement skill card */
+.replacement-skill-card {
+  border: 1px solid var(--border-soft, #e4ecf7);
+  background: #fbfcfe;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Print Stylesheet */
+@media print {
+  .plan-form-actions,
+  .btn-collapse-toggle-32,
+  .btn-behavior-action {
+    display: none !important;
+  }
+
+  .plan-card {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .plan-card-body {
+    display: block !important;
+  }
+}

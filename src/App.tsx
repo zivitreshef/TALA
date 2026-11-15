@@ -159,6 +159,7 @@ import { computePendingInquiriesCount, THREAD_STATUS } from './domain/supportCha
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import BehaviorAssessmentForm from './components/behavior/BehaviorAssessmentForm';
+import BehaviorInterventionPlanForm from './components/behavior/BehaviorInterventionPlanForm';
 import { appendBankGoalToStudent } from './domain/bankGoalApplication';
 import {
   getFrameworkKey,
@@ -587,7 +588,9 @@ export default function App() {
 
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState<any>(null);
-  const [activeStudentDocumentType, setActiveStudentDocumentType] = useState<'pedagogical_plan' | 'behavior_assessment'>('pedagogical_plan');
+  const [activeStudentDocumentType, setActiveStudentDocumentType] = useState<
+    'pedagogical_plan' | 'behavior_assessment' | 'behavior_plan'
+  >('pedagogical_plan');
 
   useEffect(() => {
     if (effectiveCurrentUser?.role === 'behavior_analyst') {
@@ -3463,12 +3466,39 @@ export default function App() {
                     >
                       הערכת תפקוד התנהגותי
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveStudentDocumentType('behavior_plan')}
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.825rem',
+                        fontWeight: 600,
+                        background: activeStudentDocumentType === 'behavior_plan' ? '#ffffff' : 'transparent',
+                        color: activeStudentDocumentType === 'behavior_plan' ? 'var(--text-main, #24344d)' : 'var(--text-muted, #5c6f8c)',
+                        boxShadow: activeStudentDocumentType === 'behavior_plan' ? '0 1px 3px rgba(36, 52, 77, 0.08)' : 'none'
+                      }}
+                    >
+                      תוכנית התערבות התנהגותית
+                    </button>
                   </div>
                 </div>
               </div>
               {activeStudentDocumentType === 'behavior_assessment' ? (
                 <ErrorBoundary componentName="BehaviorAssessmentForm">
                   <BehaviorAssessmentForm
+                    student={selectedStudent}
+                    currentUser={effectiveCurrentUser}
+                    onSaveStudentPlan={handleSaveStudentPlan}
+                    onDraftStateChange={setUnsavedDraftState}
+                    onGoBack={() => setSelectedStudentId(null)}
+                  />
+                </ErrorBoundary>
+              ) : activeStudentDocumentType === 'behavior_plan' ? (
+                <ErrorBoundary componentName="BehaviorInterventionPlanForm">
+                  <BehaviorInterventionPlanForm
                     student={selectedStudent}
                     currentUser={effectiveCurrentUser}
                     onSaveStudentPlan={handleSaveStudentPlan}

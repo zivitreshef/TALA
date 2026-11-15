@@ -5,7 +5,10 @@ import {
   Plus,
   Minus,
   Trash2,
-  FileText
+  FileText,
+  Sparkles,
+  Loader2,
+  X
 } from 'lucide-react';
 import {
   BehaviorAssessmentReport,
@@ -18,8 +21,15 @@ import {
 import {
   calculateBaselineStats,
   createEmptyBehaviorAssessment,
+  getBehaviorFunctionLabelHebrew,
   getMeasurementTypeLabelHebrew
 } from '../../domain/behaviorAnalysis';
+import {
+  generateBehaviorAssessmentDraft,
+  refineOperationalDefinition,
+  formulateHypothesisNarrative,
+  suggestInterventionStrategies
+} from '../../services/behaviorAiService';
 import './BehaviorAssessmentForm.css';
 
 export interface BehaviorAssessmentFormProps {
@@ -109,6 +119,107 @@ export default function BehaviorAssessmentForm({
     }));
     setIsDirty(true);
     setSaveSuccessNotice(false);
+  };
+
+  // AI Assistance states & handlers
+  const [showAiModal, setShowAiModal] = useState<boolean>(false);
+  const [aiPromptNotes, setAiPromptNotes] = useState<string>('');
+  const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
+  const [isRefiningTarget, setIsRefiningTarget] = useState<boolean>(false);
+  const [isFormulatingHypothesis, setIsFormulatingHypothesis] = useState<boolean>(false);
+  const [isSuggestingRecommendations, setIsSuggestingRecommendations] = useState<boolean>(false);
+
+  const handleRunFullAiDraft = async () => {
+    if (!aiPromptNotes.trim()) return;
+    setIsAiGenerating(true);
+    try {
+      const draft = await generateBehaviorAssessmentDraft(aiPromptNotes, student);
+      if (draft) {
+        setReport((prev) => ({
+          ...prev,
+          backgroundInfo: draft.backgroundSummary || prev.backgroundInfo,
+          targetBehaviors: draft.targetBehaviors?.length
+            ? draft.targetBehaviors.map((tb, idx) => ({
+                id: 'target_ai_' + Date.now() + '_' + idx,
+                name: tb.name,
+                operationalDefinition: tb.operationalDefinition,
+                measurementType: tb.measurementType || 'frequency',
+                targetGoal: tb.suggestedTargetGoal
+              }))
+            : prev.targetBehaviors,
+          antecedentAnalysis: draft.antecedentAnalysis || prev.antecedentAnalysis,
+          mainHypothesizedFunction: draft.mainHypothesizedFunction || prev.mainHypothesizedFunction,
+          functionalHypothesisNarrative:
+            draft.functionalHypothesisNarrative || prev.functionalHypothesisNarrative,
+          initialRecommendations:
+            draft.initialRecommendations || prev.initialRecommendations,
+          updatedAt: new Date().toISOString()
+        }));
+        setIsDirty(true);
+        setShowAiModal(false);
+        setAiPromptNotes('');
+        setSaveSuccessNotice(false);
+      }
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const handleRefineTargetDefinition = async () => {
+    const textToRefine = newTargetDef || newTargetName;
+    if (!textToRefine.trim()) return;
+    setIsRefiningTarget(true);
+    try {
+      const refined = await refineOperationalDefinition(textToRefine, student);
+      if (refined) {
+        setNewTargetDef(refined);
+      }
+    } finally {
+      setIsRefiningTarget(false);
+    }
+  };
+
+  const handleFormulateHypothesis = async () => {
+    setIsFormulatingHypothesis(true);
+    try {
+      const targetName = report.targetBehaviors[0]?.name || 'התנהגות מאתגרת';
+      const funcLabel = getBehaviorFunctionLabelHebrew(report.mainHypothesizedFunction);
+      const formulated = await formulateHypothesisNarrative(
+        report.antecedentAnalysis || '',
+        targetName,
+        funcLabel,
+        student
+      );
+      if (formulated) {
+        handleFieldChange('functionalHypothesisNarrative', formulated);
+      }
+    } finally {
+      setIsFormulatingHypothesis(false);
+    }
+  };
+
+  const handleSuggestRecommendations = async () => {
+    setIsSuggestingRecommendations(true);
+    try {
+      const targetName = report.targetBehaviors[0]?.name || '';
+      const funcLabel = getBehaviorFunctionLabelHebrew(report.mainHypothesizedFunction);
+      const res = await suggestInterventionStrategies(targetName, funcLabel, student);
+      if (res) {
+        const textParts = [
+          res.replacementSkill ? `התנהגות חלופית: ${res.replacementSkill}` : '',
+          res.antecedentStrategies ? `התאמות סביבתיות: ${res.antecedentStrategies}` : '',
+          res.preferredReinforcers ? `מערך חיזוקים: ${res.preferredReinforcers}` : '',
+          res.staffResponse ? `תגובת צוות: ${res.staffResponse}` : ''
+        ]
+          .filter(Boolean)
+          .join('\n\n');
+        if (textParts) {
+          handleFieldChange('initialRecommendations', textParts);
+        }
+      }
+    } finally {
+      setIsSuggestingRecommendations(false);
+    }
   };
 
   // Automated Statistical Calculation
@@ -234,6 +345,15 @@ export default function BehaviorAssessmentForm({
           )}
           <button
             type="button"
+            className="btn-behavior-action btn-behavior-ai"
+            onClick={() => setShowAiModal(true)}
+            title="ניסוח דוח בעזרת בינה מלאכותית"
+          >
+            <Sparkles size={16} />
+            <span>ניסוח בעזרת בינה מלאכותית</span>
+          </button>
+          <button
+            type="button"
             className="btn-behavior-action btn-behavior-secondary"
             onClick={handlePrint}
             title="הדפסת דוח הערכה"
@@ -262,6 +382,72 @@ export default function BehaviorAssessmentForm({
           )}
         </div>
       </header>
+
+      {/* AI Assistant Modal */}
+      {showAiModal && (
+        <div
+          className="behavior-ai-modal-backdrop"
+          onClick={() => !isAiGenerating && setShowAiModal(false)}
+        >
+          <div className="behavior-ai-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="behavior-ai-modal-header">
+              <h3 className="behavior-ai-modal-title">
+                <Sparkles size={20} color="#7c65b8" />
+                <span>ניסוח דוח הערכה בעזרת בינה מלאכותית</span>
+              </h3>
+              <button
+                type="button"
+                className="btn-collapse-toggle-32"
+                onClick={() => !isAiGenerating && setShowAiModal(false)}
+                title="סגירה"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: '0.875rem',
+                color: 'var(--text-muted, #5c6f8c)'
+              }}
+            >
+              הדבק כאן תיאור חופשי של המקרה, תצפיות גולמיות או נקודות מתוך שיחות עם הצוות,
+              והמערכת תנתח ותמלא את כל מקטעי הדוח באופן מקצועי.
+            </p>
+            <textarea
+              className="behavior-textarea"
+              style={{ minHeight: '140px' }}
+              value={aiPromptNotes}
+              onChange={(e) => setAiPromptNotes(e.target.value)}
+              placeholder="למשל: התלמיד יוצא מהכיתה כשמבקשים ממנו לפתוח חוברת חשבון, זה קורה כמעט כל יום בעיקר בשיעור שני. כשהוא יוצא הצוות הולך אחריו למסדרון ומנסה להרגיע אותו..."
+              disabled={isAiGenerating}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="btn-behavior-action btn-behavior-secondary"
+                onClick={() => setShowAiModal(false)}
+                disabled={isAiGenerating}
+              >
+                <span>ביטול</span>
+              </button>
+              <button
+                type="button"
+                className="btn-behavior-action btn-behavior-ai"
+                onClick={handleRunFullAiDraft}
+                disabled={isAiGenerating || !aiPromptNotes.trim()}
+              >
+                {isAiGenerating ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+                <span>{isAiGenerating ? 'מנתח ומנסח...' : 'יצירת טיוטת דוח'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Section 1: פרטי רקע והערכה */}
       <section className="behavior-card">
@@ -425,7 +611,32 @@ export default function BehaviorAssessmentForm({
                 </div>
 
                 <div className="behavior-field-group">
-                  <label className="behavior-field-label">הגדרה אופרציונלית מפורטת</label>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: '4px'
+                    }}
+                  >
+                    <label className="behavior-field-label">הגדרה אופרציונלית מפורטת</label>
+                    <button
+                      type="button"
+                      className="btn-behavior-inline-ai"
+                      onClick={handleRefineTargetDefinition}
+                      disabled={
+                        isRefiningTarget || (!newTargetDef.trim() && !newTargetName.trim())
+                      }
+                      title="דיוק הגדרה אופרציונלית בעזרת בינה מלאכותית"
+                    >
+                      {isRefiningTarget ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <Sparkles size={13} />
+                      )}
+                      <span>דיוק הגדרה בבינה מלאכותית</span>
+                    </button>
+                  </div>
                   <textarea
                     className="behavior-textarea"
                     rows={2}
@@ -696,9 +907,32 @@ export default function BehaviorAssessmentForm({
             </div>
 
             <div className="behavior-field-group">
-              <label className="behavior-field-label">
-                ניסוח מילולי של השערת התפקוד המנומקת
-              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px'
+                }}
+              >
+                <label className="behavior-field-label">
+                  ניסוח מילולי של השערת התפקוד המנומקת
+                </label>
+                <button
+                  type="button"
+                  className="btn-behavior-inline-ai"
+                  onClick={handleFormulateHypothesis}
+                  disabled={isFormulatingHypothesis}
+                  title="ניסוח משפט השערה בעזרת בינה מלאכותית"
+                >
+                  {isFormulatingHypothesis ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={13} />
+                  )}
+                  <span>ניסוח משפט השערה בבינה מלאכותית</span>
+                </button>
+              </div>
               <textarea
                 className="behavior-textarea"
                 rows={3}
@@ -732,9 +966,32 @@ export default function BehaviorAssessmentForm({
         {openSections.recommendations && (
           <div className="behavior-card-body">
             <div className="behavior-field-group">
-              <label className="behavior-field-label">
-                המלצות ראשוניות להתאמות סביבתיות ולהתנהגויות חלופיות
-              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '4px'
+                }}
+              >
+                <label className="behavior-field-label">
+                  המלצות ראשוניות להתאמות סביבתיות ולהתנהגויות חלופיות
+                </label>
+                <button
+                  type="button"
+                  className="btn-behavior-inline-ai"
+                  onClick={handleSuggestRecommendations}
+                  disabled={isSuggestingRecommendations}
+                  title="הצעת עוגנים והמלצות בעזרת בינה מלאכותית"
+                >
+                  {isSuggestingRecommendations ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={13} />
+                  )}
+                  <span>הצעת עוגנים בבינה מלאכותית</span>
+                </button>
+              </div>
               <textarea
                 className="behavior-textarea"
                 rows={4}
