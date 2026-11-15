@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Save,
   Printer,
@@ -13,7 +13,9 @@ import {
   Unlock,
   FileDown,
   Eye,
-  EyeOff
+  EyeOff,
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import {
   BehaviorAssessmentReport,
@@ -423,6 +425,22 @@ export default function BehaviorAssessmentForm({
   };
 
   const [hideDetailsOnExport, setHideDetailsOnExport] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+    if (showExportDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportDropdown]);
 
   const handlePrint = () => {
     const exportStudent: StudentProfile = {
@@ -474,86 +492,148 @@ export default function BehaviorAssessmentForm({
           </div>
         </div>
 
-        <div className="behavior-form-actions">
+        <div className="behavior-form-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {saveSuccessNotice && (
-            <span style={{ color: '#2e7d32', fontSize: '0.875rem', fontWeight: 600 }}>
-              נשמר בהצלחה
+            <span
+              className="save-toast-badge"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
+            >
+              <Check size={14} />
+              <span>נשמר בהצלחה</span>
             </span>
           )}
-          {isDirty && (
-            <span style={{ color: '#d97706', fontSize: '0.85rem' }}>שינויים טרם נשמרו</span>
+          {isDirty && !saveSuccessNotice && (
+            <span className="last-saved-hint" style={{ color: '#d97706' }}>
+              שינויים טרם נשמרו
+            </span>
           )}
+
+          {/* Yellow Lock / Unlock Button (matching teacher workspace) */}
+          <div className="report-lock-toggle-wrapper">
+            <button
+              type="button"
+              className={`btn-report-lock-icon ${isReportLocked ? 'locked' : 'unlocked'}`}
+              onClick={() => {
+                const nextLocked = !isReportLocked;
+                setReport((prev) => ({
+                  ...prev,
+                  isLocked: nextLocked,
+                  lockedAt: nextLocked ? new Date().toISOString() : undefined,
+                  lockedBy: nextLocked ? (currentUser?.name || 'מנתחת התנהגות') : undefined,
+                  updatedAt: new Date().toISOString()
+                }));
+                setIsDirty(true);
+              }}
+              aria-label={isReportLocked ? 'המסמך נעול לעריכה' : 'המסמך פתוח לעריכה'}
+              title={isReportLocked ? 'המסמך נעול לעריכה - לחצי לפתיחה' : 'נעילת המסמך לעריכה'}
+            >
+              {isReportLocked ? <Lock size={19} /> : <Unlock size={19} />}
+            </button>
+            <div className="report-lock-hover-tooltip" role="tooltip">
+              <div className="report-lock-tooltip-title">
+                {isReportLocked ? '🔒 המסמך נעול לעריכה' : '🔓 המסמך פתוח לעריכה'}
+              </div>
+              <div className="report-lock-tooltip-body">
+                {isReportLocked
+                  ? 'המסמך נעול לעריכה. לחצי על הסמל לפתיחת הנעילה.'
+                  : 'המסמך פתוח לעריכה. לחצי על הסמל לנעילת המסמך.'}
+              </div>
+            </div>
+          </div>
+
+          {/* Primary Save Button (matching teacher workspace) */}
           <button
             type="button"
-            className={`btn-behavior-action ${isReportLocked ? 'btn-behavior-locked' : 'btn-behavior-secondary'}`}
-            onClick={() => {
-              const nextLocked = !isReportLocked;
-              setReport((prev) => ({
-                ...prev,
-                isLocked: nextLocked,
-                lockedAt: nextLocked ? new Date().toISOString() : undefined,
-                lockedBy: nextLocked ? (currentUser?.name || 'מנתחת התנהגות') : undefined,
-                updatedAt: new Date().toISOString()
-              }));
-              setIsDirty(true);
-            }}
-            title={isReportLocked ? 'המסמך נעול לעריכה - לחץ לשחרור' : 'נעילת המסמך לעריכה'}
+            className="btn-save-progress"
+            onClick={handleSave}
+            title="שמירת הערכת תפקוד התנהגותי"
           >
-            {isReportLocked ? <Lock size={16} /> : <Unlock size={16} />}
-            <span>{isReportLocked ? 'מסמך נעול' : 'נעילת מסמך'}</span>
+            <Save size={17} />
+            <span>שמור התקדמות</span>
           </button>
-          <button
-            type="button"
-            className={`btn-behavior-action ${hideDetailsOnExport ? 'btn-behavior-primary' : 'btn-behavior-secondary'}`}
-            onClick={() => setHideDetailsOnExport((prev) => !prev)}
-            title={hideDetailsOnExport ? 'פרטים מזהים מוסתרים בהדפסה ובייצוא' : 'הסתרת פרטים מזהים בהדפסה ובייצוא'}
-          >
-            {hideDetailsOnExport ? <EyeOff size={16} /> : <Eye size={16} />}
-            <span>{hideDetailsOnExport ? 'פרטים מוסתרים' : 'הסתרת פרטים'}</span>
-          </button>
+
+          {/* AI Assistance Button */}
           <button
             type="button"
             disabled={isReportLocked}
-            className="btn-behavior-action btn-behavior-ai"
+            className="btn-export-dropdown"
+            style={{
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              borderColor: '#bfdbfe'
+            }}
             onClick={() => setShowAiModal(true)}
             title="ניסוח דוח בעזרת בינה מלאכותית"
           >
-            <Sparkles size={16} />
-            <span>ניסוח בעזרת בינה מלאכותית</span>
+            <Sparkles size={16} style={{ color: '#2563eb' }} />
+            <span>סיוע בינה מלאכותית</span>
           </button>
-          <button
-            type="button"
-            className="btn-behavior-action btn-behavior-secondary"
-            onClick={handleDownloadWord}
-            title="הורדת דוח בפורמט וורד"
-          >
-            <FileDown size={16} />
-            <span>הורדת וורד</span>
-          </button>
-          <button
-            type="button"
-            className="btn-behavior-action btn-behavior-secondary"
-            onClick={handlePrint}
-            title="הדפסת דוח הערכה"
-          >
-            <Printer size={16} />
-            <span>הדפסה</span>
-          </button>
-          <button
-            type="button"
-            className="btn-behavior-action btn-behavior-primary"
-            onClick={handleSave}
-            title="שמירת הערכת תפקוד"
-          >
-            <Save size={16} />
-            <span>שמירה</span>
-          </button>
+
+          {/* Unified Export & Print Dropdown (matching teacher workspace) */}
+          <div className="export-dropdown-wrapper" ref={exportDropdownRef}>
+            <button
+              type="button"
+              className={`btn-export-dropdown ${showExportDropdown ? 'active' : ''}`}
+              onClick={() => setShowExportDropdown((prev) => !prev)}
+              title="הדפסה, הורדת Word ושמירה כ-PDF"
+              aria-expanded={showExportDropdown}
+            >
+              <Printer size={16} />
+              <span>הדפסה וייצוא</span>
+              <ChevronDown size={14} className={`export-dropdown-arrow ${showExportDropdown ? 'open' : ''}`} />
+            </button>
+
+            {showExportDropdown && (
+              <div className="export-dropdown-menu" role="menu">
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    handlePrint();
+                  }}
+                >
+                  <Printer size={15} style={{ color: '#2563eb' }} />
+                  <span>הדפסה ושמירה כ-PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    handleDownloadWord();
+                  }}
+                >
+                  <FileDown size={15} style={{ color: '#059669' }} />
+                  <span>הורד קובץ Word (.doc)</span>
+                </button>
+
+                <div className="export-dropdown-divider" />
+
+                <label
+                  className={`export-dropdown-privacy ${hideDetailsOnExport ? 'checked' : 'unchecked'}`}
+                  title="כאשר מסומן, בהדפסה ובייצוא יוצגו ראשי תיבות ויוסתר מידע מזהה"
+                >
+                  <input
+                    type="checkbox"
+                    checked={hideDetailsOnExport}
+                    onChange={(e) => setHideDetailsOnExport(e.target.checked)}
+                  />
+                  {hideDetailsOnExport ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                  <span>הסתר פרטים מזהים בהדפסה</span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Close Button */}
           {onGoBack && (
             <button
               type="button"
-              className="btn-behavior-action btn-behavior-secondary"
+              className="btn-export-dropdown"
               onClick={onGoBack}
-              title="חזרה"
+              title="חזרה לרשימת תלמידים"
             >
               <span>סגירה</span>
             </button>
