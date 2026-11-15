@@ -48,6 +48,9 @@ export interface StudentProfile {
   stageReason?: string;
   stageUpdatedAt?: string;
   goals?: EcologicalGoal[];
+  behaviorAssessment?: BehaviorAssessmentReport;
+  behaviorPlan?: BehaviorInterventionPlan;
+  behaviorObservations?: BehaviorObservation[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -342,3 +345,96 @@ export interface OnboardingStep {
   actionLabel: string;
   tip: string;
 }
+
+// ============================================================================
+// Behavior Analysis Domain Types (ABA / Special Education)
+// ============================================================================
+
+export type BehaviorMeasurementType = 'frequency' | 'duration' | 'interval';
+
+export type BehaviorFunction = 'escape' | 'attention' | 'tangible' | 'sensory' | 'other';
+
+export type BehaviorIntensity = 'mild' | 'moderate' | 'severe';
+
+export interface BehaviorTarget {
+  id: string;
+  name: string;
+  operationalDefinition: string;
+  measurementType: BehaviorMeasurementType;
+  baselineAverage?: number;
+  targetGoal?: number;
+}
+
+export interface BaselineDataPoint {
+  id: string;
+  date: string;
+  sessionOrPeriod: string;
+  value: number;
+  notes?: string;
+}
+
+export interface BehaviorObservation {
+  id: string;
+  timestamp: number;
+  dateTime: string;
+  location: string;
+  activity: string;
+  antecedent: string;
+  behavior: string;
+  intensity: BehaviorIntensity;
+  durationMinutes?: number;
+  consequence: string;
+  perceivedFunction: BehaviorFunction;
+  notes?: string;
+}
+
+export interface BehaviorAssessmentReport {
+  id?: string;
+  assessorName?: string;
+  assessmentDate?: string;
+  backgroundInfo?: string;
+  targetBehaviors: BehaviorTarget[];
+  baselineData: BaselineDataPoint[];
+  antecedentAnalysis?: string;
+  mainHypothesizedFunction?: BehaviorFunction;
+  functionalHypothesisNarrative?: string;
+  initialRecommendations?: string;
+  updatedAt?: string;
+}
+
+export interface ReplacementBehaviorPlan {
+  targetBehaviorId?: string;
+  replacementSkill: string;
+  teachingStrategies: string;
+}
+
+export interface OngoingTrackingPoint {
+  id: string;
+  date: string;
+  period: string;
+  targetBehaviorOccurrences: number;
+  replacementBehaviorUsed: boolean | number;
+  reinforcementDelivered: boolean;
+  notes?: string;
+}
+
+export interface BehaviorInterventionPlan {
+  id?: string;
+  analystName?: string;
+  effectiveDate?: string;
+  reviewDate?: string;
+  targetBehaviors: BehaviorTarget[];
+  replacementBehaviors: ReplacementBehaviorPlan[];
+  antecedentStrategies: string;
+  reinforcementSystem: {
+    preferredReinforcers: string;
+    scheduleOfReinforcement: string;
+  };
+  reactiveProtocol: {
+    staffResponse: string;
+    crisisSafetyPlan?: string;
+  };
+  ongoingTracking: OngoingTrackingPoint[];
+  updatedAt?: string;
+}
+
