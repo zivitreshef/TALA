@@ -24,6 +24,7 @@ import {
 } from '../goalBankData';
 import { getEffectiveStudentStage, isGoalRelevantForStage } from '../studentStage';
 import { buildAdminBankGoalPayload } from '../domain/goalBankAdmin';
+import { isUserAdmin } from '../allowedUsers';
 import './GoalBankPage.css';
 
 const DOMAIN_ICONS = {
@@ -252,7 +253,7 @@ export default function GoalBankPage({
             </h1>
             <p className="goal-bank-header-subtitle">
               כל מטרה חדשה שנבנית בצוות משותפת למאגר ומדורגת לפי שכיחות. מותאם לגן ולבית ספר.
-              {currentUser.role === 'admin' ? (
+              {isUserAdmin(currentUser) ? (
                 <strong style={{ color: '#4c1d95', display: 'block', marginTop: '2px' }}>
                   👑 הרשאת מנהל מערכת: באפשרותך להוסיף, לערוך, להסיר ולאפס שכיחויות במאגר.
                 </strong>
@@ -266,7 +267,7 @@ export default function GoalBankPage({
         </div>
 
         <div className="goal-bank-header-actions">
-          {currentUser.role === 'admin' && (
+          {isUserAdmin(currentUser) && (
             <button
               type="button"
               className="btn-secondary-sm"
@@ -353,7 +354,7 @@ export default function GoalBankPage({
         </div>
 
         {/* Add / Edit Goal Inline Form (Admin or Any User for New Goal) */}
-        {editingBankGoal && (editingBankGoal.mode === 'add' || currentUser.role === 'admin') && (
+        {editingBankGoal && (editingBankGoal.mode === 'add' || isUserAdmin(currentUser)) && (
           <form className="admin-bank-goal-editor" onSubmit={handleSaveForm}>
             <div className="admin-editor-header">
               <h4>
@@ -842,7 +843,7 @@ export default function GoalBankPage({
                           )
                         )}
 
-                        {currentUser.role === 'admin' && (
+                        {isUserAdmin(currentUser) && (
                           <>
                             <button
                               type="button"

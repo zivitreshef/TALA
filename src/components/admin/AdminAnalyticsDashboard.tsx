@@ -13,7 +13,9 @@ import {
   normalizeHealthEvents,
   HEALTH_CATEGORY_LABELS_HE
 } from '../../domain/healthEvents';
+import { isUserAdmin } from '../../allowedUsers';
 
+export { isUserAdmin };
 
 export const TELEMETRY_SETTINGS_KEY = 'tala_telemetry_settings';
 
@@ -28,19 +30,6 @@ export const DEFAULT_TELEMETRY_SETTINGS: TelemetryDashboardSettings = {
   samplingMode: false,
   retentionPeriod: '90'
 };
-
-export function isUserAdmin(user: any): boolean {
-  if (!user) return false;
-  if (user.role === 'admin' || user.role === 'superadmin' || user.isAdmin === true) return true;
-  const email = (user.email || '').trim().toLowerCase();
-  const primaryAdmins = [
-    'zivit.reshef@gmail.com',
-    'moti.reshef@gmail.com',
-    'moti_reshef@bmc.com',
-    'admin@tala.education'
-  ];
-  return primaryAdmins.includes(email);
-}
 
 // Reusable styling objects
 const cardStyle: CSSProperties = {

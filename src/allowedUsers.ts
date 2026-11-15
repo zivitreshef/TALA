@@ -621,6 +621,24 @@ export function extendUserTrial<T extends Partial<AllowedUserRecord>>(user: T, a
   };
 }
 
+/**
+ * Determines whether a user has administrative privileges.
+ * True for users with role 'admin' or 'superadmin', explicit isAdmin: true,
+ * or primary system administrators / platform developers (e.g. zivit.reshef@gmail.com, moti_reshef@bmc.com).
+ */
+export function isUserAdmin(user?: any): boolean {
+  if (!user || typeof user !== 'object') return false;
+  if (user.role === 'admin' || (user as any).role === 'superadmin' || (user as any).isAdmin === true) return true;
+  const emailLower = (user.email || '').trim().toLowerCase();
+  const primaryAdmins = [
+    'zivit.reshef@gmail.com',
+    'moti.reshef@gmail.com',
+    'moti_reshef@bmc.com',
+    'admin@tala.education'
+  ];
+  return primaryAdmins.includes(emailLower);
+}
+
 export const CURRENT_PAID_LICENSE_VERSION = '1.0';
 
 /**
@@ -630,12 +648,7 @@ export const CURRENT_PAID_LICENSE_VERSION = '1.0';
  */
 export function mustUserAcceptPaidLicense(user?: Partial<AllowedUserRecord> | null): boolean {
   if (!user || typeof user !== 'object') return false;
-  const emailLower = (user.email || '').trim().toLowerCase();
-  if (
-    user.role === 'admin' ||
-    emailLower === 'zivit.reshef@gmail.com' ||
-    emailLower === 'moti_reshef@bmc.com'
-  ) {
+  if (isUserAdmin(user)) {
     return false;
   }
   // Check if user is a paid subscriber
@@ -701,12 +714,7 @@ export function isPaidUserExpired(user?: Partial<AllowedUserRecord> | null, now:
  */
 export function getPaidRemainingDays(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): number | null {
   if (!user || user.isTrialUser) return null;
-  const emailLower = (user.email || '').trim().toLowerCase();
-  if (
-    user.role === 'admin' ||
-    emailLower === 'zivit.reshef@gmail.com' ||
-    emailLower === 'moti_reshef@bmc.com'
-  ) {
+  if (isUserAdmin(user)) {
     return Infinity;
   }
   const nowDate = now instanceof Date ? now : new Date(now);
@@ -750,12 +758,7 @@ export type UserSubscriptionStatus =
  */
 export function getUserSubscriptionStatus(user?: Partial<AllowedUserRecord> | null, now: Date | string | number = new Date()): UserSubscriptionStatus {
   if (!user) return 'unknown';
-  const emailLower = (user.email || '').trim().toLowerCase();
-  if (
-    emailLower === 'zivit.reshef@gmail.com' ||
-    emailLower === 'moti_reshef@bmc.com' ||
-    user.role === 'admin'
-  ) {
+  if (isUserAdmin(user)) {
     return 'admin';
   }
   if (user.lockedOut) return 'locked_out';
@@ -861,12 +864,7 @@ export const DAILY_EMAIL_QUOTA_LIMIT = 100;
  */
 export function getUserEffectiveDailyAiQuota(user?: Partial<AllowedUserRecord> | null): number {
   if (!user) return DEFAULT_USER_DAILY_AI_QUOTA;
-  const emailLower = (user.email || '').trim().toLowerCase();
-  if (
-    user.role === 'admin' ||
-    emailLower === 'zivit.reshef@gmail.com' ||
-    emailLower === 'moti_reshef@bmc.com'
-  ) {
+  if (isUserAdmin(user)) {
     return Infinity;
   }
   const custom = Number(user.dailyAiQuotaLimit);

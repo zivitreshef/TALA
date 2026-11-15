@@ -1,3 +1,5 @@
+import { isUserAdmin } from '../allowedUsers';
+
 export const SURVEY_TICK_SECONDS = 30;
 export const SURVEY_THRESHOLD_SECONDS = 480;
 export const SURVEY_THRESHOLD_WITH_STUDENT_SECONDS = 180;
@@ -39,7 +41,7 @@ export const isSurveyEligible = (
   currentUser?: UserEngagementEntity | null,
   surveySnoozedInSession: boolean = false
 ): boolean => {
-  if (!currentUser || currentUser.role === 'admin') return false;
+  if (!currentUser || isUserAdmin(currentUser)) return false;
   if (currentUser.mustChangePassword) return false;
   if (currentUser.isTrialUser && (currentUser.mustSignNda || !currentUser.ndaSigned)) {
     return false;
