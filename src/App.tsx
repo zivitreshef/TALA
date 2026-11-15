@@ -42,6 +42,7 @@ import {
   getTrialRemainingDays,
   getPaidRemainingDays,
   mustUserAcceptPaidLicense,
+  isUserAdmin,
   createPasswordCredentials,
   ensureUsersListPasswordsHashed,
   verifyUserPassword
@@ -832,10 +833,7 @@ export default function App() {
     if (!currentUser?.email) return undefined;
     let didInitialUsersMerge = false;
     const meKey = currentUser.email.trim().toLowerCase();
-    const isAdminUser =
-      currentUser.role === 'admin' ||
-      meKey === 'zivit.reshef@gmail.com' ||
-      meKey === 'moti_reshef@bmc.com';
+    const isAdminUser = isUserAdmin(currentUser);
     // Non-admins get a public directory + their own profile (never the password hashes).
     let directoryUsers: any[] = [];
     let myProfile: any = null;
@@ -1081,7 +1079,7 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (currentUser?.role !== 'admin') return;
+    if (!isUserAdmin(currentUser)) return;
 
     try {
       const urlParams = new URLSearchParams(window.location.search);
@@ -1332,7 +1330,7 @@ export default function App() {
       setCurrentUser(updatedCurrent);
       safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
 
-      if (currentUser.role === 'admin') {
+      if (isUserAdmin(currentUser)) {
         const updatedList = allowedUsers.map((u) =>
           u.email.toLowerCase() === emailLower
             ? { ...u, dismissedSharedReportIds: nextUserDismissed }
@@ -1385,7 +1383,7 @@ export default function App() {
       setCurrentUser(updatedCurrent);
       safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
 
-      if (currentUser.role === 'admin') {
+      if (isUserAdmin(currentUser)) {
         const updatedList = allowedUsers.map((u) =>
           u.email.toLowerCase() === emailLower
             ? { ...u, dismissedSharedReportIds: nextUserDismissed }
@@ -1433,7 +1431,7 @@ export default function App() {
     setCurrentUser(updatedCurrent);
     safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
 
-    if (currentUser.role === 'admin') {
+    if (isUserAdmin(currentUser)) {
       const updatedList = allowedUsers.map((u) =>
         u.email.toLowerCase() === emailLower
           ? { ...u, dismissedSharedReportIds: nextUserDismissed }
@@ -2842,7 +2840,7 @@ export default function App() {
             >
               <MessageCircle size={15} />
               <span>עזרה</span>
-              {!currentUser.surveyCompleted && !currentUser.surveyDismissed && currentUser.role !== 'admin' && (
+              {!currentUser.surveyCompleted && !currentUser.surveyDismissed && !isUserAdmin(currentUser) && (
                 <span className="header-alert-dot" title="ישנו שאלון משוב פתוח" />
               )}
             </button>
@@ -2869,7 +2867,7 @@ export default function App() {
 
           {/* Zone 3: User Profile & Admin Group */}
           <div className="header-user-group">
-            {currentUser.role === 'admin' && (
+            {isUserAdmin(currentUser) && (
               <button
                 type="button"
                 className="header-tool-btn header-admin-btn"
@@ -3040,7 +3038,7 @@ export default function App() {
       )}
 
       {/* Admin Security Lockout Notification Banner Under Site Header */}
-      {currentUser.role === 'admin' && lockedOutUsers.length > 0 && (
+      {isUserAdmin(currentUser) && lockedOutUsers.length > 0 && (
         <div
           style={{
             background: '#fef2f2',
@@ -3519,7 +3517,7 @@ export default function App() {
                   userPreferences={userPreferences}
                   students={baseStudentsForView}
                   privateGoals={userPreferences?.privateGoals || []}
-                  isAdmin={currentUser.role === 'admin'}
+                  isAdmin={isUserAdmin(currentUser)}
                   currentUser={effectiveCurrentUser}
                   allowedUsers={allowedUsers}
                   onOpenGoalBankManager={() => {
@@ -4143,8 +4141,7 @@ export default function App() {
             !currentUser.mustChangePassword &&
             currentUser.isTrialUser &&
             (currentUser.mustSignNda || !currentUser.ndaSigned) &&
-            currentUser.email?.toLowerCase() !== 'zivit.reshef@gmail.com' &&
-            currentUser.email?.toLowerCase() !== 'moti_reshef@bmc.com'
+            !isUserAdmin(currentUser)
         )}
         currentUser={currentUser}
         onCompleteNda={handleCompleteTrialNda}
@@ -4229,7 +4226,7 @@ export default function App() {
       />
 
       {/* Admin Allowlist Management Modal (Only accessible to Admin) */}
-      {currentUser.role === 'admin' && (
+      {isUserAdmin(currentUser) && (
         <AdminAllowlistModal
           isOpen={showAdminModal}
           currentUser={currentUser}

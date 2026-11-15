@@ -23,7 +23,7 @@ import {
   Search,
   Download
 } from 'lucide-react';
-import { getPaidRemainingDays } from '../../allowedUsers';
+import { getPaidRemainingDays, isUserAdmin } from '../../allowedUsers';
 import { PEDAGOGICAL_GUIDE_CHAPTERS, GUIDE_CATEGORIES } from './pedagogicalGuideData';
 
 export interface TrialUpgradeModalProps {
@@ -387,7 +387,7 @@ export default function TrialUpgradeModal({
             {/* License Renewal Badge / Direct Quick Buttons */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {isNonTrialUser && (
-                resolvedPaidRemainingDays === Infinity || currentUser.role === 'admin' ? (
+                resolvedPaidRemainingDays === Infinity || isUserAdmin(currentUser) ? (
                   <span
                     style={{
                       background: '#f1f5f9',
