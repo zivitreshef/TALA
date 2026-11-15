@@ -2718,8 +2718,17 @@ export default function App() {
                 ver. {siteVersion}
               </span>
               {selectedStudent && (
-                <span className="header-active-student-pill" title={`יומן פדגוגי וסביבת עבודה: ${selectedStudent.name}`}>
-                  יומן תוכנית פדגוגית: {selectedStudent.name}
+                <span
+                  className="header-active-student-pill"
+                  title={
+                    effectiveCurrentUser?.role === 'behavior_analyst' || activeStudentDocumentType !== 'pedagogical_plan'
+                      ? `יומן ניתוח התנהגות: ${selectedStudent.name}`
+                      : `יומן תוכנית פדגוגית: ${selectedStudent.name}`
+                  }
+                >
+                  {effectiveCurrentUser?.role === 'behavior_analyst' || activeStudentDocumentType !== 'pedagogical_plan'
+                    ? `יומן ניתוח התנהגות: ${selectedStudent.name}`
+                    : `יומן תוכנית פדגוגית: ${selectedStudent.name}`}
                 </span>
               )}
             </div>
@@ -2773,22 +2782,24 @@ export default function App() {
               <span>מעקב יומי</span>
             </button>
 
-            <button
-              type="button"
-              className={`header-nav-btn ${showGoalBankOverview && selectedStudentId === null && !showClassOverview ? 'active' : ''}`}
-              onClick={() => {
-                setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
-                setSelectedStudentId(null);
-                setShowClassOverview(false);
-                setShowDailyTracker(false);
-                setShowGoalBankOverview(true);
-              }}
-              style={{ position: 'relative' }}
-              title="מאגר מטרות דינמי"
-            >
-              <TrendingUp size={15} />
-              <span>מאגר מטרות</span>
-            </button>
+            {effectiveCurrentUser?.role !== 'behavior_analyst' && (
+              <button
+                type="button"
+                className={`header-nav-btn ${showGoalBankOverview && selectedStudentId === null && !showClassOverview ? 'active' : ''}`}
+                onClick={() => {
+                  setTargetBankStudentId(selectedStudentId || userStudents[0]?.id || '');
+                  setSelectedStudentId(null);
+                  setShowClassOverview(false);
+                  setShowDailyTracker(false);
+                  setShowGoalBankOverview(true);
+                }}
+                style={{ position: 'relative' }}
+                title="מאגר מטרות דינמי"
+              >
+                <TrendingUp size={15} />
+                <span>מאגר מטרות</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -3452,10 +3463,14 @@ export default function App() {
                         border: '1px solid #e2e8f0'
                       }}
                     >
-                      {selectedStudent.educationalFramework ||
-                        (selectedStudent.planType?.includes('גן') || selectedStudent.planType?.includes('תח"י')
-                          ? 'תוכנית אקולוגית לילדי הגן'
-                          : 'תוכנית לתלמיד ביה"ס')}
+                      {activeStudentDocumentType === 'behavior_assessment'
+                        ? 'הערכת תפקוד התנהגותי'
+                        : activeStudentDocumentType === 'behavior_plan'
+                        ? 'תוכנית התערבות התנהגותית'
+                        : (selectedStudent.educationalFramework ||
+                          (selectedStudent.planType?.includes('גן') || selectedStudent.planType?.includes('תח"י')
+                            ? 'תוכנית אקולוגית לילדי הגן'
+                            : 'תוכנית לתלמיד ביה"ס'))}
                     </span>
                   </div>
                 </div>
@@ -3480,13 +3495,13 @@ export default function App() {
                     style={{
                       padding: '6px 14px',
                       borderRadius: '8px',
-                      border: 'none',
+                      border: activeStudentDocumentType === 'behavior_assessment' ? '1px solid #bfdbfe' : '1px solid transparent',
                       cursor: 'pointer',
                       fontSize: '0.835rem',
                       fontWeight: 700,
                       background: activeStudentDocumentType === 'behavior_assessment' ? '#ffffff' : 'transparent',
-                      color: activeStudentDocumentType === 'behavior_assessment' ? '#0f766e' : '#64748b',
-                      boxShadow: activeStudentDocumentType === 'behavior_assessment' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      color: activeStudentDocumentType === 'behavior_assessment' ? '#2563eb' : '#64748b',
+                      boxShadow: activeStudentDocumentType === 'behavior_assessment' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
                       transition: 'all 0.15s ease'
                     }}
                   >
@@ -3500,38 +3515,40 @@ export default function App() {
                     style={{
                       padding: '6px 14px',
                       borderRadius: '8px',
-                      border: 'none',
+                      border: activeStudentDocumentType === 'behavior_plan' ? '1px solid #bfdbfe' : '1px solid transparent',
                       cursor: 'pointer',
                       fontSize: '0.835rem',
                       fontWeight: 700,
                       background: activeStudentDocumentType === 'behavior_plan' ? '#ffffff' : 'transparent',
-                      color: activeStudentDocumentType === 'behavior_plan' ? '#4338ca' : '#64748b',
-                      boxShadow: activeStudentDocumentType === 'behavior_plan' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      color: activeStudentDocumentType === 'behavior_plan' ? '#2563eb' : '#64748b',
+                      boxShadow: activeStudentDocumentType === 'behavior_plan' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
                       transition: 'all 0.15s ease'
                     }}
                   >
                     תוכנית התערבות התנהגותית
                   </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeStudentDocumentType === 'pedagogical_plan'}
-                    onClick={() => setActiveStudentDocumentType('pedagogical_plan')}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.835rem',
-                      fontWeight: 700,
-                      background: activeStudentDocumentType === 'pedagogical_plan' ? '#ffffff' : 'transparent',
-                      color: activeStudentDocumentType === 'pedagogical_plan' ? '#1e3a8a' : '#64748b',
-                      boxShadow: activeStudentDocumentType === 'pedagogical_plan' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    תוכנית עבודה פדגוגית
-                  </button>
+                  {effectiveCurrentUser?.role !== 'behavior_analyst' && (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeStudentDocumentType === 'pedagogical_plan'}
+                      onClick={() => setActiveStudentDocumentType('pedagogical_plan')}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        border: activeStudentDocumentType === 'pedagogical_plan' ? '1px solid #bfdbfe' : '1px solid transparent',
+                        cursor: 'pointer',
+                        fontSize: '0.835rem',
+                        fontWeight: 700,
+                        background: activeStudentDocumentType === 'pedagogical_plan' ? '#ffffff' : 'transparent',
+                        color: activeStudentDocumentType === 'pedagogical_plan' ? '#2563eb' : '#64748b',
+                        boxShadow: activeStudentDocumentType === 'pedagogical_plan' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      תוכנית עבודה פדגוגית
+                    </button>
+                  )}
                 </div>
               </div>
 

@@ -230,9 +230,9 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
       />
     );
 
-    expect(markup).toContain('הסתרת פרטים');
-    expect(markup).toContain('הורדת וורד');
-    expect(markup).toContain('הדפסה');
+    expect(markup).toContain('הדפסה וייצוא');
+    expect(markup).toContain('שמור התקדמות');
+    expect(markup).toContain('btn-export-dropdown');
   });
 
   it('9. renders BehaviorInterventionPlanForm with export actions and privacy toggle', () => {
@@ -245,8 +245,8 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
       />
     );
 
-    expect(markup).toContain('הסתרת פרטים');
-    expect(markup).toContain('הורדת וורד');
-    expect(markup).toContain('הדפסה');
+    expect(markup).toContain('הדפסה וייצוא');
+    expect(markup).toContain('שמור התקדמות');
+    expect(markup).toContain('btn-export-dropdown');
   });
 });

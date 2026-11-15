@@ -169,7 +169,11 @@ describe('Behavior Forms Student Details, Locking & Team Collaboration Suite', (
       );
 
       expect(html).toContain('פרטי התלמיד והמסגרת החינוכית');
-      expect(html).toContain('נעילת מסמך');
+      expect(html).toContain('btn-report-lock-icon');
+      expect(html).toContain('נעילת המסמך לעריכה');
+      expect(html).toContain('btn-save-progress');
+      expect(html).toContain('שמור התקדמות');
+      expect(html).toContain('הדפסה וייצוא');
       expect(html).not.toContain('מסמך זה נעול לעריכה');
     });
 
@@ -193,7 +197,8 @@ describe('Behavior Forms Student Details, Locking & Team Collaboration Suite', (
         />
       );
 
-      expect(html).toContain('מסמך נעול');
+      expect(html).toContain('btn-report-lock-icon locked');
+      expect(html).toContain('המסמך נעול לעריכה');
       expect(html).toContain('מסמך זה נעול לעריכה');
       expect(html).toContain('רונית שפירא');
       expect(html).toContain('disabled=""');
@@ -213,7 +218,11 @@ describe('Behavior Forms Student Details, Locking & Team Collaboration Suite', (
       );
 
       expect(html).toContain('פרטי התלמיד והמסגרת החינוכית');
-      expect(html).toContain('נעילת מסמך');
+      expect(html).toContain('btn-report-lock-icon');
+      expect(html).toContain('נעילת המסמך לעריכה');
+      expect(html).toContain('btn-save-progress');
+      expect(html).toContain('שמור התקדמות');
+      expect(html).toContain('הדפסה וייצוא');
       expect(html).not.toContain('מסמך זה נעול לעריכה');
     });
 
@@ -237,10 +246,45 @@ describe('Behavior Forms Student Details, Locking & Team Collaboration Suite', (
         />
       );
 
-      expect(html).toContain('מסמך נעול');
+      expect(html).toContain('btn-report-lock-icon locked');
+      expect(html).toContain('המסמך נעול לעריכה');
       expect(html).toContain('מסמך זה נעול לעריכה');
       expect(html).toContain('רונית שפירא');
       expect(html).toContain('disabled=""');
+    });
+
+    it('renders teacher-grade unified export dropdown and save button on both behavior forms', () => {
+      const handleSave = vi.fn();
+      const assessmentHtml = renderToStaticMarkup(
+        <BehaviorAssessmentForm
+          student={sampleStudent}
+          currentUser={{ name: 'רונית שפירא', role: 'behavior_analyst' }}
+          onSaveStudentPlan={handleSave}
+        />
+      );
+
+      const planHtml = renderToStaticMarkup(
+        <BehaviorInterventionPlanForm
+          student={sampleStudent}
+          currentUser={{ name: 'רונית שפירא', role: 'behavior_analyst' }}
+          onSaveStudentPlan={handleSave}
+        />
+      );
+
+      // Both forms use teacher-standard action classes
+      expect(assessmentHtml).toContain('btn-save-progress');
+      expect(assessmentHtml).toContain('שמור התקדמות');
+      expect(assessmentHtml).toContain('btn-export-dropdown');
+      expect(assessmentHtml).toContain('הדפסה וייצוא');
+      expect(assessmentHtml).toContain('סיוע בינה מלאכותית');
+      expect(assessmentHtml).toContain('btn-report-lock-icon');
+
+      expect(planHtml).toContain('btn-save-progress');
+      expect(planHtml).toContain('שמור התקדמות');
+      expect(planHtml).toContain('btn-export-dropdown');
+      expect(planHtml).toContain('הדפסה וייצוא');
+      expect(planHtml).toContain('סיוע בינה מלאכותית');
+      expect(planHtml).toContain('btn-report-lock-icon');
     });
   });
 });
