@@ -21,6 +21,7 @@ import {
   buildVoiceMergeText,
   buildWhatsAppShareUrl,
   getDefaultQuestions,
+  getDefaultBehaviorParentQuestions,
   getInviteQuestions,
   sanitizeResponses,
   summarizeInvites,
@@ -70,6 +71,7 @@ export interface ParentVoiceControlProps {
   initialOpen?: boolean;
   initialInvites?: StoredInvite[] | null;
   highlight?: boolean;
+  mode?: 'pedagogical' | 'behavior';
 }
 
 /**
@@ -83,7 +85,8 @@ export default function ParentVoiceControl({
   onMerge,
   initialOpen = false,
   initialInvites = null,
-  highlight = false
+  highlight = false,
+  mode = 'pedagogical'
 }: ParentVoiceControlProps): React.JSX.Element {
   const [invites, setInvites] = useState<StoredInvite[]>(() => initialInvites || []);
   const [open, setOpen] = useState<boolean>(initialOpen);
@@ -122,14 +125,20 @@ export default function ParentVoiceControl({
     );
   }, [ownerEmail, studentId, authedEmail, initialInvites]);
 
-  const summary = summarizeInvites(invites as InviteDoc[]);
+  const summary = summarizeInvites(
+    invites as InviteDoc[],
+    Date.now(),
+    mode === 'behavior' ? 'behavior_parent' : 'parent'
+  );
   const childFirstName = getFirstName(student?.name);
   const gender: 'boy' | 'girl' = student?.gender === 'girl' ? 'girl' : 'boy';
   const pending = summary.pending as StoredInvite | null;
   const currentHref = typeof window !== 'undefined' ? window.location.href : 'http://localhost';
   const url = pending?.token ? buildInviteUrl(currentHref, pending.token) : '';
 
-  const defaultQuestions = getDefaultQuestions({ childName: childFirstName, gender });
+  const defaultQuestions = mode === 'behavior'
+    ? getDefaultBehaviorParentQuestions({ childName: childFirstName, gender })
+    : getDefaultQuestions({ childName: childFirstName, gender });
   const activeQuestions = questionsList !== null ? questionsList : defaultQuestions;
 
   const handleQuestionChange = (idx: number, val: string): void => {
@@ -194,6 +203,7 @@ export default function ParentVoiceControl({
         studentId,
         childFirstName,
         gender,
+        inviteType: mode === 'behavior' ? 'behavior_parent' : 'parent',
         customQuestions: isCustomized ? finalQuestions : [],
         overrideDefaults: isCustomized
       });
@@ -367,7 +377,10 @@ export default function ParentVoiceControl({
                       </button>
                       <a
                         className="btn-send-email-doc"
-                        href={buildWhatsAppShareUrl(url, { childFirstName })}
+                        href={buildWhatsAppShareUrl(url, {
+                          childFirstName,
+                          inviteType: mode === 'behavior' ? 'behavior_parent' : 'parent'
+                        })}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ textDecoration: 'none' }}

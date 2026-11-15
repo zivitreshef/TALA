@@ -38,6 +38,12 @@ const STAFF_MERGE_LABELS: Record<InviteAnswerKey, string> = {
   goal: 'המלצות, התאמות ויעדים להמשך'
 };
 
+const BEHAVIOR_PARENT_MERGE_LABELS: Record<InviteAnswerKey, string> = {
+  strengths: 'זמנים ומצבי קושי בבית (טריגרים)',
+  challenges: 'גורמים מרגיעים ודרכי ויסות',
+  goal: 'חיזוקים ופעילויות אהובות בעלות ערך מניע'
+};
+
 export const PREDEFINED_STAFF_ROLES: readonly string[] = [
   'מרפאה בעיסוק',
   'קלינאית תקשורת',
@@ -71,7 +77,7 @@ export interface BuildInviteDocParams {
   studentId: string | number;
   childFirstName?: string;
   gender?: 'boy' | 'girl' | string;
-  inviteType?: 'parent' | 'staff';
+  inviteType?: 'parent' | 'staff' | 'behavior_parent';
   recipientRole?: string;
   recipientName?: string;
   customQuestions?: string[];
@@ -84,7 +90,7 @@ export interface InviteDoc {
   studentId: string;
   childFirstName: string;
   gender: 'boy' | 'girl';
-  inviteType?: 'parent' | 'staff';
+  inviteType?: 'parent' | 'staff' | 'behavior_parent';
   recipientRole?: string;
   recipientName?: string;
   status: 'pending' | 'submitted' | string;
@@ -143,7 +149,7 @@ export function buildWhatsAppShareUrl(
     recipientRole = ''
   }: {
     childFirstName?: string;
-    inviteType?: 'parent' | 'staff';
+    inviteType?: 'parent' | 'staff' | 'behavior_parent';
     recipientName?: string;
     recipientRole?: string;
   } = {}
@@ -155,8 +161,36 @@ export function buildWhatsAppShareUrl(
     const text = `${greeting}${rolePart}, לקראת בניית או עדכון תוכנית העבודה${name ? ' של ' + name : ''} נשמח לקבל את ההתייחסות המקצועית שלך בקישור הקצר הבא (כ-2 דקות):\n${inviteUrl}`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
+  if (inviteType === 'behavior_parent') {
+    const text = `שלום, לקראת בניית הערכת התפקוד ותוכנית ההתערבות ההתנהגותית${name ? ' של ' + name : ''}, נשמח לקבל את התובנות החשובות שלכם בשאלון קצר (כ-3 דקות):\n${inviteUrl}`;
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  }
   const text = `שלום, לקראת בניית תוכנית העבודה${name ? ' של ' + name : ''} נשמח לשמוע את דעתכם. זה לוקח כ-3 דקות:\n${inviteUrl}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
+export function getDefaultBehaviorParentQuestions({
+  childName = '',
+  gender = 'boy'
+}: { childName?: string; gender?: 'boy' | 'girl' | string } = {}): string[] {
+  const name = String(childName || '').trim() || pick(gender, 'הילד', 'הילדה');
+  return [
+    pick(
+      gender,
+      `באילו שעות, זמנים או מצבים בבית ובשגרה התנהגויות הקושי נוטות להתרחש בתדירות הגבוהה ביותר?`,
+      `באילו שעות, זמנים או מצבים בבית ובשגרה התנהגויות הקושי נוטות להתרחש בתדירות הגבוהה ביותר?`
+    ),
+    pick(
+      gender,
+      `מה בדרך כלל עוזר ל${name} להירגע, להתאזן או לעבור בין פעילויות בצורה חלקה?`,
+      `מה בדרך כלל עוזר ל${name} להירגע, להתאזן או לעבור בין פעילויות בצורה חלקה?`
+    ),
+    pick(
+      gender,
+      `מהם הדברים, הפעילויות או החיזוקים האהובים ביותר על ${name} שמשמחים ומניעים אותו?`,
+      `מהם הדברים, הפעילויות או החיזוקים האהובים ביותר על ${name} שמשמחים ומניעים אותה?`
+    )
+  ];
 }
 
 function pick(gender: string, boyText: string, girlText: string): string {
@@ -229,7 +263,7 @@ export function getInviteQuestions({
 }: {
   childName?: string;
   gender?: 'boy' | 'girl' | string;
-  inviteType?: 'parent' | 'staff';
+  inviteType?: 'parent' | 'staff' | 'behavior_parent';
   recipientRole?: string;
   customQuestions?: string[];
   overrideDefaults?: boolean;
@@ -257,6 +291,21 @@ export function getInviteQuestions({
       isCustom: true
     }));
     return [...baseStaff, ...custom];
+  }
+
+  if (inviteType === 'behavior_parent') {
+    const behaviorDefaults = getDefaultBehaviorParentQuestions({ childName, gender });
+    const baseBehavior: InviteQuestion[] = [
+      { key: 'strengths', label: behaviorDefaults[0] },
+      { key: 'challenges', label: behaviorDefaults[1] },
+      { key: 'goal', label: behaviorDefaults[2] }
+    ];
+    const custom: InviteQuestion[] = cleanCustom.map((label, idx) => ({
+      key: `custom_${idx}`,
+      label,
+      isCustom: true
+    }));
+    return [...baseBehavior, ...custom];
   }
 
   const name = String(childName || '').trim() || pick(gender, 'הילד', 'הילדה');
@@ -315,6 +364,8 @@ export function buildInviteDoc({
     const cleanName = String(recipientName || '').replace(/<[^>]*>/g, '').trim().slice(0, 80);
     if (cleanRole) docData.recipientRole = cleanRole;
     if (cleanName) docData.recipientName = cleanName;
+  } else if (inviteType === 'behavior_parent') {
+    docData.inviteType = 'behavior_parent';
   }
 
   if (cleanQuestions.length > 0) {
@@ -371,12 +422,14 @@ export function getInviteState(invite?: Partial<InviteDoc> | null, now: number =
 export function summarizeInvites(
   invites: Array<Partial<InviteDoc>> = [],
   now: number = Date.now(),
-  filterType: 'parent' | 'staff' | 'all' = 'parent'
+  filterType: 'parent' | 'staff' | 'behavior_parent' | 'all' = 'parent'
 ): InvitesSummary {
   const filtered = invites.filter((i) => {
     if (filterType === 'all') return true;
-    const iType = i.inviteType === 'staff' ? 'staff' : 'parent';
-    return iType === filterType;
+    const rawType = i.inviteType;
+    if (filterType === 'behavior_parent') return rawType === 'behavior_parent';
+    if (filterType === 'staff') return rawType === 'staff';
+    return rawType === 'parent' || !rawType;
   });
   const list = [...filtered].sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0));
   const unreviewed = list.filter(
@@ -394,7 +447,12 @@ export function buildVoiceMergeText(invite?: Partial<InviteDoc> | null): string 
   const responses = sanitizeResponses(invite?.responses, invite?.customQuestions);
   const lines: string[] = [];
   const isStaff = invite?.inviteType === 'staff';
-  const labelsMap = isStaff ? STAFF_MERGE_LABELS : MERGE_LABELS;
+  const isBehaviorParent = invite?.inviteType === 'behavior_parent';
+  const labelsMap = isStaff
+    ? STAFF_MERGE_LABELS
+    : isBehaviorParent
+      ? BEHAVIOR_PARENT_MERGE_LABELS
+      : MERGE_LABELS;
 
   if (!invite?.overrideDefaults) {
     INVITE_ANSWER_KEYS.forEach((key) => {
@@ -418,6 +476,9 @@ export function buildVoiceMergeText(invite?: Partial<InviteDoc> | null): string 
     const name = String(invite?.recipientName || '').trim();
     const who = [name, role].filter(Boolean).join(' – ') || 'איש/אשת צוות';
     return [`— התייחסות צוות מקצועי (${who}) —`, ...lines].join('\n');
+  }
+  if (isBehaviorParent) {
+    return ['— שאלון עקיף וקול ההורה לניתוח התנהגות —', ...lines].join('\n');
   }
   return ['— קול ההורים (כפי שנמסר על ידי ההורים) —', ...lines].join('\n');
 }

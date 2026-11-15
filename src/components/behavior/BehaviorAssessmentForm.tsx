@@ -8,7 +8,12 @@ import {
   FileText,
   Sparkles,
   Loader2,
-  X
+  X,
+  Lock,
+  Unlock,
+  FileDown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   BehaviorAssessmentReport,
@@ -30,10 +35,30 @@ import {
   formulateHypothesisNarrative,
   suggestInterventionStrategies
 } from '../../services/behaviorAiService';
+import BehaviorStudentDetailsCard, { type BehaviorStudentDetailsData } from './BehaviorStudentDetailsCard';
+import type { StaffMergePayload } from '../form/StaffVoiceControl';
+import ParentVoiceControl from '../form/ParentVoiceControl';
+import PedagogicalFeed from '../form/PedagogicalFeed';
+import DiagnosticIntakeModal from '../form/DiagnosticIntakeModal';
+import {
+  addSnippet,
+  removeSnippet,
+  updateSnippet,
+  createParentVoiceSnippet
+} from '../../domain/pedagogicalFeed';
+import {
+  buildBehaviorAssessmentWordDocumentHtml,
+  buildBehaviorAssessmentPrintHtml,
+  openHtmlPrintWindow,
+  getSafeReportFilename
+} from '../../export/wordAndPrintBuilders';
+import { BaselineFrequencyBarChart, FunctionDistributionHorizontalBarChart } from './BehaviorCharts';
+import type { PedagogicalSnippet } from '../../domain/types';
 import './BehaviorAssessmentForm.css';
 
 export interface BehaviorAssessmentFormProps {
   student: StudentProfile;
+  allStudents?: StudentProfile[];
   currentUser?: {
     name?: string;
     email?: string;
@@ -47,6 +72,7 @@ export interface BehaviorAssessmentFormProps {
 
 export default function BehaviorAssessmentForm({
   student,
+  allStudents = [],
   currentUser,
   onSaveStudentPlan,
   onGoBack,
@@ -68,6 +94,82 @@ export default function BehaviorAssessmentForm({
       assessmentDate: new Date().toISOString().split('T')[0]
     };
   });
+
+  // Local student metadata state for editing details & team
+  const [studentDetails, setStudentDetails] = useState<BehaviorStudentDetailsData>(() => ({
+    id: student.id,
+    name: student.name || '',
+    idNumber: student.idNumber || '',
+    birthDate: student.birthDate || '',
+    educationalFramework: student.educationalFramework || '',
+    schoolYear: student.schoolYear || '',
+    reportDate: student.reportDate || report.assessmentDate || new Date().toISOString().split('T')[0],
+    address: student.address || '',
+    phone: student.phone || '',
+    schoolName: student.schoolName || '',
+    gradeClass: student.gradeClass || '',
+    educatorName: student.educatorName || '',
+    assistantName: student.assistantName || '',
+    educationalCounselor: student.educationalCounselor || '',
+    supportTeacher: student.supportTeacher || '',
+    psychologistName: student.psychologistName || '',
+    otherStaff: student.otherStaff || '',
+    ownerEmail: (student as any).ownerEmail
+  }));
+
+  const handleStudentDetailChange = (field: string, value: any) => {
+    setStudentDetails((prev) => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  };
+
+  const handleMergeStaffFeedback = (payload: StaffMergePayload) => {
+    const addition = `\n[משוב מצוות: ${payload.authorName} (${payload.recipientRole})]: ${payload.observationNote || payload.mergedText}`;
+    setReport((prev) => ({
+      ...prev,
+      backgroundInfo: (prev.backgroundInfo ? prev.backgroundInfo + '\n' : '') + addition,
+      updatedAt: new Date().toISOString()
+    }));
+    setIsDirty(true);
+  };
+
+  const isReportLocked = Boolean(report.isLocked);
+
+  // Pedagogical Feed & Diagnostic Intake State
+  const [activeSnippets, setActiveSnippets] = useState<PedagogicalSnippet[]>(
+    () => student.pedagogicalSnippets || []
+  );
+  const [isPedagogicalFeedOpen, setIsPedagogicalFeedOpen] = useState<boolean>(true);
+  const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState<boolean>(false);
+
+  const handleAddSnippet = (snippet: PedagogicalSnippet) => {
+    setActiveSnippets((prev) => addSnippet(prev, snippet));
+    setIsDirty(true);
+  };
+
+  const handleUpdateSnippet = (snippetId: string, updatedContent: string) => {
+    setActiveSnippets((prev) => updateSnippet(prev, snippetId, updatedContent));
+    setIsDirty(true);
+  };
+
+  const handleRemoveSnippet = (snippetId: string) => {
+    setActiveSnippets((prev) => removeSnippet(prev, snippetId));
+    setIsDirty(true);
+  };
+
+  const handleMergeParentVoice = (mergedText: string) => {
+    setReport((prev) => ({
+      ...prev,
+      backgroundInfo: (prev.backgroundInfo ? prev.backgroundInfo + '\n\n' : '') + mergedText,
+      updatedAt: new Date().toISOString()
+    }));
+    const parentSnippet = createParentVoiceSnippet(
+      mergedText,
+      currentUser?.name || 'הורי התלמיד',
+      new Date().toISOString()
+    );
+    setActiveSnippets((prev) => addSnippet(prev, parentSnippet));
+    setIsDirty(true);
+  };
 
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
@@ -133,7 +235,12 @@ export default function BehaviorAssessmentForm({
     if (!aiPromptNotes.trim()) return;
     setIsAiGenerating(true);
     try {
-      const draft = await generateBehaviorAssessmentDraft(aiPromptNotes, student);
+      const studentWithSnippets: StudentProfile = {
+        ...student,
+        ...studentDetails,
+        pedagogicalSnippets: activeSnippets
+      };
+      const draft = await generateBehaviorAssessmentDraft(aiPromptNotes, studentWithSnippets);
       if (draft) {
         setReport((prev) => ({
           ...prev,
@@ -301,6 +408,8 @@ export default function BehaviorAssessmentForm({
   const handleSave = () => {
     const updatedStudent: StudentProfile = {
       ...student,
+      ...studentDetails,
+      pedagogicalSnippets: activeSnippets,
       behaviorAssessment: report,
       updatedAt: new Date().toISOString()
     };
@@ -313,8 +422,39 @@ export default function BehaviorAssessmentForm({
     }, 3500);
   };
 
+  const [hideDetailsOnExport, setHideDetailsOnExport] = useState(false);
+
   const handlePrint = () => {
-    window.print();
+    const exportStudent: StudentProfile = {
+      ...student,
+      ...studentDetails,
+      behaviorAssessment: report
+    };
+    const printHtml = buildBehaviorAssessmentPrintHtml(exportStudent, hideDetailsOnExport);
+    openHtmlPrintWindow(printHtml);
+  };
+
+  const handleDownloadWord = () => {
+    const exportStudent: StudentProfile = {
+      ...student,
+      ...studentDetails,
+      behaviorAssessment: report
+    };
+    const wordHtml = buildBehaviorAssessmentWordDocumentHtml(exportStudent, hideDetailsOnExport);
+    const blob = new Blob(['\ufeff', wordHtml], {
+      type: 'application/msword;charset=utf-8'
+    });
+    const filename = getSafeReportFilename(exportStudent, hideDetailsOnExport, 'doc', 'behavior_assessment');
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
   };
 
   return (
@@ -345,12 +485,50 @@ export default function BehaviorAssessmentForm({
           )}
           <button
             type="button"
+            className={`btn-behavior-action ${isReportLocked ? 'btn-behavior-locked' : 'btn-behavior-secondary'}`}
+            onClick={() => {
+              const nextLocked = !isReportLocked;
+              setReport((prev) => ({
+                ...prev,
+                isLocked: nextLocked,
+                lockedAt: nextLocked ? new Date().toISOString() : undefined,
+                lockedBy: nextLocked ? (currentUser?.name || 'מנתחת התנהגות') : undefined,
+                updatedAt: new Date().toISOString()
+              }));
+              setIsDirty(true);
+            }}
+            title={isReportLocked ? 'המסמך נעול לעריכה - לחץ לשחרור' : 'נעילת המסמך לעריכה'}
+          >
+            {isReportLocked ? <Lock size={16} /> : <Unlock size={16} />}
+            <span>{isReportLocked ? 'מסמך נעול' : 'נעילת מסמך'}</span>
+          </button>
+          <button
+            type="button"
+            className={`btn-behavior-action ${hideDetailsOnExport ? 'btn-behavior-primary' : 'btn-behavior-secondary'}`}
+            onClick={() => setHideDetailsOnExport((prev) => !prev)}
+            title={hideDetailsOnExport ? 'פרטים מזהים מוסתרים בהדפסה ובייצוא' : 'הסתרת פרטים מזהים בהדפסה ובייצוא'}
+          >
+            {hideDetailsOnExport ? <EyeOff size={16} /> : <Eye size={16} />}
+            <span>{hideDetailsOnExport ? 'פרטים מוסתרים' : 'הסתרת פרטים'}</span>
+          </button>
+          <button
+            type="button"
+            disabled={isReportLocked}
             className="btn-behavior-action btn-behavior-ai"
             onClick={() => setShowAiModal(true)}
             title="ניסוח דוח בעזרת בינה מלאכותית"
           >
             <Sparkles size={16} />
             <span>ניסוח בעזרת בינה מלאכותית</span>
+          </button>
+          <button
+            type="button"
+            className="btn-behavior-action btn-behavior-secondary"
+            onClick={handleDownloadWord}
+            title="הורדת דוח בפורמט וורד"
+          >
+            <FileDown size={16} />
+            <span>הורדת וורד</span>
           </button>
           <button
             type="button"
@@ -382,6 +560,40 @@ export default function BehaviorAssessmentForm({
           )}
         </div>
       </header>
+
+      {isReportLocked && (
+        <div
+          className="behavior-locked-notice-banner"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#fef3c7',
+            border: '1px solid #f59e0b',
+            color: '#92400e',
+            padding: '10px 16px',
+            borderRadius: '10px',
+            fontSize: '0.875rem',
+            fontWeight: 600
+          }}
+        >
+          <Lock size={16} />
+          <span>
+            מסמך זה נעול לעריכה{report.lockedBy ? ` על ידי ${report.lockedBy}` : ''}. כדי לערוך, לחצי על כפתור ״מסמך נעול״ בסרגל הפעולות.
+          </span>
+        </div>
+      )}
+
+      {/* Student Details and Team Card */}
+      <BehaviorStudentDetailsCard
+        studentData={studentDetails}
+        onChangeField={handleStudentDetailChange}
+        allStudents={allStudents}
+        currentUser={currentUser}
+        disabled={isReportLocked}
+        onMergeStaffFeedback={handleMergeStaffFeedback}
+        titlePrefix="פרטי התלמיד והמסגרת החינוכית"
+      />
 
       {/* AI Assistant Modal */}
       {showAiModal && (
@@ -449,6 +661,88 @@ export default function BehaviorAssessmentForm({
         </div>
       )}
 
+      {/* Pedagogical Feed, Voice Capture & Diagnostic Documents Section */}
+      <section className="behavior-card" style={{ marginBottom: '1.25rem' }}>
+        <div
+          className="behavior-card-header"
+          onClick={() => setIsPedagogicalFeedOpen((prev) => !prev)}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          <div className="behavior-card-title-wrap">
+            <span className="behavior-section-badge" style={{ background: '#0d9488', color: '#ffffff' }}>
+              <Sparkles size={14} />
+            </span>
+            <h2 className="behavior-card-title">ציר תובנות פדגוגי ומסמכי רקע</h2>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '2px 9px', borderRadius: '999px' }}>
+              {activeSnippets.length} תובנות ומסמכים
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+            <ParentVoiceControl
+              student={student}
+              currentUser={currentUser}
+              disabled={isReportLocked}
+              mode="behavior"
+              onMerge={handleMergeParentVoice}
+            />
+            <button
+              type="button"
+              className="btn-collapse-toggle-32"
+              onClick={() => setIsPedagogicalFeedOpen((prev) => !prev)}
+              aria-label={isPedagogicalFeedOpen ? 'כיווץ ציר תובנות' : 'הרחבת ציר תובנות'}
+            >
+              {isPedagogicalFeedOpen ? <Minus size={16} /> : <Plus size={16} />}
+            </button>
+          </div>
+        </div>
+
+        {isPedagogicalFeedOpen && (
+          <div className="behavior-card-body">
+            <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#64748b' }}>
+              איסוף תצפיות יומיומיות, הקלטות קוליות, חוות דעת מקצועיות ומסמכי אבחון. כל המידע המצטבר מוזן ישירות כהקשר למנוע הבינה המלאכותית בעת ניסוח הדוח.
+            </p>
+            <PedagogicalFeed
+              snippets={activeSnippets}
+              onAddSnippet={handleAddSnippet}
+              onUpdateSnippet={handleUpdateSnippet}
+              onRemoveSnippet={handleRemoveSnippet}
+              onOpenUploadModal={() => setShowDiagnosticIntakeModal(true)}
+              onTriggerAiAnalysis={(overrideSnippets) => {
+                if (overrideSnippets) {
+                  setActiveSnippets(overrideSnippets);
+                }
+                setShowAiModal(true);
+              }}
+              isAnalyzing={isAiGenerating}
+              isLocked={isReportLocked}
+              currentUserName={currentUser?.name}
+            />
+          </div>
+        )}
+      </section>
+
+      {/* Diagnostic Intake Modal */}
+      {showDiagnosticIntakeModal && (
+        <DiagnosticIntakeModal
+          formData={{
+            id: student.id,
+            name: student.name,
+            gender: (student as any).gender || 'boy',
+            pedagogicalSnippets: activeSnippets
+          }}
+          isOpen={showDiagnosticIntakeModal}
+          onApplyIntake={(_updated, newSnippet) => {
+            if (newSnippet) {
+              setActiveSnippets((prev) => addSnippet(prev, newSnippet));
+              setIsDirty(true);
+            }
+            setShowDiagnosticIntakeModal(false);
+          }}
+          onClose={() => setShowDiagnosticIntakeModal(false)}
+          authorName={currentUser?.name}
+        />
+      )}
+
       {/* Section 1: פרטי רקע והערכה */}
       <section className="behavior-card">
         <div className="behavior-card-header" onClick={() => toggleSection('background')}>
@@ -473,6 +767,7 @@ export default function BehaviorAssessmentForm({
                 <input
                   type="text"
                   className="behavior-input"
+                  disabled={isReportLocked}
                   value={report.assessorName || ''}
                   onChange={(e) => handleFieldChange('assessorName', e.target.value)}
                   placeholder="למשל: דנה כהן"
@@ -484,6 +779,7 @@ export default function BehaviorAssessmentForm({
                 <input
                   type="date"
                   className="behavior-input"
+                  disabled={isReportLocked}
                   value={report.assessmentDate || ''}
                   onChange={(e) => handleFieldChange('assessmentDate', e.target.value)}
                 />
@@ -497,6 +793,7 @@ export default function BehaviorAssessmentForm({
               <textarea
                 className="behavior-textarea"
                 rows={3}
+                disabled={isReportLocked}
                 value={report.backgroundInfo || ''}
                 onChange={(e) => handleFieldChange('backgroundInfo', e.target.value)}
                 placeholder="פירוט תנאים סביבתיים, דפוסי שינה, תרופות, שינויים במערכת ומקורות מידע שנאספו..."
@@ -546,11 +843,12 @@ export default function BehaviorAssessmentForm({
                     </div>
                     <button
                       type="button"
+                      disabled={isReportLocked}
                       className="btn-collapse-toggle-32"
                       onClick={() => handleRemoveTargetBehavior(target.id)}
                       title="מחיקת התנהגות יעד"
                     >
-                      <Trash2 size={15} color="#d9534f" />
+                      <Trash2 size={15} color={isReportLocked ? '#94a3b8' : '#d9534f'} />
                     </button>
                   </div>
                 ))}
@@ -560,6 +858,7 @@ export default function BehaviorAssessmentForm({
             {!showAddTargetForm ? (
               <button
                 type="button"
+                disabled={isReportLocked}
                 className="btn-behavior-action btn-behavior-secondary"
                 onClick={() => setShowAddTargetForm(true)}
               >
@@ -744,11 +1043,12 @@ export default function BehaviorAssessmentForm({
                         <td>
                           <button
                             type="button"
+                            disabled={isReportLocked}
                             className="btn-collapse-toggle-32"
                             onClick={() => handleRemoveBaselinePoint(point.id)}
                             title="מחיקת רשומת קו בסיס"
                           >
-                            <Trash2 size={14} color="#d9534f" />
+                            <Trash2 size={14} color={isReportLocked ? '#94a3b8' : '#d9534f'} />
                           </button>
                         </td>
                       </tr>
@@ -761,6 +1061,7 @@ export default function BehaviorAssessmentForm({
             {!showAddBaselineForm ? (
               <button
                 type="button"
+                disabled={isReportLocked}
                 className="btn-behavior-action btn-behavior-secondary"
                 onClick={() => setShowAddBaselineForm(true)}
               >
@@ -851,6 +1152,11 @@ export default function BehaviorAssessmentForm({
                 </div>
               </form>
             )}
+
+            {/* Visual Chart 1: Baseline Frequency Bar Chart */}
+            <div style={{ marginTop: '24px' }}>
+              <BaselineFrequencyBarChart data={report.baselineData} />
+            </div>
           </div>
         )}
       </section>
@@ -880,6 +1186,7 @@ export default function BehaviorAssessmentForm({
               <textarea
                 className="behavior-textarea"
                 rows={3}
+                disabled={isReportLocked}
                 value={report.antecedentAnalysis || ''}
                 onChange={(e) => handleFieldChange('antecedentAnalysis', e.target.value)}
                 placeholder="זיהוי זמנים מועדים, מעברים בין פעילויות, דרישות לימודיות מורכבות, או גורמים סביבתיים..."
@@ -890,6 +1197,7 @@ export default function BehaviorAssessmentForm({
               <label className="behavior-field-label">תפקיד ההתנהגות המרכזי שזוהה</label>
               <select
                 className="behavior-select"
+                disabled={isReportLocked}
                 value={report.mainHypothesizedFunction || 'escape'}
                 onChange={(e) =>
                   handleFieldChange(
@@ -904,6 +1212,18 @@ export default function BehaviorAssessmentForm({
                 <option value="sensory">ויסות או גירוי חושי</option>
                 <option value="other">אחר או משולב</option>
               </select>
+            </div>
+
+            {/* Visual Chart 2: Hypothesized Function Horizontal Bar Chart */}
+            <div style={{ marginTop: '16px', marginBottom: '1.25rem' }}>
+              <FunctionDistributionHorizontalBarChart
+                mainFunction={report.mainHypothesizedFunction}
+                totalEvents={
+                  report.baselineData.length > 0
+                    ? report.baselineData.reduce((acc, b) => acc + (Number(b.value) || 0), 0)
+                    : 38
+                }
+              />
             </div>
 
             <div className="behavior-field-group">
@@ -922,7 +1242,7 @@ export default function BehaviorAssessmentForm({
                   type="button"
                   className="btn-behavior-inline-ai"
                   onClick={handleFormulateHypothesis}
-                  disabled={isFormulatingHypothesis}
+                  disabled={isFormulatingHypothesis || isReportLocked}
                   title="ניסוח משפט השערה בעזרת בינה מלאכותית"
                 >
                   {isFormulatingHypothesis ? (
@@ -936,6 +1256,7 @@ export default function BehaviorAssessmentForm({
               <textarea
                 className="behavior-textarea"
                 rows={3}
+                disabled={isReportLocked}
                 value={report.functionalHypothesisNarrative || ''}
                 onChange={(e) =>
                   handleFieldChange('functionalHypothesisNarrative', e.target.value)
@@ -981,7 +1302,7 @@ export default function BehaviorAssessmentForm({
                   type="button"
                   className="btn-behavior-inline-ai"
                   onClick={handleSuggestRecommendations}
-                  disabled={isSuggestingRecommendations}
+                  disabled={isSuggestingRecommendations || isReportLocked}
                   title="הצעת עוגנים והמלצות בעזרת בינה מלאכותית"
                 >
                   {isSuggestingRecommendations ? (
@@ -995,6 +1316,7 @@ export default function BehaviorAssessmentForm({
               <textarea
                 className="behavior-textarea"
                 rows={4}
+                disabled={isReportLocked}
                 value={report.initialRecommendations || ''}
                 onChange={(e) =>
                   handleFieldChange('initialRecommendations', e.target.value)

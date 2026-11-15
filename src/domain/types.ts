@@ -39,8 +39,21 @@ export interface StudentProfile {
   id?: string;
   name?: string;
   gender?: 'male' | 'female' | string;
+  idNumber?: string;
   birthDate?: string;
+  schoolYear?: string;
+  reportDate?: string;
   educationalFramework?: string;
+  address?: string;
+  phone?: string;
+  schoolName?: string;
+  gradeClass?: string;
+  educatorName?: string;
+  assistantName?: string;
+  educationalCounselor?: string;
+  supportTeacher?: string;
+  psychologistName?: string;
+  otherStaff?: string;
   teacherFreeText?: string;
   pedagogicalSnippets?: PedagogicalSnippet[];
   stage?: EducationalStage;
@@ -53,6 +66,7 @@ export interface StudentProfile {
   behaviorObservations?: BehaviorObservation[];
   createdAt?: string;
   updatedAt?: string;
+  [key: string]: unknown;
 }
 
 export interface HealthEventPayload {
@@ -399,6 +413,9 @@ export interface BehaviorAssessmentReport {
   mainHypothesizedFunction?: BehaviorFunction;
   functionalHypothesisNarrative?: string;
   initialRecommendations?: string;
+  isLocked?: boolean;
+  lockedAt?: string;
+  lockedBy?: string;
   updatedAt?: string;
 }
 
@@ -415,6 +432,9 @@ export interface OngoingTrackingPoint {
   targetBehaviorOccurrences: number;
   replacementBehaviorUsed: boolean | number;
   reinforcementDelivered: boolean;
+  sessionOrPeriod?: string;
+  targetBehaviorCount?: number;
+  replacementBehaviorCount?: number;
   notes?: string;
 }
 
@@ -435,6 +455,9 @@ export interface BehaviorInterventionPlan {
     crisisSafetyPlan?: string;
   };
   ongoingTracking: OngoingTrackingPoint[];
+  isLocked?: boolean;
+  lockedAt?: string;
+  lockedBy?: string;
   updatedAt?: string;
 }
 
