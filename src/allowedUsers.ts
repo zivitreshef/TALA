@@ -235,7 +235,7 @@ export interface AllowedUserRecord {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'teacher';
+  role: 'admin' | 'teacher' | 'behavior_analyst';
   title?: string;
   group?: string;
   passwordSalt: string;
