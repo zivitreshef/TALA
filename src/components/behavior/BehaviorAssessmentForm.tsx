@@ -15,7 +15,8 @@ import {
   Eye,
   EyeOff,
   Check,
-  ChevronDown
+  ChevronDown,
+  Mail
 } from 'lucide-react';
 import {
   BehaviorAssessmentReport,
@@ -54,6 +55,8 @@ import {
   openHtmlPrintWindow,
   getSafeReportFilename
 } from '../../export/wordAndPrintBuilders';
+import { generatePdfBlobFromHtml } from '../../emailService';
+import SendReportEmailModal from '../modals/SendReportEmailModal';
 import { BaselineFrequencyBarChart, FunctionDistributionHorizontalBarChart } from './BehaviorCharts';
 import type { PedagogicalSnippet } from '../../domain/types';
 import './BehaviorAssessmentForm.css';
@@ -224,6 +227,10 @@ export default function BehaviorAssessmentForm({
     setIsDirty(true);
     setSaveSuccessNotice(false);
   };
+
+  // Export, Print & Document Preview States
+  const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
+  const [showFullDocPreview, setShowFullDocPreview] = useState<boolean>(false);
 
   // AI Assistance states & handlers
   const [showAiModal, setShowAiModal] = useState<boolean>(false);
@@ -452,7 +459,7 @@ export default function BehaviorAssessmentForm({
     openHtmlPrintWindow(printHtml);
   };
 
-  const handleDownloadWord = () => {
+  const createWordBlob = () => {
     const exportStudent: StudentProfile = {
       ...student,
       ...studentDetails,
@@ -463,6 +470,37 @@ export default function BehaviorAssessmentForm({
       type: 'application/msword;charset=utf-8'
     });
     const filename = getSafeReportFilename(exportStudent, hideDetailsOnExport, 'doc', 'behavior_assessment');
+    return { blob, filename, mimeType: 'application/msword', htmlContent: wordHtml };
+  };
+
+  const createPdfBlob = async () => {
+    const exportStudent: StudentProfile = {
+      ...student,
+      ...studentDetails,
+      behaviorAssessment: report
+    };
+    const printHtml = buildBehaviorAssessmentPrintHtml(exportStudent, hideDetailsOnExport);
+    const filename = getSafeReportFilename(exportStudent, hideDetailsOnExport, 'pdf', 'behavior_assessment');
+    const blob = await generatePdfBlobFromHtml(printHtml, filename);
+    return { blob, filename, mimeType: 'application/pdf', htmlContent: printHtml };
+  };
+
+  const handleDownloadWord = () => {
+    const { blob, filename } = createWordBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
+  };
+
+  const handleDownloadPdf = async () => {
+    const { blob, filename } = await createPdfBlob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -552,21 +590,29 @@ export default function BehaviorAssessmentForm({
             <span>שמור התקדמות</span>
           </button>
 
-          {/* AI Assistance Button */}
+          {/* Full Document Preview Toggle */}
           <button
             type="button"
-            disabled={isReportLocked}
-            className="btn-export-dropdown"
+            className="btn-preview-doc"
+            onClick={() => setShowFullDocPreview((prev) => !prev)}
+            title={showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}
             style={{
-              background: '#eff6ff',
-              color: '#1d4ed8',
-              borderColor: '#bfdbfe'
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              background: showFullDocPreview ? '#eff6ff' : '#ffffff',
+              color: showFullDocPreview ? '#1d4ed8' : '#334155',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
             }}
-            onClick={() => setShowAiModal(true)}
-            title="ניסוח דוח בעזרת בינה מלאכותית"
           >
-            <Sparkles size={16} style={{ color: '#2563eb' }} />
-            <span>סיוע בינה מלאכותית</span>
+            <FileText size={16} />
+            <span>{showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}</span>
           </button>
 
           {/* Unified Export & Print Dropdown (matching teacher workspace) */}
@@ -575,7 +621,7 @@ export default function BehaviorAssessmentForm({
               type="button"
               className={`btn-export-dropdown ${showExportDropdown ? 'active' : ''}`}
               onClick={() => setShowExportDropdown((prev) => !prev)}
-              title="הדפסה, הורדת Word ושמירה כ-PDF"
+              title="הדפסה, הורדת Word, הורדת PDF ושליחה למייל"
               aria-expanded={showExportDropdown}
             >
               <Printer size={16} />
@@ -594,7 +640,19 @@ export default function BehaviorAssessmentForm({
                   }}
                 >
                   <Printer size={15} style={{ color: '#2563eb' }} />
-                  <span>הדפסה ושמירה כ-PDF</span>
+                  <span>הדפס הערכת תפקוד</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    setShowEmailModal(true);
+                  }}
+                >
+                  <Mail size={15} style={{ color: '#7c3aed' }} />
+                  <span>שלח למייל (Word / PDF)</span>
                 </button>
 
                 <button
@@ -607,6 +665,18 @@ export default function BehaviorAssessmentForm({
                 >
                   <FileDown size={15} style={{ color: '#059669' }} />
                   <span>הורד קובץ Word (.doc)</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={async () => {
+                    setShowExportDropdown(false);
+                    await handleDownloadPdf();
+                  }}
+                >
+                  <FileText size={15} style={{ color: '#dc2626' }} />
+                  <span>הורד קובץ PDF (.pdf)</span>
                 </button>
 
                 <div className="export-dropdown-divider" />
@@ -663,6 +733,157 @@ export default function BehaviorAssessmentForm({
           </span>
         </div>
       )}
+
+      {showFullDocPreview ? (
+        <section
+          className="form-section-card live-print-preview-card"
+          style={{
+            background: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #cbd5e1',
+            padding: '24px',
+            marginTop: '16px'
+          }}
+        >
+          <div
+            className="section-header-line"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              paddingBottom: '14px',
+              borderBottom: '1px solid #e2e8f0',
+              marginBottom: '18px'
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+              📄 תצוגת מסמך מלאה: הערכת תפקוד התנהגותי
+            </h3>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handlePrint}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#1d4ed8',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                <Printer size={15} />
+                <span>הדפס</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f1f5f9',
+                  color: '#0f172a',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <FileText size={15} style={{ color: '#dc2626' }} />
+                <span>הורד קובץ PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadWord}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f1f5f9',
+                  color: '#0f172a',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <FileDown size={15} style={{ color: '#059669' }} />
+                <span>הורד קובץ Word</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f1f5f9',
+                  color: '#7c3aed',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Mail size={15} />
+                <span>שלח למייל</span>
+              </button>
+              <button
+                type="button"
+                className="btn-preview-doc"
+                onClick={() => setShowFullDocPreview(false)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f8fafc',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <FileText size={15} />
+                <span>חזרה לתצוגת עריכה</span>
+              </button>
+            </div>
+          </div>
+          <div
+            className="preview-paper-sheet"
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+            }}
+            dangerouslySetInnerHTML={{
+              __html: buildBehaviorAssessmentPrintHtml(
+                { ...student, ...studentDetails, behaviorAssessment: report },
+                hideDetailsOnExport
+              )
+            }}
+          />
+        </section>
+      ) : (
+        <>
 
       {/* Student Details and Team Card */}
       <BehaviorStudentDetailsCard
@@ -907,8 +1128,8 @@ export default function BehaviorAssessmentForm({
               </div>
             ) : (
               <div className="behavior-targets-list">
-                {report.targetBehaviors.map((target) => (
-                  <div key={target.id} className="behavior-target-row">
+                {report.targetBehaviors.map((target, idx) => (
+                  <div key={target.id || `target-${idx}`} className="behavior-target-row">
                     <div className="behavior-target-info">
                       <span className="behavior-target-name">{target.name}</span>
                       <span className="behavior-target-def">
@@ -1112,8 +1333,8 @@ export default function BehaviorAssessmentForm({
                     </tr>
                   </thead>
                   <tbody>
-                    {report.baselineData.map((point) => (
-                      <tr key={point.id}>
+                    {report.baselineData.map((point, idx) => (
+                      <tr key={point.id || `pt-${idx}`}>
                         <td>{point.date}</td>
                         <td>{point.sessionOrPeriod}</td>
                         <td>
@@ -1407,6 +1628,22 @@ export default function BehaviorAssessmentForm({
           </div>
         )}
       </section>
+      </>
+      )}
+
+      {/* Send Report to Email Modal */}
+      <SendReportEmailModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        reportTitle="הערכת תפקוד התנהגותי"
+        studentName={studentDetails.name || student.name || 'תלמיד/ה'}
+        schoolYear={studentDetails.schoolYear || student.schoolYear || ''}
+        currentUser={currentUser}
+        hideDetails={hideDetailsOnExport}
+        onToggleHideDetails={setHideDetailsOnExport}
+        getWordAttachment={createWordBlob}
+        getPdfAttachment={createPdfBlob}
+      />
     </div>
   );
 }

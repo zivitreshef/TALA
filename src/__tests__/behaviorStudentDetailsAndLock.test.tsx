@@ -276,14 +276,14 @@ describe('Behavior Forms Student Details, Locking & Team Collaboration Suite', (
       expect(assessmentHtml).toContain('שמור התקדמות');
       expect(assessmentHtml).toContain('btn-export-dropdown');
       expect(assessmentHtml).toContain('הדפסה וייצוא');
-      expect(assessmentHtml).toContain('סיוע בינה מלאכותית');
+      expect(assessmentHtml).toContain('תצוגת מסמך מלאה');
       expect(assessmentHtml).toContain('btn-report-lock-icon');
 
       expect(planHtml).toContain('btn-save-progress');
       expect(planHtml).toContain('שמור התקדמות');
       expect(planHtml).toContain('btn-export-dropdown');
       expect(planHtml).toContain('הדפסה וייצוא');
-      expect(planHtml).toContain('סיוע בינה מלאכותית');
+      expect(planHtml).toContain('תצוגת מסמך מלאה');
       expect(planHtml).toContain('btn-report-lock-icon');
     });
   });
