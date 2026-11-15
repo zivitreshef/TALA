@@ -5,7 +5,10 @@ import {
   getBehaviorFunctionLabelHebrew,
   getMeasurementTypeLabelHebrew,
   createEmptyBehaviorAssessment,
-  createEmptyBehaviorPlan
+  createEmptyBehaviorPlan,
+  computeBehaviorStudentReadiness,
+  computeBehaviorReadinessSummary,
+  filterStudentsByBehaviorReadiness
 } from '../domain/behaviorAnalysis';
 import {
   BaselineDataPoint,
@@ -176,6 +179,130 @@ describe('Behavior Analysis Domain Model & Calculations', () => {
       expect(student.behaviorAssessment).toBeDefined();
       expect(student.behaviorPlan).toBeDefined();
       expect(student.behaviorObservations).toEqual([]);
+    });
+  });
+
+  describe('Behavior Readiness Evaluation Suite', () => {
+    it('returns missing status and all missing tags when student is empty', () => {
+      const info = computeBehaviorStudentReadiness(null);
+      expect(info.status).toBe('missing');
+      expect(info.hasTargetBehaviors).toBe(false);
+      expect(info.hasBaselineData).toBe(false);
+      expect(info.hasFunctionalHypothesis).toBe(false);
+      expect(info.hasReplacementBehaviors).toBe(false);
+      expect(info.hasOngoingTracking).toBe(false);
+      expect(info.missingTags).toContain('חסר בייסליין');
+    });
+
+    it('returns partial status when only assessment targets exist without baseline or hypothesis', () => {
+      const student = {
+        id: 's-partial',
+        name: 'דן',
+        behaviorAssessment: {
+          targetBehaviors: [{ id: 't1', name: 'קימה מהכיסא', behaviorDescription: 'קם ללא רשות' }],
+          baselineData: []
+        }
+      };
+      const info = computeBehaviorStudentReadiness(student);
+      expect(info.status).toBe('partial');
+      expect(info.hasTargetBehaviors).toBe(true);
+      expect(info.targetBehaviorsCount).toBe(1);
+      expect(info.hasBaselineData).toBe(false);
+      expect(info.missingTags).toContain('חסר בייסליין');
+    });
+
+    it('returns ready status when all 4 core pillars are satisfied', () => {
+      const student = {
+        id: 's-ready',
+        name: 'עומר',
+        behaviorAssessment: {
+          targetBehaviors: [{ id: 't1', name: 'התפרצות קולית' }],
+          baselineData: [{ value: 5, date: '2026-11-01' }],
+          functionalHypothesisNarrative: 'ההתנהגות מתרחשת כדי לקבל תשומת לב',
+          mainHypothesizedFunction: 'attention' as const
+        },
+        behaviorPlan: {
+          replacementBehaviors: [
+            { replacementSkill: 'הרמת כרטיסיה', teachingStrategies: 'חיזוק דיפרנציאלי' }
+          ],
+          antecedentStrategies: 'הקדמת תשומת לב יזומה',
+          ongoingTracking: [
+            { id: 'trk-1', date: '2026-11-10', targetBehaviorOccurrences: 2, replacementBehaviorUsed: true, period: '1', reinforcementDelivered: true }
+          ]
+        }
+      };
+
+      const info = computeBehaviorStudentReadiness(student);
+      expect(info.status).toBe('ready');
+      expect(info.hasTargetBehaviors).toBe(true);
+      expect(info.hasBaselineData).toBe(true);
+      expect(info.hasFunctionalHypothesis).toBe(true);
+      expect(info.hasReplacementBehaviors).toBe(true);
+      expect(info.hasOngoingTracking).toBe(true);
+      expect(info.missingTags).toHaveLength(0);
+    });
+
+    it('considers locked assessment or plan as satisfying ongoing tracking pillar', () => {
+      const student = {
+        id: 's-locked',
+        name: 'רוני',
+        behaviorAssessment: {
+          targetBehaviors: [{ id: 't1', name: 'סירוב' }],
+          baselineData: [{ value: 3, date: '2026-11-02' }],
+          functionalHypothesisNarrative: 'בריחה מקושי לימודי'
+        },
+        behaviorPlan: {
+          replacementBehaviors: [{ replacementSkill: 'בקשת הפסקה', teachingStrategies: 'כרטיס' }],
+          isLocked: true,
+          ongoingTracking: []
+        }
+      };
+
+      const info = computeBehaviorStudentReadiness(student);
+      expect(info.status).toBe('ready');
+      expect(info.isLocked).toBe(true);
+    });
+
+    it('computes summary statistics and filters correctly', () => {
+      const roster = [
+        {
+          id: 's1',
+          behaviorAssessment: {
+            targetBehaviors: [{ name: 'צעקות' }],
+            baselineData: [{ value: 4, date: '2026-11-01' }],
+            functionalHypothesisNarrative: 'תשומת לב'
+          },
+          behaviorPlan: {
+            replacementBehaviors: [{ replacementSkill: 'הרמת יד', teachingStrategies: 'עידוד' }],
+            ongoingTracking: [{ id: 'trk-1', date: '2026-11-10', targetBehaviorOccurrences: 1, replacementBehaviorUsed: true, period: '1', reinforcementDelivered: true }]
+          }
+        },
+        {
+          id: 's2',
+          behaviorAssessment: {
+            targetBehaviors: [{ name: 'עזיבת חדר' }],
+            baselineData: []
+          }
+        },
+        {
+          id: 's3'
+        }
+      ];
+
+      const summary = computeBehaviorReadinessSummary(roster);
+      expect(summary.total).toBe(3);
+      expect(summary.readyCount).toBe(1);
+      expect(summary.partialCount).toBe(1);
+      expect(summary.missingCount).toBe(1);
+      expect(summary.missingBaselineCount).toBe(2);
+
+      const missingBaselineList = filterStudentsByBehaviorReadiness(roster, 'missing_baseline');
+      expect(missingBaselineList).toHaveLength(2);
+      expect(missingBaselineList.map((s) => s.id)).toEqual(['s2', 's3']);
+
+      const readyList = filterStudentsByBehaviorReadiness(roster, 'ready');
+      expect(readyList).toHaveLength(1);
+      expect(readyList[0].id).toBe('s1');
     });
   });
 });

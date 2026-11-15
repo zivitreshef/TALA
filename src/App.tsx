@@ -2925,7 +2925,11 @@ export default function App() {
                 setShowDailyTracker(false);
                 setShowGoalBankOverview(false);
               }}
-              title="דוח מוכנות לישיבות צוות ומבט כיתתי מרוכז"
+              title={
+                effectiveCurrentUser?.role === 'behavior_analyst'
+                  ? 'דוח מוכנות לישיבות צוות ומבט מרוכז במעקב התנהגותי'
+                  : 'דוח מוכנות לישיבות צוות ומבט כיתתי מרוכז'
+              }
             >
               <UserCheck size={15} />
               <span>מוכנות לצוות</span>
@@ -3723,11 +3727,22 @@ export default function App() {
             <ErrorBoundary componentName="ClassReadinessOverview">
               <ClassReadinessOverview
                 students={baseStudentsForView}
-                onSelectStudent={(studentId) => {
+                currentUser={effectiveCurrentUser}
+                onSelectStudent={(studentId, preferredDocType) => {
                   setSelectedStudentId(studentId);
                   setShowClassOverview(false);
                   setShowDailyTracker(false);
                   setShowGoalBankOverview(false);
+                  if (preferredDocType) {
+                    setActiveStudentDocumentType(preferredDocType);
+                  } else if (effectiveCurrentUser?.role === 'behavior_analyst') {
+                    const st = baseStudentsForView.find((s) => s.id === studentId);
+                    if (st?.behaviorPlan?.targetBehaviors?.length) {
+                      setActiveStudentDocumentType('behavior_plan');
+                    } else {
+                      setActiveStudentDocumentType('behavior_assessment');
+                    }
+                  }
                 }}
                 onClose={() => setShowClassOverview(false)}
               />

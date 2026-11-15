@@ -379,3 +379,13 @@ export const filterStudentsByReadiness = <T extends StudentListItem>(
     }
   });
 };
+
+export {
+  type BehaviorReadinessFilterKey,
+  type StudentBehaviorReadinessInfo,
+  type BehaviorReadinessSummary,
+  computeBehaviorStudentReadiness,
+  computeBehaviorReadinessSummary,
+  filterStudentsByBehaviorReadiness
+} from './behaviorAnalysis';
+
