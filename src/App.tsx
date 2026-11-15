@@ -158,6 +158,7 @@ import { subscribeToAllSupportThreads } from './services/supportChatService';
 import { computePendingInquiriesCount, THREAD_STATUS } from './domain/supportChat';
 import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal';
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
+import BehaviorAssessmentForm from './components/behavior/BehaviorAssessmentForm';
 import { appendBankGoalToStudent } from './domain/bankGoalApplication';
 import {
   getFrameworkKey,
@@ -586,6 +587,13 @@ export default function App() {
 
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState<any>(null);
+  const [activeStudentDocumentType, setActiveStudentDocumentType] = useState<'pedagogical_plan' | 'behavior_assessment'>('pedagogical_plan');
+
+  useEffect(() => {
+    if (effectiveCurrentUser?.role === 'behavior_analyst') {
+      setActiveStudentDocumentType('behavior_assessment');
+    }
+  }, [effectiveCurrentUser?.role]);
   const [showDailyTracker, setShowDailyTracker] = useState(false);
   const [isMobileScreen, setIsMobileScreen] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -3410,35 +3418,93 @@ export default function App() {
                   <span className="mobile-student-nav-badge">
                     {selectedStudent.planType?.includes('גן') || selectedStudent.planType?.includes('תח"י') ? 'תוכנית אקולוגית לילדי הגן' : 'תוכנית לתלמיד ביה"ס'}
                   </span>
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      gap: '4px',
+                      background: 'var(--bg-warm-subtle, #eef3fb)',
+                      padding: '3px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border, #d3dff0)',
+                      marginRight: '8px'
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setActiveStudentDocumentType('pedagogical_plan')}
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.825rem',
+                        fontWeight: 600,
+                        background: activeStudentDocumentType === 'pedagogical_plan' ? '#ffffff' : 'transparent',
+                        color: activeStudentDocumentType === 'pedagogical_plan' ? 'var(--text-main, #24344d)' : 'var(--text-muted, #5c6f8c)',
+                        boxShadow: activeStudentDocumentType === 'pedagogical_plan' ? '0 1px 3px rgba(36, 52, 77, 0.08)' : 'none'
+                      }}
+                    >
+                      תוכנית עבודה פדגוגית
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveStudentDocumentType('behavior_assessment')}
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.825rem',
+                        fontWeight: 600,
+                        background: activeStudentDocumentType === 'behavior_assessment' ? '#ffffff' : 'transparent',
+                        color: activeStudentDocumentType === 'behavior_assessment' ? 'var(--text-main, #24344d)' : 'var(--text-muted, #5c6f8c)',
+                        boxShadow: activeStudentDocumentType === 'behavior_assessment' ? '0 1px 3px rgba(36, 52, 77, 0.08)' : 'none'
+                      }}
+                    >
+                      הערכת תפקוד התנהגותי
+                    </button>
+                  </div>
                 </div>
               </div>
-              <EcologicalWorkPlanForm
-                student={selectedStudent}
-                allStudents={baseStudentsForView}
-                externalRevision={externalGoalsRevision}
-                goalBank={goalBank}
-                userPreferences={userPreferences}
-                students={baseStudentsForView}
-                privateGoals={userPreferences?.privateGoals || []}
-                isAdmin={currentUser.role === 'admin'}
-                currentUser={effectiveCurrentUser}
-                allowedUsers={allowedUsers}
-                onOpenGoalBankManager={() => {
-                  if (selectedStudent?.id) setTargetBankStudentId(selectedStudent.id);
-                  setSelectedStudentId(null);
-                  setShowDailyTracker(false);
-                  setShowGoalBankOverview(true);
-                }}
-                onSaveStudentPlan={handleSaveStudentPlan}
-                onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
-                onDraftStateChange={setUnsavedDraftState}
-                emailEngineConfig={emailEngineConfig as any}
-                onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
-                onNotifySharedColleague={handleNotifySharedColleague}
-                activeOnboardingStep={activeOnboardingStep as any}
-                onboardingSpotlightTick={onboardingSpotlightTick}
-                onGoHome={() => setSelectedStudentId(null)}
-              />
+              {activeStudentDocumentType === 'behavior_assessment' ? (
+                <ErrorBoundary componentName="BehaviorAssessmentForm">
+                  <BehaviorAssessmentForm
+                    student={selectedStudent}
+                    currentUser={effectiveCurrentUser}
+                    onSaveStudentPlan={handleSaveStudentPlan}
+                    onDraftStateChange={setUnsavedDraftState}
+                    onGoBack={() => setSelectedStudentId(null)}
+                  />
+                </ErrorBoundary>
+              ) : (
+                <EcologicalWorkPlanForm
+                  student={selectedStudent}
+                  allStudents={baseStudentsForView}
+                  externalRevision={externalGoalsRevision}
+                  goalBank={goalBank}
+                  userPreferences={userPreferences}
+                  students={baseStudentsForView}
+                  privateGoals={userPreferences?.privateGoals || []}
+                  isAdmin={currentUser.role === 'admin'}
+                  currentUser={effectiveCurrentUser}
+                  allowedUsers={allowedUsers}
+                  onOpenGoalBankManager={() => {
+                    if (selectedStudent?.id) setTargetBankStudentId(selectedStudent.id);
+                    setSelectedStudentId(null);
+                    setShowDailyTracker(false);
+                    setShowGoalBankOverview(true);
+                  }}
+                  onSaveStudentPlan={handleSaveStudentPlan}
+                  onUseOrAddGoalToBank={handleUseOrAddGoalToBank}
+                  onDraftStateChange={setUnsavedDraftState}
+                  emailEngineConfig={emailEngineConfig as any}
+                  onUpdateEmailEngineConfig={handleUpdateEmailEngineConfig}
+                  onNotifySharedColleague={handleNotifySharedColleague}
+                  activeOnboardingStep={activeOnboardingStep as any}
+                  onboardingSpotlightTick={onboardingSpotlightTick}
+                  onGoHome={() => setSelectedStudentId(null)}
+                />
+              )}
             </ErrorBoundary>
           ) : showClassOverview ? (
             <ErrorBoundary componentName="ClassReadinessOverview">
