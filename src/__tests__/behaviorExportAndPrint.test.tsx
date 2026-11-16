@@ -169,6 +169,8 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
     expect(wordHtml).toContain('נרטיב השערה תפקודית');
     expect(wordHtml).toContain('המלצות ראשוניות להתערבות');
     expect(wordHtml).toContain('חתימת מנתחת התנהגות');
+    expect(wordHtml).toContain('<svg');
+    expect(wordHtml).toContain('תדירות התנהגות מטרה בשלב קו הבסיס');
   });
 
   it('4. masks PII in Behavior Assessment Word document when hideDetails is true', () => {
@@ -208,6 +210,8 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
     expect(wordHtml).toContain('תגובת הצוות בעת התרחשות ההתנהגות:');
     expect(wordHtml).toContain('תוכנית בטיחות והתמודדות במשבר:');
     expect(wordHtml).toContain('טבלת מעקב שוטף ולוח התקדמות');
+    expect(wordHtml).toContain('<svg');
+    expect(wordHtml).toContain('מעקב התקדמות: קו בסיס מול שלב ההתערבות');
   });
 
   it('7. builds Behavior Intervention Plan Print HTML with inline progress monitoring dual-line SVG', () => {
