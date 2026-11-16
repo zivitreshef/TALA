@@ -362,13 +362,15 @@ describe('BehaviorProgressReportForm Component UI', () => {
       />
     );
 
-    // Verify title and main action buttons
+    // Verify title and main action buttons (matching Image 1 & unified teacher workspace)
     expect(html).toContain('דוח סיכום והערכת התקדמות התנהגותית');
-    expect(html).toContain('שמור דוח');
-    expect(html).toContain('הדפס');
-    expect(html).toContain('ייצא לוורד');
-    expect(html).toContain('שלח במייל');
-    expect(html).toContain('תצוגת מסמך');
+    expect(html).toContain('שמור התקדמות');
+    expect(html).toContain('תצוגת מסמך מלאה');
+    expect(html).toContain('הדפסה וייצוא');
+    expect(html).toContain('btn-report-lock-icon');
+    expect(html).toContain('btn-save-progress');
+    expect(html).toContain('btn-preview-doc');
+    expect(html).toContain('btn-export-dropdown');
 
     // Verify period selector buttons
     expect(html).toContain('סיכום אמצע שנה');
@@ -393,7 +395,7 @@ describe('BehaviorProgressReportForm Component UI', () => {
     expect(html).toContain('טבלת נאמנות יישום של צוות בית הספר');
     // Verify enterprise design system classes and card architecture
     expect(html).toContain('progress-report-container');
-    expect(html).toContain('progress-form-header');
+    expect(html).toContain('plan-form-header');
     expect(html).toContain('progress-card');
     expect(html).toContain('progress-card-header');
     expect(html).toContain('progress-card-body');
@@ -401,9 +403,8 @@ describe('BehaviorProgressReportForm Component UI', () => {
     expect(html).toContain('progress-textarea');
     expect(html).toContain('progress-input');
     expect(html).toContain('progress-bottom-bar');
-    expect(html).toContain('btn-progress-primary');
-    expect(html).toContain('btn-progress-secondary');
-    expect(html).toContain('btn-progress-word');
+    expect(html).toContain('btn-save-progress');
+    expect(html).toContain('btn-export-dropdown');
   });
 
   it('omits conditional charts when student has zero tracking points or observations', () => {
