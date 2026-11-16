@@ -1305,7 +1305,8 @@ export default function App() {
     const { users: hashedList } = ensureUsersListPasswordsHashed(updatedList);
     setAllowedUsers(hashedList);
     saveAllowedUsers(hashedList as any);
-    saveAllowedUsersToCloud(hashedList as any);
+    const deletedUserEmails = editMeta?.deletedUserEmail ? [editMeta.deletedUserEmail] : [];
+    saveAllowedUsersToCloud(hashedList as any, { deletedUserEmails });
 
     // Sync currentUser session if the currently active user was modified
     if (currentUser?.email) {

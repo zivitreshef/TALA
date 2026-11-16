@@ -94,6 +94,41 @@ const SELF_FIELDS=["passwordHash","passwordSalt","mustChangePassword","mustSignN
 const OTHER_FIELDS=["dismissedSharedReportIds"]; // any signed-in user may re-notify a colleague
 const pick=(o,keys)=>{const r={};for(const k of keys)if(o&&k in o)r[k]=o[k];return r;};
 const lc=(s)=>String(s||"").trim().toLowerCase();
+function mergeAdminUsersSafely(storedUsers,incomingUsers,deletedEmails=[]){
+  const deletedSet=new Set((deletedEmails||[]).map((e)=>lc(e)));
+  const result=[];const handledEmails=new Set();
+  for(const inc of incomingUsers||[]){
+    if(!inc||typeof inc.email!=="string")continue;
+    const emailKey=lc(inc.email);
+    if(deletedSet.has(emailKey))continue;
+    const stored=(storedUsers||[]).find((s)=>s&&lc(s.email)===emailKey);
+    if(!stored){result.push(inc);handledEmails.add(emailKey);continue;}
+    const merged=Object.assign({},stored,inc);
+    const storedIsPaid=stored.subscriptionType==="annual_paid"||stored.isTrialUser===false;
+    const incomingIsTrial=inc.isTrialUser===true&&inc.subscriptionType!=="annual_paid";
+    if(storedIsPaid&&incomingIsTrial){
+      merged.isTrialUser=false;merged.subscriptionType="annual_paid";
+      merged.paidExpiresAt=stored.paidExpiresAt||inc.paidExpiresAt;
+      merged.upgradedToPaidAt=stored.upgradedToPaidAt||inc.upgradedToPaidAt;
+      merged.trialExpiresAt=null;merged.trialDays=null;
+    }
+    const storedHasCustomPw=Boolean(stored.passwordHash&&stored.passwordSalt);
+    if(storedHasCustomPw&&!inc.passwordHash){
+      merged.passwordHash=stored.passwordHash;merged.passwordSalt=stored.passwordSalt;
+    }
+    if(stored.lockedOut===false&&inc.lockedOut===true&&(Number(inc.failedLoginAttempts)||0)<5){
+      merged.lockedOut=false;merged.failedLoginAttempts=0;
+    }
+    result.push(merged);handledEmails.add(emailKey);
+  }
+  for(const stored of storedUsers||[]){
+    if(!stored||typeof stored.email!=="string")continue;
+    const emailKey=lc(stored.email);
+    if(deletedSet.has(emailKey))continue;
+    if(!handledEmails.has(emailKey)){result.push(stored);handledEmails.add(emailKey);}
+  }
+  return result;
+}
 async function callerEmail(req){
   const m=(req.headers.authorization||"").match(/^Bearer\s+(.+)$/i);
   if(!m)return"";
@@ -166,7 +201,9 @@ async function handleTalaConfigWrite(req,res){
       if(isAdmin){
         const pa=sub.find((u)=>u&&lc(u.email)===PRIMARY_ADMIN);
         if(!pa||pa.role!=="admin"||pa.active===false||sub.some((u)=>!u||typeof u.email!=="string"))throw Object.assign(new Error("Bad request"),{status:400});
-        tx.set(usersRef,{users:sub,updatedAt:new Date().toISOString()});published={users:sub,prev:stored,full:true};return;
+        const deletedEmails=Array.isArray(body.deletedUserEmails)?body.deletedUserEmails:[];
+        const merged=mergeAdminUsersSafely(stored,sub,deletedEmails);
+        tx.set(usersRef,{users:merged,updatedAt:new Date().toISOString()});published={users:merged,prev:stored,full:true};return;
       }
       if(!me)throw Object.assign(new Error("Forbidden"),{status:403});
       const next=stored.map((u)=>{const s=sub.find((x)=>x&&lc(x.email)===lc(u.email));if(!s)return u;const patch=pick(s,lc(u.email)===email?SELF_FIELDS:OTHER_FIELDS);if(JSON.stringify(patch).length>20000)throw Object.assign(new Error("Bad request"),{status:400});return Object.assign({},u,patch);});
