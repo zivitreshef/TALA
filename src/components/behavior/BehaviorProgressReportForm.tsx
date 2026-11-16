@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Save,
   Printer,
@@ -13,7 +13,10 @@ import {
   Mail,
   FileText,
   RefreshCw,
-  TrendingUp
+  TrendingUp,
+  ChevronDown,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import {
   BehaviorProgressPeriod,
@@ -124,8 +127,30 @@ export default function BehaviorProgressReportForm({
   const [showFullDocPreview, setShowFullDocPreview] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [hideDetailsOnExport, setHideDetailsOnExport] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showBottomExportDropdown, setShowBottomExportDropdown] = useState(false);
   const [saveToast, setSaveToast] = useState('');
   const [isAiDrafting, setIsAiDrafting] = useState(false);
+
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+  const bottomExportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setShowExportDropdown(false);
+      }
+      if (bottomExportDropdownRef.current && !bottomExportDropdownRef.current.contains(e.target as Node)) {
+        setShowBottomExportDropdown(false);
+      }
+    };
+    if (showExportDropdown || showBottomExportDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportDropdown, showBottomExportDropdown]);
 
   // Baseline and ongoing tracking data from student
   const baselineData = useMemo(() => student.behaviorAssessment?.baselineData || [], [student.behaviorAssessment?.baselineData]);
@@ -386,6 +411,20 @@ export default function BehaviorProgressReportForm({
     URL.revokeObjectURL(url);
   };
 
+  const handleExportPdf = async () => {
+    const { blob, filename } = await createPdfBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
+  };
+
   // Print
   const handlePrint = () => {
     const mergedData = { ...student, ...studentDetails, behaviorProgressReport: report };
@@ -423,98 +462,189 @@ export default function BehaviorProgressReportForm({
         </div>
       )}
 
-      {/* Header & Main Actions */}
-      <div className="progress-form-header">
-        <div className="progress-form-title-group">
-          <div className="progress-form-icon-badge">
+      {/* Top Header Card - Exactly matching Image 1 & Teacher Workspace */}
+      <header className="plan-form-header">
+        <div className="plan-form-title-group">
+          <div className="plan-form-icon-badge" style={{ background: '#eff6ff', color: '#2563eb' }}>
             <TrendingUp size={24} />
           </div>
           <div>
-            <h1 className="progress-form-heading">דוח סיכום והערכת התקדמות התנהגותית</h1>
-            <p className="progress-form-subheading">
-              ניטור התקדמות תקופתי, מדדי הפחתה, תובנות מעקב וניתוחים כמותיים
+            <h1 className="plan-form-heading">דוח סיכום והערכת התקדמות התנהגותית</h1>
+            <p className="plan-form-subheading">
+              תלמיד: <strong>{studentDetails.name || student.name || 'ללא שם'}</strong>
+              {studentDetails.educationalFramework || student.educationalFramework
+                ? ` | ${studentDetails.educationalFramework || student.educationalFramework}`
+                : ''}
             </p>
           </div>
         </div>
 
-        <div className="progress-form-actions">
+        <div className="plan-form-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {saveToast && (
+            <span
+              className="save-toast-badge"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
+            >
+              <Check size={14} />
+              <span>{saveToast}</span>
+            </span>
+          )}
+
+          {/* Yellow Lock / Unlock Button (matching Image 1) */}
+          <div className="report-lock-toggle-wrapper">
+            <button
+              type="button"
+              className={`btn-report-lock-icon ${isLocked ? 'locked' : 'unlocked'}`}
+              onClick={handleToggleLock}
+              aria-label={isLocked ? 'המסמך נעול לעריכה' : 'המסמך פתוח לעריכה'}
+              title={isLocked ? 'המסמך נעול לעריכה - לחצי לפתיחה' : 'נעילת המסמך לעריכה'}
+            >
+              {isLocked ? <Lock size={19} /> : <Unlock size={19} />}
+            </button>
+            <div className="report-lock-hover-tooltip" role="tooltip">
+              <div className="report-lock-tooltip-title">
+                {isLocked ? '🔒 המסמך נעול לעריכה' : '🔓 המסמך פתוח לעריכה'}
+              </div>
+              <div className="report-lock-tooltip-body">
+                {isLocked
+                  ? 'המסמך נעול לעריכה. לחצי על הסמל לפתיחת הנעילה.'
+                  : 'המסמך פתוח לעריכה. לחצי על הסמל לנעילת המסמך.'}
+              </div>
+            </div>
+          </div>
+
+          {/* Primary Save Button (matching Image 1) */}
           <button
             type="button"
+            className="btn-save-progress"
             onClick={handleSave}
-            className="btn-progress-primary"
-            title="שמירת דוח התקדמות"
+            title="שמירת דוח סיכום והערכת התקדמות התנהגותית"
             disabled={isLocked}
           >
-            <Save size={16} />
-            <span>שמור דוח</span>
+            <Save size={17} />
+            <span>שמור התקדמות</span>
           </button>
 
+          {/* Full Document Preview Toggle (matching Image 1) */}
           <button
             type="button"
-            onClick={handlePrint}
-            className="btn-progress-secondary"
-            title="הדפסת דוח ההתקדמות"
-          >
-            <Printer size={16} />
-            <span>הדפס</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportWord}
-            className="btn-progress-word"
-            title="ייצוא לקובץ וורד"
-          >
-            <FileDown size={16} />
-            <span>ייצא לוורד</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowEmailModal(true)}
-            className="btn-progress-secondary"
-            title="שליחת הדוח במייל"
-          >
-            <Mail size={16} />
-            <span>שלח במייל</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowFullDocPreview(true)}
-            className="btn-progress-secondary"
-            title="תצוגת מסמך מלאה"
+            className="btn-preview-doc"
+            onClick={() => setShowFullDocPreview((prev) => !prev)}
+            title={showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              background: showFullDocPreview ? '#eff6ff' : '#ffffff',
+              color: showFullDocPreview ? '#1d4ed8' : '#334155',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
           >
             <FileText size={16} />
-            <span>תצוגת מסמך</span>
+            <span>תצוגת מסמך מלאה</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleToggleLock}
-            className="btn-progress-secondary"
-            style={{
-              borderColor: isLocked ? '#fecaca' : undefined,
-              color: isLocked ? '#b91c1c' : undefined,
-              background: isLocked ? '#fef2f2' : undefined
-            }}
-            title={isLocked ? 'בטל נעילה' : 'נעל דוח'}
-          >
-            {isLocked ? <Lock size={16} style={{ color: '#dc2626' }} /> : <Unlock size={16} />}
-            <span>{isLocked ? 'נעול לעריכה' : 'נעל דוח'}</span>
-          </button>
+          {/* Unified Export & Print Dropdown (matching Image 1) */}
+          <div className="export-dropdown-wrapper" ref={exportDropdownRef}>
+            <button
+              type="button"
+              className={`btn-export-dropdown ${showExportDropdown ? 'active' : ''}`}
+              onClick={() => setShowExportDropdown((prev) => !prev)}
+              title="הדפסה, הורדת Word, הורדת PDF ושליחה למייל"
+              aria-expanded={showExportDropdown}
+            >
+              <Printer size={16} />
+              <span>הדפסה וייצוא</span>
+              <ChevronDown size={14} className={`export-dropdown-arrow ${showExportDropdown ? 'open' : ''}`} />
+            </button>
 
+            {showExportDropdown && (
+              <div className="export-dropdown-menu" role="menu">
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    handlePrint();
+                  }}
+                >
+                  <Printer size={15} style={{ color: '#2563eb' }} />
+                  <span>הדפס דוח התקדמות</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    setShowEmailModal(true);
+                  }}
+                >
+                  <Mail size={15} style={{ color: '#7c3aed' }} />
+                  <span>שלח למייל (Word / PDF)</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowExportDropdown(false);
+                    handleExportWord();
+                  }}
+                >
+                  <FileDown size={15} style={{ color: '#059669' }} />
+                  <span>הורד קובץ Word (.doc)</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={async () => {
+                    setShowExportDropdown(false);
+                    await handleExportPdf();
+                  }}
+                >
+                  <FileText size={15} style={{ color: '#dc2626' }} />
+                  <span>הורד קובץ PDF (.pdf)</span>
+                </button>
+
+                <div className="export-dropdown-divider" />
+
+                <label
+                  className={`export-dropdown-privacy ${hideDetailsOnExport ? 'checked' : 'unchecked'}`}
+                  title="כאשר מסומן, בהדפסה ובייצוא יוצגו ראשי תיבות ויוסתר מידע מזהה"
+                >
+                  <input
+                    type="checkbox"
+                    checked={hideDetailsOnExport}
+                    onChange={(e) => setHideDetailsOnExport(e.target.checked)}
+                  />
+                  {hideDetailsOnExport ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                  <span>הסתר פרטים מזהים בהדפסה</span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Close Button (matching Image 1) */}
           {onGoBack && (
             <button
               type="button"
+              className="btn-export-dropdown"
               onClick={onGoBack}
-              className="btn-progress-secondary"
+              title="סגירה"
             >
-              חזור ללוח
+              <span>סגירה</span>
             </button>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Period Selection Bar */}
       <div className="progress-period-bar">
@@ -991,32 +1121,113 @@ export default function BehaviorProgressReportForm({
         <div className="progress-bottom-group">
           <button
             type="button"
+            className="btn-save-progress"
             onClick={handleSave}
-            className="btn-progress-primary"
             disabled={isLocked}
           >
-            <Save size={18} />
-            <span>שמור דוח</span>
+            <Save size={17} />
+            <span>שמור התקדמות</span>
           </button>
         </div>
 
         <div className="progress-bottom-group">
-          <button type="button" onClick={handlePrint} className="btn-progress-secondary">
-            <Printer size={16} />
-            <span>הדפס</span>
-          </button>
-          <button type="button" onClick={handleExportWord} className="btn-progress-word">
-            <FileDown size={16} />
-            <span>ייצא לוורד</span>
-          </button>
-          <button type="button" onClick={() => setShowEmailModal(true)} className="btn-progress-secondary">
-            <Mail size={16} />
-            <span>שלח במייל</span>
-          </button>
-          <button type="button" onClick={() => setShowFullDocPreview(true)} className="btn-progress-secondary">
+          <button
+            type="button"
+            className="btn-preview-doc"
+            onClick={() => setShowFullDocPreview(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              background: '#ffffff',
+              color: '#334155',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
             <FileText size={16} />
-            <span>תצוגת מסמך</span>
+            <span>תצוגת מסמך מלאה</span>
           </button>
+
+          <div className="export-dropdown-wrapper" ref={bottomExportDropdownRef}>
+            <button
+              type="button"
+              className={`btn-export-dropdown ${showBottomExportDropdown ? 'active' : ''}`}
+              onClick={() => setShowBottomExportDropdown((prev) => !prev)}
+              title="הדפסה וייצוא"
+            >
+              <Printer size={16} />
+              <span>הדפסה וייצוא</span>
+              <ChevronDown size={14} className={`export-dropdown-arrow ${showBottomExportDropdown ? 'open' : ''}`} />
+            </button>
+            {showBottomExportDropdown && (
+              <div
+                className="export-dropdown-menu"
+                style={{ bottom: '100%', top: 'auto', marginBottom: '8px' }}
+                role="menu"
+              >
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowBottomExportDropdown(false);
+                    handlePrint();
+                  }}
+                >
+                  <Printer size={15} style={{ color: '#2563eb' }} />
+                  <span>הדפס דוח התקדמות</span>
+                </button>
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowBottomExportDropdown(false);
+                    setShowEmailModal(true);
+                  }}
+                >
+                  <Mail size={15} style={{ color: '#7c3aed' }} />
+                  <span>שלח למייל (Word / PDF)</span>
+                </button>
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={() => {
+                    setShowBottomExportDropdown(false);
+                    handleExportWord();
+                  }}
+                >
+                  <FileDown size={15} style={{ color: '#059669' }} />
+                  <span>הורד קובץ Word (.doc)</span>
+                </button>
+                <button
+                  type="button"
+                  className="export-dropdown-item"
+                  onClick={async () => {
+                    setShowBottomExportDropdown(false);
+                    await handleExportPdf();
+                  }}
+                >
+                  <FileText size={15} style={{ color: '#dc2626' }} />
+                  <span>הורד קובץ PDF (.pdf)</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {onGoBack && (
+            <button
+              type="button"
+              className="btn-export-dropdown"
+              onClick={onGoBack}
+              title="סגירה"
+            >
+              <span>סגירה</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1091,20 +1302,20 @@ export default function BehaviorProgressReportForm({
                 background: '#f8fafc'
               }}
             >
-              <button type="button" onClick={handlePrint} className="btn-progress-secondary">
+              <button type="button" onClick={handlePrint} className="btn-export-dropdown">
                 <Printer size={16} />
                 <span>הדפס</span>
               </button>
-              <button type="button" onClick={handleExportWord} className="btn-progress-word">
+              <button type="button" onClick={handleExportWord} className="btn-export-dropdown">
                 <FileDown size={16} />
                 <span>ייצא לוורד</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowFullDocPreview(false)}
-                className="btn-progress-secondary"
+                className="btn-export-dropdown"
               >
-                סגור
+                <span>סגירה</span>
               </button>
             </div>
           </div>

@@ -40,9 +40,11 @@ export function generateBaselineBarChartSvg(
   const maxVal = Math.max(...values, 10);
   const yUpper = Math.ceil(maxVal * 1.15);
 
-  const width = options.width || 620;
-  const height = options.height || 320;
-  const padding = { top: 50, right: 35, bottom: 65, left: 55 };
+  const hasLongLabels = data.some((d) => (d.sessionOrPeriod || '').trim().length > 6) || data.length > 5;
+  const bottomPadding = hasLongLabels ? 95 : 65;
+  const width = options.width || 640;
+  const height = options.height || (hasLongLabels ? 370 : 320);
+  const padding = { top: 50, right: 35, bottom: bottomPadding, left: 55 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
 
@@ -78,13 +80,19 @@ export function generateBaselineBarChartSvg(
       const barHeight = (val / yUpper) * chartH;
       const x = padding.left + idx * slotWidth + (slotWidth - barWidth) / 2;
       const y = padding.top + chartH - barHeight;
-      const label = d.sessionOrPeriod || `יום ${idx + 1}`;
+      const rawPeriod = d.sessionOrPeriod ? String(d.sessionOrPeriod).trim() : '';
+      const fullLabel = rawPeriod ? (rawPeriod.startsWith('מפגש') ? rawPeriod : `מפגש ${rawPeriod}`) : `יום ${idx + 1}`;
+      const displayLabel = fullLabel.length > 15 ? `${fullLabel.slice(0, 14)}…` : fullLabel;
+
+      const labelTag = hasLongLabels
+        ? `<text transform="rotate(36 ${x + barWidth / 2} ${padding.top + chartH + 16})" x="${x + barWidth / 2}" y="${padding.top + chartH + 16}" fill="${subtextColor}" font-size="10" font-weight="600" text-anchor="start" font-family="Arial, sans-serif">${displayLabel}<title>${fullLabel}</title></text>`
+        : `<text x="${x + barWidth / 2}" y="${padding.top + chartH + 18}" fill="${subtextColor}" font-size="10.5" font-weight="600" text-anchor="middle" font-family="Arial, sans-serif">${fullLabel}</text>`;
 
       return `
         <g>
           <rect x="${x}" y="${y}" width="${barWidth}" height="${Math.max(2, barHeight)}" rx="4" ry="4" fill="${barFill}" />
           <text x="${x + barWidth / 2}" y="${y - 6}" fill="${textColor}" font-size="11" font-weight="700" text-anchor="middle" font-family="Arial, sans-serif">${val}</text>
-          <text x="${x + barWidth / 2}" y="${padding.top + chartH + 18}" fill="${subtextColor}" font-size="10.5" font-weight="600" text-anchor="middle" font-family="Arial, sans-serif">${label}</text>
+          ${labelTag}
         </g>
       `;
     })

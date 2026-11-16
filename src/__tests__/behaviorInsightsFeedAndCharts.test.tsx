@@ -106,6 +106,20 @@ describe('Behavior Insights Feed, Parent Voice & SVG Charts Suite', () => {
       expect(html).toContain('מספר אירועים בשיעור');
     });
 
+    it('angles and truncates long X-axis labels to prevent overlap when descriptive session names are used', () => {
+      const longLabelPoints: BaselineDataPoint[] = [
+        { id: 'b1', date: '2026-11-01', sessionOrPeriod: 'מעבר צלצול בוקר', value: 6 },
+        { id: 'b2', date: '2026-11-02', sessionOrPeriod: 'הפסקת עשר', value: 7 },
+        { id: 'b3', date: '2026-11-03', sessionOrPeriod: 'סיום שיעור שפה', value: 5 }
+      ];
+      const html = renderToStaticMarkup(
+        <BaselineFrequencyBarChart data={longLabelPoints} />
+      );
+      expect(html).toContain('rotate(36');
+      expect(html).toContain('text-anchor="start"');
+      expect(html).toContain('<title>מפגש מעבר צלצול בוקר</title>');
+    });
+
     it('renders horizontal function distribution bar chart with 4 core functions', () => {
       const html = renderToStaticMarkup(
         <FunctionDistributionHorizontalBarChart

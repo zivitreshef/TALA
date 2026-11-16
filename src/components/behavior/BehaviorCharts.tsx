@@ -121,9 +121,12 @@ export function BaselineFrequencyBarChart({
   const maxVal = Math.max(...values, 10);
   const yUpper = Math.ceil(maxVal * 1.15);
 
-  const width = 620;
-  const height = 340;
-  const padding = { top: 60, right: 40, bottom: 65, left: 60 };
+  // Check if labels are long or data points require angled presentation to avoid overlap
+  const hasLongLabels = data.some((d) => (d.sessionOrPeriod || '').trim().length > 6) || data.length > 5;
+  const bottomPadding = hasLongLabels ? 105 : 65;
+  const height = hasLongLabels ? 385 : 340;
+  const width = 640;
+  const padding = { top: 60, right: 40, bottom: bottomPadding, left: 60 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
 
@@ -207,7 +210,9 @@ export function BaselineFrequencyBarChart({
           const barHeight = (val / yUpper) * chartH;
           const x = padding.left + idx * slotWidth + (slotWidth - barWidth) / 2;
           const y = padding.top + chartH - barHeight;
-          const label = point.sessionOrPeriod ? `מפגש ${point.sessionOrPeriod}` : `יום ${idx + 1}`;
+          const rawPeriod = point.sessionOrPeriod ? String(point.sessionOrPeriod).trim() : '';
+          const fullLabel = rawPeriod ? (rawPeriod.startsWith('מפגש') ? rawPeriod : `מפגש ${rawPeriod}`) : `יום ${idx + 1}`;
+          const displayLabel = fullLabel.length > 15 ? `${fullLabel.slice(0, 14)}…` : fullLabel;
           const isHovered = hoveredIdx === idx;
 
           return (
@@ -239,16 +244,31 @@ export function BaselineFrequencyBarChart({
                 {val}
               </text>
               {/* X Axis Label */}
-              <text
-                x={x + barWidth / 2}
-                y={padding.top + chartH + 20}
-                fill="#cbd5e1"
-                fontSize="11"
-                fontWeight="600"
-                textAnchor="middle"
-              >
-                {label}
-              </text>
+              {hasLongLabels ? (
+                <text
+                  transform={`rotate(36 ${x + barWidth / 2} ${padding.top + chartH + 16})`}
+                  x={x + barWidth / 2}
+                  y={padding.top + chartH + 16}
+                  fill="#cbd5e1"
+                  fontSize="10"
+                  fontWeight="600"
+                  textAnchor="start"
+                >
+                  {displayLabel}
+                  <title>{fullLabel}</title>
+                </text>
+              ) : (
+                <text
+                  x={x + barWidth / 2}
+                  y={padding.top + chartH + 20}
+                  fill="#cbd5e1"
+                  fontSize="11"
+                  fontWeight="600"
+                  textAnchor="middle"
+                >
+                  {fullLabel}
+                </text>
+              )}
             </g>
           );
         })}
