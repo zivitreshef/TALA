@@ -16,8 +16,17 @@ import {
   generateBaselineBarChartSvg,
   generateFunctionDistributionSvg,
   generateProgressMonitoringDualLineSvg,
+  generateDurationIntensitySvg,
+  generateReplacementLearningCurveSvg,
   BEHAVIOR_FUNCTION_HEBREW_LABELS
 } from './behaviorChartsSvg';
+import {
+  computeHourlyHeatmapMatrix,
+  computeAbcSequenceSummary,
+  computeDurationAndIntensityData,
+  computeReplacementSkillCurve,
+  computeStaffFidelityMetrics
+} from '../domain/behaviorAnalysis';
 
 export function getDisplayReportDate(formData: any = {}) {
   if (!formData.date) return '__________';
@@ -2715,6 +2724,228 @@ export function buildBehaviorPlanPrintHtml(formData: any = {}, hideDetails = fal
   `;
 }
 
+export function buildBehaviorProgressVisualAnalyticsHtml(formData: any = {}, hideDetails = false, isPrint = false): string {
+  const ongoingTracking: any[] = formData.ongoingTracking || formData.behaviorPlan?.ongoingTracking || [];
+  const behaviorObservations: any[] = formData.behaviorObservations || [];
+  const baselineData: any[] = formData.baselineData || formData.behaviorAssessment?.baselineData || [];
+
+  const heatmapResult = computeHourlyHeatmapMatrix(ongoingTracking, behaviorObservations);
+  const abcResult = computeAbcSequenceSummary(behaviorObservations);
+  const durationResult = computeDurationAndIntensityData(ongoingTracking, behaviorObservations);
+  const curveResult = computeReplacementSkillCurve(ongoingTracking);
+  const fidelityResult = computeStaffFidelityMetrics(ongoingTracking);
+  const hasDualLine = ongoingTracking.length > 0 || baselineData.length >= 3;
+
+  const hasAnyData = heatmapResult.hasData || abcResult.hasData || durationResult.hasData || curveResult.hasData || fidelityResult.hasData || hasDualLine;
+
+  if (!hasAnyData) {
+    return `
+      <div style="background-color: #f8fafc; border: 1pt dashed #cbd5e1; padding: 12pt; border-radius: 6px; text-align: center; color: #64748b; font-size: 9.5pt; margin: 8pt 0;">
+        טרם נצברו מספיק נתוני מעקב או תצפיות לצורך הפקת ניתוחים חזותיים מתקדמים (דרושים נתוני מעקב שוטף או תצפיות התנהגותיות).
+      </div>
+    `;
+  }
+
+  const sections: string[] = [];
+
+  // 1. Hourly Heatmap Matrix
+  if (heatmapResult.hasData) {
+    const days = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
+    const periods = ['שיעור 1', 'שיעור 2', 'שיעור 3', 'שיעור 4', 'שיעור 5', 'שיעור 6'];
+
+    const getCellColor = (val: number) => {
+      if (val === 0) return { bg: '#f8fafc', color: '#94a3b8' };
+      const max = heatmapResult.maxCellOccurrences || 1;
+      const ratio = val / max;
+      if (ratio < 0.25) return { bg: '#ffedd5', color: '#431407' };
+      if (ratio < 0.5) return { bg: '#fdba74', color: '#431407' };
+      if (ratio < 0.75) return { bg: '#fb923c', color: '#ffffff' };
+      return { bg: '#ea580c', color: '#ffffff' };
+    };
+
+    const rowsHtml = periods.map((periodName, pIdx) => {
+      const cellsHtml = days.map((_, dIdx) => {
+        const cell = heatmapResult.cells.find((c) => c.dayIndex === dIdx && c.periodIndex === pIdx);
+        const val = cell ? cell.occurrences : 0;
+        const style = getCellColor(val);
+        return `<td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; background-color: ${style.bg}; color: ${style.color}; font-weight: ${val > 0 ? 'bold' : 'normal'}; font-size: 9pt;">${val > 0 ? val : '—'}</td>`;
+      }).join('');
+
+      return `
+        <tr>
+          <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: bold; background-color: #f1f5f9; color: #1e3a5f; text-align: right; font-size: 9pt;">${periodName}</td>
+          ${cellsHtml}
+        </tr>
+      `;
+    }).join('');
+
+    sections.push(`
+      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <strong style="color: #1e3a5f; font-size: 10.5pt;">מפת פיזור שעתית לאורך ימות השבוע</strong>
+          ${heatmapResult.peakDay && heatmapResult.peakPeriod ? `
+            <span style="background-color: #fff7ed; border: 1px solid #fed7aa; color: #c2410c; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt; font-weight: bold;">
+              מוקד שיא: יום ${heatmapResult.peakDay}, ${heatmapResult.peakPeriod} (${heatmapResult.maxCellOccurrences} אירועים)
+            </span>
+          ` : ''}
+        </div>
+        <p style="margin: 0 0 6px 0; font-size: 8.5pt; color: #64748b;">הצלבת שעות המערכת וימי השבוע לזיהוי דפוסי זמנים ומעברים</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 4px;">
+          <thead>
+            <tr style="background-color: #f8fafc;">
+              <th style="border: 1px solid #cbd5e1; padding: 6px; text-align: right; font-size: 9pt; width: 14%;">שעה / יום</th>
+              ${days.map(d => `<th style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 9pt;">יום ${d}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `);
+  }
+
+  // 2. ABC Sequence Summary Table
+  if (abcResult.hasData) {
+    const rowsHtml = abcResult.rows.map((row) => `
+      <tr>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: 600; color: #1e293b; font-size: 9pt;">${getRedactedText(row.antecedent, formData, hideDetails)}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; color: #334155; font-size: 9pt;">${getRedactedText(row.consequence, formData, hideDetails)}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; font-weight: 600; color: #0369a1; font-size: 9pt;">${escapeHtml(row.perceivedFunctionLabel)}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: bold; color: #0f172a; font-size: 9pt;">${row.count}</td>
+        <td style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: bold; color: #2563eb; font-size: 9pt;">
+          ${row.percentage}%
+          <div style="background-color: #e2e8f0; height: 5px; border-radius: 3px; overflow: hidden; margin-top: 3px;">
+            <div style="width: ${row.percentage}%; background-color: #2563eb; height: 100%;"></div>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    sections.push(`
+      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <strong style="color: #1e3a5f; font-size: 10.5pt;">טבלת רצף תנאי מקדים, התנהגות ותוצאה סביבתית</strong>
+          <span style="background-color: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt;">
+            סך אירועים מנותחים: <strong>${abcResult.totalIncidents}</strong>
+          </span>
+        </div>
+        <p style="margin: 0 0 6px 0; font-size: 8.5pt; color: #64748b;">הצלבה כמותית של הגורמים המעוררים מול התגובות הסביבתיות שנצפו</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 4px;">
+          <thead>
+            <tr style="background-color: #f8fafc;">
+              <th style="border: 1px solid #cbd5e1; padding: 6px; text-align: right; font-size: 9pt; width: 28%;">תנאי מקדים</th>
+              <th style="border: 1px solid #cbd5e1; padding: 6px; text-align: right; font-size: 9pt; width: 30%;">תגובה סביבתית או תוצאה</th>
+              <th style="border: 1px solid #cbd5e1; padding: 6px; text-align: right; font-size: 9pt; width: 18%;">תפקוד משוער</th>
+              <th style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 9pt; width: 10%;">מופעים</th>
+              <th style="border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-size: 9pt; width: 14%;">שכיחות יחסית</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `);
+  }
+
+  // 3. Duration & Intensity Chart
+  if (durationResult.hasData && durationResult.points.length > 0) {
+    const durationSvg = generateDurationIntensitySvg(durationResult.points, { isPrint, width: 680, height: 210 });
+    sections.push(`
+      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div>
+            <strong style="color: #1e3a5f; font-size: 10.5pt;">גרף משך זמן ועוצמת אירוע</strong>
+            <p style="margin: 2px 0 0 0; font-size: 8.5pt; color: #64748b;">מדידת דקות רצופות ועוצמה לאיתור התקפי זעם או הסתגרות</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <span style="background-color: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt;">
+              משך ממוצע: <strong>${durationResult.averageDurationMinutes} דק׳</strong>
+            </span>
+            <span style="background-color: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt;">
+              משך שיא: <strong>${durationResult.maxDurationMinutes} דק׳</strong>
+            </span>
+          </div>
+        </div>
+        ${durationSvg}
+      </div>
+    `);
+  }
+
+  // 4. Replacement Skill Cumulative Learning Curve
+  if (curveResult.hasData && curveResult.points.length > 0) {
+    const curveSvg = generateReplacementLearningCurveSvg(curveResult.points, { isPrint, width: 680, height: 210 });
+    sections.push(`
+      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div>
+            <strong style="color: #1e3a5f; font-size: 10.5pt;">עקומת למידה מצטברת של מיומנות חלופית</strong>
+            <p style="margin: 2px 0 0 0; font-size: 8.5pt; color: #64748b;">מעקב עצמאות ורכישה מתמדת של המיומנות הרצויה לאורך זמן</p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <span style="background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt;">
+              סך שימושים חלופיים: <strong>${curveResult.totalReplacementDemonstrations}</strong>
+            </span>
+            <span style="background-color: #f8fafc; border: 1px solid #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 4px; font-size: 8.5pt;">
+              קצב רכישה: <strong>${curveResult.acquisitionRatePercentage}%</strong>
+            </span>
+          </div>
+        </div>
+        ${curveSvg}
+      </div>
+    `);
+  }
+
+  // 5. Staff Fidelity Meter
+  if (fidelityResult.hasData && fidelityResult.totalTrackedSessions > 0) {
+    const barColor = fidelityResult.overallFidelityPercentage >= 80 ? '#10b981' : fidelityResult.overallFidelityPercentage >= 50 ? '#f59e0b' : '#ef4444';
+    const badgeBg = fidelityResult.overallFidelityPercentage >= 80 ? '#f0fdf4' : fidelityResult.overallFidelityPercentage >= 50 ? '#fefce8' : '#fef2f2';
+    const badgeBorder = fidelityResult.overallFidelityPercentage >= 80 ? '#bbf7d0' : fidelityResult.overallFidelityPercentage >= 50 ? '#fef08a' : '#fecaca';
+
+    sections.push(`
+      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <div>
+            <strong style="color: #1e3a5f; font-size: 10.5pt;">טבלת נאמנות יישום של צוות בית הספר</strong>
+            <p style="margin: 2px 0 0 0; font-size: 8.5pt; color: #64748b;">בדיקת אחוז העקביות של צוות ההוראה ביישום פרוטוקול ההתערבות</p>
+          </div>
+          <span style="background-color: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${barColor}; padding: 3px 10px; border-radius: 999px; font-size: 8.5pt; font-weight: bold;">
+            ${escapeHtml(fidelityResult.ratingLabel)} (${fidelityResult.overallFidelityPercentage}%)
+          </span>
+        </div>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-top: 6px;">
+          <div style="display: flex; justify-content: space-between; font-size: 9pt; font-weight: 600; margin-bottom: 4px; color: #334155;">
+            <span>עקביות כוללת במתן מענה וחיזוק:</span>
+            <span style="color: ${barColor}; font-weight: 800; font-size: 11pt;">${fidelityResult.overallFidelityPercentage}%</span>
+          </div>
+          <div style="background-color: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 4px;">
+            <div style="width: ${fidelityResult.overallFidelityPercentage}%; background-color: ${barColor}; height: 100%; border-radius: 5px;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 8pt; color: #64748b;">
+            <span>${fidelityResult.reinforcedSessions} מתוך ${fidelityResult.totalTrackedSessions} מפגשים יושמו בהתאם לתוכנית</span>
+            <span>יעד מומלץ: מעל 80%</span>
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  // 6. Dual-Line Progress Monitoring (Baseline vs Intervention)
+  if (hasDualLine) {
+    const dualLineSvg = generateProgressMonitoringDualLineSvg(baselineData, ongoingTracking, { isPrint, width: 680, height: 260 });
+    sections.push(`
+      <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; page-break-inside: avoid;">
+        <strong style="color: #1e3a5f; font-size: 10.5pt; display: block; margin-bottom: 4px;">גרף ניטור התקדמות: קו בסיס מול שלב התערבות</strong>
+        <p style="margin: 0 0 6px 0; font-size: 8.5pt; color: #64748b;">השוואת תדירות ההתנהגות המאתגרת אל מול רכישת ההתנהגות החלופית לאורך זמן</p>
+        ${dualLineSvg}
+      </div>
+    `);
+  }
+
+  return sections.join('\n');
+}
+
 export function buildBehaviorProgressReportWordDocumentHtml(formData: any = {}, hideDetails = false) {
   const displayName = getDisplayStudentName(formData, hideDetails);
   const displayId = getDisplayMaskedField(formData.idNumber, hideDetails);
@@ -2823,17 +3054,20 @@ export function buildBehaviorProgressReportWordDocumentHtml(formData: any = {}, 
           </tbody>
         </table>
 
-        <h2>4. התאמות סביבתיות ונהלי צוות</h2>
+        <h2>4. ניתוחים חזותיים ומדדי מעקב מתקדמים</h2>
+        ${buildBehaviorProgressVisualAnalyticsHtml(formData, hideDetails, false)}
+
+        <h2>5. התאמות סביבתיות ונהלי צוות</h2>
         <div style="background-color: #fafafa; border: 1pt solid #e2e8f0; padding: 10pt; border-radius: 4pt;">
           <p>${environmentalAdjustments}</p>
         </div>
 
-        <h2>5. נאמנות יישום ועקביות הצוות</h2>
+        <h2>6. נאמנות יישום ועקביות הצוות</h2>
         <div style="background-color: #fafafa; border: 1pt solid #e2e8f0; padding: 10pt; border-radius: 4pt;">
           <p>${staffFidelityObservations}</p>
         </div>
 
-        <h2>6. המלצות להמשך תוכנית ההתערבות וישיבות רב-מקצועיות</h2>
+        <h2>7. המלצות להמשך תוכנית ההתערבות וישיבות רב-מקצועיות</h2>
         <div style="background-color: #fafafa; border: 1pt solid #e2e8f0; padding: 10pt; border-radius: 4pt;">
           <p>${recommendations}</p>
         </div>
@@ -2975,21 +3209,26 @@ export function buildBehaviorProgressReportPrintHtml(formData: any = {}, hideDet
         </div>
 
         <div class="section-block">
-          <div class="section-title">4. התאמות סביבתיות ונהלי צוות</div>
+          <div class="section-title">4. ניתוחים חזותיים ומדדי מעקב מתקדמים</div>
+          ${buildBehaviorProgressVisualAnalyticsHtml(formData, hideDetails, true)}
+        </div>
+
+        <div class="section-block">
+          <div class="section-title">5. התאמות סביבתיות ונהלי צוות</div>
           <div style="background:#fafafa; border:1px solid #e2e8f0; padding:8px 12px; border-radius:6px; font-size:9.5pt;">
             <p style="margin:0;">${environmentalAdjustments}</p>
           </div>
         </div>
 
         <div class="section-block">
-          <div class="section-title">5. נאמנות יישום ועקביות הצוות</div>
+          <div class="section-title">6. נאמנות יישום ועקביות הצוות</div>
           <div style="background:#fafafa; border:1px solid #e2e8f0; padding:8px 12px; border-radius:6px; font-size:9.5pt;">
             <p style="margin:0;">${staffFidelityObservations}</p>
           </div>
         </div>
 
         <div class="section-block">
-          <div class="section-title">6. המלצות להמשך תוכנית ההתערבות וישיבות רב-מקצועיות</div>
+          <div class="section-title">7. המלצות להמשך תוכנית ההתערבות וישיבות רב-מקצועיות</div>
           <div style="background:#fafafa; border:1px solid #e2e8f0; padding:8px 12px; border-radius:6px; font-size:9.5pt;">
             <p style="margin:0;">${recommendations}</p>
           </div>

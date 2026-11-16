@@ -268,35 +268,68 @@ export function blobToBase64(blob: Blob): Promise<string> {
 }
 
 /**
- * Generate a real landscape PDF Blob in the background using html2pdf.js (no print window needed!)
+ * Generate a real PDF Blob in the background using html2pdf.js (no print window needed!)
+ * Supports both portrait and landscape orientation with off-screen DOM positioning.
  */
-export async function generatePdfBlobFromHtml(htmlString: string, filename = 'report.pdf'): Promise<Blob> {
+export async function generatePdfBlobFromHtml(
+  htmlString: string,
+  filename = 'report.pdf',
+  forcedOrientation?: 'portrait' | 'landscape'
+): Promise<Blob> {
+  const isPortrait = forcedOrientation === 'portrait' || (
+    forcedOrientation !== 'landscape' &&
+    (/size:\s*a4\s*portrait/i.test(htmlString) || /orientation:\s*portrait/i.test(htmlString))
+  );
+  const containerWidth = isPortrait ? '794px' : '1060px';
+
   const container = document.createElement('div');
   container.style.position = 'fixed';
-  container.style.top = '-9999px';
-  container.style.left = '-9999px';
-  container.style.width = '1060px';
+  container.style.top = '0px';
+  container.style.left = '0px';
+  container.style.zIndex = '-99999';
+  container.style.pointerEvents = 'none';
+  container.style.opacity = '1';
+  container.style.width = containerWidth;
   container.style.direction = 'rtl';
   container.style.background = '#ffffff';
-  container.style.padding = '16px';
+  container.style.padding = isPortrait ? '14px' : '16px';
+  container.style.boxSizing = 'border-box';
   container.innerHTML = htmlString;
   document.body.appendChild(container);
 
   try {
+    // Wait for layout and ensure any embedded images are loaded
+    const images = Array.from(container.querySelectorAll('img'));
+    if (images.length > 0) {
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve(null);
+          return new Promise((resolve) => {
+            img.onload = () => resolve(null);
+            img.onerror = () => resolve(null);
+          });
+        })
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
     const opt = {
-      margin: [8, 8, 8, 8],
+      margin: isPortrait ? [10, 8, 10, 8] : [8, 8, 8, 8],
       filename,
       image: { type: 'jpeg', quality: 0.96 },
       html2canvas: {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: isPortrait ? 794 : 1060
       },
       jsPDF: {
         unit: 'mm',
         format: 'a4',
-        orientation: 'landscape'
+        orientation: isPortrait ? 'portrait' : 'landscape'
       }
     };
 
