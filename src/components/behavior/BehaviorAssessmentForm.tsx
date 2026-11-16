@@ -8,7 +8,6 @@ import {
   FileText,
   Sparkles,
   Loader2,
-  X,
   Lock,
   Unlock,
   FileDown,
@@ -52,7 +51,8 @@ import {
   addSnippet,
   removeSnippet,
   updateSnippet,
-  createParentVoiceSnippet
+  createParentVoiceSnippet,
+  aggregateSnippetsForAiPrompt
 } from '../../domain/pedagogicalFeed';
 import {
   buildBehaviorAssessmentWordDocumentHtml,
@@ -242,23 +242,44 @@ export default function BehaviorAssessmentForm({
   const [showFullDocPreview, setShowFullDocPreview] = useState<boolean>(false);
 
   // AI Assistance states & handlers
-  const [showAiModal, setShowAiModal] = useState<boolean>(false);
-  const [aiPromptNotes, setAiPromptNotes] = useState<string>('');
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
   const [isRefiningTarget, setIsRefiningTarget] = useState<boolean>(false);
   const [isFormulatingHypothesis, setIsFormulatingHypothesis] = useState<boolean>(false);
   const [isSuggestingRecommendations, setIsSuggestingRecommendations] = useState<boolean>(false);
 
-  const handleRunFullAiDraft = async () => {
-    if (!aiPromptNotes.trim()) return;
+  const handleRunFullAiDraft = async (overrideSnippets?: PedagogicalSnippet[]) => {
+    if (isReportLocked) return;
+    const snippetsToUse =
+      overrideSnippets && overrideSnippets.length > 0
+        ? overrideSnippets
+        : activeSnippets && activeSnippets.length > 0
+        ? activeSnippets
+        : [];
+
+    const rawText = aggregateSnippetsForAiPrompt(snippetsToUse).trim();
+    if (!rawText) {
+      window.alert('נא להזין תצפית או לצרף מסמך בציר התובנות כדי שה-AI יוכל לנתח ולנסח את דוח ההערכה.');
+      return;
+    }
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      window.alert('אין חיבור לאינטרנט. ניסוח דוח באמצעות בינה מלאכותית דורש חיבור פעיל לרשת.');
+      return;
+    }
+
+    if (overrideSnippets && overrideSnippets.length > 0) {
+      setActiveSnippets(overrideSnippets);
+      setIsDirty(true);
+    }
+
     setIsAiGenerating(true);
     try {
       const studentWithSnippets: StudentProfile = {
         ...student,
         ...studentDetails,
-        pedagogicalSnippets: activeSnippets
+        pedagogicalSnippets: snippetsToUse
       };
-      const draft = await generateBehaviorAssessmentDraft(aiPromptNotes, studentWithSnippets);
+      const draft = await generateBehaviorAssessmentDraft(rawText, studentWithSnippets);
       if (draft) {
         setReport((prev) => ({
           ...prev,
@@ -281,10 +302,10 @@ export default function BehaviorAssessmentForm({
           updatedAt: new Date().toISOString()
         }));
         setIsDirty(true);
-        setShowAiModal(false);
-        setAiPromptNotes('');
         setSaveSuccessNotice(false);
       }
+    } catch (err) {
+      console.error('[BehaviorAssessmentForm] AI analysis error:', err);
     } finally {
       setIsAiGenerating(false);
     }
@@ -1008,72 +1029,6 @@ export default function BehaviorAssessmentForm({
         titlePrefix="פרטי התלמיד והמסגרת החינוכית"
       />
 
-      {/* AI Assistant Modal */}
-      {showAiModal && (
-        <div
-          className="behavior-ai-modal-backdrop"
-          onClick={() => !isAiGenerating && setShowAiModal(false)}
-        >
-          <div className="behavior-ai-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="behavior-ai-modal-header">
-              <h3 className="behavior-ai-modal-title">
-                <Sparkles size={20} color="#7c65b8" />
-                <span>ניסוח דוח הערכה בעזרת בינה מלאכותית</span>
-              </h3>
-              <button
-                type="button"
-                className="btn-collapse-toggle-32"
-                onClick={() => !isAiGenerating && setShowAiModal(false)}
-                title="סגירה"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '0.875rem',
-                color: 'var(--text-muted, #5c6f8c)'
-              }}
-            >
-              הדבק כאן תיאור חופשי של המקרה, תצפיות גולמיות או נקודות מתוך שיחות עם הצוות,
-              והמערכת תנתח ותמלא את כל מקטעי הדוח באופן מקצועי.
-            </p>
-            <textarea
-              className="behavior-textarea"
-              style={{ minHeight: '140px' }}
-              value={aiPromptNotes}
-              onChange={(e) => setAiPromptNotes(e.target.value)}
-              placeholder="למשל: התלמיד יוצא מהכיתה כשמבקשים ממנו לפתוח חוברת חשבון, זה קורה כמעט כל יום בעיקר בשיעור שני. כשהוא יוצא הצוות הולך אחריו למסדרון ומנסה להרגיע אותו..."
-              disabled={isAiGenerating}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button
-                type="button"
-                className="btn-behavior-action btn-behavior-secondary"
-                onClick={() => setShowAiModal(false)}
-                disabled={isAiGenerating}
-              >
-                <span>ביטול</span>
-              </button>
-              <button
-                type="button"
-                className="btn-behavior-action btn-behavior-ai"
-                onClick={handleRunFullAiDraft}
-                disabled={isAiGenerating || !aiPromptNotes.trim()}
-              >
-                {isAiGenerating ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Sparkles size={16} />
-                )}
-                <span>{isAiGenerating ? 'מנתח ומנסח...' : 'יצירת טיוטת דוח'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Pedagogical Feed, Voice Capture & Diagnostic Documents Section */}
       <section className="behavior-card" style={{ marginBottom: '1.25rem' }}>
         <div
@@ -1120,16 +1075,27 @@ export default function BehaviorAssessmentForm({
               onUpdateSnippet={handleUpdateSnippet}
               onRemoveSnippet={handleRemoveSnippet}
               onOpenUploadModal={() => setShowDiagnosticIntakeModal(true)}
-              onTriggerAiAnalysis={(overrideSnippets) => {
-                if (overrideSnippets) {
-                  setActiveSnippets(overrideSnippets);
-                }
-                setShowAiModal(true);
-              }}
+              onTriggerAiAnalysis={(overrideSnippets) => handleRunFullAiDraft(overrideSnippets)}
               isAnalyzing={isAiGenerating}
               isLocked={isReportLocked}
               currentUserName={currentUser?.name}
             />
+
+            {isAiGenerating && (
+              <div className="ai-busy-indicator-card" role="status" aria-live="polite">
+                <div className="ai-busy-indicator-header">
+                  <Loader2 size={19} className="tala-spin-icon" />
+                  <Sparkles size={16} />
+                  <span>ה-AI מנתח את כל המקורות והתובנות ומנסח את טיוטת דוח ההערכה...</span>
+                </div>
+                <div className="ai-busy-indicator-sub">
+                  המערכת סורקת את התצפיות, הרקע והמסמכים ומחלצת הגדרות אופרציונליות, ניתוח נסיבות מקדימות והשערת תפקוד.
+                </div>
+                <div className="ai-busy-progress-track">
+                  <div className="ai-busy-progress-bar" />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>

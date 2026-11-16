@@ -105,4 +105,40 @@ describe('BehaviorAssessmentForm Component Suite', () => {
     expect(html).toContain('טרם הוגדרו התנהגויות יעד');
     expect(html).toContain('טרם הוזנו נתוני קו בסיס');
   });
+
+  it('completely omits the redundant AI modal and adheres to direct pedagogical synthesis parity', () => {
+    const studentWithSnippets: StudentProfile = {
+      ...sampleStudent,
+      pedagogicalSnippets: [
+        {
+          id: 'snip_ai_1',
+          content: 'התלמיד יוצא מהכיתה כשמתבקש לפתוח חוברת חשבון',
+          authorName: 'מנתחת התנהגות',
+          createdAt: '2026-11-15T12:00:00Z',
+          sourceTitle: 'תצפית כיתתית',
+          sourceType: 'teacher_note'
+        }
+      ]
+    };
+
+    const handleSave = vi.fn();
+    const html = renderToStaticMarkup(
+      <BehaviorAssessmentForm
+        student={studentWithSnippets}
+        currentUser={{ name: 'רונית שפירא', role: 'behavior_analyst' }}
+        onSaveStudentPlan={handleSave}
+      />
+    );
+
+    // Modal title and modal elements must be completely absent from the DOM
+    expect(html).not.toContain('ניסוח דוח הערכה בעזרת בינה מלאכותית');
+    expect(html).not.toContain('behavior-ai-modal');
+    expect(html).not.toContain('behavior-ai-modal-backdrop');
+    expect(html).not.toContain('הדבק כאן תיאור חופשי של המקרה');
+
+    // The pedagogical feed and direct AI trigger button must be present
+    expect(html).toContain('ציר תובנות פדגוגי ומסמכי רקע');
+    expect(html).toContain('ניתוח כל המקורות ב-AI');
+    expect(html).toContain('התלמיד יוצא מהכיתה כשמתבקש לפתוח חוברת חשבון');
+  });
 });
