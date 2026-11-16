@@ -644,6 +644,7 @@ export default function DailyPedagogicalTracker({
 
   // Behavior Tracking State
   const [behaviorOccurrences, setBehaviorOccurrences] = useState<number>(1);
+  const [behaviorDurationMinutes, setBehaviorDurationMinutes] = useState<string>('');
   const [behaviorReplacementUsed, setBehaviorReplacementUsed] = useState<boolean>(true);
   const [behaviorReinforcementDelivered, setBehaviorReinforcementDelivered] = useState<boolean>(true);
   const [behaviorNoteText, setBehaviorNoteText] = useState<string>('');
@@ -654,6 +655,8 @@ export default function DailyPedagogicalTracker({
   const handleSaveBehaviorObservation = () => {
     if (!targetStudent) return;
 
+    const parsedDuration = behaviorDurationMinutes ? Math.max(0, parseInt(behaviorDurationMinutes, 10)) : undefined;
+
     const newTrackingPoint: OngoingTrackingPoint = {
       id: 'track_' + Date.now(),
       date: selectedDate || todayStr,
@@ -661,6 +664,7 @@ export default function DailyPedagogicalTracker({
       targetBehaviorOccurrences: Number(behaviorOccurrences) || 0,
       replacementBehaviorUsed: behaviorReplacementUsed,
       reinforcementDelivered: behaviorReinforcementDelivered,
+      durationMinutes: parsedDuration,
       notes: behaviorNoteText.trim() || undefined
     };
 
@@ -693,6 +697,7 @@ export default function DailyPedagogicalTracker({
         antecedent: '',
         behavior: behaviorNoteText.trim(),
         intensity: behaviorIntensity,
+        durationMinutes: parsedDuration,
         consequence: behaviorReinforcementDelivered ? 'חיזוק ניתן' : 'ללא חיזוק',
         perceivedFunction: (targetStudent.behaviorAssessment?.mainHypothesizedFunction as any) || 'escape',
         notes: behaviorNoteText.trim()
@@ -711,6 +716,7 @@ export default function DailyPedagogicalTracker({
 
     setBehaviorSuccessToast('אירוע התנהגותי נרשם בהצלחה ועודכן בגרף ההתערבות');
     setBehaviorNoteText('');
+    setBehaviorDurationMinutes('');
     setBehaviorOccurrences(1);
 
     setTimeout(() => {
@@ -2197,6 +2203,28 @@ export default function DailyPedagogicalTracker({
                         +
                       </button>
                     </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                      משך בדקות (רשות):
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="300"
+                      placeholder="דקות"
+                      value={behaviorDurationMinutes}
+                      onChange={(e) => setBehaviorDurationMinutes(e.target.value)}
+                      style={{
+                        width: '80px',
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '13px',
+                        textAlign: 'center'
+                      }}
+                    />
                   </div>
                 </div>
 

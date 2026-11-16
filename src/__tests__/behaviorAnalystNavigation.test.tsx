@@ -19,6 +19,7 @@ describe('Behavior Analyst Navigation & Header Polish Suite', () => {
     const getBadgeLabel = (docType: string, st: any) => {
       if (docType === 'behavior_assessment') return 'הערכת תפקוד התנהגותי';
       if (docType === 'behavior_plan') return 'תוכנית התערבות התנהגותית';
+      if (docType === 'behavior_progress_report') return 'דוח התקדמות תקופתי';
       return (
         st.educationalFramework ||
         (st.planType?.includes('גן') || st.planType?.includes('תח"י')
@@ -29,6 +30,7 @@ describe('Behavior Analyst Navigation & Header Polish Suite', () => {
 
     expect(getBadgeLabel('behavior_assessment', student)).toBe('הערכת תפקוד התנהגותי');
     expect(getBadgeLabel('behavior_plan', student)).toBe('תוכנית התערבות התנהגותית');
+    expect(getBadgeLabel('behavior_progress_report', student)).toBe('דוח התקדמות תקופתי');
     expect(getBadgeLabel('pedagogical_plan', student)).toBe('בית ספר יסודי');
   });
 });

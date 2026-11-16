@@ -161,6 +161,7 @@ import UserFeedbackSurveyModal from './components/modals/UserFeedbackSurveyModal
 import EcologicalWorkPlanForm from './EcologicalWorkPlanForm';
 import BehaviorAssessmentForm from './components/behavior/BehaviorAssessmentForm';
 import BehaviorInterventionPlanForm from './components/behavior/BehaviorInterventionPlanForm';
+import BehaviorProgressReportForm from './components/behavior/BehaviorProgressReportForm';
 import { appendBankGoalToStudent } from './domain/bankGoalApplication';
 import {
   getFrameworkKey,
@@ -590,7 +591,7 @@ export default function App() {
   // Do NOT auto-open any student report upon login/re-login; start on the inside landing page (selectedStudentId = null)
   const [selectedStudentId, setSelectedStudentId] = useState<any>(null);
   const [activeStudentDocumentType, setActiveStudentDocumentType] = useState<
-    'pedagogical_plan' | 'behavior_assessment' | 'behavior_plan'
+    'pedagogical_plan' | 'behavior_assessment' | 'behavior_plan' | 'behavior_progress_report'
   >('pedagogical_plan');
 
   useEffect(() => {
@@ -3586,6 +3587,8 @@ export default function App() {
                         ? 'הערכת תפקוד התנהגותי'
                         : activeStudentDocumentType === 'behavior_plan'
                         ? 'תוכנית התערבות התנהגותית'
+                        : activeStudentDocumentType === 'behavior_progress_report'
+                        ? 'דוח התקדמות תקופתי'
                         : (selectedStudent.educationalFramework ||
                           (selectedStudent.planType?.includes('גן') || selectedStudent.planType?.includes('תח"י')
                             ? 'תוכנית אקולוגית לילדי הגן'
@@ -3646,6 +3649,26 @@ export default function App() {
                   >
                     תוכנית התערבות התנהגותית
                   </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeStudentDocumentType === 'behavior_progress_report'}
+                    onClick={() => setActiveStudentDocumentType('behavior_progress_report')}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      border: activeStudentDocumentType === 'behavior_progress_report' ? '1px solid #bfdbfe' : '1px solid transparent',
+                      cursor: 'pointer',
+                      fontSize: '0.835rem',
+                      fontWeight: 700,
+                      background: activeStudentDocumentType === 'behavior_progress_report' ? '#ffffff' : 'transparent',
+                      color: activeStudentDocumentType === 'behavior_progress_report' ? '#2563eb' : '#64748b',
+                      boxShadow: activeStudentDocumentType === 'behavior_progress_report' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    דוח התקדמות תקופתי
+                  </button>
                   {effectiveCurrentUser?.role !== 'behavior_analyst' && (
                     <button
                       type="button"
@@ -3685,6 +3708,17 @@ export default function App() {
               ) : activeStudentDocumentType === 'behavior_plan' ? (
                 <ErrorBoundary componentName="BehaviorInterventionPlanForm">
                   <BehaviorInterventionPlanForm
+                    student={selectedStudent}
+                    allStudents={baseStudentsForView}
+                    currentUser={effectiveCurrentUser}
+                    onSaveStudentPlan={handleSaveStudentPlan}
+                    onDraftStateChange={setUnsavedDraftState}
+                    onGoBack={() => setSelectedStudentId(null)}
+                  />
+                </ErrorBoundary>
+              ) : activeStudentDocumentType === 'behavior_progress_report' ? (
+                <ErrorBoundary componentName="BehaviorProgressReportForm">
+                  <BehaviorProgressReportForm
                     student={selectedStudent}
                     allStudents={baseStudentsForView}
                     currentUser={effectiveCurrentUser}

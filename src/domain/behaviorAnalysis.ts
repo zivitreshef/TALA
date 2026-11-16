@@ -4,6 +4,9 @@ import {
   BehaviorFunction,
   BehaviorInterventionPlan,
   BehaviorMeasurementType,
+  BehaviorObservation,
+  BehaviorProgressPeriod,
+  BehaviorProgressReport,
   OngoingTrackingPoint
 } from './types';
 
@@ -161,6 +164,500 @@ export function createEmptyBehaviorPlan(): BehaviorInterventionPlan {
     updatedAt: new Date().toISOString()
   };
 }
+
+/**
+ * Creates a clean, empty behavior progress report template for mid-year, end-year or periodic reviews.
+ */
+export function createEmptyBehaviorProgressReport(
+  period: BehaviorProgressPeriod = 'mid_year'
+): BehaviorProgressReport {
+  const isMid = period === 'mid_year';
+  const isEnd = period === 'end_year';
+  const defaultLabel = isMid
+    ? 'מחצית ראשונה (ספטמבר - ינואר)'
+    : isEnd
+    ? 'סיכום שנתי מלא (ספטמבר - יוני)'
+    : 'דוח מעקב תקופתי';
+
+  return {
+    period,
+    reportDate: new Date().toISOString().slice(0, 10),
+    reviewPeriodLabel: defaultLabel,
+    executiveSummary: '',
+    targetBehaviorsProgress: [],
+    replacementBehaviorsAcquisition: [],
+    environmentalAdjustments: '',
+    staffFidelityObservations: '',
+    recommendations: '',
+    updatedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Returns clean Hebrew labels for progress report review periods.
+ * Strictly adheres to Hebrew-Only Titles Rule (Zero English in Parentheses).
+ */
+export function getBehaviorProgressPeriodLabelHebrew(period?: BehaviorProgressPeriod | string | null): string {
+  switch (period) {
+    case 'mid_year':
+      return 'סיכום אמצע שנה';
+    case 'end_year':
+      return 'סיכום סוף שנה';
+    case 'periodic':
+    default:
+      return 'דוח התקדמות תקופתי';
+  }
+}
+
+export interface HeatmapCell {
+  dayIndex: number;
+  dayName: string;
+  periodIndex: number;
+  periodName: string;
+  occurrences: number;
+  incidentCount: number;
+}
+
+export interface HeatmapMatrixResult {
+  hasData: boolean;
+  totalOccurrences: number;
+  maxCellOccurrences: number;
+  days: string[];
+  periods: string[];
+  cells: HeatmapCell[];
+  peakDay?: string;
+  peakPeriod?: string;
+}
+
+const HEBREW_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי'];
+const SCHOOL_PERIODS = ['שיעור 1', 'שיעור 2', 'שיעור 3', 'שיעור 4', 'שיעור 5', 'שיעור 6'];
+
+function extractPeriodIndex(rawPeriod?: string | null): number {
+  if (!rawPeriod) return 0;
+  const match = rawPeriod.match(/(\d+)/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (num >= 1 && num <= 6) return num - 1;
+  }
+  return 0;
+}
+
+function extractDayIndexFromIso(dateStr?: string | null): number {
+  if (!dateStr) return 0;
+  try {
+    const dt = new Date(dateStr);
+    if (!isNaN(dt.getTime())) {
+      const day = dt.getDay(); // 0 is Sunday, 5 is Friday
+      if (day >= 0 && day <= 5) return day;
+    }
+  } catch {}
+  return 0;
+}
+
+/**
+ * 1. מפת פיזור שעתית לאורך ימות השבוע
+ * Aggregates behavioral occurrences across days of week (ראשון עד שישי) and school periods (שיעור 1 עד 6).
+ */
+export function computeHourlyHeatmapMatrix(
+  trackingData?: OngoingTrackingPoint[] | null,
+  observations?: BehaviorObservation[] | null
+): HeatmapMatrixResult {
+  const points = Array.isArray(trackingData) ? trackingData : [];
+  const obs = Array.isArray(observations) ? observations : [];
+
+  const matrix: number[][] = Array.from({ length: 6 }, () => Array(6).fill(0));
+  const countMatrix: number[][] = Array.from({ length: 6 }, () => Array(6).fill(0));
+
+  let totalOccurrences = 0;
+  let pointsCount = 0;
+
+  for (const pt of points) {
+    const dayIdx = extractDayIndexFromIso(pt.date);
+    const periodIdx = extractPeriodIndex(pt.period || pt.sessionOrPeriod);
+    const occ = Number(pt.targetBehaviorOccurrences ?? pt.targetBehaviorCount) || 0;
+    matrix[dayIdx][periodIdx] += occ;
+    countMatrix[dayIdx][periodIdx] += 1;
+    totalOccurrences += occ;
+    pointsCount += 1;
+  }
+
+  // Also factor in qualitative observations if any
+  for (const o of obs) {
+    const dateStr = o.dateTime ? o.dateTime.slice(0, 10) : '';
+    const dayIdx = extractDayIndexFromIso(dateStr);
+    const periodIdx = extractPeriodIndex(o.activity);
+    countMatrix[dayIdx][periodIdx] += 1;
+    if (matrix[dayIdx][periodIdx] === 0) {
+      matrix[dayIdx][periodIdx] += 1;
+      totalOccurrences += 1;
+    }
+    pointsCount += 1;
+  }
+
+  let maxCellOccurrences = 0;
+  let peakDay = HEBREW_DAYS[0];
+  let peakPeriod = SCHOOL_PERIODS[0];
+
+  const cells: HeatmapCell[] = [];
+  for (let d = 0; d < 6; d++) {
+    for (let p = 0; p < 6; p++) {
+      const occurrences = matrix[d][p];
+      const incidentCount = countMatrix[d][p];
+      if (occurrences > maxCellOccurrences) {
+        maxCellOccurrences = occurrences;
+        peakDay = HEBREW_DAYS[d];
+        peakPeriod = SCHOOL_PERIODS[p];
+      }
+      cells.push({
+        dayIndex: d,
+        dayName: HEBREW_DAYS[d],
+        periodIndex: p,
+        periodName: SCHOOL_PERIODS[p],
+        occurrences,
+        incidentCount
+      });
+    }
+  }
+
+  return {
+    hasData: pointsCount > 0 && totalOccurrences > 0,
+    totalOccurrences,
+    maxCellOccurrences,
+    days: HEBREW_DAYS,
+    periods: SCHOOL_PERIODS,
+    cells,
+    peakDay: totalOccurrences > 0 ? peakDay : undefined,
+    peakPeriod: totalOccurrences > 0 ? peakPeriod : undefined
+  };
+}
+
+export interface AbcSequenceRow {
+  antecedent: string;
+  consequence: string;
+  perceivedFunctionLabel: string;
+  count: number;
+  percentage: number;
+}
+
+export interface AbcSequenceResult {
+  hasData: boolean;
+  totalIncidents: number;
+  rows: AbcSequenceRow[];
+  dominantAntecedent?: string;
+  dominantConsequence?: string;
+}
+
+/**
+ * 2. טבלת רצף תנאי מקדים, התנהגות ותוצאה סביבתית
+ * Cross-tabulates antecedents vs consequences and perceived functions.
+ */
+export function computeAbcSequenceSummary(
+  observations?: BehaviorObservation[] | null
+): AbcSequenceResult {
+  const obs = Array.isArray(observations) ? observations : [];
+  const validObs = obs.filter((o) => (o.antecedent && o.antecedent.trim()) || (o.consequence && o.consequence.trim()));
+
+  if (validObs.length === 0) {
+    return {
+      hasData: false,
+      totalIncidents: 0,
+      rows: []
+    };
+  }
+
+  const map = new Map<string, { antecedent: string; consequence: string; fn: string; count: number }>();
+  const antecedentCounts = new Map<string, number>();
+  const consequenceCounts = new Map<string, number>();
+
+  for (const item of validObs) {
+    const ant = (item.antecedent || 'לא צוין תנאי מקדים').trim();
+    const cons = (item.consequence || 'לא צוינה תגובה סביבתית').trim();
+    const fnLabel = getBehaviorFunctionLabelHebrew(item.perceivedFunction);
+
+    const key = `${ant}___${cons}___${fnLabel}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      map.set(key, { antecedent: ant, consequence: cons, fn: fnLabel, count: 1 });
+    }
+
+    antecedentCounts.set(ant, (antecedentCounts.get(ant) || 0) + 1);
+    consequenceCounts.set(cons, (consequenceCounts.get(cons) || 0) + 1);
+  }
+
+  const totalIncidents = validObs.length;
+  const rows: AbcSequenceRow[] = Array.from(map.values())
+    .map((entry) => ({
+      antecedent: entry.antecedent,
+      consequence: entry.consequence,
+      perceivedFunctionLabel: entry.fn,
+      count: entry.count,
+      percentage: Math.round((entry.count / totalIncidents) * 100)
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  let dominantAntecedent: string | undefined;
+  let maxAntCount = 0;
+  for (const [ant, count] of antecedentCounts.entries()) {
+    if (count > maxAntCount) {
+      maxAntCount = count;
+      dominantAntecedent = ant;
+    }
+  }
+
+  let dominantConsequence: string | undefined;
+  let maxConsCount = 0;
+  for (const [cons, count] of consequenceCounts.entries()) {
+    if (count > maxConsCount) {
+      maxConsCount = count;
+      dominantConsequence = cons;
+    }
+  }
+
+  return {
+    hasData: rows.length > 0,
+    totalIncidents,
+    rows,
+    dominantAntecedent,
+    dominantConsequence
+  };
+}
+
+export interface DurationIntensityPoint {
+  id: string;
+  date: string;
+  period: string;
+  durationMinutes: number;
+  intensity: 'mild' | 'moderate' | 'severe' | string;
+  intensityScore: number;
+  intensityLabel: string;
+  notes?: string;
+}
+
+export interface DurationIntensityResult {
+  hasData: boolean;
+  points: DurationIntensityPoint[];
+  averageDurationMinutes: number;
+  maxDurationMinutes: number;
+  totalDurationMinutes: number;
+}
+
+export function getIntensityLabelHebrew(intensity?: string | null): string {
+  switch (intensity) {
+    case 'mild':
+      return 'קלה';
+    case 'severe':
+      return 'גבוהה';
+    case 'moderate':
+    default:
+      return 'בינונית';
+  }
+}
+
+/**
+ * 3. גרף משך זמן ועוצמת אירוע
+ * Extracts points with measured duration in minutes and intensity levels.
+ */
+export function computeDurationAndIntensityData(
+  trackingData?: OngoingTrackingPoint[] | null,
+  observations?: BehaviorObservation[] | null
+): DurationIntensityResult {
+  const points: DurationIntensityPoint[] = [];
+
+  const rawTracking = Array.isArray(trackingData) ? trackingData : [];
+  for (const t of rawTracking) {
+    if (typeof t.durationMinutes === 'number' && t.durationMinutes > 0) {
+      points.push({
+        id: t.id || 'trk_' + Math.random(),
+        date: t.date,
+        period: t.period || t.sessionOrPeriod || 'שיעור',
+        durationMinutes: t.durationMinutes,
+        intensity: 'moderate',
+        intensityScore: 2,
+        intensityLabel: getIntensityLabelHebrew('moderate'),
+        notes: t.notes
+      });
+    }
+  }
+
+  const rawObs = Array.isArray(observations) ? observations : [];
+  for (const o of rawObs) {
+    const dur = typeof o.durationMinutes === 'number' && o.durationMinutes > 0 ? o.durationMinutes : 0;
+    const intensity = o.intensity || 'moderate';
+    const score = intensity === 'severe' ? 3 : intensity === 'mild' ? 1 : 2;
+
+    if (dur > 0 || o.intensity) {
+      points.push({
+        id: o.id || 'obs_' + Math.random(),
+        date: o.dateTime ? o.dateTime.slice(0, 10) : 'היום',
+        period: o.activity || 'שיעור',
+        durationMinutes: dur,
+        intensity,
+        intensityScore: score,
+        intensityLabel: getIntensityLabelHebrew(intensity),
+        notes: o.behavior || o.notes
+      });
+    }
+  }
+
+  // Sort chronologically
+  points.sort((a, b) => a.date.localeCompare(b.date));
+
+  const totalDuration = points.reduce((acc, p) => acc + p.durationMinutes, 0);
+  const durPoints = points.filter((p) => p.durationMinutes > 0);
+  const avgDuration = durPoints.length > 0 ? Math.round((totalDuration / durPoints.length) * 10) / 10 : 0;
+  const maxDuration = points.reduce((max, p) => Math.max(max, p.durationMinutes), 0);
+
+  return {
+    hasData: points.length > 0 && (totalDuration > 0 || points.some((p) => p.intensityScore > 1)),
+    points,
+    averageDurationMinutes: avgDuration,
+    maxDurationMinutes: maxDuration,
+    totalDurationMinutes: totalDuration
+  };
+}
+
+export interface ReplacementCurvePoint {
+  date: string;
+  period: string;
+  sessionIndex: number;
+  cumulativeCount: number;
+  usedInSession: boolean;
+  notes?: string;
+}
+
+export interface ReplacementCurveResult {
+  hasData: boolean;
+  totalReplacementDemonstrations: number;
+  points: ReplacementCurvePoint[];
+  acquisitionRatePercentage: number;
+}
+
+/**
+ * 4. עקומת למידה מצטברת של מיומנות חלופית
+ * Visualizes cumulative acquisition curve of replacement behavior uses.
+ */
+export function computeReplacementSkillCurve(
+  trackingData?: OngoingTrackingPoint[] | null
+): ReplacementCurveResult {
+  const raw = Array.isArray(trackingData) ? [...trackingData] : [];
+  if (raw.length === 0) {
+    return {
+      hasData: false,
+      totalReplacementDemonstrations: 0,
+      points: [],
+      acquisitionRatePercentage: 0
+    };
+  }
+
+  // Sort chronologically
+  raw.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  let cumulativeCount = 0;
+  const points: ReplacementCurvePoint[] = [];
+
+  raw.forEach((pt, idx) => {
+    const used = pt.replacementBehaviorUsed === true || Number(pt.replacementBehaviorUsed) > 0;
+    if (used) {
+      cumulativeCount += 1;
+    }
+    points.push({
+      date: pt.date,
+      period: pt.period || pt.sessionOrPeriod || `מפגש ${idx + 1}`,
+      sessionIndex: idx + 1,
+      cumulativeCount,
+      usedInSession: used,
+      notes: pt.notes
+    });
+  });
+
+  const acquisitionRate = raw.length > 0 ? Math.round((cumulativeCount / raw.length) * 100) : 0;
+
+  return {
+    hasData: cumulativeCount > 0,
+    totalReplacementDemonstrations: cumulativeCount,
+    points,
+    acquisitionRatePercentage: acquisitionRate
+  };
+}
+
+export interface StaffFidelityBreakdown {
+  period: string;
+  totalSessions: number;
+  reinforcedSessions: number;
+  fidelityPercentage: number;
+}
+
+export interface StaffFidelityResult {
+  hasData: boolean;
+  totalTrackedSessions: number;
+  reinforcedSessions: number;
+  overallFidelityPercentage: number;
+  ratingLabel: string;
+  periodBreakdowns: StaffFidelityBreakdown[];
+}
+
+/**
+ * 5. טבלת נאמנות יישום של צוות בית הספר
+ * Evaluates consistent reinforcement protocol delivery across sessions.
+ */
+export function computeStaffFidelityMetrics(
+  trackingData?: OngoingTrackingPoint[] | null
+): StaffFidelityResult {
+  const raw = Array.isArray(trackingData) ? trackingData : [];
+  if (raw.length === 0) {
+    return {
+      hasData: false,
+      totalTrackedSessions: 0,
+      reinforcedSessions: 0,
+      overallFidelityPercentage: 0,
+      ratingLabel: 'אין נתונים',
+      periodBreakdowns: []
+    };
+  }
+
+  let reinforcedCount = 0;
+  const periodMap = new Map<string, { total: number; reinforced: number }>();
+
+  for (const pt of raw) {
+    const period = pt.period || pt.sessionOrPeriod || 'שיעור כללי';
+    const isReinforced = pt.reinforcementDelivered === true;
+    if (isReinforced) reinforcedCount += 1;
+
+    const curr = periodMap.get(period) || { total: 0, reinforced: 0 };
+    curr.total += 1;
+    if (isReinforced) curr.reinforced += 1;
+    periodMap.set(period, curr);
+  }
+
+  const totalSessions = raw.length;
+  const overallPct = Math.round((reinforcedCount / totalSessions) * 100);
+
+  let ratingLabel = 'דרוש חידוד נהלים';
+  if (overallPct >= 80) {
+    ratingLabel = 'נאמנות גבוהה ועקבית';
+  } else if (overallPct >= 50) {
+    ratingLabel = 'נאמנות בינונית במגמת שיפור';
+  }
+
+  const periodBreakdowns: StaffFidelityBreakdown[] = Array.from(periodMap.entries()).map(([p, data]) => ({
+    period: p,
+    totalSessions: data.total,
+    reinforcedSessions: data.reinforced,
+    fidelityPercentage: Math.round((data.reinforced / data.total) * 100)
+  }));
+
+  return {
+    hasData: totalSessions > 0,
+    totalTrackedSessions: totalSessions,
+    reinforcedSessions: reinforcedCount,
+    overallFidelityPercentage: overallPct,
+    ratingLabel,
+    periodBreakdowns
+  };
+}
+
 
 export type BehaviorReadinessFilterKey =
   | 'all'
