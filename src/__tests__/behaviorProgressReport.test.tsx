@@ -395,7 +395,8 @@ describe('BehaviorProgressReportForm Component UI', () => {
     expect(html).toContain('טבלת נאמנות יישום של צוות בית הספר');
     // Verify enterprise design system classes and card architecture
     expect(html).toContain('progress-report-container');
-    expect(html).toContain('plan-form-header');
+    expect(html).toContain('sticky-action-bar');
+    expect(html).toContain('document-title-card');
     expect(html).toContain('progress-card');
     expect(html).toContain('progress-card-header');
     expect(html).toContain('progress-card-body');

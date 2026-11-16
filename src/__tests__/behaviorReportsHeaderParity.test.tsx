@@ -7,7 +7,7 @@ import BehaviorProgressReportForm from '../components/behavior/BehaviorProgressR
 import BehaviorInterventionPlanForm from '../components/behavior/BehaviorInterventionPlanForm';
 import type { StudentProfile } from '../domain/types';
 
-describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Picture 2)', () => {
+describe('Behavior Reports Unified 3-Row Header Suite (Option 1 - Matching Teacher Workspace)', () => {
   const mockStudent: StudentProfile = {
     id: 'st_align_1',
     name: 'דניאל מזרחי',
@@ -47,8 +47,9 @@ describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Pi
     email: 'ronit@example.com'
   };
 
-  it('renders BehaviorAssessmentForm with original behavior title, student info, and unified action bar', () => {
+  it('renders BehaviorAssessmentForm with complete 3-row architecture (sticky action bar, mode tabs, and blue title banner)', () => {
     const onGoBack = vi.fn();
+    const onNavigateDocumentType = vi.fn();
 
     const html = renderToStaticMarkup(
       <BehaviorAssessmentForm
@@ -56,16 +57,13 @@ describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Pi
         currentUser={mockUser}
         onSaveStudentPlan={vi.fn()}
         onGoBack={onGoBack}
+        onNavigateDocumentType={onNavigateDocumentType}
       />
     );
 
-    // Header container & classes
-    expect(html).toContain('behavior-form-header');
-    expect(html).toContain('הערכת תפקוד התנהגותי');
-    expect(html).toContain('דניאל מזרחי');
-    expect(html).toContain('חטיבת ביניים שחקים');
-
-    // Action buttons matching Picture 1 & 2
+    // Row 1: Sticky Top Action Bar
+    expect(html).toContain('sticky-action-bar');
+    expect(html).toContain('ניהול תלמידים');
     expect(html).toContain('btn-report-lock-icon');
     expect(html).toContain('btn-save-progress');
     expect(html).toContain('שמור התקדמות');
@@ -73,11 +71,26 @@ describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Pi
     expect(html).toContain('תצוגת מסמך מלאה');
     expect(html).toContain('btn-export-dropdown');
     expect(html).toContain('הדפסה וייצוא');
-    expect(html).toContain('סגירה');
+
+    // Row 2: Master Document Mode Tabs
+    expect(html).toContain('workplan-mode-tabs-container');
+    expect(html).toContain('workplan-mode-tab');
+    expect(html).toContain('הערכת תפקוד התנהגותי');
+    expect(html).toContain('תוכנית התערבות התנהגותית');
+    expect(html).toContain('דוח התקדמות תקופתי');
+
+    // Row 3: Blue Document Title Banner
+    expect(html).toContain('document-title-card');
+    expect(html).toContain('tala-logo.png');
+    expect(html).toContain('banner-slot-date');
+    expect(html).toContain('banner-slot-controls');
+    expect(html).toContain('שנת לימודים:');
+    expect(html).toContain('הערכת תפקוד התנהגותי – דניאל מזרחי');
   });
 
-  it('renders BehaviorInterventionPlanForm with original behavior plan title and unified actions', () => {
+  it('renders BehaviorInterventionPlanForm with complete 3-row architecture', () => {
     const onGoBack = vi.fn();
+    const onNavigateDocumentType = vi.fn();
 
     const html = renderToStaticMarkup(
       <BehaviorInterventionPlanForm
@@ -85,16 +98,13 @@ describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Pi
         currentUser={mockUser}
         onSaveStudentPlan={vi.fn()}
         onGoBack={onGoBack}
+        onNavigateDocumentType={onNavigateDocumentType}
       />
     );
 
-    // Header container & classes
-    expect(html).toContain('plan-form-header');
-    expect(html).toContain('תוכנית התערבות התנהגותית');
-    expect(html).toContain('דניאל מזרחי');
-    expect(html).toContain('חטיבת ביניים שחקים');
-
-    // Action buttons matching Picture 1 & 2
+    // Row 1: Sticky Top Action Bar
+    expect(html).toContain('sticky-action-bar');
+    expect(html).toContain('ניהול תלמידים');
     expect(html).toContain('btn-report-lock-icon');
     expect(html).toContain('btn-save-progress');
     expect(html).toContain('שמור התקדמות');
@@ -102,11 +112,26 @@ describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Pi
     expect(html).toContain('תצוגת מסמך מלאה');
     expect(html).toContain('btn-export-dropdown');
     expect(html).toContain('הדפסה וייצוא');
-    expect(html).toContain('סגירה');
+
+    // Row 2: Master Document Mode Tabs
+    expect(html).toContain('workplan-mode-tabs-container');
+    expect(html).toContain('workplan-mode-tab');
+    expect(html).toContain('הערכת תפקוד התנהגותי');
+    expect(html).toContain('תוכנית התערבות התנהגותית');
+    expect(html).toContain('דוח התקדמות תקופתי');
+
+    // Row 3: Blue Document Title Banner
+    expect(html).toContain('document-title-card');
+    expect(html).toContain('tala-logo.png');
+    expect(html).toContain('banner-slot-date');
+    expect(html).toContain('banner-slot-controls');
+    expect(html).toContain('שנת לימודים:');
+    expect(html).toContain('תוכנית התערבות התנהגותית – דניאל מזרחי');
   });
 
-  it('renders BehaviorProgressReportForm with original progress report title and unified actions', () => {
+  it('renders BehaviorProgressReportForm with complete 3-row architecture', () => {
     const onGoBack = vi.fn();
+    const onNavigateDocumentType = vi.fn();
 
     const html = renderToStaticMarkup(
       <BehaviorProgressReportForm
@@ -114,16 +139,13 @@ describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Pi
         currentUser={mockUser}
         onSaveStudentPlan={vi.fn()}
         onGoBack={onGoBack}
+        onNavigateDocumentType={onNavigateDocumentType}
       />
     );
 
-    // Header container & classes
-    expect(html).toContain('plan-form-header');
-    expect(html).toContain('דוח סיכום והערכת התקדמות התנהגותית');
-    expect(html).toContain('דניאל מזרחי');
-    expect(html).toContain('חטיבת ביניים שחקים');
-
-    // Action buttons matching Picture 1 & 2
+    // Row 1: Sticky Top Action Bar
+    expect(html).toContain('sticky-action-bar');
+    expect(html).toContain('ניהול תלמידים');
     expect(html).toContain('btn-report-lock-icon');
     expect(html).toContain('btn-save-progress');
     expect(html).toContain('שמור התקדמות');
@@ -131,10 +153,24 @@ describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Pi
     expect(html).toContain('תצוגת מסמך מלאה');
     expect(html).toContain('btn-export-dropdown');
     expect(html).toContain('הדפסה וייצוא');
-    expect(html).toContain('סגירה');
+
+    // Row 2: Master Document Mode Tabs
+    expect(html).toContain('workplan-mode-tabs-container');
+    expect(html).toContain('workplan-mode-tab');
+    expect(html).toContain('הערכת תפקוד התנהגותי');
+    expect(html).toContain('תוכנית התערבות התנהגותית');
+    expect(html).toContain('דוח התקדמות תקופתי');
+
+    // Row 3: Blue Document Title Banner
+    expect(html).toContain('document-title-card');
+    expect(html).toContain('tala-logo.png');
+    expect(html).toContain('banner-slot-date');
+    expect(html).toContain('banner-slot-controls');
+    expect(html).toContain('שנת לימודים:');
+    expect(html).toContain('דוח סיכום והערכת התקדמות – דניאל מזרחי');
   });
 
-  it('ensures CSS header styles contain the signature purple top border accent #8b6fc0', () => {
+  it('ensures CSS container styles align with workplan-form-container max-width 1240px', () => {
     const assessmentCss = fs.readFileSync(
       path.resolve(__dirname, '../components/behavior/BehaviorAssessmentForm.css'),
       'utf-8'
@@ -148,18 +184,9 @@ describe('Behavior Reports Header Parity & Theme Alignment Suite (Picture 1 & Pi
       'utf-8'
     );
 
-    expect(assessmentCss).toContain('border-top: 3px solid #8b6fc0');
-    expect(planCss).toContain('border-top: 3px solid #8b6fc0');
-    expect(progressCss).toContain('border-top: 3px solid #8b6fc0');
-  });
-
-  it('ensures student-document-selector-bar in App.tsx is preserved on desktop for document switching', () => {
-    const appTsx = fs.readFileSync(path.resolve(__dirname, '../App.tsx'), 'utf-8');
-
-    expect(appTsx).toContain('className="student-document-selector-bar"');
-    expect(appTsx).toContain('activeStudentDocumentType === \'behavior_assessment\'');
-    expect(appTsx).toContain('activeStudentDocumentType === \'behavior_plan\'');
-    expect(appTsx).toContain('activeStudentDocumentType === \'behavior_progress_report\'');
+    expect(assessmentCss).toContain('max-width: 1240px');
+    expect(planCss).toContain('max-width: 1240px');
+    expect(progressCss).toContain('max-width: 1240px');
   });
 
   it('prohibits English text in parentheses in all titles and labels', () => {
