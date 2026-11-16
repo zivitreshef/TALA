@@ -1,4 +1,6 @@
 
+import { INITIAL_BEHAVIOR_STUDENTS } from './initialBehaviorStudents';
+
 export interface GoalBankFacilitatingQuestion {
   q: string;
   suggestions: string[];
@@ -2415,7 +2417,8 @@ export const INITIAL_STUDENTS_DATA = [
         evaluationCriteria: 'יתנסה בסדנאות השונות בגן באופן עצמאי ומתוכנן.'
       }
     ]
-  }
+  },
+  ...INITIAL_BEHAVIOR_STUDENTS
 ];
 
 export {
