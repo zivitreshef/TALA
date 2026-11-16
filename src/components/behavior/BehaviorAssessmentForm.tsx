@@ -79,6 +79,7 @@ export interface BehaviorAssessmentFormProps {
   onGoBack?: () => void;
   onDraftStateChange?: (state: { isDirty: boolean; draftData: any }) => void;
   onNavigateDocumentType?: (docType: 'behavior_assessment' | 'behavior_plan' | 'behavior_progress_report' | 'pedagogical_plan') => void;
+  userPreferences?: any;
 }
 
 export default function BehaviorAssessmentForm({
@@ -88,7 +89,8 @@ export default function BehaviorAssessmentForm({
   onSaveStudentPlan,
   onGoBack,
   onDraftStateChange,
-  onNavigateDocumentType
+  onNavigateDocumentType,
+  userPreferences
 }: BehaviorAssessmentFormProps) {
   // Local state initialized from student's behaviorAssessment or clean template
   const [report, setReport] = useState<BehaviorAssessmentReport>(() => {
@@ -438,7 +440,15 @@ export default function BehaviorAssessmentForm({
     }, 3500);
   };
 
-  const [hideDetailsOnExport, setHideDetailsOnExport] = useState(false);
+  const [hideDetailsOnExport, setHideDetailsOnExport] = useState(
+    () => userPreferences?.defaultPrivacyMode === 'acronym'
+  );
+
+  useEffect(() => {
+    if (userPreferences?.defaultPrivacyMode === 'acronym') {
+      setHideDetailsOnExport(true);
+    }
+  }, [userPreferences?.defaultPrivacyMode]);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -836,7 +846,34 @@ export default function BehaviorAssessmentForm({
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
               📄 תצוגת מסמך מלאה: הערכת תפקוד התנהגותי
             </h3>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <label
+                className={`export-dropdown-privacy ${hideDetailsOnExport ? 'checked' : 'unchecked'}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: hideDetailsOnExport ? '#f5f3ff' : '#ffffff',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: hideDetailsOnExport ? '#6d28d9' : '#475569'
+                }}
+                title="כאשר מסומן, במסמך ובהדפסה יוצגו ראשי תיבות ויוסתר מידע מזהה"
+              >
+                <input
+                  type="checkbox"
+                  checked={hideDetailsOnExport}
+                  onChange={(e) => setHideDetailsOnExport(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                {hideDetailsOnExport ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                <span>הסתר פרטים מזהים בהדפסה</span>
+              </label>
+
               <button
                 type="button"
                 onClick={handlePrint}

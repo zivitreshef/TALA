@@ -439,4 +439,66 @@ describe('BehaviorProgressReportForm Component UI', () => {
     expect(html).not.toContain('עקומת למידה מצטברת של מיומנות חלופית');
     expect(html).not.toContain('טבלת נאמנות יישום של צוות בית הספר');
   });
+
+  describe('8. Inline Live Preview & Privacy Masking Parity', () => {
+    it('applies privacy masking correctly to student name, ID, and text occurrences', () => {
+      const studentWithSensitiveData: any = {
+        name: 'דניאל ישראלי',
+        idNumber: '209876543',
+        birthDate: '2016-04-12',
+        educationalFramework: 'בית ספר יסודי רימונים',
+        behaviorProgressReport: {
+          period: 'mid_year',
+          executiveSummary: 'במהלך המחצית נצפה שיפור ניכר אצל דניאל ישראלי במילוי הוראות.',
+          targetBehaviorsProgress: [
+            {
+              behaviorName: 'התפרצויות זעם',
+              baselineAverage: 8,
+              currentAverage: 3,
+              reductionPercent: 62,
+              statusNotes: 'דניאל ישראלי הגיב היטב לכרטיסיות החזותיות.'
+            }
+          ]
+        }
+      };
+
+      // Unmasked export
+      const unmaskedHtml = buildBehaviorProgressReportPrintHtml(studentWithSensitiveData, false);
+      expect(unmaskedHtml).toContain('דניאל ישראלי');
+      expect(unmaskedHtml).toContain('209876543');
+      expect(unmaskedHtml).toContain('בית ספר יסודי רימונים');
+
+      // Masked export (Privacy mode active)
+      const maskedHtml = buildBehaviorProgressReportPrintHtml(studentWithSensitiveData, true);
+      expect(maskedHtml).toContain('ד.י.');
+      expect(maskedHtml).not.toContain('דניאל ישראלי');
+      expect(maskedHtml).toContain('█');
+      expect(maskedHtml).not.toContain('209876543');
+    });
+
+    it('initializes privacy mode from userPreferences and has inline preview structure without fixed modal', () => {
+      const sampleStudent: StudentProfile = {
+        id: 'st_priv_test',
+        name: 'נועה לוי',
+        idNumber: '312456789',
+        behaviorProgressReport: createEmptyBehaviorProgressReport('mid_year')
+      };
+
+      const htmlWithPrivacyPref = renderToStaticMarkup(
+        <BehaviorProgressReportForm
+          student={sampleStudent}
+          userPreferences={{ defaultPrivacyMode: 'acronym' }}
+          onSaveStudentPlan={vi.fn()}
+        />
+      );
+
+      // Verify buttons in the form
+      expect(htmlWithPrivacyPref).toContain('תצוגת מסמך מלאה');
+      expect(htmlWithPrivacyPref).toContain('btn-preview-doc');
+
+      // Verify that the old fixed modal popup is gone from the component
+      expect(htmlWithPrivacyPref).not.toContain('Full Document Preview Modal');
+      expect(htmlWithPrivacyPref).not.toContain("backdropFilter: 'blur(4px)'");
+    });
+  });
 });

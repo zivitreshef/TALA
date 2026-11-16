@@ -69,6 +69,7 @@ export interface BehaviorProgressReportFormProps {
   onGoBack?: () => void;
   onDraftStateChange?: (state: { isDirty: boolean; draftData: any }) => void;
   onNavigateDocumentType?: (docType: 'behavior_assessment' | 'behavior_plan' | 'behavior_progress_report' | 'pedagogical_plan') => void;
+  userPreferences?: any;
 }
 
 export default function BehaviorProgressReportForm({
@@ -78,7 +79,8 @@ export default function BehaviorProgressReportForm({
   onSaveStudentPlan,
   onGoBack,
   onDraftStateChange,
-  onNavigateDocumentType
+  onNavigateDocumentType,
+  userPreferences
 }: BehaviorProgressReportFormProps) {
   // Period Selection: mid_year, end_year, or periodic
   const [selectedPeriod, setSelectedPeriod] = useState<BehaviorProgressPeriod>(() => {
@@ -132,7 +134,15 @@ export default function BehaviorProgressReportForm({
   // UI state
   const [showFullDocPreview, setShowFullDocPreview] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const [hideDetailsOnExport, setHideDetailsOnExport] = useState(false);
+  const [hideDetailsOnExport, setHideDetailsOnExport] = useState(
+    () => userPreferences?.defaultPrivacyMode === 'acronym'
+  );
+
+  useEffect(() => {
+    if (userPreferences?.defaultPrivacyMode === 'acronym') {
+      setHideDetailsOnExport(true);
+    }
+  }, [userPreferences?.defaultPrivacyMode]);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showBottomExportDropdown, setShowBottomExportDropdown] = useState(false);
   const [saveToast, setSaveToast] = useState('');
@@ -673,6 +683,197 @@ export default function BehaviorProgressReportForm({
         </button>
       </div>
 
+      {showFullDocPreview ? (
+        <section
+          className="form-section-card live-print-preview-card"
+          style={{
+            background: '#ffffff',
+            borderRadius: '12px',
+            border: '1px solid #cbd5e1',
+            padding: '24px',
+            marginTop: '16px'
+          }}
+        >
+          <div
+            className="section-header-line"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              paddingBottom: '14px',
+              borderBottom: '1px solid #e2e8f0',
+              marginBottom: '18px'
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+              📄 תצוגת מסמך מלאה: דוח סיכום והערכת התקדמות התנהגותית
+            </h3>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <label
+                className={`export-dropdown-privacy ${hideDetailsOnExport ? 'checked' : 'unchecked'}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: hideDetailsOnExport ? '#f5f3ff' : '#ffffff',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: hideDetailsOnExport ? '#6d28d9' : '#475569'
+                }}
+                title="כאשר מסומן, במסמך ובהדפסה יוצגו ראשי תיבות ויוסתר מידע מזהה"
+              >
+                <input
+                  type="checkbox"
+                  checked={hideDetailsOnExport}
+                  onChange={(e) => setHideDetailsOnExport(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                {hideDetailsOnExport ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                <span>הסתר פרטים מזהים בהדפסה</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#1d4ed8',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                <Printer size={15} />
+                <span>הדפס</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportWord}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#059669',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                <FileDown size={15} />
+                <span>הורד קובץ Word</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                <FileText size={15} />
+                <span>הורד קובץ PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f1f5f9',
+                  color: '#7c3aed',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Mail size={15} />
+                <span>שלח למייל</span>
+              </button>
+              <button
+                type="button"
+                className="btn-preview-doc"
+                onClick={() => setShowFullDocPreview(false)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#f8fafc',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '7px 14px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <FileText size={15} />
+                <span>חזרה לתצוגת עריכה</span>
+              </button>
+            </div>
+          </div>
+
+          <div
+            className="preview-paper-sheet"
+            style={{
+              maxWidth: '850px',
+              margin: '0 auto',
+              background: '#ffffff',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '24px'
+            }}
+          >
+            <div
+              className="live-print-preview-content"
+              dangerouslySetInnerHTML={{
+                __html: buildBehaviorProgressReportPrintHtml(
+                  {
+                    ...student,
+                    ...studentDetails,
+                    behaviorProgressReport: report,
+                    ongoingTracking,
+                    behaviorObservations,
+                    baselineData
+                  },
+                  hideDetailsOnExport
+                )
+              }}
+            />
+          </div>
+        </section>
+      ) : (
+        <>
       {/* 3. Document Title Banner */}
       <div className="document-title-card">
         <div className="doc-title-top-row">
@@ -1210,7 +1411,7 @@ export default function BehaviorProgressReportForm({
           <button
             type="button"
             className="btn-preview-doc"
-            onClick={() => setShowFullDocPreview(true)}
+            onClick={() => setShowFullDocPreview((prev) => !prev)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1226,7 +1427,7 @@ export default function BehaviorProgressReportForm({
             }}
           >
             <FileText size={16} />
-            <span>תצוגת מסמך מלאה</span>
+            <span>{showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}</span>
           </button>
 
           <div className="export-dropdown-wrapper" ref={bottomExportDropdownRef}>
@@ -1290,6 +1491,21 @@ export default function BehaviorProgressReportForm({
                   <FileText size={15} style={{ color: '#dc2626' }} />
                   <span>הורד קובץ PDF (.pdf)</span>
                 </button>
+
+                <div className="export-dropdown-divider" />
+
+                <label
+                  className={`export-dropdown-privacy ${hideDetailsOnExport ? 'checked' : 'unchecked'}`}
+                  title="כאשר מסומן, בהדפסה ובייצוא יוצגו ראשי תיבות ויוסתר מידע מזהה"
+                >
+                  <input
+                    type="checkbox"
+                    checked={hideDetailsOnExport}
+                    onChange={(e) => setHideDetailsOnExport(e.target.checked)}
+                  />
+                  {hideDetailsOnExport ? <EyeOff size={15} style={{ color: '#7c3aed' }} /> : <Eye size={15} />}
+                  <span>הסתר פרטים מזהים בהדפסה</span>
+                </label>
               </div>
             )}
           </div>
@@ -1306,103 +1522,7 @@ export default function BehaviorProgressReportForm({
           )}
         </div>
       </div>
-
-      {/* Full Document Preview Modal */}
-      {showFullDocPreview && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100,
-            padding: '20px'
-          }}
-          onClick={() => setShowFullDocPreview(false)}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: '16px',
-              maxWidth: '900px',
-              width: '100%',
-              maxHeight: '90vh',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '16px 24px',
-                borderBottom: '1px solid #e2e8f0',
-                background: '#f8fafc'
-              }}
-            >
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
-                תצוגת מסמך מלאה: דוח סיכום והערכת התקדמות התנהגותית
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowFullDocPreview(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-              >
-                ✕
-              </button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: buildBehaviorProgressReportPrintHtml(
-                    {
-                      ...student,
-                      ...studentDetails,
-                      behaviorProgressReport: report,
-                      ongoingTracking,
-                      behaviorObservations,
-                      baselineData
-                    },
-                    false
-                  )
-                }}
-              />
-            </div>
-            <div
-              style={{
-                padding: '12px 24px',
-                borderTop: '1px solid #e2e8f0',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '8px',
-                background: '#f8fafc'
-              }}
-            >
-              <button type="button" onClick={handlePrint} className="btn-export-dropdown">
-                <Printer size={16} />
-                <span>הדפס</span>
-              </button>
-              <button type="button" onClick={handleExportWord} className="btn-export-dropdown">
-                <FileDown size={16} />
-                <span>ייצא לוורד</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowFullDocPreview(false)}
-                className="btn-export-dropdown"
-              >
-                <span>סגירה</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      </>
       )}
 
       {/* Send Email Modal */}
