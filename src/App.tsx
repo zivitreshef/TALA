@@ -600,6 +600,8 @@ export default function App() {
   useEffect(() => {
     if (effectiveCurrentUser?.role === 'behavior_analyst') {
       setActiveStudentDocumentType('behavior_assessment');
+    } else {
+      setActiveStudentDocumentType('pedagogical_plan');
     }
   }, [effectiveCurrentUser?.role]);
   const [showDailyTracker, setShowDailyTracker] = useState(false);
@@ -3529,176 +3531,178 @@ export default function App() {
         <main className="tala-main-form-area">
           {selectedStudent ? (
             <ErrorBoundary key={selectedStudent.id}>
-              {/* Document Selector Bar (Visible across all viewports) */}
-              <div
-                className="student-document-selector-bar"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '10px',
-                  background: 'var(--bg-card, #ffffff)',
-                  border: '1px solid var(--border, #d3dff0)',
-                  borderRadius: '12px',
-                  padding: '10px 16px',
-                  marginBottom: '16px',
-                  boxShadow: '0 1px 4px rgba(36, 52, 77, 0.05)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Document Selector Bar: Visible ONLY for Behavior Analysts */}
+              {effectiveCurrentUser?.role === 'behavior_analyst' ? (
+                <div
+                  className="student-document-selector-bar"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    background: 'var(--bg-card, #ffffff)',
+                    border: '1.5px solid var(--border, #d3dff0)',
+                    borderTop: '3px solid #8b6fc0',
+                    borderRadius: '12px',
+                    padding: '10px 16px',
+                    marginBottom: '16px',
+                    boxShadow: '0 4px 14px rgba(43, 76, 115, 0.07)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn-mobile-back-roster"
+                      onClick={handleNavigateBackToStudents}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'var(--bg-warm-subtle, #eef3fb)',
+                        border: '1px solid var(--border, #d3dff0)',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        color: 'var(--text-main, #24344d)',
+                        cursor: 'pointer'
+                      }}
+                      title="חזרה לרשימת התלמידים"
+                    >
+                      <ArrowRight size={16} />
+                      <span>רשימת תלמידים</span>
+                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <strong style={{ fontSize: '1rem', color: 'var(--text-main, #24344d)' }}>
+                        {userPreferences?.defaultPrivacyMode === 'acronym'
+                          ? toHebrewAcronym(selectedStudent.name)
+                          : (selectedStudent.name || 'ללא שם')}
+                      </strong>
+                      <span
+                        style={{
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          color: 'var(--text-muted, #5c6f8c)',
+                          background: '#f1f5f9',
+                          padding: '2px 9px',
+                          borderRadius: '999px',
+                          border: '1px solid #e2e8f0'
+                        }}
+                      >
+                        {activeStudentDocumentType === 'behavior_assessment'
+                          ? 'הערכת תפקוד התנהגותי'
+                          : activeStudentDocumentType === 'behavior_plan'
+                          ? 'תוכנית התערבות התנהגותית'
+                          : 'דוח התקדמות תקופתי'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      gap: '4px',
+                      background: '#f1f5f9',
+                      padding: '4px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1'
+                    }}
+                    role="tablist"
+                    aria-label="סוגי מסמכים לתלמיד"
+                  >
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeStudentDocumentType === 'behavior_assessment'}
+                      onClick={() => setActiveStudentDocumentType('behavior_assessment')}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        border: activeStudentDocumentType === 'behavior_assessment' ? '1px solid #bfdbfe' : '1px solid transparent',
+                        cursor: 'pointer',
+                        fontSize: '0.835rem',
+                        fontWeight: 700,
+                        background: activeStudentDocumentType === 'behavior_assessment' ? '#ffffff' : 'transparent',
+                        color: activeStudentDocumentType === 'behavior_assessment' ? '#2563eb' : '#64748b',
+                        boxShadow: activeStudentDocumentType === 'behavior_assessment' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      הערכת תפקוד התנהגותי
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeStudentDocumentType === 'behavior_plan'}
+                      onClick={() => setActiveStudentDocumentType('behavior_plan')}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        border: activeStudentDocumentType === 'behavior_plan' ? '1px solid #bfdbfe' : '1px solid transparent',
+                        cursor: 'pointer',
+                        fontSize: '0.835rem',
+                        fontWeight: 700,
+                        background: activeStudentDocumentType === 'behavior_plan' ? '#ffffff' : 'transparent',
+                        color: activeStudentDocumentType === 'behavior_plan' ? '#2563eb' : '#64748b',
+                        boxShadow: activeStudentDocumentType === 'behavior_plan' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      תוכנית התערבות התנהגותית
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeStudentDocumentType === 'behavior_progress_report'}
+                      onClick={() => setActiveStudentDocumentType('behavior_progress_report')}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        border: activeStudentDocumentType === 'behavior_progress_report' ? '1px solid #bfdbfe' : '1px solid transparent',
+                        cursor: 'pointer',
+                        fontSize: '0.835rem',
+                        fontWeight: 700,
+                        background: activeStudentDocumentType === 'behavior_progress_report' ? '#ffffff' : 'transparent',
+                        color: activeStudentDocumentType === 'behavior_progress_report' ? '#2563eb' : '#64748b',
+                        boxShadow: activeStudentDocumentType === 'behavior_progress_report' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      דוח התקדמות תקופתי
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Mobile Navigation Header for Mobile Phones ONLY (hidden on desktop) */
+                <div className="mobile-student-top-nav">
                   <button
                     type="button"
                     className="btn-mobile-back-roster"
                     onClick={handleNavigateBackToStudents}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: 'var(--bg-warm-subtle, #eef3fb)',
-                      border: '1px solid var(--border, #d3dff0)',
-                      borderRadius: '8px',
-                      padding: '6px 12px',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: 'var(--text-main, #24344d)',
-                      cursor: 'pointer'
-                    }}
                     title="חזרה לרשימת התלמידים"
                   >
-                    <ArrowRight size={16} />
+                    <ArrowRight size={18} />
                     <span>רשימת תלמידים</span>
                   </button>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <strong style={{ fontSize: '1rem', color: 'var(--text-main, #24344d)' }}>
+                  <div className="mobile-student-nav-title">
+                    <strong className="mobile-student-name">
                       {userPreferences?.defaultPrivacyMode === 'acronym'
                         ? toHebrewAcronym(selectedStudent.name)
                         : (selectedStudent.name || 'ללא שם')}
                     </strong>
-                    <span
-                      style={{
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        color: 'var(--text-muted, #5c6f8c)',
-                        background: '#f1f5f9',
-                        padding: '2px 9px',
-                        borderRadius: '999px',
-                        border: '1px solid #e2e8f0'
-                      }}
-                    >
-                      {activeStudentDocumentType === 'behavior_assessment'
-                        ? 'הערכת תפקוד התנהגותי'
-                        : activeStudentDocumentType === 'behavior_plan'
-                        ? 'תוכנית התערבות התנהגותית'
-                        : activeStudentDocumentType === 'behavior_progress_report'
-                        ? 'דוח התקדמות תקופתי'
-                        : (selectedStudent.educationalFramework ||
-                          (selectedStudent.planType?.includes('גן') || selectedStudent.planType?.includes('תח"י')
-                            ? 'תוכנית אקולוגית לילדי הגן'
-                            : 'תוכנית לתלמיד ביה"ס'))}
+                    <span className="mobile-student-nav-badge">
+                      {selectedStudent.planType?.includes('גן') || selectedStudent.planType?.includes('תח"י')
+                        ? 'תוכנית אקולוגית לילדי הגן'
+                        : 'תוכנית לתלמיד ביה"ס'}
                     </span>
                   </div>
                 </div>
+              )}
 
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    gap: '4px',
-                    background: '#f1f5f9',
-                    padding: '4px',
-                    borderRadius: '10px',
-                    border: '1px solid #cbd5e1'
-                  }}
-                  role="tablist"
-                  aria-label="סוגי מסמכים לתלמיד"
-                >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeStudentDocumentType === 'behavior_assessment'}
-                    onClick={() => setActiveStudentDocumentType('behavior_assessment')}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '8px',
-                      border: activeStudentDocumentType === 'behavior_assessment' ? '1px solid #bfdbfe' : '1px solid transparent',
-                      cursor: 'pointer',
-                      fontSize: '0.835rem',
-                      fontWeight: 700,
-                      background: activeStudentDocumentType === 'behavior_assessment' ? '#ffffff' : 'transparent',
-                      color: activeStudentDocumentType === 'behavior_assessment' ? '#2563eb' : '#64748b',
-                      boxShadow: activeStudentDocumentType === 'behavior_assessment' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    הערכת תפקוד התנהגותי
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeStudentDocumentType === 'behavior_plan'}
-                    onClick={() => setActiveStudentDocumentType('behavior_plan')}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '8px',
-                      border: activeStudentDocumentType === 'behavior_plan' ? '1px solid #bfdbfe' : '1px solid transparent',
-                      cursor: 'pointer',
-                      fontSize: '0.835rem',
-                      fontWeight: 700,
-                      background: activeStudentDocumentType === 'behavior_plan' ? '#ffffff' : 'transparent',
-                      color: activeStudentDocumentType === 'behavior_plan' ? '#2563eb' : '#64748b',
-                      boxShadow: activeStudentDocumentType === 'behavior_plan' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    תוכנית התערבות התנהגותית
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeStudentDocumentType === 'behavior_progress_report'}
-                    onClick={() => setActiveStudentDocumentType('behavior_progress_report')}
-                    style={{
-                      padding: '6px 14px',
-                      borderRadius: '8px',
-                      border: activeStudentDocumentType === 'behavior_progress_report' ? '1px solid #bfdbfe' : '1px solid transparent',
-                      cursor: 'pointer',
-                      fontSize: '0.835rem',
-                      fontWeight: 700,
-                      background: activeStudentDocumentType === 'behavior_progress_report' ? '#ffffff' : 'transparent',
-                      color: activeStudentDocumentType === 'behavior_progress_report' ? '#2563eb' : '#64748b',
-                      boxShadow: activeStudentDocumentType === 'behavior_progress_report' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    דוח התקדמות תקופתי
-                  </button>
-                  {effectiveCurrentUser?.role !== 'behavior_analyst' && (
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={activeStudentDocumentType === 'pedagogical_plan'}
-                      onClick={() => setActiveStudentDocumentType('pedagogical_plan')}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '8px',
-                        border: activeStudentDocumentType === 'pedagogical_plan' ? '1px solid #bfdbfe' : '1px solid transparent',
-                        cursor: 'pointer',
-                        fontSize: '0.835rem',
-                        fontWeight: 700,
-                        background: activeStudentDocumentType === 'pedagogical_plan' ? '#ffffff' : 'transparent',
-                        color: activeStudentDocumentType === 'pedagogical_plan' ? '#2563eb' : '#64748b',
-                        boxShadow: activeStudentDocumentType === 'pedagogical_plan' ? '0 1px 3px rgba(37,99,235,0.12)' : 'none',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      תוכנית עבודה פדגוגית
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {activeStudentDocumentType === 'behavior_assessment' ? (
+              {/* Form Rendering: Strict role boundaries */}
+              {effectiveCurrentUser?.role === 'behavior_analyst' && activeStudentDocumentType === 'behavior_assessment' ? (
                 <ErrorBoundary componentName="BehaviorAssessmentForm">
                   <BehaviorAssessmentForm
                     student={selectedStudent}
@@ -3709,7 +3713,7 @@ export default function App() {
                     onGoBack={() => setSelectedStudentId(null)}
                   />
                 </ErrorBoundary>
-              ) : activeStudentDocumentType === 'behavior_plan' ? (
+              ) : effectiveCurrentUser?.role === 'behavior_analyst' && activeStudentDocumentType === 'behavior_plan' ? (
                 <ErrorBoundary componentName="BehaviorInterventionPlanForm">
                   <BehaviorInterventionPlanForm
                     student={selectedStudent}
@@ -3720,7 +3724,7 @@ export default function App() {
                     onGoBack={() => setSelectedStudentId(null)}
                   />
                 </ErrorBoundary>
-              ) : activeStudentDocumentType === 'behavior_progress_report' ? (
+              ) : effectiveCurrentUser?.role === 'behavior_analyst' && activeStudentDocumentType === 'behavior_progress_report' ? (
                 <ErrorBoundary componentName="BehaviorProgressReportForm">
                   <BehaviorProgressReportForm
                     student={selectedStudent}
