@@ -17,8 +17,12 @@ import {
   Check,
   ChevronDown,
   Mail,
-  FileText
+  FileText,
+  Users,
+  TrendingUp
 } from 'lucide-react';
+import { DEFAULT_SCHOOL_YEAR } from '../../domain/yearReport';
+import { SCHOOL_YEARS_LIST } from '../../domain/schoolYearRollover';
 import {
   BehaviorInterventionPlan,
   OngoingTrackingPoint,
@@ -59,6 +63,7 @@ export interface BehaviorInterventionPlanFormProps {
   onSaveStudentPlan: (updatedStudent: StudentProfile) => void;
   onGoBack?: () => void;
   onDraftStateChange?: (state: { isDirty: boolean; draftData: any }) => void;
+  onNavigateDocumentType?: (docType: 'behavior_assessment' | 'behavior_plan' | 'behavior_progress_report' | 'pedagogical_plan') => void;
 }
 
 export default function BehaviorInterventionPlanForm({
@@ -67,7 +72,8 @@ export default function BehaviorInterventionPlanForm({
   currentUser,
   onSaveStudentPlan,
   onGoBack,
-  onDraftStateChange
+  onDraftStateChange,
+  onNavigateDocumentType
 }: BehaviorInterventionPlanFormProps) {
   // Initialize plan from student or clean template
   const [plan, setPlan] = useState<BehaviorInterventionPlan>(() => {
@@ -435,39 +441,35 @@ export default function BehaviorInterventionPlanForm({
   };
 
   return (
-    <div className="plan-form-container" dir="rtl">
-      {/* Top Header Card */}
-      <header className="plan-form-header">
-        <div className="plan-form-title-group">
-          <div className="plan-form-icon-badge">
-            <TrendingDown size={24} />
-          </div>
-          <div>
-            <h1 className="plan-form-heading">תוכנית התערבות התנהגותית</h1>
-            <p className="plan-form-subheading">
-              תלמיד: <strong>{student.name || 'ללא שם'}</strong>
-              {student.educationalFramework ? ` | ${student.educationalFramework}` : ''}
-            </p>
-          </div>
-        </div>
-
-        <div className="plan-form-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {saveSuccessNotice && (
-            <span
-              className="save-toast-badge"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
+    <div className="workplan-form-container plan-form-container" dir="rtl">
+      {/* 1. Sticky Top Action Bar */}
+      <div className="sticky-action-bar">
+        <div className="action-bar-right">
+          {onGoBack && (
+            <button
+              type="button"
+              className="btn-print-doc btn-home-nav-form"
+              onClick={onGoBack}
+              title="חזרה לניהול תלמידים"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#1e293b',
+                fontWeight: 700,
+                cursor: 'pointer',
+                borderRadius: '8px',
+                padding: '6px 12px'
+              }}
             >
-              <Check size={14} />
-              <span>נשמר בהצלחה</span>
-            </span>
-          )}
-          {isDirty && !saveSuccessNotice && (
-            <span className="last-saved-hint" style={{ color: '#d97706' }}>
-              שינויים טרם נשמרו
-            </span>
+              <Users size={16} style={{ color: '#2563eb' }} />
+              <span>ניהול תלמידים</span>
+            </button>
           )}
 
-          {/* Yellow Lock / Unlock Button (matching teacher workspace) */}
+          {/* Yellow Lock / Unlock Button */}
           <div className="report-lock-toggle-wrapper">
             <button
               type="button"
@@ -500,7 +502,7 @@ export default function BehaviorInterventionPlanForm({
             </div>
           </div>
 
-          {/* Primary Save Button (matching teacher workspace) */}
+          {/* Primary Save Button */}
           <button
             type="button"
             className="btn-save-progress"
@@ -511,6 +513,23 @@ export default function BehaviorInterventionPlanForm({
             <span>שמור התקדמות</span>
           </button>
 
+          {saveSuccessNotice && (
+            <span
+              className="save-toast-badge"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
+            >
+              <Check size={14} />
+              <span>נשמר בהצלחה</span>
+            </span>
+          )}
+          {isDirty && !saveSuccessNotice && (
+            <span className="last-saved-hint" style={{ color: '#d97706' }}>
+              שינויים טרם נשמרו
+            </span>
+          )}
+        </div>
+
+        <div className="action-bar-left">
           {/* Full Document Preview Toggle */}
           <button
             type="button"
@@ -522,7 +541,7 @@ export default function BehaviorInterventionPlanForm({
             <span>{showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}</span>
           </button>
 
-          {/* Unified Export & Print Dropdown (matching teacher workspace) */}
+          {/* Unified Export & Print Dropdown */}
           <div className="export-dropdown-wrapper" ref={exportDropdownRef}>
             <button
               type="button"
@@ -603,20 +622,89 @@ export default function BehaviorInterventionPlanForm({
               </div>
             )}
           </div>
-
-          {/* Close Button */}
-          {onGoBack && (
-            <button
-              type="button"
-              className="btn-export-dropdown"
-              onClick={onGoBack}
-              title="חזרה לרשימת תלמידים"
-            >
-              <span>סגירה</span>
-            </button>
-          )}
         </div>
-      </header>
+      </div>
+
+      {/* 2. Master Document Mode Tabs */}
+      <div className="workplan-mode-tabs-container" role="tablist" aria-label="סוגי דוחות מנתחת התנהגות">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={false}
+          className="workplan-mode-tab"
+          onClick={() => onNavigateDocumentType?.('behavior_assessment')}
+        >
+          <FileText size={17} />
+          <span>הערכת תפקוד התנהגותי</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={true}
+          className="workplan-mode-tab reports-mode active"
+        >
+          <TrendingDown size={17} />
+          <span>תוכנית התערבות התנהגותית</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={false}
+          className="workplan-mode-tab"
+          onClick={() => onNavigateDocumentType?.('behavior_progress_report')}
+        >
+          <TrendingUp size={17} />
+          <span>דוח התקדמות תקופתי</span>
+        </button>
+      </div>
+
+      {/* 3. Document Title Banner */}
+      <div className="document-title-card">
+        <div className="doc-title-top-row">
+          <div className="inline-meta-field banner-slot-date">
+            <label htmlFor="behavior-plan-date-input">תאריך:</label>
+            <input
+              id="behavior-plan-date-input"
+              type="text"
+              value={plan.effectiveDate || '14.11.2026'}
+              onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
+              placeholder="DD.MM.YYYY"
+              maxLength={10}
+            />
+          </div>
+
+          <div className="doc-banner-center-brand">
+            <img src="./tala-logo.png" alt="TALA Emblem" className="doc-banner-logo" />
+            <h2 className="main-ecological-heading">
+              {`תוכנית התערבות התנהגותית – ${student.name || 'ללא שם'}${student.educationalFramework ? ' | ' + student.educationalFramework : ''}`}
+            </h2>
+          </div>
+
+          <div className="inline-meta-field banner-slot-controls">
+            <label>שנת לימודים:</label>
+            <select
+              value={student.schoolYear || DEFAULT_SCHOOL_YEAR}
+              onChange={(e) => {
+                const nextYear = e.target.value;
+                onSaveStudentPlan({ ...student, schoolYear: nextYear });
+                setIsDirty(true);
+              }}
+              title="בחר שנת לימודים"
+            >
+              {!(SCHOOL_YEARS_LIST as readonly string[]).includes(student.schoolYear || DEFAULT_SCHOOL_YEAR) && (
+                <option value={student.schoolYear}>{student.schoolYear}</option>
+              )}
+              {SCHOOL_YEARS_LIST.map((yr) => (
+                <option key={yr} value={yr} style={{ color: '#24344d', background: '#ffffff' }}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
 
       {isPlanLocked && (
         <div

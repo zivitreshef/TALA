@@ -14,10 +14,14 @@ import {
   FileText,
   RefreshCw,
   TrendingUp,
+  TrendingDown,
+  Users,
   ChevronDown,
   Eye,
   EyeOff
 } from 'lucide-react';
+import { DEFAULT_SCHOOL_YEAR } from '../../domain/yearReport';
+import { SCHOOL_YEARS_LIST } from '../../domain/schoolYearRollover';
 import {
   BehaviorProgressPeriod,
   BehaviorProgressReport,
@@ -64,6 +68,7 @@ export interface BehaviorProgressReportFormProps {
   onSaveStudentPlan: (updatedStudent: StudentProfile) => void;
   onGoBack?: () => void;
   onDraftStateChange?: (state: { isDirty: boolean; draftData: any }) => void;
+  onNavigateDocumentType?: (docType: 'behavior_assessment' | 'behavior_plan' | 'behavior_progress_report' | 'pedagogical_plan') => void;
 }
 
 export default function BehaviorProgressReportForm({
@@ -72,7 +77,8 @@ export default function BehaviorProgressReportForm({
   currentUser,
   onSaveStudentPlan,
   onGoBack,
-  onDraftStateChange
+  onDraftStateChange,
+  onNavigateDocumentType
 }: BehaviorProgressReportFormProps) {
   // Period Selection: mid_year, end_year, or periodic
   const [selectedPeriod, setSelectedPeriod] = useState<BehaviorProgressPeriod>(() => {
@@ -131,6 +137,7 @@ export default function BehaviorProgressReportForm({
   const [showBottomExportDropdown, setShowBottomExportDropdown] = useState(false);
   const [saveToast, setSaveToast] = useState('');
   const [isAiDrafting, setIsAiDrafting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const bottomExportDropdownRef = useRef<HTMLDivElement>(null);
@@ -456,62 +463,35 @@ export default function BehaviorProgressReportForm({
   const isLocked = Boolean(report.isLocked);
 
   return (
-    <div className="progress-report-container" dir="rtl">
-      {/* Save Toast Feedback */}
-      {saveToast && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#0f172a',
-            color: '#ffffff',
-            padding: '10px 20px',
-            borderRadius: '999px',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            zIndex: 1000
-          }}
-        >
-          <Check size={16} style={{ color: '#22c55e' }} />
-          <span>{saveToast}</span>
-        </div>
-      )}
-
-      {/* Top Header Card - Exactly matching Image 1 & Teacher Workspace */}
-      <header className="plan-form-header">
-        <div className="plan-form-title-group">
-          <div className="plan-form-icon-badge" style={{ background: '#eff6ff', color: '#2563eb' }}>
-            <TrendingUp size={24} />
-          </div>
-          <div>
-            <h1 className="plan-form-heading">דוח סיכום והערכת התקדמות התנהגותית</h1>
-            <p className="plan-form-subheading">
-              תלמיד: <strong>{studentDetails.name || student.name || 'ללא שם'}</strong>
-              {studentDetails.educationalFramework || student.educationalFramework
-                ? ` | ${studentDetails.educationalFramework || student.educationalFramework}`
-                : ''}
-            </p>
-          </div>
-        </div>
-
-        <div className="plan-form-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {saveToast && (
-            <span
-              className="save-toast-badge"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
+    <div className="workplan-form-container progress-report-container" dir="rtl">
+      {/* 1. Sticky Top Action Bar */}
+      <div className="sticky-action-bar">
+        <div className="action-bar-right">
+          {onGoBack && (
+            <button
+              type="button"
+              className="btn-print-doc btn-home-nav-form"
+              onClick={onGoBack}
+              title="חזרה לניהול תלמידים"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#1e293b',
+                fontWeight: 700,
+                cursor: 'pointer',
+                borderRadius: '8px',
+                padding: '6px 12px'
+              }}
             >
-              <Check size={14} />
-              <span>{saveToast}</span>
-            </span>
+              <Users size={16} style={{ color: '#2563eb' }} />
+              <span>ניהול תלמידים</span>
+            </button>
           )}
 
-          {/* Yellow Lock / Unlock Button (matching Image 1) */}
+          {/* Yellow Lock / Unlock Button */}
           <div className="report-lock-toggle-wrapper">
             <button
               type="button"
@@ -534,7 +514,7 @@ export default function BehaviorProgressReportForm({
             </div>
           </div>
 
-          {/* Primary Save Button (matching Image 1) */}
+          {/* Primary Save Button */}
           <button
             type="button"
             className="btn-save-progress"
@@ -546,7 +526,24 @@ export default function BehaviorProgressReportForm({
             <span>שמור התקדמות</span>
           </button>
 
-          {/* Full Document Preview Toggle (matching Image 1) */}
+          {saveToast && (
+            <span
+              className="save-toast-badge"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
+            >
+              <Check size={14} />
+              <span>{saveToast}</span>
+            </span>
+          )}
+          {isDirty && !saveToast && (
+            <span className="last-saved-hint" style={{ color: '#d97706' }}>
+              שינויים טרם נשמרו
+            </span>
+          )}
+        </div>
+
+        <div className="action-bar-left">
+          {/* Full Document Preview Toggle */}
           <button
             type="button"
             className="btn-preview-doc"
@@ -554,10 +551,10 @@ export default function BehaviorProgressReportForm({
             title={showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}
           >
             <FileText size={16} />
-            <span>תצוגת מסמך מלאה</span>
+            <span>{showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}</span>
           </button>
 
-          {/* Unified Export & Print Dropdown (matching Image 1) */}
+          {/* Unified Export & Print Dropdown */}
           <div className="export-dropdown-wrapper" ref={exportDropdownRef}>
             <button
               type="button"
@@ -638,20 +635,92 @@ export default function BehaviorProgressReportForm({
               </div>
             )}
           </div>
-
-          {/* Close Button (matching Image 1) */}
-          {onGoBack && (
-            <button
-              type="button"
-              className="btn-export-dropdown"
-              onClick={onGoBack}
-              title="סגירה"
-            >
-              <span>סגירה</span>
-            </button>
-          )}
         </div>
-      </header>
+      </div>
+
+      {/* 2. Master Document Mode Tabs */}
+      <div className="workplan-mode-tabs-container" role="tablist" aria-label="סוגי דוחות מנתחת התנהגות">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={false}
+          className="workplan-mode-tab"
+          onClick={() => onNavigateDocumentType?.('behavior_assessment')}
+        >
+          <FileText size={17} />
+          <span>הערכת תפקוד התנהגותי</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={false}
+          className="workplan-mode-tab"
+          onClick={() => onNavigateDocumentType?.('behavior_plan')}
+        >
+          <TrendingDown size={17} />
+          <span>תוכנית התערבות התנהגותית</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={true}
+          className="workplan-mode-tab reports-mode active"
+        >
+          <TrendingUp size={17} />
+          <span>דוח התקדמות תקופתי</span>
+        </button>
+      </div>
+
+      {/* 3. Document Title Banner */}
+      <div className="document-title-card">
+        <div className="doc-title-top-row">
+          <div className="inline-meta-field banner-slot-date">
+            <label htmlFor="behavior-progress-date-input">תאריך:</label>
+            <input
+              id="behavior-progress-date-input"
+              type="text"
+              value={report.reportDate || '14.11.2026'}
+              onChange={(e) => {
+                setReport((prev) => ({ ...prev, reportDate: e.target.value }));
+                setIsDirty(true);
+              }}
+              placeholder="DD.MM.YYYY"
+              maxLength={10}
+            />
+          </div>
+
+          <div className="doc-banner-center-brand">
+            <img src="./tala-logo.png" alt="TALA Emblem" className="doc-banner-logo" />
+            <h2 className="main-ecological-heading">
+              {`דוח סיכום והערכת התקדמות – ${studentDetails.name || student.name || 'ללא שם'}${studentDetails.educationalFramework || student.educationalFramework ? ' | ' + (studentDetails.educationalFramework || student.educationalFramework) : ''}`}
+            </h2>
+          </div>
+
+          <div className="inline-meta-field banner-slot-controls">
+            <label>שנת לימודים:</label>
+            <select
+              value={student.schoolYear || DEFAULT_SCHOOL_YEAR}
+              onChange={(e) => {
+                const nextYear = e.target.value;
+                onSaveStudentPlan({ ...student, schoolYear: nextYear });
+                setIsDirty(true);
+              }}
+              title="בחר שנת לימודים"
+            >
+              {!(SCHOOL_YEARS_LIST as readonly string[]).includes(student.schoolYear || DEFAULT_SCHOOL_YEAR) && (
+                <option value={student.schoolYear}>{student.schoolYear}</option>
+              )}
+              {SCHOOL_YEARS_LIST.map((yr) => (
+                <option key={yr} value={yr} style={{ color: '#24344d', background: '#ffffff' }}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
 
       {/* Period Selection Bar */}
       <div className="progress-period-bar">
