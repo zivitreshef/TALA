@@ -1,6 +1,27 @@
 import { useState } from 'react';
-import { BarChart3 } from 'lucide-react';
-import type { BaselineDataPoint, OngoingTrackingPoint, BehaviorFunction } from '../../domain/types';
+import {
+  BarChart3,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  TrendingUp,
+  AlertTriangle,
+  Flame,
+  ShieldCheck
+} from 'lucide-react';
+import type {
+  BaselineDataPoint,
+  OngoingTrackingPoint,
+  BehaviorFunction,
+  BehaviorObservation
+} from '../../domain/types';
+import {
+  computeHourlyHeatmapMatrix,
+  computeAbcSequenceSummary,
+  computeDurationAndIntensityData,
+  computeReplacementSkillCurve,
+  computeStaffFidelityMetrics
+} from '../../domain/behaviorAnalysis';
 
 export interface BehaviorChartsProps {
   baselineData?: BaselineDataPoint[];
@@ -863,3 +884,752 @@ export default function BehaviorCharts({
     </div>
   );
 }
+
+/**
+ * 1. מפת פיזור שעתית לאורך ימות השבוע
+ * Visualizes occurrences across days and school periods to detect temporal patterns and transitions.
+ */
+export function BehaviorHourlyHeatmapChart({
+  trackingData = [],
+  observations = [],
+  title = 'מפת פיזור שעתית לאורך ימות השבוע',
+  subtitle = 'הצלבת שעות המערכת וימי השבוע לזיהוי דפוסי זמנים ומעברים'
+}: {
+  trackingData?: OngoingTrackingPoint[];
+  observations?: BehaviorObservation[];
+  title?: string;
+  subtitle?: string;
+}) {
+  const result = computeHourlyHeatmapMatrix(trackingData, observations);
+
+  if (!result.hasData) {
+    return null;
+  }
+
+  const getCellBg = (occurrences: number) => {
+    if (occurrences === 0) return '#f8fafc';
+    if (result.maxCellOccurrences === 0) return '#f8fafc';
+    const ratio = Math.min(1, occurrences / result.maxCellOccurrences);
+    if (ratio < 0.25) return '#ffedd5';
+    if (ratio < 0.5) return '#fdba74';
+    if (ratio < 0.75) return '#fb923c';
+    return '#ea580c';
+  };
+
+  const getCellTextColor = (occurrences: number) => {
+    if (occurrences === 0) return '#94a3b8';
+    const ratio = result.maxCellOccurrences > 0 ? occurrences / result.maxCellOccurrences : 0;
+    return ratio >= 0.5 ? '#ffffff' : '#431407';
+  };
+
+  return (
+    <div
+      style={{
+        background: '#ffffff',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '20px',
+        margin: '16px 0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        direction: 'rtl'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Calendar size={18} style={{ color: '#ea580c' }} />
+            <span>{title}</span>
+          </h3>
+          {subtitle && (
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {result.peakDay && result.peakPeriod && (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#fff7ed',
+              border: '1px solid #fed7aa',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              fontSize: '0.8rem',
+              color: '#c2410c',
+              fontWeight: 600
+            }}
+          >
+            <Flame size={14} />
+            <span>מוקד שיא: יום {result.peakDay}, {result.peakPeriod}</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table
+          style={{
+            width: '100%',
+            borderCollapse: 'separate',
+            borderSpacing: '4px',
+            textAlign: 'center',
+            fontSize: '0.85rem'
+          }}
+        >
+          <thead>
+            <tr>
+              <th style={{ padding: '8px', background: '#f1f5f9', borderRadius: '6px', color: '#475569', fontWeight: 600, minWidth: '80px' }}>
+                שיעור / יום
+              </th>
+              {result.days.map((day) => (
+                <th
+                  key={day}
+                  style={{
+                    padding: '8px',
+                    background: '#f1f5f9',
+                    borderRadius: '6px',
+                    color: '#334155',
+                    fontWeight: 700,
+                    minWidth: '70px'
+                  }}
+                >
+                  יום {day}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {result.periods.map((period, pIdx) => (
+              <tr key={period}>
+                <td style={{ padding: '8px', background: '#f8fafc', borderRadius: '6px', fontWeight: 600, color: '#334155' }}>
+                  {period}
+                </td>
+                {result.days.map((_, dIdx) => {
+                  const cell = result.cells.find((c) => c.dayIndex === dIdx && c.periodIndex === pIdx);
+                  const occ = cell ? cell.occurrences : 0;
+                  return (
+                    <td
+                      key={dIdx}
+                      style={{
+                        padding: '10px 4px',
+                        borderRadius: '6px',
+                        background: getCellBg(occ),
+                        color: getCellTextColor(occ),
+                        fontWeight: occ > 0 ? 700 : 500,
+                        border: '1px solid',
+                        borderColor: occ > 0 ? 'rgba(234, 88, 12, 0.3)' : '#f1f5f9',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title={`יום ${result.days[dIdx]}, ${period}: ${occ} מופעים`}
+                    >
+                      {occ > 0 ? `${occ}` : '—'}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend & Summary */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px', flexWrap: 'wrap', gap: '8px', fontSize: '0.8rem', color: '#64748b' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>מקרא שכיחות:</span>
+          <span style={{ display: 'inline-block', width: '14px', height: '14px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px' }} />
+          <span>0</span>
+          <span style={{ display: 'inline-block', width: '14px', height: '14px', background: '#ffedd5', borderRadius: '3px' }} />
+          <span>נמוכה</span>
+          <span style={{ display: 'inline-block', width: '14px', height: '14px', background: '#fdba74', borderRadius: '3px' }} />
+          <span>בינונית</span>
+          <span style={{ display: 'inline-block', width: '14px', height: '14px', background: '#ea580c', borderRadius: '3px' }} />
+          <span>גבוהה</span>
+        </div>
+        <div>
+          <span>סך כל המופעים הממופים: <strong>{result.totalOccurrences}</strong></span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 2. טבלת רצף תנאי מקדים, התנהגות ותוצאה סביבתית
+ * Quantitative cross-tabulation of antecedents vs. environmental responses.
+ */
+export function BehaviorAbcSequenceTable({
+  observations = [],
+  title = 'טבלת רצף תנאי מקדים, התנהגות ותוצאה סביבתית',
+  subtitle = 'הצלבה כמותית של הגורמים המעוררים מול התגובות הסביבתיות שנצפו'
+}: {
+  observations?: BehaviorObservation[];
+  title?: string;
+  subtitle?: string;
+}) {
+  const result = computeAbcSequenceSummary(observations);
+
+  if (!result.hasData) {
+    return null;
+  }
+
+  return (
+    <div
+      style={{
+        background: '#ffffff',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '20px',
+        margin: '16px 0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        direction: 'rtl'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={18} style={{ color: '#d97706' }} />
+            <span>{title}</span>
+          </h3>
+          {subtitle && (
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+        <div style={{ fontSize: '0.8rem', color: '#475569', background: '#f8fafc', padding: '4px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+          סך אירועים מנותחים: <strong>{result.totalIncidents}</strong>
+        </div>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <thead>
+            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+              <th style={{ padding: '10px 12px', textAlign: 'right', color: '#334155', fontWeight: 700 }}>תנאי מקדים</th>
+              <th style={{ padding: '10px 12px', textAlign: 'right', color: '#334155', fontWeight: 700 }}>תגובה סביבתית או תוצאה</th>
+              <th style={{ padding: '10px 12px', textAlign: 'right', color: '#334155', fontWeight: 700 }}>תפקוד משוער</th>
+              <th style={{ padding: '10px 12px', textAlign: 'center', color: '#334155', fontWeight: 700, width: '100px' }}>מופעים</th>
+              <th style={{ padding: '10px 12px', textAlign: 'right', color: '#334155', fontWeight: 700, width: '140px' }}>שכיחות יחסית</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.rows.map((row, idx) => (
+              <tr
+                key={idx}
+                style={{
+                  borderBottom: '1px solid #f1f5f9',
+                  background: idx % 2 === 0 ? '#ffffff' : '#fafafa'
+                }}
+              >
+                <td style={{ padding: '10px 12px', color: '#1e293b', fontWeight: 600 }}>{row.antecedent}</td>
+                <td style={{ padding: '10px 12px', color: '#334155' }}>{row.consequence}</td>
+                <td style={{ padding: '10px 12px', color: '#0369a1', fontWeight: 600 }}>{row.perceivedFunctionLabel}</td>
+                <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: '#0f172a' }}>{row.count}</td>
+                <td style={{ padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ flex: 1, background: '#f1f5f9', borderRadius: '999px', height: '6px', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${row.percentage}%`,
+                          background: row.percentage > 40 ? '#d97706' : '#3b82f6',
+                          height: '100%',
+                          borderRadius: '999px'
+                        }}
+                      />
+                    </div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', minWidth: '32px' }}>
+                      {row.percentage}%
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {(result.dominantAntecedent || result.dominantConsequence) && (
+        <div style={{ marginTop: '12px', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '0.825rem' }}>
+          {result.dominantAntecedent && (
+            <div>
+              <span style={{ color: '#64748b' }}>גורם מעורר דומיננטי: </span>
+              <strong style={{ color: '#0f172a' }}>{result.dominantAntecedent}</strong>
+            </div>
+          )}
+          {result.dominantConsequence && (
+            <div>
+              <span style={{ color: '#64748b' }}>תגובה סביבתית שכיחה: </span>
+              <strong style={{ color: '#0f172a' }}>{result.dominantConsequence}</strong>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 3. גרף משך זמן ועוצמת אירוע
+ * Combined duration in minutes and intensity tracking.
+ */
+export function BehaviorDurationIntensityChart({
+  trackingData = [],
+  observations = [],
+  title = 'גרף משך זמן ועוצמת אירוע',
+  subtitle = 'מדידת דקות רצופות ועוצמה לאיתור התקפי זעם או הסתגרות'
+}: {
+  trackingData?: OngoingTrackingPoint[];
+  observations?: BehaviorObservation[];
+  title?: string;
+  subtitle?: string;
+}) {
+  const result = computeDurationAndIntensityData(trackingData, observations);
+
+  if (!result.hasData || result.points.length === 0) {
+    return null;
+  }
+
+  const maxVal = Math.max(result.maxDurationMinutes, 10);
+  const chartHeight = 180;
+  const chartWidth = 540;
+  const paddingX = 40;
+  const paddingY = 25;
+  const plotWidth = chartWidth - paddingX * 2;
+  const plotHeight = chartHeight - paddingY * 2;
+
+  const pointsCount = result.points.length;
+  const barWidth = Math.max(12, Math.min(36, Math.floor(plotWidth / pointsCount) - 8));
+
+  const getIntensityColor = (intensity: string) => {
+    switch (intensity) {
+      case 'severe':
+        return '#ef4444';
+      case 'mild':
+        return '#10b981';
+      case 'moderate':
+      default:
+        return '#f59e0b';
+    }
+  };
+
+  return (
+    <div
+      style={{
+        background: '#ffffff',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '20px',
+        margin: '16px 0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        direction: 'rtl'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={18} style={{ color: '#0284c7' }} />
+            <span>{title}</span>
+          </h3>
+          {subtitle && (
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '4px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.7rem', color: '#0369a1' }}>משך ממוצע</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0c4a6e' }}>{result.averageDurationMinutes} דק׳</div>
+          </div>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '4px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.7rem', color: '#b91c1c' }}>משך שיא</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#7f1d1d' }}>{result.maxDurationMinutes} דק׳</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          style={{ width: '100%', maxWidth: '640px', height: 'auto', overflow: 'visible' }}
+          role="img"
+          aria-label={title}
+        >
+          {/* Grid lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((r, idx) => {
+            const y = paddingY + plotHeight * (1 - r);
+            const valLabel = Math.round(maxVal * r);
+            return (
+              <g key={idx}>
+                <line
+                  x1={paddingX}
+                  y1={y}
+                  x2={chartWidth - paddingX}
+                  y2={y}
+                  stroke="#e2e8f0"
+                  strokeDasharray="4 4"
+                />
+                <text
+                  x={paddingX - 8}
+                  y={y + 4}
+                  textAnchor="end"
+                  fontSize="10"
+                  fill="#94a3b8"
+                >
+                  {valLabel}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Bars */}
+          {result.points.map((pt, idx) => {
+            const x = paddingX + (idx + 0.5) * (plotWidth / pointsCount) - barWidth / 2;
+            const h = (pt.durationMinutes / maxVal) * plotHeight;
+            const y = paddingY + plotHeight - h;
+            const color = getIntensityColor(pt.intensity);
+
+            return (
+              <g key={pt.id}>
+                <rect
+                  x={x}
+                  y={y}
+                  width={barWidth}
+                  height={Math.max(3, h)}
+                  rx={4}
+                  fill={color}
+                  opacity={0.9}
+                />
+                {/* Duration text */}
+                <text
+                  x={x + barWidth / 2}
+                  y={Math.max(paddingY - 6, y - 5)}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontWeight="bold"
+                  fill={color}
+                >
+                  {pt.durationMinutes > 0 ? `${pt.durationMinutes}׳` : ''}
+                </text>
+                {/* Date label */}
+                <text
+                  x={x + barWidth / 2}
+                  y={chartHeight - 6}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill="#64748b"
+                >
+                  {pt.date ? pt.date.slice(5) : ''}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '10px', fontSize: '0.8rem', color: '#64748b' }}>
+        <span>מקרא עוצמה:</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ width: '10px', height: '10px', background: '#10b981', borderRadius: '2px' }} />
+          <span>קלה</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ width: '10px', height: '10px', background: '#f59e0b', borderRadius: '2px' }} />
+          <span>בינונית</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ width: '10px', height: '10px', background: '#ef4444', borderRadius: '2px' }} />
+          <span>גבוהה</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 4. עקומת למידה מצטברת של מיומנות חלופית
+ * Visualizes cumulative acquisition curve of replacement behavior.
+ */
+export function BehaviorReplacementLearningCurveChart({
+  trackingData = [],
+  title = 'עקומת למידה מצטברת של מיומנות חלופית',
+  subtitle = 'מעקב עצמאות ורכישה מתמדת של המיומנות הרצויה לאורך זמן'
+}: {
+  trackingData?: OngoingTrackingPoint[];
+  title?: string;
+  subtitle?: string;
+}) {
+  const result = computeReplacementSkillCurve(trackingData);
+
+  if (!result.hasData || result.points.length === 0) {
+    return null;
+  }
+
+  const maxVal = Math.max(result.totalReplacementDemonstrations, 5);
+  const chartHeight = 180;
+  const chartWidth = 540;
+  const paddingX = 40;
+  const paddingY = 25;
+  const plotWidth = chartWidth - paddingX * 2;
+  const plotHeight = chartHeight - paddingY * 2;
+
+  const pointsCount = result.points.length;
+  const stepX = plotWidth / Math.max(1, pointsCount - 1);
+
+  const coords = result.points.map((pt, idx) => {
+    const x = paddingX + idx * stepX;
+    const y = paddingY + plotHeight - (pt.cumulativeCount / maxVal) * plotHeight;
+    return { x, y, pt };
+  });
+
+  const pathD = coords.reduce((acc, curr, idx) => {
+    return idx === 0 ? `M ${curr.x} ${curr.y}` : `${acc} L ${curr.x} ${curr.y}`;
+  }, '');
+
+  const areaD = `${pathD} L ${coords[coords.length - 1].x} ${paddingY + plotHeight} L ${coords[0].x} ${paddingY + plotHeight} Z`;
+
+  return (
+    <div
+      style={{
+        background: '#ffffff',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '20px',
+        margin: '16px 0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        direction: 'rtl'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <TrendingUp size={18} style={{ color: '#16a34a' }} />
+            <span>{title}</span>
+          </h3>
+          {subtitle && (
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '4px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.7rem', color: '#15803d' }}>סך שימושים חלופיים</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#166534' }}>{result.totalReplacementDemonstrations}</div>
+          </div>
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '4px 10px', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.7rem', color: '#475569' }}>קצב רכישה כללי</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>{result.acquisitionRatePercentage}%</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          style={{ width: '100%', maxWidth: '640px', height: 'auto', overflow: 'visible' }}
+          role="img"
+          aria-label={title}
+        >
+          {/* Horizontal gridlines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((r, idx) => {
+            const y = paddingY + plotHeight * (1 - r);
+            const valLabel = Math.round(maxVal * r);
+            return (
+              <g key={idx}>
+                <line
+                  x1={paddingX}
+                  y1={y}
+                  x2={chartWidth - paddingX}
+                  y2={y}
+                  stroke="#e2e8f0"
+                  strokeDasharray="4 4"
+                />
+                <text
+                  x={paddingX - 8}
+                  y={y + 4}
+                  textAnchor="end"
+                  fontSize="10"
+                  fill="#94a3b8"
+                >
+                  {valLabel}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Area fill */}
+          <path d={areaD} fill="rgba(22, 163, 74, 0.12)" />
+
+          {/* Line curve */}
+          <path d={pathD} fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Dots on points */}
+          {coords.map((c, idx) => (
+            <circle
+              key={idx}
+              cx={c.x}
+              cy={c.y}
+              r={c.pt.usedInSession ? 4.5 : 3}
+              fill={c.pt.usedInSession ? '#16a34a' : '#ffffff'}
+              stroke="#16a34a"
+              strokeWidth="2"
+            />
+          ))}
+        </svg>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', fontSize: '0.8rem', color: '#64748b' }}>
+        <span>התחלת מעקב: {result.points[0]?.date || ''}</span>
+        <span>נקודה אחרונה: {result.points[result.points.length - 1]?.date || ''}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 5. טבלת נאמנות יישום של צוות בית הספר
+ * Staff protocol consistency tracking meter and breakdown.
+ */
+export function BehaviorStaffFidelityMeter({
+  trackingData = [],
+  title = 'טבלת נאמנות יישום של צוות בית הספר',
+  subtitle = 'בדיקת אחוז העקביות של צוות ההוראה ביישום פרוטוקול ההתערבות'
+}: {
+  trackingData?: OngoingTrackingPoint[];
+  title?: string;
+  subtitle?: string;
+}) {
+  const result = computeStaffFidelityMetrics(trackingData);
+
+  if (!result.hasData || result.totalTrackedSessions === 0) {
+    return null;
+  }
+
+  const getStatusBadge = () => {
+    if (result.overallFidelityPercentage >= 80) {
+      return { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d', icon: <ShieldCheck size={16} /> };
+    }
+    if (result.overallFidelityPercentage >= 50) {
+      return { bg: '#fefce8', border: '#fef08a', color: '#a16207', icon: <CheckCircle2 size={16} /> };
+    }
+    return { bg: '#fef2f2', border: '#fecaca', color: '#b91c1c', icon: <AlertTriangle size={16} /> };
+  };
+
+  const badge = getStatusBadge();
+
+  return (
+    <div
+      style={{
+        background: '#ffffff',
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        padding: '20px',
+        margin: '16px 0',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        direction: 'rtl'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldCheck size={18} style={{ color: '#059669' }} />
+            <span>{title}</span>
+          </h3>
+          {subtitle && (
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: badge.bg,
+            border: `1px solid ${badge.border}`,
+            color: badge.color,
+            padding: '5px 12px',
+            borderRadius: '999px',
+            fontSize: '0.85rem',
+            fontWeight: 700
+          }}
+        >
+          {badge.icon}
+          <span>{result.ratingLabel}</span>
+        </div>
+      </div>
+
+      {/* Main Gauge / Meter */}
+      <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#334155' }}>עקביות כוללת במתן מענה וחיזוק:</span>
+          <span style={{ fontSize: '1.3rem', fontWeight: 800, color: badge.color }}>{result.overallFidelityPercentage}%</span>
+        </div>
+        <div style={{ background: '#e2e8f0', height: '10px', borderRadius: '999px', overflow: 'hidden' }}>
+          <div
+            style={{
+              width: `${result.overallFidelityPercentage}%`,
+              background: result.overallFidelityPercentage >= 80 ? '#10b981' : result.overallFidelityPercentage >= 50 ? '#f59e0b' : '#ef4444',
+              height: '100%',
+              borderRadius: '999px',
+              transition: 'width 0.4s ease'
+            }}
+          />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.785rem', color: '#64748b' }}>
+          <span>{result.reinforcedSessions} מתוך {result.totalTrackedSessions} מפגשים יושמו בהתאם לתוכנית</span>
+          <span>יעד מומלץ: מעל 80%</span>
+        </div>
+      </div>
+
+      {/* Breakdown by period table */}
+      {result.periodBreakdowns.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 600 }}>שיעור / מסגרת</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>מפגשים שנבדקו</th>
+                <th style={{ padding: '8px 10px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>יישום תקין</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 600, width: '130px' }}>אחוז עקביות</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.periodBreakdowns.map((b, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '8px 10px', color: '#1e293b', fontWeight: 600 }}>{b.period}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#475569' }}>{b.totalSessions}</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'center', color: '#15803d', fontWeight: 700 }}>{b.reinforcedSessions}</td>
+                  <td style={{ padding: '8px 10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ flex: 1, background: '#f1f5f9', height: '6px', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div
+                          style={{
+                            width: `${b.fidelityPercentage}%`,
+                            background: b.fidelityPercentage >= 80 ? '#10b981' : b.fidelityPercentage >= 50 ? '#f59e0b' : '#ef4444',
+                            height: '100%'
+                          }}
+                        />
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155', minWidth: '28px' }}>
+                        {b.fidelityPercentage}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+

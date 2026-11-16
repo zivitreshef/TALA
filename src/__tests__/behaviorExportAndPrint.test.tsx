@@ -6,9 +6,12 @@ import {
   buildBehaviorAssessmentPrintHtml,
   buildBehaviorPlanWordDocumentHtml,
   buildBehaviorPlanPrintHtml,
+  buildBehaviorProgressReportWordDocumentHtml,
+  buildBehaviorProgressReportPrintHtml,
   getSafeReportFilename,
   getBehaviorAssessmentTitle,
-  getBehaviorPlanTitle
+  getBehaviorPlanTitle,
+  getBehaviorProgressReportTitle
 } from '../export/wordAndPrintBuilders';
 import BehaviorAssessmentForm from '../components/behavior/BehaviorAssessmentForm';
 import BehaviorInterventionPlanForm from '../components/behavior/BehaviorInterventionPlanForm';
@@ -248,5 +251,47 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
     expect(markup).toContain('הדפסה וייצוא');
     expect(markup).toContain('שמור התקדמות');
     expect(markup).toContain('btn-export-dropdown');
+  });
+
+  it('10. builds Behavior Progress Report Word & Print HTML with core tables and signatures', () => {
+    const studentWithProgress: StudentProfile = {
+      ...sampleBehaviorStudent,
+      behaviorProgressReport: {
+        period: 'end_year',
+        reportDate: '2026-06-20',
+        assessorName: 'רוני מנתחת',
+        reviewPeriodLabel: 'סיכום שנתי מלא',
+        executiveSummary: 'התקדמות שנתית מרשימה ביותר',
+        targetBehaviorsProgress: [
+          {
+            behaviorName: 'קימה מהמקום ללא אישור',
+            baselineAverage: 6,
+            currentAverage: 1.2,
+            reductionPercent: 80,
+            statusNotes: 'הושגה הפחתה משמעותית'
+          }
+        ],
+        replacementBehaviorsAcquisition: [
+          {
+            skillName: 'שימוש בכרטיס הפוגה',
+            masteryLevel: 'עצמאי לחלוטין',
+            acquisitionNotes: 'שימוש עקבי'
+          }
+        ]
+      }
+    };
+
+    const wordHtml = buildBehaviorProgressReportWordDocumentHtml(studentWithProgress, false);
+    expect(wordHtml).toContain('דוח סיכום והערכת התקדמות התנהגותית - סוף שנה');
+    expect(wordHtml).toContain('קימה מהמקום ללא אישור');
+    expect(wordHtml).toContain('80%');
+    expect(wordHtml).toContain('שימוש בכרטיס הפוגה');
+
+    const printHtml = buildBehaviorProgressReportPrintHtml(studentWithProgress, false);
+    expect(printHtml).toContain('דוח סיכום והערכת התקדמות התנהגותית - סוף שנה');
+    expect(printHtml).toContain('קימה מהמקום ללא אישור');
+    expect(printHtml).toContain('חתימת מנתחת התנהגות');
+
+    expect(getBehaviorProgressReportTitle('end_year')).toBe('דוח סיכום והערכת התקדמות התנהגותית - סוף שנה');
   });
 });

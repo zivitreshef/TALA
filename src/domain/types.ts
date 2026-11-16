@@ -64,6 +64,8 @@ export interface StudentProfile {
   behaviorAssessment?: BehaviorAssessmentReport;
   behaviorPlan?: BehaviorInterventionPlan;
   behaviorObservations?: BehaviorObservation[];
+  behaviorProgressReport?: BehaviorProgressReport;
+  behaviorProgressReports?: BehaviorProgressReport[];
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
@@ -432,6 +434,7 @@ export interface OngoingTrackingPoint {
   targetBehaviorOccurrences: number;
   replacementBehaviorUsed: boolean | number;
   reinforcementDelivered: boolean;
+  durationMinutes?: number;
   sessionOrPeriod?: string;
   targetBehaviorCount?: number;
   replacementBehaviorCount?: number;
@@ -460,4 +463,42 @@ export interface BehaviorInterventionPlan {
   lockedBy?: string;
   updatedAt?: string;
 }
+
+export type BehaviorProgressPeriod = 'mid_year' | 'end_year' | 'periodic';
+
+export interface BehaviorTargetProgressSummary {
+  id?: string;
+  behaviorName: string;
+  baselineAverage?: number;
+  currentAverage?: number;
+  reductionPercent?: number;
+  trend?: 'improving' | 'stable' | 'deteriorating';
+  statusNotes?: string;
+}
+
+export interface ReplacementSkillAcquisitionSummary {
+  id?: string;
+  skillName: string;
+  masteryLevel?: string;
+  acquisitionNotes?: string;
+}
+
+export interface BehaviorProgressReport {
+  id?: string;
+  period: BehaviorProgressPeriod;
+  reportDate?: string;
+  assessorName?: string;
+  reviewPeriodLabel?: string;
+  executiveSummary?: string;
+  targetBehaviorsProgress?: BehaviorTargetProgressSummary[];
+  replacementBehaviorsAcquisition?: ReplacementSkillAcquisitionSummary[];
+  environmentalAdjustments?: string;
+  staffFidelityObservations?: string;
+  recommendations?: string;
+  isLocked?: boolean;
+  lockedAt?: string;
+  lockedBy?: string;
+  updatedAt?: string;
+}
+
 
