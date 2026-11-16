@@ -558,7 +558,10 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          return parsed.map((s) => {
+          const parsedIds = new Set(parsed.map((s) => s.id));
+          const missingInitial = INITIAL_STUDENTS_DATA.filter((s) => !parsedIds.has(s.id));
+          const allMerged = missingInitial.length > 0 ? [...parsed, ...missingInitial] : parsed;
+          return allMerged.map((s) => {
             const scoped = {
               ...s,
               ownerEmail: (s.ownerEmail || PRIMARY_ADMIN_EMAIL).toLowerCase()

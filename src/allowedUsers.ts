@@ -290,6 +290,16 @@ export const DEFAULT_ALLOWED_USERS: AllowedUserRecord[] = [
     active: true
   },
   {
+    id: 'u_behavior_analyst_1',
+    email: 'mreshef@bmc.com',
+    name: 'מיכל דליות',
+    role: 'behavior_analyst',
+    title: 'מנתחת התנהגות מוסמכת',
+    group: "מתי'א מעלות",
+    ...createPasswordCredentials('TALA2026', 'e5f6a1b2c3d4e5f678901234567890ab'),
+    active: true
+  },
+  {
     id: 'u_teacher_1',
     email: 'teacher@tala.edu.il',
     name: 'מיכל כהן',
