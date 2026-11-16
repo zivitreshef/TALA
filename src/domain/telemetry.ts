@@ -74,6 +74,7 @@ export interface UserActivity {
   aiCount: number;
   emailCount: number;
   lastActiveMs: number;
+  aiTodayCount?: number;
 }
 
 export interface DayTimelineItem {
@@ -488,13 +489,26 @@ export function detectAbnormalSpikes({
 
   // 2. Runaway Teacher Anomaly
   if (aiTodayCount >= 20 && Array.isArray(topActiveTeachers) && topActiveTeachers.length > 0) {
-    const topTeacher = topActiveTeachers[0];
-    if (topTeacher && topTeacher.aiCount >= aiTodayCount * 0.4) {
+    const candidates = [...topActiveTeachers]
+      .filter((t) => (t.aiTodayCount !== undefined ? t.aiTodayCount > 0 : t.aiCount > 0))
+      .sort((a, b) => {
+        const countA = a.aiTodayCount !== undefined ? a.aiTodayCount : a.aiCount;
+        const countB = b.aiTodayCount !== undefined ? b.aiTodayCount : b.aiCount;
+        return countB - countA;
+      });
+
+    const topTeacherToday = candidates[0];
+    const teacherTodayAi = topTeacherToday
+      ? (topTeacherToday.aiTodayCount !== undefined ? topTeacherToday.aiTodayCount : topTeacherToday.aiCount)
+      : 0;
+
+    if (topTeacherToday && teacherTodayAi >= aiTodayCount * 0.4) {
+      const percentage = Math.min(100, Math.round((teacherTodayAi / aiTodayCount) * 100));
       anomalies.push({
-        id: `anomaly_teacher_${topTeacher.email}`,
+        id: `anomaly_teacher_${topTeacherToday.email}`,
         type: 'user_spike',
-        title: `זיהוי ריכוז צריכה חריג: מורה יחידה צורכת ${Math.round((topTeacher.aiCount / aiTodayCount) * 100)}% מכלל ה-AI היומי`,
-        detail: `המשתמשת ${topTeacher.email} ביצעה ${topTeacher.aiCount} שאילתות היום. כדאי לוודא שלא מדובר בלולאה תקועה בדפדפן.`,
+        title: `זיהוי ריכוז צריכה חריג: מורה יחידה צורכת ${percentage}% מכלל ה-AI היומי`,
+        detail: `המשתמשת ${topTeacherToday.email} ביצעה ${teacherTodayAi} שאילתות היום. כדאי לוודא שלא מדובר בלולאה תקועה בדפדפן.`,
         severity: 'warning'
       });
     }
@@ -566,8 +580,17 @@ export function aggregateTelemetryData({
 
     const email = String(log.email || '').toLowerCase().trim();
     if (email) {
-      const existing = userActivityMap.get(email) || { email, aiCount: 0, emailCount: 0, lastActiveMs: 0 };
+      const existing = userActivityMap.get(email) || {
+        email,
+        aiCount: 0,
+        emailCount: 0,
+        lastActiveMs: 0,
+        aiTodayCount: 0
+      };
       existing.aiCount += 1;
+      if (dayKey === currentDayKey) {
+        existing.aiTodayCount = (existing.aiTodayCount || 0) + 1;
+      }
       if (logMs > existing.lastActiveMs) existing.lastActiveMs = logMs;
       userActivityMap.set(email, existing);
     }

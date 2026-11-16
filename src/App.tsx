@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useModalAnimation } from './hooks/useModalAnimation';
 import {
   Users,
@@ -57,6 +57,7 @@ import {
   DEFAULT_SCHOOL_YEAR,
   associateStudentToWorkingYear
 } from './domain/yearReport';
+import { reconcileLocalAndCloudStudents } from './domain/studentSyncMerge';
 import {
   DEFAULT_USER_PREFERENCES,
   loadLocalUserPreferences,
@@ -581,6 +582,11 @@ export default function App() {
     }));
   });
 
+  const studentsRef = useRef<any[]>(students);
+  useEffect(() => {
+    studentsRef.current = students;
+  }, [students]);
+
   // Scoped student rosters for current user (declared at root level to prevent TDZ and satisfy Rules of Hooks)
   const userStudents = useMemo(
     () => getStudentsForUser(students, currentUser),
@@ -985,17 +991,27 @@ export default function App() {
         }
       },
       onStudentsChange: (cloudStudents) => {
-        const normalized = cloudStudents.map((s) => {
-          const scoped = {
-            ...s,
-            ownerEmail: (s.ownerEmail || 'zivit.reshef@gmail.com').toLowerCase()
-          };
-          return (scoped.schoolYear === 'תשפ"ו (2025-2026)')
-            ? associateStudentToWorkingYear(scoped, DEFAULT_SCHOOL_YEAR)
-            : scoped;
+        const localList = (studentsRef.current && studentsRef.current.length > 0)
+          ? studentsRef.current
+          : (safeGetStorageJson(STUDENTS_STORAGE_KEY, []) || []);
+
+        const { mergedStudents, studentsToUpload } = reconcileLocalAndCloudStudents({
+          cloudStudents,
+          localStudents: localList,
+          currentUserEmail: currentUser?.email || '',
+          defaultSchoolYear: DEFAULT_SCHOOL_YEAR
         });
-        setStudents(normalized);
-        safeSetStorageJson(STUDENTS_STORAGE_KEY, normalized);
+
+        setStudents(mergedStudents);
+        safeSetStorageJson(STUDENTS_STORAGE_KEY, mergedStudents);
+
+        if (studentsToUpload.length > 0) {
+          studentsToUpload.forEach((st) => {
+            saveStudentToCloud(st).catch((err) => {
+              console.warn('[Sync] Background sync of local student to cloud failed:', st.id, err);
+            });
+          });
+        }
       },
       onSettingsChange: (settings) => {
 
