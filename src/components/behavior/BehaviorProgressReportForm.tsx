@@ -47,6 +47,7 @@ import { generatePdfBlobFromHtml } from '../../emailService';
 import SendReportEmailModal from '../modals/SendReportEmailModal';
 import './BehaviorAssessmentForm.css';
 import './BehaviorInterventionPlanForm.css';
+import './BehaviorProgressReportForm.css';
 
 export interface BehaviorProgressReportFormProps {
   student: StudentProfile;
@@ -395,7 +396,7 @@ export default function BehaviorProgressReportForm({
   const isLocked = Boolean(report.isLocked);
 
   return (
-    <div className="plan-form-container" dir="rtl">
+    <div className="progress-report-container" dir="rtl">
       {/* Save Toast Feedback */}
       {saveToast && (
         <div
@@ -423,24 +424,24 @@ export default function BehaviorProgressReportForm({
       )}
 
       {/* Header & Main Actions */}
-      <div className="plan-form-header">
-        <div className="plan-form-title-group">
-          <div className="plan-form-icon-badge" style={{ background: '#f0fdf4', color: '#16a34a' }}>
+      <div className="progress-form-header">
+        <div className="progress-form-title-group">
+          <div className="progress-form-icon-badge">
             <TrendingUp size={24} />
           </div>
           <div>
-            <h1 className="plan-form-heading">דוח סיכום והערכת התקדמות התנהגותית</h1>
-            <p className="plan-form-subheading">
+            <h1 className="progress-form-heading">דוח סיכום והערכת התקדמות התנהגותית</h1>
+            <p className="progress-form-subheading">
               ניטור התקדמות תקופתי, מדדי הפחתה, תובנות מעקב וניתוחים כמותיים
             </p>
           </div>
         </div>
 
-        <div className="plan-form-actions">
+        <div className="progress-form-actions">
           <button
             type="button"
             onClick={handleSave}
-            className="plan-action-btn primary"
+            className="btn-progress-primary"
             title="שמירת דוח התקדמות"
             disabled={isLocked}
           >
@@ -451,7 +452,7 @@ export default function BehaviorProgressReportForm({
           <button
             type="button"
             onClick={handlePrint}
-            className="plan-action-btn"
+            className="btn-progress-secondary"
             title="הדפסת דוח ההתקדמות"
           >
             <Printer size={16} />
@@ -461,7 +462,7 @@ export default function BehaviorProgressReportForm({
           <button
             type="button"
             onClick={handleExportWord}
-            className="plan-action-btn"
+            className="btn-progress-word"
             title="ייצוא לקובץ וורד"
           >
             <FileDown size={16} />
@@ -471,7 +472,7 @@ export default function BehaviorProgressReportForm({
           <button
             type="button"
             onClick={() => setShowEmailModal(true)}
-            className="plan-action-btn"
+            className="btn-progress-secondary"
             title="שליחת הדוח במייל"
           >
             <Mail size={16} />
@@ -481,7 +482,7 @@ export default function BehaviorProgressReportForm({
           <button
             type="button"
             onClick={() => setShowFullDocPreview(true)}
-            className="plan-action-btn"
+            className="btn-progress-secondary"
             title="תצוגת מסמך מלאה"
           >
             <FileText size={16} />
@@ -491,7 +492,12 @@ export default function BehaviorProgressReportForm({
           <button
             type="button"
             onClick={handleToggleLock}
-            className={`plan-action-btn ${isLocked ? 'locked-state' : ''}`}
+            className="btn-progress-secondary"
+            style={{
+              borderColor: isLocked ? '#fecaca' : undefined,
+              color: isLocked ? '#b91c1c' : undefined,
+              background: isLocked ? '#fef2f2' : undefined
+            }}
             title={isLocked ? 'בטל נעילה' : 'נעל דוח'}
           >
             {isLocked ? <Lock size={16} style={{ color: '#dc2626' }} /> : <Unlock size={16} />}
@@ -502,7 +508,7 @@ export default function BehaviorProgressReportForm({
             <button
               type="button"
               onClick={onGoBack}
-              className="plan-action-btn secondary"
+              className="btn-progress-secondary"
             >
               חזור ללוח
             </button>
@@ -511,71 +517,28 @@ export default function BehaviorProgressReportForm({
       </div>
 
       {/* Period Selection Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '12px',
-          padding: '12px 18px',
-          marginBottom: '16px',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>תקופת הדוח:</span>
-          <div style={{ display: 'inline-flex', background: '#e2e8f0', padding: '3px', borderRadius: '8px' }}>
+      <div className="progress-period-bar">
+        <div className="progress-period-group">
+          <span className="progress-period-label">תקופת הדוח:</span>
+          <div className="progress-period-pill-box">
             <button
               type="button"
               onClick={() => handlePeriodChange('mid_year')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: selectedPeriod === 'mid_year' ? 700 : 500,
-                background: selectedPeriod === 'mid_year' ? '#ffffff' : 'transparent',
-                color: selectedPeriod === 'mid_year' ? '#2563eb' : '#64748b',
-                boxShadow: selectedPeriod === 'mid_year' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-              }}
+              className={`progress-period-pill ${selectedPeriod === 'mid_year' ? 'active' : ''}`}
             >
               סיכום אמצע שנה
             </button>
             <button
               type="button"
               onClick={() => handlePeriodChange('end_year')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: selectedPeriod === 'end_year' ? 700 : 500,
-                background: selectedPeriod === 'end_year' ? '#ffffff' : 'transparent',
-                color: selectedPeriod === 'end_year' ? '#2563eb' : '#64748b',
-                boxShadow: selectedPeriod === 'end_year' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-              }}
+              className={`progress-period-pill ${selectedPeriod === 'end_year' ? 'active' : ''}`}
             >
               סיכום סוף שנה
             </button>
             <button
               type="button"
               onClick={() => handlePeriodChange('periodic')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: selectedPeriod === 'periodic' ? 700 : 500,
-                background: selectedPeriod === 'periodic' ? '#ffffff' : 'transparent',
-                color: selectedPeriod === 'periodic' ? '#2563eb' : '#64748b',
-                boxShadow: selectedPeriod === 'periodic' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-              }}
+              className={`progress-period-pill ${selectedPeriod === 'periodic' ? 'active' : ''}`}
             >
               דוח תקופתי
             </button>
@@ -586,19 +549,7 @@ export default function BehaviorProgressReportForm({
           type="button"
           onClick={handlePullTrackingData}
           disabled={isLocked}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            color: '#1d4ed8',
-            padding: '7px 14px',
-            borderRadius: '8px',
-            fontSize: '0.85rem',
-            fontWeight: 700,
-            cursor: 'pointer'
-          }}
+          className="btn-progress-pull"
         >
           <RefreshCw size={15} />
           <span>משיכת נתוני מעקב מעודכנים מתיק התלמיד</span>
@@ -615,427 +566,456 @@ export default function BehaviorProgressReportForm({
       />
 
       {/* Section 1: Report Metadata */}
-      <div className="form-section">
-        <h2 className="section-title">פרטי הדוח והתקופה</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-          <div>
-            <label className="field-label">תאריך עריכת הדוח:</label>
-            <input
-              type="date"
-              className="text-input"
-              value={report.reportDate || ''}
-              onChange={(e) => setReport((prev) => ({ ...prev, reportDate: e.target.value }))}
-              disabled={isLocked}
-            />
+      <div className="progress-card">
+        <div className="progress-card-header">
+          <div className="progress-card-title-wrap">
+            <span className="progress-section-badge">1</span>
+            <div>
+              <h2 className="progress-card-title">פרטי הדוח והתקופה</h2>
+              <p className="progress-card-subtitle">מועד הפקה, מנתחת עורכת וטווח תקופת המעקב</p>
+            </div>
           </div>
-          <div>
-            <label className="field-label">מנתחת התנהגות עורכת:</label>
-            <input
-              type="text"
-              className="text-input"
-              value={report.assessorName || ''}
-              onChange={(e) => setReport((prev) => ({ ...prev, assessorName: e.target.value }))}
-              placeholder="שם מנתחת ההתנהגות"
-              disabled={isLocked}
-            />
-          </div>
-          <div>
-            <label className="field-label">הגדרת טווח התקופה:</label>
-            <input
-              type="text"
-              className="text-input"
-              value={report.reviewPeriodLabel || ''}
-              onChange={(e) => setReport((prev) => ({ ...prev, reviewPeriodLabel: e.target.value }))}
-              placeholder="למשל: מחצית א׳ (ספטמבר - ינואר)"
-              disabled={isLocked}
-            />
+        </div>
+        <div className="progress-card-body">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            <div>
+              <label className="progress-field-label">תאריך עריכת הדוח:</label>
+              <input
+                type="date"
+                className="progress-input"
+                value={report.reportDate || ''}
+                onChange={(e) => setReport((prev) => ({ ...prev, reportDate: e.target.value }))}
+                disabled={isLocked}
+              />
+            </div>
+            <div>
+              <label className="progress-field-label">מנתחת התנהגות עורכת:</label>
+              <input
+                type="text"
+                className="progress-input"
+                value={report.assessorName || ''}
+                onChange={(e) => setReport((prev) => ({ ...prev, assessorName: e.target.value }))}
+                placeholder="שם מנתחת ההתנהגות"
+                disabled={isLocked}
+              />
+            </div>
+            <div>
+              <label className="progress-field-label">הגדרת טווח התקופה:</label>
+              <input
+                type="text"
+                className="progress-input"
+                value={report.reviewPeriodLabel || ''}
+                onChange={(e) => setReport((prev) => ({ ...prev, reviewPeriodLabel: e.target.value }))}
+                placeholder="למשל: מחצית א׳ (ספטמבר - ינואר)"
+                disabled={isLocked}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Section 2: Executive Summary */}
-      <div className="form-section">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <h2 className="section-title" style={{ margin: 0 }}>תמצית מנהלים והערכת התקדמות כללית</h2>
+      <div className="progress-card">
+        <div className="progress-card-header">
+          <div className="progress-card-title-wrap">
+            <span className="progress-section-badge">2</span>
+            <div>
+              <h2 className="progress-card-title">תמצית מנהלים והערכת התקדמות כללית</h2>
+              <p className="progress-card-subtitle">סיכום איכותי של המגמות, ההישגים והאתגרים העיקריים</p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={handleGenerateAiExecutiveSummary}
             disabled={isLocked || isAiDrafting}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#faf5ff',
-              border: '1px solid #e9d5ff',
-              color: '#7e22ce',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '0.825rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
+            className="btn-progress-ai"
           >
             {isAiDrafting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
             <span>ניסוח תמצית מסייע בבינה מלאכותית</span>
           </button>
         </div>
-        <textarea
-          className="text-area"
-          rows={4}
-          value={report.executiveSummary || ''}
-          onChange={(e) => setReport((prev) => ({ ...prev, executiveSummary: e.target.value }))}
-          placeholder="תאר/י בקצרה את תמצית ההתקדמות, רמת ההיענות, מגמת התנהגויות המטרה ושילוב המיומנויות החלופיות..."
-          disabled={isLocked}
-        />
+        <div className="progress-card-body">
+          <textarea
+            className="progress-textarea"
+            rows={4}
+            value={report.executiveSummary || ''}
+            onChange={(e) => setReport((prev) => ({ ...prev, executiveSummary: e.target.value }))}
+            placeholder="תאר/י בקצרה את תמצית ההתקדמות, רמת ההיענות, מגמת התנהגויות המטרה ושילוב המיומנויות החלופיות..."
+            disabled={isLocked}
+          />
+        </div>
       </div>
 
       {/* Section 3: Target Behaviors Progress Table */}
-      <div className="form-section">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div>
-            <h2 className="section-title" style={{ margin: 0 }}>מעקב והתקדמות בהתנהגויות המטרה</h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-              השוואת ממוצע קו הבסיס לביצועים בפועל בתקופת המעקב
-            </p>
+      <div className="progress-card">
+        <div className="progress-card-header">
+          <div className="progress-card-title-wrap">
+            <span className="progress-section-badge">3</span>
+            <div>
+              <h2 className="progress-card-title">מעקב והתקדמות בהתנהגויות המטרה</h2>
+              <p className="progress-card-subtitle">השוואת ממוצע קו הבסיס לביצועים בפועל בתקופת המעקב</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={handleAddTargetRow}
             disabled={isLocked}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              color: '#16a34a',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '0.825rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
+            className="btn-progress-secondary"
+            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
           >
             <Plus size={14} />
             <span>הוסף שורת התנהגות</span>
           </button>
         </div>
 
-        {(!report.targetBehaviorsProgress || report.targetBehaviorsProgress.length === 0) ? (
-          <div style={{ textAlign: 'center', padding: '24px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
-              טרם הוגדרו נתוני התקדמות. לחצו על "משיכת נתוני מעקב מעודכנים" לשאיבה אוטומטית, או הוסיפו שורה ידנית.
-            </p>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '10px', textAlign: 'right', minWidth: '160px' }}>התנהגות מטרה</th>
-                  <th style={{ padding: '10px', textAlign: 'center', width: '100px' }}>קו בסיס</th>
-                  <th style={{ padding: '10px', textAlign: 'center', width: '100px' }}>ממוצע נוכחי</th>
-                  <th style={{ padding: '10px', textAlign: 'center', width: '110px' }}>אחוז הפחתה</th>
-                  <th style={{ padding: '10px', textAlign: 'right', minWidth: '220px' }}>הערות והערכת מגמה</th>
-                  <th style={{ padding: '10px', textAlign: 'center', width: '50px' }}>פעולות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.targetBehaviorsProgress.map((row, idx) => (
-                  <tr key={row.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '8px' }}>
-                      <input
-                        type="text"
-                        className="text-input"
-                        value={row.behaviorName}
-                        onChange={(e) => handleUpdateTargetRow(idx, 'behaviorName', e.target.value)}
-                        placeholder="שם התנהגות"
-                        disabled={isLocked}
-                      />
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className="text-input"
-                        style={{ textAlign: 'center' }}
-                        value={row.baselineAverage ?? ''}
-                        onChange={(e) => handleUpdateTargetRow(idx, 'baselineAverage', Number(e.target.value))}
-                        disabled={isLocked}
-                      />
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className="text-input"
-                        style={{ textAlign: 'center', fontWeight: 'bold' }}
-                        value={row.currentAverage ?? ''}
-                        onChange={(e) => handleUpdateTargetRow(idx, 'currentAverage', Number(e.target.value))}
-                        disabled={isLocked}
-                      />
-                    </td>
-                    <td style={{ padding: '8px', textAlign: 'center' }}>
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          color: (row.reductionPercent || 0) > 0 ? '#16a34a' : '#dc2626'
-                        }}
-                      >
-                        {row.reductionPercent != null ? `${row.reductionPercent}%` : '—'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <input
-                        type="text"
-                        className="text-input"
-                        value={row.statusNotes || ''}
-                        onChange={(e) => handleUpdateTargetRow(idx, 'statusNotes', e.target.value)}
-                        placeholder="תיאור מגמה..."
-                        disabled={isLocked}
-                      />
-                    </td>
-                    <td style={{ padding: '8px', textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTargetRow(row.id)}
-                        disabled={isLocked}
-                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-                        title="מחק שורה"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+        <div className="progress-card-body">
+          {(!report.targetBehaviorsProgress || report.targetBehaviorsProgress.length === 0) ? (
+            <div style={{ textAlign: 'center', padding: '24px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
+                טרם הוגדרו נתוני התקדמות. לחצו על "משיכת נתוני מעקב מעודכנים" לשאיבה אוטומטית, או הוסיפו שורה ידנית.
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', minWidth: '160px' }}>התנהגות מטרה</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', width: '100px' }}>קו בסיס</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', width: '100px' }}>ממוצע נוכחי</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', width: '110px' }}>אחוז הפחתה</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', minWidth: '220px' }}>הערות והערכת מגמה</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', width: '50px' }}>פעולות</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {report.targetBehaviorsProgress.map((row, idx) => (
+                    <tr key={row.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="text"
+                          className="progress-input"
+                          value={row.behaviorName}
+                          onChange={(e) => handleUpdateTargetRow(idx, 'behaviorName', e.target.value)}
+                          placeholder="שם התנהגות"
+                          disabled={isLocked}
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="progress-input"
+                          style={{ textAlign: 'center' }}
+                          value={row.baselineAverage ?? ''}
+                          onChange={(e) => handleUpdateTargetRow(idx, 'baselineAverage', Number(e.target.value))}
+                          disabled={isLocked}
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="progress-input"
+                          style={{ textAlign: 'center', fontWeight: 'bold' }}
+                          value={row.currentAverage ?? ''}
+                          onChange={(e) => handleUpdateTargetRow(idx, 'currentAverage', Number(e.target.value))}
+                          disabled={isLocked}
+                        />
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            color: (row.reductionPercent || 0) > 0 ? '#16a34a' : '#dc2626'
+                          }}
+                        >
+                          {row.reductionPercent != null ? `${row.reductionPercent}%` : '—'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="text"
+                          className="progress-input"
+                          value={row.statusNotes || ''}
+                          onChange={(e) => handleUpdateTargetRow(idx, 'statusNotes', e.target.value)}
+                          placeholder="תיאור מגמה..."
+                          disabled={isLocked}
+                        />
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTargetRow(row.id)}
+                          disabled={isLocked}
+                          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px' }}
+                          title="מחק שורה"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Section 4: Replacement Behaviors Acquisition Table */}
-      <div className="form-section">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <div>
-            <h2 className="section-title" style={{ margin: 0 }}>רכישת מיומנויות והתנהגויות חלופיות</h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-              מעקב אחר עצמאות בשימוש במיומנות החדשה שנלמדה
-            </p>
+      <div className="progress-card">
+        <div className="progress-card-header">
+          <div className="progress-card-title-wrap">
+            <span className="progress-section-badge">4</span>
+            <div>
+              <h2 className="progress-card-title">רכישת מיומנויות והתנהגויות חלופיות</h2>
+              <p className="progress-card-subtitle">מעקב אחר עצמאות בשימוש במיומנות החדשה שנלמדה</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={handleAddReplacementRow}
             disabled={isLocked}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              color: '#16a34a',
-              padding: '6px 12px',
-              borderRadius: '8px',
-              fontSize: '0.825rem',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
+            className="btn-progress-secondary"
+            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
           >
             <Plus size={14} />
             <span>הוסף מיומנות חלופית</span>
           </button>
         </div>
 
-        {(!report.replacementBehaviorsAcquisition || report.replacementBehaviorsAcquisition.length === 0) ? (
-          <div style={{ textAlign: 'center', padding: '24px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
-              טרם הוגדרו נתוני מיומנויות חלופיות. לחצו על "הוסף מיומנות חלופית" או שאבו מתוכנית ההתערבות.
-            </p>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '10px', textAlign: 'right', minWidth: '180px' }}>מיומנות חלופית</th>
-                  <th style={{ padding: '10px', textAlign: 'right', width: '180px' }}>רמת שליטה ועצמאות</th>
-                  <th style={{ padding: '10px', textAlign: 'right', minWidth: '220px' }}>הערות התקדמות</th>
-                  <th style={{ padding: '10px', textAlign: 'center', width: '50px' }}>פעולות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.replacementBehaviorsAcquisition.map((row, idx) => (
-                  <tr key={row.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '8px' }}>
-                      <input
-                        type="text"
-                        className="text-input"
-                        value={row.skillName}
-                        onChange={(e) => handleUpdateReplacementRow(idx, 'skillName', e.target.value)}
-                        placeholder="שם המיומנות החלופית"
-                        disabled={isLocked}
-                      />
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <select
-                        className="text-input"
-                        value={row.masteryLevel || 'בתהליך למידה'}
-                        onChange={(e) => handleUpdateReplacementRow(idx, 'masteryLevel', e.target.value)}
-                        disabled={isLocked}
-                      >
-                        <option value="בתהליך למידה ראשוני">בתהליך למידה ראשוני</option>
-                        <option value="הדגמה וליווי מלא">הדגמה וליווי מלא</option>
-                        <option value="תיווך חלקי">תיווך חלקי</option>
-                        <option value="תזכורת מילולית">תזכורת מילולית</option>
-                        <option value="עצמאי לחלוטין">עצמאי לחלוטין</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <input
-                        type="text"
-                        className="text-input"
-                        value={row.acquisitionNotes || ''}
-                        onChange={(e) => handleUpdateReplacementRow(idx, 'acquisitionNotes', e.target.value)}
-                        placeholder="הערות ודוגמאות..."
-                        disabled={isLocked}
-                      />
-                    </td>
-                    <td style={{ padding: '8px', textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveReplacementRow(row.id)}
-                        disabled={isLocked}
-                        style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-                        title="מחק שורה"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
+        <div className="progress-card-body">
+          {(!report.replacementBehaviorsAcquisition || report.replacementBehaviorsAcquisition.length === 0) ? (
+            <div style={{ textAlign: 'center', padding: '24px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
+                טרם הוגדרו נתוני מיומנויות חלופיות. לחצו על "הוסף מיומנות חלופית" או שאבו מתוכנית ההתערבות.
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', minWidth: '180px' }}>מיומנות חלופית</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', width: '180px' }}>רמת שליטה ועצמאות</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', minWidth: '220px' }}>הערות התקדמות</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', width: '50px' }}>פעולות</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {report.replacementBehaviorsAcquisition.map((row, idx) => (
+                    <tr key={row.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="text"
+                          className="progress-input"
+                          value={row.skillName}
+                          onChange={(e) => handleUpdateReplacementRow(idx, 'skillName', e.target.value)}
+                          placeholder="שם המיומנות החלופית"
+                          disabled={isLocked}
+                        />
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <select
+                          className="progress-input"
+                          value={row.masteryLevel || 'בתהליך למידה'}
+                          onChange={(e) => handleUpdateReplacementRow(idx, 'masteryLevel', e.target.value)}
+                          disabled={isLocked}
+                        >
+                          <option value="בתהליך למידה ראשוני">בתהליך למידה ראשוני</option>
+                          <option value="הדגמה וליווי מלא">הדגמה וליווי מלא</option>
+                          <option value="תיווך חלקי">תיווך חלקי</option>
+                          <option value="תזכורת מילולית">תזכורת מילולית</option>
+                          <option value="עצמאי לחלוטין">עצמאי לחלוטין</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <input
+                          type="text"
+                          className="progress-input"
+                          value={row.acquisitionNotes || ''}
+                          onChange={(e) => handleUpdateReplacementRow(idx, 'acquisitionNotes', e.target.value)}
+                          placeholder="הערות ודוגמאות..."
+                          disabled={isLocked}
+                        />
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReplacementRow(row.id)}
+                          disabled={isLocked}
+                          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px' }}
+                          title="מחק שורה"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Section 5: Advanced Visual Analytics (Data-Driven, Conditional) */}
-      <div className="form-section">
-        <h2 className="section-title">ניתוחים חזותיים מתקדמים</h2>
-        <p style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: '#64748b' }}>
-          הגרפים והטבלאות מוצגים באופן דינמי אך ורק על סמך נתוני התצפית והמעקב שהוזנו בפועל
-        </p>
-
-        {/* 1. מפת פיזור שעתית */}
-        <BehaviorHourlyHeatmapChart
-          trackingData={ongoingTracking}
-          observations={behaviorObservations}
-        />
-
-        {/* 2. טבלת רצף תנאי מקדים, התנהגות ותוצאה סביבתית */}
-        <BehaviorAbcSequenceTable
-          observations={behaviorObservations}
-        />
-
-        {/* 3. גרף משך זמן ועוצמת אירוע */}
-        <BehaviorDurationIntensityChart
-          trackingData={ongoingTracking}
-          observations={behaviorObservations}
-        />
-
-        {/* 4. עקומת למידה מצטברת של מיומנות חלופית */}
-        <BehaviorReplacementLearningCurveChart
-          trackingData={ongoingTracking}
-        />
-
-        {/* 5. טבלת נאמנות יישום של צוות בית הספר */}
-        <BehaviorStaffFidelityMeter
-          trackingData={ongoingTracking}
-        />
-
-        {/* 6. גרף ניטור התקדמות כפול (קו בסיס מול התערבות) */}
-        {ongoingTracking.length > 0 && (
-          <div style={{ marginTop: '16px' }}>
-            <ProgressMonitoringDualLineChart
-              baselinePoints={baselineData}
-              ongoingPoints={ongoingTracking}
-            />
+      <div className="progress-card">
+        <div className="progress-card-header">
+          <div className="progress-card-title-wrap">
+            <span className="progress-section-badge">5</span>
+            <div>
+              <h2 className="progress-card-title">ניתוחים חזותיים מתקדמים</h2>
+              <p className="progress-card-subtitle">
+                גרפים וטבלאות דינמיים המבוססים על נתוני התצפית והמעקב השוטף
+              </p>
+            </div>
           </div>
-        )}
+        </div>
+
+        <div className="progress-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* 1. מפת פיזור שעתית */}
+          <BehaviorHourlyHeatmapChart
+            trackingData={ongoingTracking}
+            observations={behaviorObservations}
+          />
+
+          {/* 2. טבלת רצף תנאי מקדים, התנהגות ותוצאה סביבתית */}
+          <BehaviorAbcSequenceTable
+            observations={behaviorObservations}
+          />
+
+          {/* 3. גרף משך זמן ועוצמת אירוע */}
+          <BehaviorDurationIntensityChart
+            trackingData={ongoingTracking}
+            observations={behaviorObservations}
+          />
+
+          {/* 4. עקומת למידה מצטברת של מיומנות חלופית */}
+          <BehaviorReplacementLearningCurveChart
+            trackingData={ongoingTracking}
+          />
+
+          {/* 5. טבלת נאמנות יישום של צוות בית הספר */}
+          <BehaviorStaffFidelityMeter
+            trackingData={ongoingTracking}
+          />
+
+          {/* 6. גרף ניטור התקדמות כפול (קו בסיס מול התערבות) */}
+          {ongoingTracking.length > 0 && (
+            <div style={{ marginTop: '8px' }}>
+              <ProgressMonitoringDualLineChart
+                baselinePoints={baselineData}
+                ongoingPoints={ongoingTracking}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Section 6: Environmental Adjustments & Staff Fidelity Notes */}
-      <div className="form-section">
-        <h2 className="section-title">התאמות סביבתיות ונהלי צוות</h2>
-        <textarea
-          className="text-area"
-          rows={3}
-          value={report.environmentalAdjustments || ''}
-          onChange={(e) => setReport((prev) => ({ ...prev, environmentalAdjustments: e.target.value }))}
-          placeholder="תאר/י שינויים שנערכו בסביבת הלמידה, לוח זמנים מותאם, הטרמות ושינויי עומס..."
-          disabled={isLocked}
-        />
+      <div className="progress-card">
+        <div className="progress-card-header">
+          <div className="progress-card-title-wrap">
+            <span className="progress-section-badge">6</span>
+            <div>
+              <h2 className="progress-card-title">התאמות סביבתיות ונהלי צוות</h2>
+              <p className="progress-card-subtitle">שינויים שנערכו בסביבת הלמידה, התאמות מערכת שעות והטרמות</p>
+            </div>
+          </div>
+        </div>
+        <div className="progress-card-body">
+          <label className="progress-field-label">תיאור ההתאמות הסביבתיות והשפעתן:</label>
+          <textarea
+            className="progress-textarea"
+            rows={3}
+            value={report.environmentalAdjustments || ''}
+            onChange={(e) => setReport((prev) => ({ ...prev, environmentalAdjustments: e.target.value }))}
+            placeholder="תאר/י שינויים שנערכו בסביבת הלמידה, לוח זמנים מותאם, הטרמות ושינויי עומס..."
+            disabled={isLocked}
+          />
+        </div>
       </div>
 
       {/* Section 7: Staff Fidelity & Protocol Observations */}
-      <div className="form-section">
-        <h2 className="section-title">נאמנות יישום ועקביות הצוות</h2>
-        <textarea
-          className="text-area"
-          rows={3}
-          value={report.staffFidelityObservations || ''}
-          onChange={(e) => setReport((prev) => ({ ...prev, staffFidelityObservations: e.target.value }))}
-          placeholder="תאר/י את מידת העקביות של צוות הכיתה, שילוב סייעות, דיוק מתן החיזוקים והאתגרים שעלו..."
-          disabled={isLocked}
-        />
+      <div className="progress-card">
+        <div className="progress-card-header">
+          <div className="progress-card-title-wrap">
+            <span className="progress-section-badge">7</span>
+            <div>
+              <h2 className="progress-card-title">נאמנות יישום ועקביות הצוות</h2>
+              <p className="progress-card-subtitle">עקביות צוות ההוראה והסייעות ביישום עקרונות תוכנית ההתערבות</p>
+            </div>
+          </div>
+        </div>
+        <div className="progress-card-body">
+          <label className="progress-field-label">תצפיות ומשוב על יישום הצוות:</label>
+          <textarea
+            className="progress-textarea"
+            rows={3}
+            value={report.staffFidelityObservations || ''}
+            onChange={(e) => setReport((prev) => ({ ...prev, staffFidelityObservations: e.target.value }))}
+            placeholder="תאר/י את מידת העקביות של צוות הכיתה, שילוב סייעות, דיוק מתן החיזוקים והאתגרים שעלו..."
+            disabled={isLocked}
+          />
+        </div>
       </div>
 
       {/* Section 8: Future Recommendations */}
-      <div className="form-section">
-        <h2 className="section-title">המלצות להמשך תוכנית ההתערבות וישיבות רב-מקצועיות</h2>
-        <textarea
-          className="text-area"
-          rows={4}
-          value={report.recommendations || ''}
-          onChange={(e) => setReport((prev) => ({ ...prev, recommendations: e.target.value }))}
-          placeholder="המלצות פרקטיות: האם להמשיך בתוכנית כפי שהיא, להפחית תדירות חיזוקים, לעדכן יעדים בוועדת אפיון וזכאות..."
-          disabled={isLocked}
-        />
+      <div className="progress-card">
+        <div className="progress-card-header">
+          <div className="progress-card-title-wrap">
+            <span className="progress-section-badge">8</span>
+            <div>
+              <h2 className="progress-card-title">המלצות להמשך תוכנית ההתערבות וישיבות רב-מקצועיות</h2>
+              <p className="progress-card-subtitle">יעדים להמשך, דיוק מענים, והמלצות לקראת ועדות אפיון וזכאות</p>
+            </div>
+          </div>
+        </div>
+        <div className="progress-card-body">
+          <label className="progress-field-label">פירוט המלצות פרקטיות ושלבי המשך:</label>
+          <textarea
+            className="progress-textarea"
+            rows={4}
+            value={report.recommendations || ''}
+            onChange={(e) => setReport((prev) => ({ ...prev, recommendations: e.target.value }))}
+            placeholder="המלצות פרקטיות: האם להמשיך בתוכנית כפי שהיא, להפחית תדירות חיזוקים, לעדכן יעדים בוועדת אפיון וזכאות..."
+            disabled={isLocked}
+          />
+        </div>
       </div>
 
       {/* Bottom Sticky Action Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: '#ffffff',
-          borderTop: '1px solid #e2e8f0',
-          padding: '16px 20px',
-          borderRadius: '12px',
-          boxShadow: '0 -2px 8px rgba(0,0,0,0.04)',
-          marginTop: '24px'
-        }}
-      >
-        <button
-          type="button"
-          onClick={handleSave}
-          className="plan-action-btn primary"
-          disabled={isLocked}
-          style={{ minWidth: '140px' }}
-        >
-          <Save size={16} />
-          <span>שמור דוח</span>
-        </button>
+      <div className="progress-bottom-bar">
+        <div className="progress-bottom-group">
+          <button
+            type="button"
+            onClick={handleSave}
+            className="btn-progress-primary"
+            disabled={isLocked}
+          >
+            <Save size={18} />
+            <span>שמור דוח</span>
+          </button>
+        </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button type="button" onClick={handlePrint} className="plan-action-btn">
+        <div className="progress-bottom-group">
+          <button type="button" onClick={handlePrint} className="btn-progress-secondary">
             <Printer size={16} />
             <span>הדפס</span>
           </button>
-          <button type="button" onClick={handleExportWord} className="plan-action-btn">
+          <button type="button" onClick={handleExportWord} className="btn-progress-word">
             <FileDown size={16} />
             <span>ייצא לוורד</span>
+          </button>
+          <button type="button" onClick={() => setShowEmailModal(true)} className="btn-progress-secondary">
+            <Mail size={16} />
+            <span>שלח במייל</span>
+          </button>
+          <button type="button" onClick={() => setShowFullDocPreview(true)} className="btn-progress-secondary">
+            <FileText size={16} />
+            <span>תצוגת מסמך</span>
           </button>
         </div>
       </div>
@@ -1111,18 +1091,18 @@ export default function BehaviorProgressReportForm({
                 background: '#f8fafc'
               }}
             >
-              <button type="button" onClick={handlePrint} className="plan-action-btn">
+              <button type="button" onClick={handlePrint} className="btn-progress-secondary">
                 <Printer size={16} />
                 <span>הדפס</span>
               </button>
-              <button type="button" onClick={handleExportWord} className="plan-action-btn">
+              <button type="button" onClick={handleExportWord} className="btn-progress-word">
                 <FileDown size={16} />
                 <span>ייצא לוורד</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowFullDocPreview(false)}
-                className="plan-action-btn secondary"
+                className="btn-progress-secondary"
               >
                 סגור
               </button>

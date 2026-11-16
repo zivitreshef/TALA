@@ -391,6 +391,19 @@ describe('BehaviorProgressReportForm Component UI', () => {
     expect(html).toContain('גרף משך זמן ועוצמת אירוע');
     expect(html).toContain('עקומת למידה מצטברת של מיומנות חלופית');
     expect(html).toContain('טבלת נאמנות יישום של צוות בית הספר');
+    // Verify enterprise design system classes and card architecture
+    expect(html).toContain('progress-report-container');
+    expect(html).toContain('progress-form-header');
+    expect(html).toContain('progress-card');
+    expect(html).toContain('progress-card-header');
+    expect(html).toContain('progress-card-body');
+    expect(html).toContain('progress-section-badge');
+    expect(html).toContain('progress-textarea');
+    expect(html).toContain('progress-input');
+    expect(html).toContain('progress-bottom-bar');
+    expect(html).toContain('btn-progress-primary');
+    expect(html).toContain('btn-progress-secondary');
+    expect(html).toContain('btn-progress-word');
   });
 
   it('omits conditional charts when student has zero tracking points or observations', () => {
