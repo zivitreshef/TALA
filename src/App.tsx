@@ -3570,6 +3570,7 @@ export default function App() {
                     student={selectedStudent}
                     allStudents={baseStudentsForView}
                     currentUser={effectiveCurrentUser}
+                    userPreferences={userPreferences}
                     onSaveStudentPlan={handleSaveStudentPlan}
                     onDraftStateChange={setUnsavedDraftState}
                     onGoBack={() => setSelectedStudentId(null)}
@@ -3582,6 +3583,7 @@ export default function App() {
                     student={selectedStudent}
                     allStudents={baseStudentsForView}
                     currentUser={effectiveCurrentUser}
+                    userPreferences={userPreferences}
                     onSaveStudentPlan={handleSaveStudentPlan}
                     onDraftStateChange={setUnsavedDraftState}
                     onGoBack={() => setSelectedStudentId(null)}
@@ -3594,6 +3596,7 @@ export default function App() {
                     student={selectedStudent}
                     allStudents={baseStudentsForView}
                     currentUser={effectiveCurrentUser}
+                    userPreferences={userPreferences}
                     onSaveStudentPlan={handleSaveStudentPlan}
                     onDraftStateChange={setUnsavedDraftState}
                     onGoBack={() => setSelectedStudentId(null)}
