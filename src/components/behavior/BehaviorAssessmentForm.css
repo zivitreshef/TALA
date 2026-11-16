@@ -19,13 +19,14 @@
 /* Header & Action Bar */
 .behavior-form-header {
   background: var(--bg-card, #ffffff);
-  border: 1px solid var(--border, #d3dff0);
+  border: 1.5px solid var(--border, #d3dff0);
+  border-top: 3px solid #8b6fc0;
   border-radius: 12px;
-  padding: 1.25rem 1.5rem;
+  padding: 10px 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(36, 52, 77, 0.05);
+  box-shadow: 0 4px 14px rgba(43, 76, 115, 0.07);
   flex-wrap: wrap;
   gap: 1rem;
 }
@@ -40,30 +41,34 @@
   width: 44px;
   height: 44px;
   border-radius: 10px;
-  background: var(--primary-light, #eaf3fc);
-  color: var(--primary, #4a88c7);
+  background: #f5f3ff;
+  color: #7c3aed;
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid #ddd6fe;
 }
 
 .behavior-form-heading {
   margin: 0;
   font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--text-main, #24344d);
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.01em;
 }
 
 .behavior-form-subheading {
-  margin: 0.2rem 0 0;
-  font-size: 0.875rem;
-  color: var(--text-muted, #5c6f8c);
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .behavior-form-actions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .btn-behavior-action {

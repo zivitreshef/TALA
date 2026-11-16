@@ -13,16 +13,11 @@ import {
   Mail,
   FileText,
   RefreshCw,
+  TrendingUp,
   ChevronDown,
   Eye,
-  EyeOff,
-  Users,
-  BookOpen,
-  ClipboardList,
-  ChevronRight
+  EyeOff
 } from 'lucide-react';
-import { DEFAULT_SCHOOL_YEAR } from '../../domain/yearReport';
-import { SCHOOL_YEARS_LIST } from '../../domain/schoolYearRollover';
 import {
   BehaviorProgressPeriod,
   BehaviorProgressReport,
@@ -69,7 +64,6 @@ export interface BehaviorProgressReportFormProps {
   onSaveStudentPlan: (updatedStudent: StudentProfile) => void;
   onGoBack?: () => void;
   onDraftStateChange?: (state: { isDirty: boolean; draftData: any }) => void;
-  onNavigateDocumentType?: (docType: 'behavior_assessment' | 'behavior_plan' | 'behavior_progress_report' | 'pedagogical_plan') => void;
 }
 
 export default function BehaviorProgressReportForm({
@@ -78,15 +72,12 @@ export default function BehaviorProgressReportForm({
   currentUser,
   onSaveStudentPlan,
   onGoBack,
-  onDraftStateChange,
-  onNavigateDocumentType
+  onDraftStateChange
 }: BehaviorProgressReportFormProps) {
   // Period Selection: mid_year, end_year, or periodic
   const [selectedPeriod, setSelectedPeriod] = useState<BehaviorProgressPeriod>(() => {
     return student.behaviorProgressReport?.period || 'mid_year';
   });
-
-  const [isDirty, setIsDirty] = useState<boolean>(false);
 
   // Initialize report from student or clean template
   const [report, setReport] = useState<BehaviorProgressReport>(() => {
@@ -365,7 +356,6 @@ export default function BehaviorProgressReportForm({
     };
 
     onSaveStudentPlan(updatedStudent);
-    setIsDirty(false);
     setSaveToast('דוח ההתקדמות נשמר בהצלחה');
     setTimeout(() => setSaveToast(''), 3000);
   };
@@ -493,34 +483,35 @@ export default function BehaviorProgressReportForm({
         </div>
       )}
 
-      {/* 1. Sticky Action Bar - Exactly matching Picture 1 */}
-      <div className="sticky-action-bar plan-form-header">
-        <div className="action-bar-right">
-          {onGoBack && (
-            <button
-              type="button"
-              className="btn-print-doc btn-home-nav-form btn-behavior-close"
-              onClick={onGoBack}
-              title="חזרה לניהול תלמידים"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                color: '#1e293b',
-                fontWeight: 700,
-                cursor: 'pointer',
-                borderRadius: '8px',
-                padding: '6px 12px'
-              }}
+      {/* Top Header Card - Exactly matching Image 1 & Teacher Workspace */}
+      <header className="plan-form-header">
+        <div className="plan-form-title-group">
+          <div className="plan-form-icon-badge" style={{ background: '#eff6ff', color: '#2563eb' }}>
+            <TrendingUp size={24} />
+          </div>
+          <div>
+            <h1 className="plan-form-heading">דוח סיכום והערכת התקדמות התנהגותית</h1>
+            <p className="plan-form-subheading">
+              תלמיד: <strong>{studentDetails.name || student.name || 'ללא שם'}</strong>
+              {studentDetails.educationalFramework || student.educationalFramework
+                ? ` | ${studentDetails.educationalFramework || student.educationalFramework}`
+                : ''}
+            </p>
+          </div>
+        </div>
+
+        <div className="plan-form-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {saveToast && (
+            <span
+              className="save-toast-badge"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
             >
-              <Users size={16} style={{ color: '#2563eb' }} />
-              <span>ניהול תלמידים</span>
-            </button>
+              <Check size={14} />
+              <span>{saveToast}</span>
+            </span>
           )}
 
-          {/* Yellow Lock / Unlock Button (matching Picture 1) */}
+          {/* Yellow Lock / Unlock Button (matching Image 1) */}
           <div className="report-lock-toggle-wrapper">
             <button
               type="button"
@@ -543,7 +534,7 @@ export default function BehaviorProgressReportForm({
             </div>
           </div>
 
-          {/* Primary Save Button (matching Picture 1) */}
+          {/* Primary Save Button (matching Image 1) */}
           <button
             type="button"
             className="btn-save-progress"
@@ -555,31 +546,7 @@ export default function BehaviorProgressReportForm({
             <span>שמור התקדמות</span>
           </button>
 
-          {saveToast && (
-            <span
-              className="save-toast-badge"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
-            >
-              <Check size={14} />
-              <span>{saveToast}</span>
-            </span>
-          )}
-
-          {isDirty && !saveToast && (
-            <span className="last-saved-hint" style={{ color: '#d97706' }}>
-              שינויים טרם נשמרו
-            </span>
-          )}
-
-          {!saveToast && !isDirty && (report.updatedAt || (student as any).updatedAt) && (
-            <span className="last-saved-hint">
-              שמירה אחרונה: {new Date(report.updatedAt || (student as any).updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-        </div>
-
-        <div className="action-bar-left">
-          {/* Full Document Preview Toggle (matching Picture 1) */}
+          {/* Full Document Preview Toggle (matching Image 1) */}
           <button
             type="button"
             className="btn-preview-doc"
@@ -587,10 +554,10 @@ export default function BehaviorProgressReportForm({
             title={showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}
           >
             <FileText size={16} />
-            <span>{showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}</span>
+            <span>תצוגת מסמך מלאה</span>
           </button>
 
-          {/* Unified Export & Print Dropdown (matching Picture 1) */}
+          {/* Unified Export & Print Dropdown (matching Image 1) */}
           <div className="export-dropdown-wrapper" ref={exportDropdownRef}>
             <button
               type="button"
@@ -671,115 +638,20 @@ export default function BehaviorProgressReportForm({
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* 2. Master Document Mode Tabs - Exactly matching Picture 1 */}
-      <div className="workplan-mode-tabs-container" role="tablist" aria-label="מצב מסמך ראשי">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={false}
-          className="workplan-mode-tab"
-          onClick={() => onNavigateDocumentType ? onNavigateDocumentType('behavior_plan') : undefined}
-        >
-          <BookOpen size={17} />
-          <span>תוכנית עבודה שנתית</span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={true}
-          className="workplan-mode-tab reports-mode active"
-        >
-          <ClipboardList size={17} />
-          <span>דוחות תקופתיים ומעקב</span>
-        </button>
-      </div>
-
-      {/* 3. Sub-Navigation Bar - Exactly matching Picture 1 */}
-      <nav className="form-section-nav-bar" aria-label="סוגי דוחות תקופתיים ומעקב">
-        <button
-          type="button"
-          className="section-nav-pill purple-report"
-          onClick={() => onNavigateDocumentType ? onNavigateDocumentType('behavior_assessment') : undefined}
-          title="דוח הערכת תפקוד התנהגותי"
-        >
-          <FileText size={15} />
-          <span>דוח הערכת מחצית ושנה</span>
-        </button>
-
-        <button
-          type="button"
-          className="section-nav-pill purple-report active"
-          title="דוח התקדמות תקופתי"
-        >
-          <ClipboardList size={15} />
-          <span>דו"ח מצב תפקודי</span>
-        </button>
-
-        {onNavigateDocumentType && (
-          <button
-            type="button"
-            className="section-nav-pill"
-            style={{ marginRight: 'auto', background: '#ffffff' }}
-            onClick={() => onNavigateDocumentType('behavior_plan')}
-          >
-            <ChevronRight size={14} />
-            <span>חזרה לתוכנית עבודה שנתית</span>
-          </button>
-        )}
-      </nav>
-
-      {/* 4. Signature Blue Document Header Banner - Exactly matching Picture 1 */}
-      <div className="document-title-card">
-        <div className="doc-title-top-row">
-          <div className="inline-meta-field banner-slot-date">
-            <label htmlFor="behavior-progress-banner-date">תאריך:</label>
-            <input
-              id="behavior-progress-banner-date"
-              type="text"
-              value={report.reportDate || (student as any).date || '14.11.2026'}
-              onChange={(e) => {
-                setReport((prev) => ({ ...prev, reportDate: e.target.value }));
-                setIsDirty(true);
-              }}
-              placeholder="DD.MM.YYYY"
-              maxLength={10}
-            />
-          </div>
-
-          <div className="doc-banner-center-brand">
-            <img src="./tala-logo.png" alt="TALA Emblem" className="doc-banner-logo" />
-            <h2 className="main-ecological-heading">
-              {`תוכנית עבודה שנתית – ${studentDetails.educationalFramework || student.educationalFramework || (typeof student.planType === 'string' && student.planType.includes('גן') ? 'תוכנית אקולוגית לילדי הגן' : 'תוכנית לתלמיד ביה"ס')}`}
-            </h2>
-          </div>
-
-          <div className="inline-meta-field banner-slot-controls">
-            <label>שנת לימודים:</label>
-            <select
-              value={student.schoolYear || DEFAULT_SCHOOL_YEAR}
-              onChange={(e) => {
-                const nextYear = e.target.value;
-                onSaveStudentPlan({ ...student, schoolYear: nextYear });
-                setIsDirty(true);
-              }}
-              title="בחר שנת לימודים להצגה או ליצירת דו״ח חדש לתלמיד/ה עבור שנה זו"
+          {/* Close Button (matching Image 1) */}
+          {onGoBack && (
+            <button
+              type="button"
+              className="btn-export-dropdown"
+              onClick={onGoBack}
+              title="סגירה"
             >
-              {!(SCHOOL_YEARS_LIST as readonly string[]).includes(student.schoolYear || DEFAULT_SCHOOL_YEAR) && (
-                <option value={student.schoolYear}>{student.schoolYear}</option>
-              )}
-              {SCHOOL_YEARS_LIST.map((yr) => (
-                <option key={yr} value={yr} style={{ color: '#24344d', background: '#ffffff' }}>
-                  {yr} • קיים דו"ח
-                </option>
-              ))}
-            </select>
-          </div>
+              <span>סגירה</span>
+            </button>
+          )}
         </div>
-      </div>
+      </header>
 
       {/* Period Selection Bar */}
       <div className="progress-period-bar">

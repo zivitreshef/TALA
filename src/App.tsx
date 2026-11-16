@@ -3529,15 +3529,41 @@ export default function App() {
         <main className="tala-main-form-area">
           {selectedStudent ? (
             <ErrorBoundary key={selectedStudent.id}>
-              {/* Mobile Navigation Header for Mobile Phones */}
+              {/* Document Selector Bar (Visible across all viewports) */}
               <div
-                className="mobile-student-top-nav student-document-selector-bar"
+                className="student-document-selector-bar"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  background: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border, #d3dff0)',
+                  borderRadius: '12px',
+                  padding: '10px 16px',
+                  marginBottom: '16px',
+                  boxShadow: '0 1px 4px rgba(36, 52, 77, 0.05)'
+                }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     className="btn-mobile-back-roster"
                     onClick={handleNavigateBackToStudents}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: 'var(--bg-warm-subtle, #eef3fb)',
+                      border: '1px solid var(--border, #d3dff0)',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: 'var(--text-main, #24344d)',
+                      cursor: 'pointer'
+                    }}
                     title="חזרה לרשימת התלמידים"
                   >
                     <ArrowRight size={16} />
@@ -3681,7 +3707,6 @@ export default function App() {
                     onSaveStudentPlan={handleSaveStudentPlan}
                     onDraftStateChange={setUnsavedDraftState}
                     onGoBack={() => setSelectedStudentId(null)}
-                    onNavigateDocumentType={(docType) => setActiveStudentDocumentType(docType)}
                   />
                 </ErrorBoundary>
               ) : activeStudentDocumentType === 'behavior_plan' ? (
@@ -3693,7 +3718,6 @@ export default function App() {
                     onSaveStudentPlan={handleSaveStudentPlan}
                     onDraftStateChange={setUnsavedDraftState}
                     onGoBack={() => setSelectedStudentId(null)}
-                    onNavigateDocumentType={(docType) => setActiveStudentDocumentType(docType)}
                   />
                 </ErrorBoundary>
               ) : activeStudentDocumentType === 'behavior_progress_report' ? (
@@ -3705,7 +3729,6 @@ export default function App() {
                     onSaveStudentPlan={handleSaveStudentPlan}
                     onDraftStateChange={setUnsavedDraftState}
                     onGoBack={() => setSelectedStudentId(null)}
-                    onNavigateDocumentType={(docType) => setActiveStudentDocumentType(docType)}
                   />
                 </ErrorBoundary>
               ) : (

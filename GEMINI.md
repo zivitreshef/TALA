@@ -39,6 +39,11 @@ For ANY feature, enhancement, or modification in TALA, you MUST proactively desi
      - Flawless Hebrew RTL layout and typography, clean visual hierarchy, and harmonious pastel/slate palettes.
      - Cohesive transitions, clear empty states, accessible contrast, and zero visual bugs across desktop and mobile.
 
+5. **Reuse Existing Functionality First (Zero Reinvention)**
+   - Unless explicitly requested otherwise, always search for, use, and reuse existing methods, components, services, and UI functionality before creating new ones or restructuring working code.
+   - Do NOT replace or reinvent working domain logic, document types, navigation structures, or utility functions (e.g. existing printing, PDF export, Word export, document selector bars, or modal handlers).
+   - When asked to align visual look and feel, focus strictly on CSS styling (themes, colors, borders, typography, shadows, and paddings) without modifying underlying functional components or component hierarchies.
+
 # Mandatory Upgrade & Deployment Protocol (TALA)
 
 For ANY enhancement or bug fix, ALWAYS strictly follow this 7-step lifecycle:

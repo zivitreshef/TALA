@@ -16,14 +16,8 @@ import {
   EyeOff,
   Check,
   ChevronDown,
-  Mail,
-  Users,
-  BookOpen,
-  ClipboardList,
-  ChevronRight
+  Mail
 } from 'lucide-react';
-import { DEFAULT_SCHOOL_YEAR } from '../../domain/yearReport';
-import { SCHOOL_YEARS_LIST } from '../../domain/schoolYearRollover';
 import {
   BehaviorAssessmentReport,
   BehaviorFunction,
@@ -79,7 +73,6 @@ export interface BehaviorAssessmentFormProps {
   onSaveStudentPlan: (updatedStudent: StudentProfile) => void;
   onGoBack?: () => void;
   onDraftStateChange?: (state: { isDirty: boolean; draftData: any }) => void;
-  onNavigateDocumentType?: (docType: 'behavior_assessment' | 'behavior_plan' | 'behavior_progress_report' | 'pedagogical_plan') => void;
 }
 
 export default function BehaviorAssessmentForm({
@@ -88,8 +81,7 @@ export default function BehaviorAssessmentForm({
   currentUser,
   onSaveStudentPlan,
   onGoBack,
-  onDraftStateChange,
-  onNavigateDocumentType
+  onDraftStateChange
 }: BehaviorAssessmentFormProps) {
   // Local state initialized from student's behaviorAssessment or clean template
   const [report, setReport] = useState<BehaviorAssessmentReport>(() => {
@@ -522,35 +514,39 @@ export default function BehaviorAssessmentForm({
   };
 
   return (
-    <div className="workplan-form-container behavior-form-container" dir="rtl">
-      {/* 1. Sticky Top Action Bar - Exactly matching Picture 1 */}
-      <div className="sticky-action-bar">
-        <div className="action-bar-right">
-          {onGoBack && (
-            <button
-              type="button"
-              className="btn-print-doc btn-home-nav-form btn-behavior-close"
-              onClick={onGoBack}
-              title="חזרה לניהול תלמידים"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                color: '#1e293b',
-                fontWeight: 700,
-                cursor: 'pointer',
-                borderRadius: '8px',
-                padding: '6px 12px'
-              }}
+    <div className="behavior-form-container" dir="rtl">
+      {/* Top Header Card */}
+      <header className="behavior-form-header">
+        <div className="behavior-form-title-group">
+          <div className="behavior-form-icon-badge">
+            <FileText size={24} />
+          </div>
+          <div>
+            <h1 className="behavior-form-heading">הערכת תפקוד התנהגותי</h1>
+            <p className="behavior-form-subheading">
+              תלמיד: <strong>{student.name || 'ללא שם'}</strong>
+              {student.educationalFramework ? ` | ${student.educationalFramework}` : ''}
+            </p>
+          </div>
+        </div>
+
+        <div className="behavior-form-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {saveSuccessNotice && (
+            <span
+              className="save-toast-badge"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
             >
-              <Users size={16} style={{ color: '#2563eb' }} />
-              <span>ניהול תלמידים</span>
-            </button>
+              <Check size={14} />
+              <span>נשמר בהצלחה</span>
+            </span>
+          )}
+          {isDirty && !saveSuccessNotice && (
+            <span className="last-saved-hint" style={{ color: '#d97706' }}>
+              שינויים טרם נשמרו
+            </span>
           )}
 
-          {/* Yellow Lock / Unlock Button */}
+          {/* Yellow Lock / Unlock Button (matching teacher workspace) */}
           <div className="report-lock-toggle-wrapper">
             <button
               type="button"
@@ -583,7 +579,7 @@ export default function BehaviorAssessmentForm({
             </div>
           </div>
 
-          {/* Primary Save Button */}
+          {/* Primary Save Button (matching teacher workspace) */}
           <button
             type="button"
             className="btn-save-progress"
@@ -594,30 +590,6 @@ export default function BehaviorAssessmentForm({
             <span>שמור התקדמות</span>
           </button>
 
-          {saveSuccessNotice && (
-            <span
-              className="save-toast-badge"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '6px 12px' }}
-            >
-              <Check size={14} />
-              <span>נשמר בהצלחה</span>
-            </span>
-          )}
-
-          {isDirty && !saveSuccessNotice && (
-            <span className="last-saved-hint" style={{ color: '#d97706' }}>
-              שינויים טרם נשמרו
-            </span>
-          )}
-
-          {!saveSuccessNotice && !isDirty && (report.updatedAt || (student as any).updatedAt) && (
-            <span className="last-saved-hint">
-              שמירה אחרונה: {new Date(report.updatedAt || (student as any).updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-        </div>
-
-        <div className="action-bar-left">
           {/* Full Document Preview Toggle */}
           <button
             type="button"
@@ -629,7 +601,7 @@ export default function BehaviorAssessmentForm({
             <span>{showFullDocPreview ? 'חזרה לתצוגת עריכה' : 'תצוגת מסמך מלאה'}</span>
           </button>
 
-          {/* Unified Export & Print Dropdown */}
+          {/* Unified Export & Print Dropdown (matching teacher workspace) */}
           <div className="export-dropdown-wrapper" ref={exportDropdownRef}>
             <button
               type="button"
@@ -710,112 +682,20 @@ export default function BehaviorAssessmentForm({
               </div>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* 2. Master Document Mode Tabs - Exactly matching Picture 1 */}
-      <div className="workplan-mode-tabs-container" role="tablist" aria-label="מצב מסמך ראשי">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={false}
-          className="workplan-mode-tab"
-          onClick={() => onNavigateDocumentType ? onNavigateDocumentType('behavior_plan') : undefined}
-        >
-          <BookOpen size={17} />
-          <span>תוכנית עבודה שנתית</span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={true}
-          className="workplan-mode-tab reports-mode active"
-        >
-          <ClipboardList size={17} />
-          <span>דוחות תקופתיים ומעקב</span>
-        </button>
-      </div>
-
-      {/* 3. Sub-Navigation Bar - Exactly matching Picture 1 */}
-      <nav className="form-section-nav-bar" aria-label="סוגי דוחות תקופתיים ומעקב">
-        <button
-          type="button"
-          className="section-nav-pill purple-report active"
-          title="הערכת תפקוד התנהגותי"
-        >
-          <FileText size={15} />
-          <span>דוח הערכת מחצית ושנה</span>
-        </button>
-
-        <button
-          type="button"
-          className="section-nav-pill purple-report"
-          onClick={() => onNavigateDocumentType ? onNavigateDocumentType('behavior_progress_report') : undefined}
-          title="דוח התקדמות תקופתי"
-        >
-          <ClipboardList size={15} />
-          <span>דו"ח מצב תפקודי</span>
-        </button>
-
-        {onNavigateDocumentType && (
-          <button
-            type="button"
-            className="section-nav-pill"
-            style={{ marginRight: 'auto', background: '#ffffff' }}
-            onClick={() => onNavigateDocumentType('behavior_plan')}
-          >
-            <ChevronRight size={14} />
-            <span>חזרה לתוכנית עבודה שנתית</span>
-          </button>
-        )}
-      </nav>
-
-      {/* 4. Signature Blue Document Header Banner - Exactly matching Picture 1 */}
-      <div className="document-title-card">
-        <div className="doc-title-top-row">
-          <div className="inline-meta-field banner-slot-date">
-            <label htmlFor="behavior-assessment-banner-date">תאריך:</label>
-            <input
-              id="behavior-assessment-banner-date"
-              type="text"
-              value={report.assessmentDate || (student as any).date || '14.11.2026'}
-              onChange={(e) => handleFieldChange('assessmentDate', e.target.value)}
-              placeholder="DD.MM.YYYY"
-              maxLength={10}
-            />
-          </div>
-
-          <div className="doc-banner-center-brand">
-            <img src="./tala-logo.png" alt="TALA Emblem" className="doc-banner-logo" />
-            <h2 className="main-ecological-heading">
-              {`תוכנית עבודה שנתית – ${studentDetails.educationalFramework || student.educationalFramework || (typeof student.planType === 'string' && student.planType.includes('גן') ? 'תוכנית אקולוגית לילדי הגן' : 'תוכנית לתלמיד ביה"ס')}`}
-            </h2>
-          </div>
-
-          <div className="inline-meta-field banner-slot-controls">
-            <label>שנת לימודים:</label>
-            <select
-              value={student.schoolYear || DEFAULT_SCHOOL_YEAR}
-              onChange={(e) => {
-                const nextYear = e.target.value;
-                onSaveStudentPlan({ ...student, schoolYear: nextYear });
-                setIsDirty(true);
-              }}
-              title="בחר שנת לימודים להצגה או ליצירת דו״ח חדש לתלמיד/ה עבור שנה זו"
+          {/* Close Button */}
+          {onGoBack && (
+            <button
+              type="button"
+              className="btn-export-dropdown"
+              onClick={onGoBack}
+              title="חזרה לרשימת תלמידים"
             >
-              {!(SCHOOL_YEARS_LIST as readonly string[]).includes(student.schoolYear || DEFAULT_SCHOOL_YEAR) && (
-                <option value={student.schoolYear}>{student.schoolYear}</option>
-              )}
-              {SCHOOL_YEARS_LIST.map((yr) => (
-                <option key={yr} value={yr} style={{ color: '#24344d', background: '#ffffff' }}>
-                  {yr} • קיים דו"ח
-                </option>
-              ))}
-            </select>
-          </div>
+              <span>סגירה</span>
+            </button>
+          )}
         </div>
-      </div>
+      </header>
 
       {isReportLocked && (
         <div
