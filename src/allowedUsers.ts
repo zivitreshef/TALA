@@ -1101,3 +1101,83 @@ export function sortUsersList<T extends Partial<AllowedUserRecord>>(
     return 0;
   });
 }
+
+/**
+ * Merges cloud-stored allowed users with an incoming list from an admin client safely.
+ * Prevents:
+ * 1. Accidental omission/deletion of users due to a stale browser session or tab (unless explicitly in deletedEmails).
+ * 2. Unintended downgrade of an annual paid subscriber to trial status by a stale client.
+ * 3. Overwrite of custom user passwords by blank or default passwords from an outdated client.
+ * 4. Erroneous re-locking of accounts that were unlocked in the cloud.
+ */
+export function mergeAdminUsersSafely<T extends { email?: string; [key: string]: any }>(
+  storedUsers: T[],
+  incomingUsers: T[],
+  deletedEmails: string[] = []
+): T[] {
+  const normalizeEmail = (s: any) => String(s || '').trim().toLowerCase();
+  const deletedSet = new Set((deletedEmails || []).map((e) => normalizeEmail(e)));
+
+  const result: T[] = [];
+  const handledEmails = new Set<string>();
+
+  // 1. Process all incoming users from the admin client
+  for (const inc of incomingUsers || []) {
+    if (!inc || typeof inc.email !== 'string') continue;
+    const emailKey = normalizeEmail(inc.email);
+    if (deletedSet.has(emailKey)) continue; // explicitly deleted by admin
+
+    const stored = (storedUsers || []).find((s) => s && normalizeEmail(s.email) === emailKey);
+    if (!stored) {
+      // New user being created by admin
+      result.push(inc);
+      handledEmails.add(emailKey);
+      continue;
+    }
+
+    // Existing user: start with stored, apply incoming modifications
+    const merged: any = { ...stored, ...inc };
+
+    // Protection 1: Prevent stale downgrade from annual paid to trial
+    const storedIsPaid = Boolean((stored as any).subscriptionType === 'annual_paid' || (stored as any).isTrialUser === false);
+    const incomingIsTrial = Boolean((inc as any).isTrialUser === true && (inc as any).subscriptionType !== 'annual_paid');
+    if (storedIsPaid && incomingIsTrial) {
+      merged.isTrialUser = false;
+      merged.subscriptionType = 'annual_paid';
+      merged.paidExpiresAt = (stored as any).paidExpiresAt || (inc as any).paidExpiresAt;
+      merged.upgradedToPaidAt = (stored as any).upgradedToPaidAt || (inc as any).upgradedToPaidAt;
+      merged.trialExpiresAt = null;
+      merged.trialDays = null;
+    }
+
+    // Protection 2: Never overwrite a custom password with default TALA2026 or empty
+    const storedHasCustomPw = Boolean((stored as any).passwordHash && (stored as any).passwordSalt);
+    if (storedHasCustomPw && !(inc as any).passwordHash) {
+      merged.passwordHash = (stored as any).passwordHash;
+      merged.passwordSalt = (stored as any).passwordSalt;
+    }
+
+    // Protection 3: Never re-lock a user who was unlocked in cloud unless incoming explicitly has 5+ failed attempts
+    if ((stored as any).lockedOut === false && (inc as any).lockedOut === true && (Number((inc as any).failedLoginAttempts) || 0) < 5) {
+      merged.lockedOut = false;
+      merged.failedLoginAttempts = 0;
+    }
+
+    result.push(merged);
+    handledEmails.add(emailKey);
+  }
+
+  // 2. Preserve any existing users in stored that were NOT in incoming, unless explicitly deleted
+  for (const stored of storedUsers || []) {
+    if (!stored || typeof stored.email !== 'string') continue;
+    const emailKey = normalizeEmail(stored.email);
+    if (deletedSet.has(emailKey)) continue; // explicitly deleted
+    if (!handledEmails.has(emailKey)) {
+      // Missing from incoming: preserve from stored so stale tab cannot drop users
+      result.push(stored);
+      handledEmails.add(emailKey);
+    }
+  }
+
+  return result;
+}

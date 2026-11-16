@@ -660,9 +660,16 @@ async function postConfigWrite(payload: any): Promise<boolean> {
   }
 }
 
-export async function saveAllowedUsersToCloud(usersList: any[]): Promise<boolean> {
+export async function saveAllowedUsersToCloud(
+  usersList: any[],
+  options?: { deletedUserEmails?: string[] }
+): Promise<boolean> {
   const { users: hashedUsers } = ensureUsersListPasswordsHashed(usersList || []);
-  return postConfigWrite({ kind: 'users', users: sanitizeForFirestore(hashedUsers) });
+  return postConfigWrite({
+    kind: 'users',
+    users: sanitizeForFirestore(hashedUsers),
+    deletedUserEmails: options?.deletedUserEmails || []
+  });
 }
 
 /** Admin only: replace the whole list (used for dismissing requests). */

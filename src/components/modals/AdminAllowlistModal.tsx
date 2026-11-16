@@ -948,7 +948,10 @@ export default function AdminAllowlistModal({
       return;
     }
     if (window.confirm('האם להסיר משתמש זה לצמיתות מרשימת המורשים? (ניתן גם להשבית זמנית במקום למחוק)')) {
-      onUpdateAllowedUsers?.(allowedUsers.filter((u) => u.id !== id));
+      onUpdateAllowedUsers?.(
+        allowedUsers.filter((u) => u.id !== id),
+        { deletedUserEmail: emailStr }
+      );
     }
   };
 
