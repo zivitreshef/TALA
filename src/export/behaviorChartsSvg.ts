@@ -391,3 +391,189 @@ export function generateProgressMonitoringDualLineSvg(
     </div>
   `.trim();
 }
+
+/**
+ * Generate standalone SVG for Graph: גרף משך זמן ועוצמת אירוע
+ */
+export function generateDurationIntensitySvg(
+  points: Array<{ id?: string; date?: string; durationMinutes: number; intensity: string; notes?: string }> = [],
+  options: ChartSvgOptions = {}
+): string {
+  const isPrint = options.isPrint ?? true;
+  const title = options.title || 'גרף משך זמן ועוצמת אירוע';
+
+  const validPoints = (points || []).filter((p) => typeof p.durationMinutes === 'number' && p.durationMinutes > 0);
+  if (validPoints.length === 0) {
+    return '';
+  }
+
+  const maxVal = Math.max(...validPoints.map((p) => p.durationMinutes), 10);
+  const yUpper = Math.ceil(maxVal * 1.15);
+
+  const width = options.width || 680;
+  const height = options.height || 220;
+  const padding = { top: 35, right: 30, bottom: 45, left: 50 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+  const pointsCount = validPoints.length;
+  const barWidth = Math.max(14, Math.min(36, Math.floor(chartW / pointsCount) - 10));
+
+  const bgFill = isPrint ? '#ffffff' : '#1a202c';
+  const borderStroke = isPrint ? '#cbd5e1' : '#2d3748';
+  const gridStroke = isPrint ? '#e2e8f0' : '#2d3748';
+  const textColor = isPrint ? '#1e293b' : '#f8fafc';
+  const subtextColor = isPrint ? '#64748b' : '#94a3b8';
+
+  const getIntensityColor = (intensity: string) => {
+    switch (intensity) {
+      case 'severe':
+        return '#ef4444';
+      case 'mild':
+        return '#10b981';
+      case 'moderate':
+      default:
+        return '#f59e0b';
+    }
+  };
+
+  const gridSteps = [0, 0.25, 0.5, 0.75, 1];
+  const gridLines = gridSteps.map((r) => {
+    const y = padding.top + chartH * (1 - r);
+    const valLabel = Math.round(yUpper * r);
+    return `
+      <g>
+        <line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="${gridStroke}" stroke-width="1" stroke-dasharray="3 3" />
+        <text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="${subtextColor}" font-family="Arial, sans-serif">${valLabel}</text>
+      </g>
+    `;
+  }).join('');
+
+  const bars = validPoints.map((pt, idx) => {
+    const x = padding.left + (idx + 0.5) * (chartW / pointsCount) - barWidth / 2;
+    const h = (pt.durationMinutes / yUpper) * chartH;
+    const y = padding.top + chartH - h;
+    const color = getIntensityColor(pt.intensity);
+    const dateLabel = pt.date ? pt.date.slice(5) : '';
+
+    return `
+      <g>
+        <rect x="${x}" y="${y}" width="${barWidth}" height="${Math.max(4, h)}" rx="3" fill="${color}" opacity="0.9" />
+        <text x="${x + barWidth / 2}" y="${Math.max(padding.top - 4, y - 4)}" text-anchor="middle" font-size="10" font-weight="bold" fill="${color}" font-family="Arial, sans-serif">${pt.durationMinutes}׳</text>
+        <text x="${x + barWidth / 2}" y="${height - 14}" text-anchor="middle" font-size="9.5" fill="${subtextColor}" font-family="Arial, sans-serif">${dateLabel}</text>
+      </g>
+    `;
+  }).join('');
+
+  return `
+    <div style="border: 1px solid ${borderStroke}; border-radius: 8px; background: ${bgFill}; padding: 12px; margin: 12px 0;">
+      <div style="text-align: center; margin-bottom: 6px; font-family: Arial, sans-serif;">
+        <div style="font-weight: 700; font-size: 13px; color: ${textColor}; margin-bottom: 4px;">${title}</div>
+        <div style="display: flex; justify-content: center; gap: 16px; font-size: 11px;">
+          <span style="display: inline-flex; align-items: center; gap: 4px; color: #10b981; font-weight: 600;">
+            <span style="display: inline-block; width: 10px; height: 10px; background: #10b981; border-radius: 2px;"></span>
+            קלה
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 4px; color: #f59e0b; font-weight: 600;">
+            <span style="display: inline-block; width: 10px; height: 10px; background: #f59e0b; border-radius: 2px;"></span>
+            בינונית
+          </span>
+          <span style="display: inline-flex; align-items: center; gap: 4px; color: #ef4444; font-weight: 600;">
+            <span style="display: inline-block; width: 10px; height: 10px; background: #ef4444; border-radius: 2px;"></span>
+            גבוהה
+          </span>
+        </div>
+      </div>
+      <svg dir="ltr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width: 100%; max-width: ${width}px; height: auto; display: block; margin: 0 auto; direction: ltr;">
+        ${gridLines}
+        ${bars}
+        <text transform="rotate(-90 16 ${height / 2})" x="16" y="${height / 2}" fill="${subtextColor}" font-size="10" font-weight="600" text-anchor="middle" font-family="Arial, sans-serif">משך (דקות)</text>
+      </svg>
+    </div>
+  `.trim();
+}
+
+/**
+ * Generate standalone SVG for Graph: עקומת למידה מצטברת של מיומנות חלופית
+ */
+export function generateReplacementLearningCurveSvg(
+  points: Array<{ id?: string; date?: string; cumulativeCount: number; dailyCount?: number }> = [],
+  options: ChartSvgOptions = {}
+): string {
+  const isPrint = options.isPrint ?? true;
+  const title = options.title || 'עקומת למידה מצטברת של מיומנות חלופית';
+
+  if (!points || points.length === 0) {
+    return '';
+  }
+
+  const maxVal = Math.max(...points.map((p) => p.cumulativeCount), 5);
+  const yUpper = Math.ceil(maxVal * 1.15);
+
+  const width = options.width || 680;
+  const height = options.height || 220;
+  const padding = { top: 35, right: 35, bottom: 45, left: 50 };
+  const chartW = width - padding.left - padding.right;
+  const chartH = height - padding.top - padding.bottom;
+  const pointsCount = points.length;
+  const stepX = chartW / Math.max(1, pointsCount - 1);
+
+  const bgFill = isPrint ? '#ffffff' : '#1a202c';
+  const borderStroke = isPrint ? '#cbd5e1' : '#2d3748';
+  const gridStroke = isPrint ? '#e2e8f0' : '#2d3748';
+  const textColor = isPrint ? '#1e293b' : '#f8fafc';
+  const subtextColor = isPrint ? '#64748b' : '#94a3b8';
+  const lineColor = '#16a34a';
+
+  const coords = points.map((pt, idx) => {
+    const x = padding.left + idx * stepX;
+    const y = padding.top + chartH - (pt.cumulativeCount / yUpper) * chartH;
+    return { x, y, pt };
+  });
+
+  const pathD = coords.reduce((acc, curr, idx) => {
+    return idx === 0 ? `M ${curr.x} ${curr.y}` : `${acc} L ${curr.x} ${curr.y}`;
+  }, '');
+
+  const areaD = `${pathD} L ${coords[coords.length - 1].x} ${padding.top + chartH} L ${coords[0].x} ${padding.top + chartH} Z`;
+
+  const gridSteps = [0, 0.25, 0.5, 0.75, 1];
+  const gridLines = gridSteps.map((r) => {
+    const y = padding.top + chartH * (1 - r);
+    const valLabel = Math.round(yUpper * r);
+    return `
+      <g>
+        <line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="${gridStroke}" stroke-width="1" stroke-dasharray="3 3" />
+        <text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="${subtextColor}" font-family="Arial, sans-serif">${valLabel}</text>
+      </g>
+    `;
+  }).join('');
+
+  const dots = coords.map((c) => {
+    const dateLabel = c.pt.date ? c.pt.date.slice(5) : '';
+    return `
+      <g>
+        <circle cx="${c.x}" cy="${c.y}" r="4.5" fill="${lineColor}" stroke="#ffffff" stroke-width="1.5" />
+        <text x="${c.x}" y="${Math.max(padding.top - 4, c.y - 7)}" text-anchor="middle" font-size="10" font-weight="bold" fill="${lineColor}" font-family="Arial, sans-serif">${c.pt.cumulativeCount}</text>
+        <text x="${c.x}" y="${height - 14}" text-anchor="middle" font-size="9.5" fill="${subtextColor}" font-family="Arial, sans-serif">${dateLabel}</text>
+      </g>
+    `;
+  }).join('');
+
+  return `
+    <div style="border: 1px solid ${borderStroke}; border-radius: 8px; background: ${bgFill}; padding: 12px; margin: 12px 0;">
+      <div style="text-align: center; margin-bottom: 6px; font-family: Arial, sans-serif;">
+        <div style="font-weight: 700; font-size: 13px; color: ${textColor}; margin-bottom: 4px;">${title}</div>
+        <div style="font-size: 11px; color: ${lineColor}; font-weight: 600;">
+          מעקב עצמאות ורכישה מתמדת של המיומנות הרצויה לאורך זמן
+        </div>
+      </div>
+      <svg dir="ltr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" style="width: 100%; max-width: ${width}px; height: auto; display: block; margin: 0 auto; direction: ltr;">
+        ${gridLines}
+        <path d="${areaD}" fill="${lineColor}" fill-opacity="0.12" />
+        <path d="${pathD}" fill="none" stroke="${lineColor}" stroke-width="2.5" />
+        ${dots}
+        <text transform="rotate(-90 16 ${height / 2})" x="16" y="${height / 2}" fill="${subtextColor}" font-size="10" font-weight="600" text-anchor="middle" font-family="Arial, sans-serif">סך מופעים מצטבר</text>
+      </svg>
+    </div>
+  `.trim();
+}

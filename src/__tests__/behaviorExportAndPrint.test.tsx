@@ -294,4 +294,130 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
 
     expect(getBehaviorProgressReportTitle('end_year')).toBe('דוח סיכום והערכת התקדמות התנהגותית - סוף שנה');
   });
+
+  it('11. embeds Section 4 visual analytics (all 6 charts/tables) in Word and Print HTML when data is present', () => {
+    const studentWithFullData: StudentProfile = {
+      ...sampleBehaviorStudent,
+      behaviorObservations: [
+        {
+          id: 'obs_1',
+          timestamp: 1763627400000,
+          dateTime: '2026-11-20T08:30:00Z',
+          location: 'כיתת אם',
+          activity: 'שיעור שפה',
+          antecedent: 'דרישת קריאה בקול',
+          behavior: 'סירוב ודחיפת ספר',
+          intensity: 'moderate',
+          durationMinutes: 12,
+          consequence: 'הוצאה למסדרון',
+          perceivedFunction: 'escape'
+        },
+        {
+          id: 'obs_2',
+          timestamp: 1763633700000,
+          dateTime: '2026-11-20T10:15:00Z',
+          location: 'כיתת אם',
+          activity: 'שיעור חשבון',
+          antecedent: 'מבחן פתע',
+          behavior: 'צעקות בכיתה',
+          intensity: 'severe',
+          durationMinutes: 18,
+          consequence: 'תשומת לב אישית מהמורה',
+          perceivedFunction: 'attention'
+        }
+      ],
+      behaviorProgressReport: {
+        period: 'mid_year',
+        reportDate: '2026-11-25',
+        assessorName: 'רונית שמיר',
+        reviewPeriodLabel: 'מחצית ראשונה',
+        executiveSummary: 'נרשמה התקדמות עקבית.',
+        targetBehaviorsProgress: [
+          {
+            behaviorName: 'סירוב לביצוע מטלות',
+            baselineAverage: 7.5,
+            currentAverage: 3.3,
+            reductionPercent: 56,
+            statusNotes: 'הפחתה במחצית'
+          }
+        ],
+        replacementBehaviorsAcquisition: [
+          {
+            skillName: 'בקשת הפסקה בכרטיסייה',
+            masteryLevel: 'עצמאי',
+            acquisitionNotes: 'שימוש גובר'
+          }
+        ]
+      }
+    };
+
+    const wordHtml = buildBehaviorProgressReportWordDocumentHtml(studentWithFullData, false);
+    expect(wordHtml).toContain('4. ניתוחים חזותיים ומדדי מעקב מתקדמים');
+    expect(wordHtml).toContain('מפת פיזור שעתית לאורך ימות השבוע');
+    expect(wordHtml).toContain('טבלת רצף תנאי מקדים, התנהגות ותוצאה סביבתית');
+    expect(wordHtml).toContain('עקומת למידה מצטברת של מיומנות חלופית');
+    expect(wordHtml).toContain('טבלת נאמנות יישום של צוות בית הספר');
+    expect(wordHtml).toContain('גרף ניטור התקדמות: קו בסיס מול שלב התערבות');
+    expect(wordHtml).toContain('5. התאמות סביבתיות ונהלי צוות');
+    expect(wordHtml).toContain('6. נאמנות יישום ועקביות הצוות');
+    expect(wordHtml).toContain('7. המלצות להמשך תוכנית ההתערבות וישיבות רב-מקצועיות');
+
+    const printHtml = buildBehaviorProgressReportPrintHtml(studentWithFullData, false);
+    expect(printHtml).toContain('4. ניתוחים חזותיים ומדדי מעקב מתקדמים');
+    expect(printHtml).toContain('מפת פיזור שעתית לאורך ימות השבוע');
+    expect(printHtml).toContain('טבלת רצף תנאי מקדים, התנהגות ותוצאה סביבתית');
+    expect(printHtml).toContain('עקומת למידה מצטברת של מיומנות חלופית');
+    expect(printHtml).toContain('טבלת נאמנות יישום של צוות בית הספר');
+    expect(printHtml).toContain('גרף ניטור התקדמות: קו בסיס מול שלב התערבות');
+  });
+
+  it('12. verifies generatePdfBlobFromHtml configures portrait A4 width and off-screen fixed positioning', async () => {
+    const mockOutputPdf = vi.fn().mockResolvedValue(new Blob(['fake-pdf-content'], { type: 'application/pdf' }));
+    const mockFrom = vi.fn().mockReturnValue({ outputPdf: mockOutputPdf });
+    const mockSet = vi.fn().mockImplementation((opt: any) => {
+      expect(opt.jsPDF.orientation).toBe('portrait');
+      expect(opt.html2canvas.windowWidth).toBe(794);
+      return { from: mockFrom };
+    });
+    const mockHtml2Pdf = vi.fn().mockReturnValue({ set: mockSet });
+
+    const fakeContainer: any = {
+      style: {},
+      querySelectorAll: vi.fn().mockReturnValue([]),
+      parentNode: {
+        removeChild: vi.fn()
+      }
+    };
+    const fakeDoc: any = {
+      createElement: vi.fn().mockReturnValue(fakeContainer),
+      body: {
+        appendChild: vi.fn()
+      }
+    };
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = fakeDoc;
+
+    vi.doMock('html2pdf.js', () => ({
+      default: mockHtml2Pdf
+    }));
+
+    try {
+      const { generatePdfBlobFromHtml } = await import('../emailService');
+      const portraitHtml = '<!DOCTYPE html><html><head><style>@page { size: A4 portrait; }</style></head><body><h1>בדיקה</h1></body></html>';
+      const blob = await generatePdfBlobFromHtml(portraitHtml, 'behavior_report.pdf');
+
+      expect(blob).toBeDefined();
+      expect(fakeContainer.style.position).toBe('fixed');
+      expect(fakeContainer.style.top).toBe('0px');
+      expect(fakeContainer.style.left).toBe('0px');
+      expect(fakeContainer.style.zIndex).toBe('-99999');
+      expect(fakeContainer.style.width).toBe('794px');
+      expect(fakeContainer.style.pointerEvents).toBe('none');
+    } finally {
+      (globalThis as any).document = prevDoc;
+      vi.restoreAllMocks();
+      vi.doUnmock('html2pdf.js');
+    }
+  });
 });

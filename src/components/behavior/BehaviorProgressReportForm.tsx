@@ -382,7 +382,14 @@ export default function BehaviorProgressReportForm({
 
   // Export to Word
   const createWordBlob = () => {
-    const mergedData = { ...student, ...studentDetails, behaviorProgressReport: report };
+    const mergedData = {
+      ...student,
+      ...studentDetails,
+      behaviorProgressReport: report,
+      ongoingTracking,
+      behaviorObservations,
+      baselineData
+    };
     const wordHtml = buildBehaviorProgressReportWordDocumentHtml(mergedData, hideDetailsOnExport);
     const blob = new Blob(['\ufeff', wordHtml], {
       type: 'application/msword;charset=utf-8'
@@ -392,10 +399,17 @@ export default function BehaviorProgressReportForm({
   };
 
   const createPdfBlob = async () => {
-    const mergedData = { ...student, ...studentDetails, behaviorProgressReport: report };
+    const mergedData = {
+      ...student,
+      ...studentDetails,
+      behaviorProgressReport: report,
+      ongoingTracking,
+      behaviorObservations,
+      baselineData
+    };
     const printHtml = buildBehaviorProgressReportPrintHtml(mergedData, hideDetailsOnExport);
     const filename = getSafeReportFilename(mergedData, hideDetailsOnExport, 'pdf', 'behavior_progress');
-    const blob = await generatePdfBlobFromHtml(printHtml, filename);
+    const blob = await generatePdfBlobFromHtml(printHtml, filename, 'portrait');
     return { blob, filename, mimeType: 'application/pdf', htmlContent: printHtml };
   };
 
@@ -427,7 +441,14 @@ export default function BehaviorProgressReportForm({
 
   // Print
   const handlePrint = () => {
-    const mergedData = { ...student, ...studentDetails, behaviorProgressReport: report };
+    const mergedData = {
+      ...student,
+      ...studentDetails,
+      behaviorProgressReport: report,
+      ongoingTracking,
+      behaviorObservations,
+      baselineData
+    };
     const html = buildBehaviorProgressReportPrintHtml(mergedData, hideDetailsOnExport);
     openHtmlPrintWindow(html);
   };
@@ -1286,7 +1307,14 @@ export default function BehaviorProgressReportForm({
               <div
                 dangerouslySetInnerHTML={{
                   __html: buildBehaviorProgressReportPrintHtml(
-                    { ...student, ...studentDetails, behaviorProgressReport: report },
+                    {
+                      ...student,
+                      ...studentDetails,
+                      behaviorProgressReport: report,
+                      ongoingTracking,
+                      behaviorObservations,
+                      baselineData
+                    },
                     false
                   )
                 }}
