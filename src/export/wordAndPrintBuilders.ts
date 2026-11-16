@@ -1757,6 +1757,7 @@ export function buildBehaviorAssessmentWordDocumentHtml(formData: any = {}, hide
     : `<tr><td colspan="5" style="border:1px solid #cbd5e1; padding:8pt; text-align:center; color:#64748b;">טרם נרשמו נתוני תצפית לקו בסיס</td></tr>`;
 
   const mainFunctionLabel = BEHAVIOR_FUNCTION_HEBREW_LABELS[report.mainHypothesizedFunction || 'escape'] || 'הימנעות ממטלה';
+  const baselineChartSvg = generateBaselineBarChartSvg(baselineData, { isPrint: true });
 
   return `
     <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -1832,6 +1833,7 @@ export function buildBehaviorAssessmentWordDocumentHtml(formData: any = {}, hide
         <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
           3. נתוני קו בסיס וניתוח כמותי
         </div>
+        ${baselineChartSvg}
         <table dir="rtl" border="1" cellspacing="0" cellpadding="5" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:6pt; font-size:9.5pt;">
           <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
             <th style="width:6%;">#</th>
@@ -2263,6 +2265,9 @@ export function buildBehaviorPlanWordDocumentHtml(formData: any = {}, hideDetail
       }).join('')
     : `<tr><td colspan="7" style="border:1px solid #cbd5e1; padding:8pt; text-align:center; color:#64748b;">טרם נרשמו נקודות מעקב שוטף</td></tr>`;
 
+  const baselineData = formData.baselineData || formData.behaviorAssessment?.baselineData || [];
+  const progressChartSvg = generateProgressMonitoringDualLineSvg(baselineData, ongoingTracking, { isPrint: true });
+
   return `
     <html xmlns:o="urn:schemas-microsoft-com:office:office"
           xmlns:w="urn:schemas-microsoft-com:office:word"
@@ -2375,6 +2380,7 @@ export function buildBehaviorPlanWordDocumentHtml(formData: any = {}, hideDetail
         <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
           6. טבלת מעקב שוטף ולוח התקדמות
         </div>
+        ${progressChartSvg}
         <table dir="rtl" border="1" cellspacing="0" cellpadding="5" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:16pt; font-size:9.5pt;">
           <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
             <th style="width:5%;">#</th>
