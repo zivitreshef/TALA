@@ -1,3 +1,6 @@
+import { DEFAULT_SCHOOL_YEAR, associateStudentToWorkingYear } from './yearReport';
+import { isDemoStudent } from './onboardingJourney';
+
 export const DISCIPLINE_LEAD_OPTIONS = [
   'צוות משותף',
   'מחנכת הכיתה',
@@ -232,4 +235,80 @@ export function mergeTeamMessages(
     const db = new Date(b.createdAt || 0).getTime();
     return da - db;
   });
+}
+
+export interface ReconcileStudentsParams<T extends Record<string, any> = Record<string, any>> {
+  cloudStudents?: T[];
+  localStudents?: T[];
+  currentUserEmail?: string;
+  defaultSchoolYear?: string;
+}
+
+export interface ReconcileStudentsResult<T extends Record<string, any> = Record<string, any>> {
+  mergedStudents: T[];
+  studentsToUpload: T[];
+}
+
+/**
+ * Safely reconciles cloud students with local students upon cloud sync/snapshot updates.
+ * Prevents offline or unsynced local students from being wiped when cloud reports fewer students,
+ * and identifies unsynced local students to be uploaded to the cloud.
+ */
+export function reconcileLocalAndCloudStudents<T extends Record<string, any>>({
+  cloudStudents = [],
+  localStudents = [],
+  currentUserEmail = '',
+  defaultSchoolYear = DEFAULT_SCHOOL_YEAR
+}: ReconcileStudentsParams<T> = {}): ReconcileStudentsResult<T> {
+  const normalizedUserEmail = (currentUserEmail || '').trim().toLowerCase();
+
+  // 1. Normalize cloud students
+  const cloudList = Array.isArray(cloudStudents) ? cloudStudents : [];
+  const normalizedCloud = cloudList.map((s) => {
+    const scoped = {
+      ...s,
+      ownerEmail: (s.ownerEmail || normalizedUserEmail || 'zivit.reshef@gmail.com').toLowerCase()
+    };
+    return (scoped.schoolYear === 'תשפ"ו (2025-2026)')
+      ? associateStudentToWorkingYear(scoped, defaultSchoolYear)
+      : scoped;
+  });
+
+  const cloudIdSet = new Set(
+    normalizedCloud
+      .map((s) => s.id)
+      .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+  );
+
+  // 2. Identify local students not present in cloud
+  const localList = Array.isArray(localStudents) ? localStudents : [];
+  const studentsToUpload: T[] = [];
+  const missingLocalStudents: T[] = [];
+
+  localList.forEach((ls) => {
+    if (!ls || !ls.id || typeof ls.id !== 'string') return;
+    if (isDemoStudent(ls)) return; // Strictly ignore isolated demo students
+
+    if (!cloudIdSet.has(ls.id)) {
+      // Local student missing in cloud!
+      const resolvedOwnerEmail = (ls.ownerEmail || normalizedUserEmail || 'zivit.reshef@gmail.com').toLowerCase();
+      const scopedLocal = {
+        ...ls,
+        ownerEmail: resolvedOwnerEmail
+      };
+      const normalizedLocal = (scopedLocal.schoolYear === 'תשפ"ו (2025-2026)')
+        ? associateStudentToWorkingYear(scopedLocal, defaultSchoolYear)
+        : scopedLocal;
+
+      missingLocalStudents.push(normalizedLocal as T);
+      studentsToUpload.push(normalizedLocal as T);
+    }
+  });
+
+  const mergedStudents = [...normalizedCloud, ...missingLocalStudents];
+
+  return {
+    mergedStudents: mergedStudents as T[],
+    studentsToUpload
+  };
 }

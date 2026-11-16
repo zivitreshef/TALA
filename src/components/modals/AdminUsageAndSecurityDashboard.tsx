@@ -109,8 +109,8 @@ export default function AdminUsageAndSecurityDashboard({
 
   const AI_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
     ok: { label: 'הושלם בהצלחה', color: '#15803d', bg: '#dcfce7' },
-    ok_raw: { label: 'הושלם בהצלחה', color: '#15803d', bg: '#dcfce7' },
-    blocked_injection: { label: 'נחסם (הזרקת תוכן)', color: '#991b1b', bg: '#fee2e2' },
+    ok_raw: { label: 'מענה טקסט חופשי', color: '#b45309', bg: '#fef3c7' },
+    blocked_injection: { label: 'נחסם עקב הזרקת תוכן', color: '#991b1b', bg: '#fee2e2' },
     rate_limit_exceeded: { label: 'הוגבל קצב', color: '#92400e', bg: '#fef3c7' },
     gemini_error: { label: 'שגיאת מודל', color: '#991b1b', bg: '#fee2e2' }
   };
