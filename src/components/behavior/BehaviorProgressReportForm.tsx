@@ -52,6 +52,7 @@ import {
 } from '../../export/wordAndPrintBuilders';
 import { generatePdfBlobFromHtml } from '../../emailService';
 import SendReportEmailModal from '../modals/SendReportEmailModal';
+import HebrewDatePicker from '../HebrewDatePicker';
 import './BehaviorAssessmentForm.css';
 import './BehaviorInterventionPlanForm.css';
 import './BehaviorProgressReportForm.css';
@@ -987,12 +988,13 @@ export default function BehaviorProgressReportForm({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
             <div>
               <label className="progress-field-label">תאריך עריכת הדוח:</label>
-              <input
-                type="date"
-                className="progress-input"
+              <HebrewDatePicker
                 value={report.reportDate || ''}
-                onChange={(e) => setReport((prev) => ({ ...prev, reportDate: e.target.value }))}
+                onChange={(date) => setReport((prev) => ({ ...prev, reportDate: date }))}
                 disabled={isLocked}
+                fullWidth={true}
+                placeholder="בחר תאריך"
+                ariaLabel="תאריך עריכת הדוח"
               />
             </div>
             <div>

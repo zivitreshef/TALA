@@ -11,6 +11,7 @@ import {
 import { maskDateInput, normalizeDateOnBlur } from '../../utils/dateMask';
 import { extractTeamDataFromStudent } from '../../domain/coworkerSuggestions';
 import StaffVoiceControl, { type StaffMergePayload } from '../form/StaffVoiceControl';
+import HebrewDatePicker from '../HebrewDatePicker';
 import type { StudentProfile } from '../../domain/types';
 
 export interface BehaviorStudentDetailsData {
@@ -206,12 +207,13 @@ export default function BehaviorStudentDetailsCard({
 
             <div className="behavior-field-group">
               <label className="behavior-field-label">תאריך הערכה או פתיחת דוח:</label>
-              <input
-                type="date"
-                className="behavior-input"
-                disabled={disabled}
+              <HebrewDatePicker
                 value={studentData.reportDate || ''}
-                onChange={(e) => onChangeField('reportDate', e.target.value)}
+                onChange={(date) => onChangeField('reportDate', date)}
+                disabled={disabled}
+                fullWidth={true}
+                placeholder="בחר תאריך"
+                ariaLabel="תאריך הערכה או פתיחת דוח"
               />
             </div>
 

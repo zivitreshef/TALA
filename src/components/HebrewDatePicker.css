@@ -67,6 +67,36 @@
   display: inline-flex;
 }
 
+.hdp-root.hdp-full-width {
+  display: flex;
+  width: 100%;
+}
+
+.hdp-root.hdp-full-width .hdp-trigger-wrapper {
+  width: 100%;
+  display: flex;
+}
+
+.hdp-root.hdp-full-width .hdp-trigger-btn {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  justify-content: space-between;
+}
+
+.hdp-trigger-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .hdp-trigger-btn {
   display: inline-flex;
   align-items: center;
@@ -94,6 +124,22 @@
   background: #ffffff;
 }
 
+.hdp-trigger-btn:disabled,
+.hdp-trigger-btn.is-disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+  box-shadow: none;
+}
+
+.hdp-step-btn:disabled,
+.hdp-today-chip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .hdp-cal-icon {
   color: #2563eb;
   flex-shrink: 0;
@@ -101,6 +147,11 @@
 
 .hdp-date-text {
   white-space: nowrap;
+}
+
+.hdp-date-text.hdp-placeholder {
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 .hdp-holiday-pill {

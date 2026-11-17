@@ -53,6 +53,7 @@ import {
 } from '../../export/wordAndPrintBuilders';
 import { generatePdfBlobFromHtml } from '../../emailService';
 import SendReportEmailModal from '../modals/SendReportEmailModal';
+import HebrewDatePicker from '../HebrewDatePicker';
 import './BehaviorAssessmentForm.css';
 import './BehaviorInterventionPlanForm.css';
 
@@ -1132,24 +1133,26 @@ export default function BehaviorInterventionPlanForm({
 
               <div className="behavior-field-group">
                 <label className="behavior-field-label">תאריך תחילת יישום התוכנית</label>
-                <input
-                  type="date"
-                  className="behavior-input"
-                  disabled={isPlanLocked}
+                <HebrewDatePicker
                   value={plan.effectiveDate || ''}
-                  onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
+                  onChange={(date) => handleFieldChange('effectiveDate', date)}
+                  disabled={isPlanLocked}
+                  fullWidth={true}
+                  placeholder="בחר תאריך"
+                  ariaLabel="תאריך תחילת יישום התוכנית"
                 />
               </div>
             </div>
 
             <div className="behavior-field-group" style={{ maxWidth: '300px' }}>
               <label className="behavior-field-label">תאריך יעד לבחינה והערכה מחודשת</label>
-              <input
-                type="date"
-                className="behavior-input"
-                disabled={isPlanLocked}
+              <HebrewDatePicker
                 value={plan.reviewDate || ''}
-                onChange={(e) => handleFieldChange('reviewDate', e.target.value)}
+                onChange={(date) => handleFieldChange('reviewDate', date)}
+                disabled={isPlanLocked}
+                fullWidth={true}
+                placeholder="בחר תאריך"
+                ariaLabel="תאריך יעד לבחינה והערכה מחודשת"
               />
             </div>
           </div>
@@ -2021,12 +2024,11 @@ export default function BehaviorInterventionPlanForm({
                 <div className="behavior-form-grid-2">
                   <div className="behavior-field-group">
                     <label className="behavior-field-label">תאריך</label>
-                    <input
-                      type="date"
-                      className="behavior-input"
+                    <HebrewDatePicker
                       value={newTrackingDate}
-                      onChange={(e) => setNewTrackingDate(e.target.value)}
-                      required
+                      onChange={setNewTrackingDate}
+                      fullWidth={true}
+                      ariaLabel="תאריך מעקב"
                     />
                   </div>
                   <div className="behavior-field-group">

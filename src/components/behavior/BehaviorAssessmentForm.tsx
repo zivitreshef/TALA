@@ -63,6 +63,7 @@ import {
 import { generatePdfBlobFromHtml } from '../../emailService';
 import SendReportEmailModal from '../modals/SendReportEmailModal';
 import { BaselineFrequencyBarChart, FunctionDistributionHorizontalBarChart } from './BehaviorCharts';
+import HebrewDatePicker from '../HebrewDatePicker';
 import type { PedagogicalSnippet } from '../../domain/types';
 import './BehaviorAssessmentForm.css';
 
@@ -1157,12 +1158,13 @@ export default function BehaviorAssessmentForm({
 
               <div className="behavior-field-group">
                 <label className="behavior-field-label">תאריך ביצוע ההערכה</label>
-                <input
-                  type="date"
-                  className="behavior-input"
-                  disabled={isReportLocked}
+                <HebrewDatePicker
                   value={report.assessmentDate || ''}
-                  onChange={(e) => handleFieldChange('assessmentDate', e.target.value)}
+                  onChange={(date) => handleFieldChange('assessmentDate', date)}
+                  disabled={isReportLocked}
+                  fullWidth={true}
+                  placeholder="בחר תאריך"
+                  ariaLabel="תאריך ביצוע ההערכה"
                 />
               </div>
             </div>
@@ -1479,12 +1481,11 @@ export default function BehaviorAssessmentForm({
                 <div className="behavior-form-grid-2">
                   <div className="behavior-field-group">
                     <label className="behavior-field-label">תאריך המדידה</label>
-                    <input
-                      type="date"
-                      className="behavior-input"
+                    <HebrewDatePicker
                       value={newBaselineDate}
-                      onChange={(e) => setNewBaselineDate(e.target.value)}
-                      required
+                      onChange={setNewBaselineDate}
+                      fullWidth={true}
+                      ariaLabel="תאריך המדידה"
                     />
                   </div>
                   <div className="behavior-field-group">
