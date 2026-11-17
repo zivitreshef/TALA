@@ -138,8 +138,14 @@
   border: 1px solid #d3dff0;
   border-radius: 14px;
   box-shadow: 0 2px 8px rgba(36, 52, 77, 0.04);
-  overflow: hidden;
+  overflow: visible;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.progress-card:has(.is-open),
+.progress-card:has(.hdp-popover) {
+  position: relative;
+  z-index: 40;
 }
 
 .progress-card:hover {
@@ -155,6 +161,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  border-radius: 13px 13px 0 0;
 }
 
 .progress-card-title-wrap {
@@ -193,6 +200,8 @@
 .progress-card-body {
   padding: 1.5rem;
   background: #ffffff;
+  border-radius: 0 0 13px 13px;
+  overflow: visible;
 }
 
 /* Form Controls & Textareas */
