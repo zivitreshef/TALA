@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Activity, CheckCircle2, AlertTriangle, RefreshCw, Trash2, Check, Download, Bug, Copy } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, RefreshCw, Trash2, Check, Download, Bug, Copy, ShieldAlert } from 'lucide-react';
 import {
   HEALTH_CATEGORY_LABELS_HE,
   HEALTH_KIND_LABELS_HE,
@@ -15,6 +15,7 @@ import {
 import { pingAiProxy } from '../../services/aiProxyClient';
 import { pingFirestore } from '../../firebaseBackend';
 import { diagnosticTracer } from '../../services/diagnosticTracer';
+import { getEmergencyRescueTeacherGuidanceText } from '../../domain/emergencyRescue';
 
 const SEVERITY_STYLE = {
   ok: { bg: '#f0fdf4', border: '#86efac', color: '#14532d', label: '🟢 תקין – לא נרשמו תקלות ב-24 השעות האחרונות' },
@@ -64,6 +65,7 @@ export default function SystemHealthPanel({
   const [isClearing, setIsClearing] = useState(false);
   const [showDiagnosticGuide, setShowDiagnosticGuide] = useState(false);
   const [copiedGuide, setCopiedGuide] = useState(false);
+  const [copiedRescueGuide, setCopiedRescueGuide] = useState(false);
   const [isDebugActive, setIsDebugActive] = useState(() => diagnosticTracer.isDebugModeEnabled());
 
   const events: HealthEventEntity[] = useMemo(
@@ -125,6 +127,15 @@ export default function SystemHealthPanel({
       navigator.clipboard.writeText(text);
       setCopiedGuide(true);
       setTimeout(() => setCopiedGuide(false), 2500);
+    }
+  };
+
+  const handleCopyRescueGuide = () => {
+    const text = getEmergencyRescueTeacherGuidanceText(typeof window !== 'undefined' ? window.location.href : undefined);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedRescueGuide(true);
+      setTimeout(() => setCopiedRescueGuide(false), 2500);
     }
   };
 
@@ -223,6 +234,39 @@ export default function SystemHealthPanel({
               />
               <span>מצב אבחון פעיל בדפדפן זה</span>
             </label>
+          </div>
+
+          {/* הנחיות חילוץ נתונים במצבי חירום */}
+          <div
+            style={{
+              marginTop: '10px',
+              paddingTop: '10px',
+              borderTop: '1px solid #cbd5e1',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}
+          >
+            <div style={{ fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldAlert size={15} color="#d97706" />
+              <span>הנחיות חילוץ נתונים במצבי חירום</span>
+            </div>
+            <div style={{ color: '#475569', lineHeight: 1.5 }}>
+              במצב חירום (תקלת סנכרון ענן או מעבר דחוף בין מכשירים), ניתן להנחות מורה או מנתחת התנהגות להיכנס עם פרמטר <code>?export=true</code> בכתובת המערכת.
+              יופיע סרגל חילוץ עליון המאפשר ייצוא כל התלמידים וההגדרות לקובץ גיבוי מקומי וכן ייבוא קובץ נתונים.
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '4px' }}>
+              <button
+                type="button"
+                className="btn-primary-sm"
+                data-testid="copy-rescue-guide-btn"
+                onClick={handleCopyRescueGuide}
+                style={{ fontSize: '12px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#d97706', borderColor: '#b45309' }}
+              >
+                <Copy size={13} />
+                <span>{copiedRescueGuide ? 'ההודעה הועתקה ללוח!' : 'העתק הודעת חילוץ לשליחה למורה'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

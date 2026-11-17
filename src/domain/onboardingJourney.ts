@@ -657,6 +657,8 @@ export function isDemoStudent(student?: Record<string, unknown> | null): boolean
   return Boolean(
     student.isDemo === true ||
       student.id === 'demo_yonatan_levi' ||
+      student.id === 'st_demo_1' ||
+      (typeof student.id === 'string' && (student.id.startsWith('st_demo_') || student.id.startsWith('demo_'))) ||
       (student.ownerEmail && String(student.ownerEmail).includes('demo@tala.internal'))
   );
 }

@@ -2353,6 +2353,7 @@ export {
 export const INITIAL_STUDENTS_DATA = [
   {
     id: 'st_demo_1',
+    isDemo: true,
     date: new Date().toLocaleDateString('he-IL'),
     schoolYear: 'תשפ"ז (2026-2027)',
     planType: 'תוכנית אקולוגית לילדי הגן',
