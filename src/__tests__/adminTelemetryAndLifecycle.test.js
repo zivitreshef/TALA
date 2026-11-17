@@ -452,7 +452,7 @@ describe('Admin Telemetry & User Lifecycle Domain Logic', () => {
         expect(modalContent).toContain('מנויים משלמים');
         expect(modalContent).toContain('משתמשי ניסיון');
         expect(modalContent).toContain('פגי תוקף ומושבתים');
-        expect(modalContent).toContain('תלמידים (Capacity)');
+        expect(modalContent).toContain('תלמידים ומכסה');
         expect(modalContent).toContain('handleSortToggle');
         expect(modalContent).toContain('renderSortIndicator');
         expect(modalContent).not.toContain('🤖 {aiCalls} פניות AI');

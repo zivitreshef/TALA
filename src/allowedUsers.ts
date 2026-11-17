@@ -1046,7 +1046,7 @@ function getSubscriptionSortWeight(user?: Partial<AllowedUserRecord> | null, now
   return 0;
 }
 
-export type SortField = 'name' | 'email' | 'group' | 'capacity' | 'status' | string | null;
+export type SortField = 'name' | 'email' | 'role' | 'group' | 'capacity' | 'status' | string | null;
 export type SortDirection = 'asc' | 'desc';
 
 /**
@@ -1072,6 +1072,18 @@ export function sortUsersList<T extends Partial<AllowedUserRecord>>(
       const nameA = String(a?.name || '').trim();
       const nameB = String(b?.name || '').trim();
       return factor * nameA.localeCompare(nameB, 'he', { sensitivity: 'base' });
+    }
+
+    if (sortField === 'role') {
+      const getRoleLabel = (u: any) =>
+        u?.role === 'behavior_analyst'
+          ? 'מנתח התנהגות'
+          : u?.role === 'admin'
+            ? 'מנהל מערכת'
+            : (u?.title || 'מורה');
+      const roleA = getRoleLabel(a);
+      const roleB = getRoleLabel(b);
+      return factor * roleA.localeCompare(roleB, 'he', { sensitivity: 'base' });
     }
 
     if (sortField === 'email') {
@@ -1106,7 +1118,7 @@ export function sortUsersList<T extends Partial<AllowedUserRecord>>(
  * Merges cloud-stored allowed users with an incoming list from an admin client safely.
  * Prevents:
  * 1. Accidental omission/deletion of users due to a stale browser session or tab (unless explicitly in deletedEmails).
- * 2. Unintended downgrade of an annual paid subscriber to trial status by a stale client.
+ * 2. Unintended downgrade of an annual paid subscriber to trial status by a stale client (while allowing intentional admin downgrades).
  * 3. Overwrite of custom user passwords by blank or default passwords from an outdated client.
  * 4. Erroneous re-locking of accounts that were unlocked in the cloud.
  */
@@ -1138,16 +1150,28 @@ export function mergeAdminUsersSafely<T extends { email?: string; [key: string]:
     // Existing user: start with stored, apply incoming modifications
     const merged: any = { ...stored, ...inc };
 
-    // Protection 1: Prevent stale downgrade from annual paid to trial
+    // Protection 1: Prevent stale downgrade from annual paid to trial (unless admin explicitly set trial)
     const storedIsPaid = Boolean((stored as any).subscriptionType === 'annual_paid' || (stored as any).isTrialUser === false);
     const incomingIsTrial = Boolean((inc as any).isTrialUser === true && (inc as any).subscriptionType !== 'annual_paid');
+    const isExplicitTrialChoice = Boolean((inc as any).subscriptionExplicitlyUpdated === true);
+
     if (storedIsPaid && incomingIsTrial) {
-      merged.isTrialUser = false;
-      merged.subscriptionType = 'annual_paid';
-      merged.paidExpiresAt = (stored as any).paidExpiresAt || (inc as any).paidExpiresAt;
-      merged.upgradedToPaidAt = (stored as any).upgradedToPaidAt || (inc as any).upgradedToPaidAt;
-      merged.trialExpiresAt = null;
-      merged.trialDays = null;
+      if (isExplicitTrialChoice) {
+        merged.isTrialUser = true;
+        merged.subscriptionType = 'trial';
+        merged.trialDays = (inc as any).trialDays || (stored as any).trialDays || DEFAULT_TRIAL_DAYS;
+        merged.trialExpiresAt = (inc as any).trialExpiresAt || computeTrialExpirationIso(merged.trialDays);
+        merged.trialStartedAt = (inc as any).trialStartedAt || new Date().toISOString();
+        merged.paidExpiresAt = null;
+        merged.upgradedToPaidAt = null;
+      } else {
+        merged.isTrialUser = false;
+        merged.subscriptionType = 'annual_paid';
+        merged.paidExpiresAt = (stored as any).paidExpiresAt || (inc as any).paidExpiresAt;
+        merged.upgradedToPaidAt = (stored as any).upgradedToPaidAt || (inc as any).upgradedToPaidAt;
+        merged.trialExpiresAt = null;
+        merged.trialDays = null;
+      }
     }
 
     // Protection 2: Never overwrite a custom password with default TALA2026 or empty
