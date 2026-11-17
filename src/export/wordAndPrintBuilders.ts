@@ -25,7 +25,8 @@ import {
   computeAbcSequenceSummary,
   computeDurationAndIntensityData,
   computeReplacementSkillCurve,
-  computeStaffFidelityMetrics
+  computeStaffFidelityMetrics,
+  getDifferentialProcedureLabelHebrew
 } from '../domain/behaviorAnalysis';
 
 export function getDisplayReportDate(formData: any = {}) {
@@ -2314,9 +2315,26 @@ export function buildBehaviorPlanWordDocumentHtml(formData: any = {}, hideDetail
           ${formData.phone ? ` &nbsp;|&nbsp; <strong>טלפון:</strong> ${displayPhone}` : ''}
         </div>
 
-        <!-- 1. Target Behaviors -->
+        <!-- 1. Smart Goals (if defined) -->
+        ${plan.smartGoalsNarrative && (plan.smartGoalsNarrative.reductionGoal || plan.smartGoalsNarrative.acquisitionGoal) ? `
+          <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+            1. מטרות ההתערבות ויעדים משלימים
+          </div>
+          <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:12pt; font-size:10pt;">
+            <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:right;">
+              <th style="width:50%;">מטרת הפחתה מדידה (מקושרת נתוני בסיס)</th>
+              <th style="width:50%;">מטרת רכישה ושליטה של ההתנהגות החלופית</th>
+            </tr>
+            <tr>
+              <td style="border:1px solid #cbd5e1; padding:6pt; line-height:1.5;">${getRedactedText(plan.smartGoalsNarrative.reductionGoal || '—', formData, hideDetails)}</td>
+              <td style="border:1px solid #cbd5e1; padding:6pt; line-height:1.5;">${getRedactedText(plan.smartGoalsNarrative.acquisitionGoal || '—', formData, hideDetails)}</td>
+            </tr>
+          </table>
+        ` : ''}
+
+        <!-- 2. Target Behaviors -->
         <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
-          1. התנהגויות יעד והגדרות אופרציונליות
+          2. התנהגויות יעד והגדרות אופרציונליות
         </div>
         <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:12pt; font-size:10pt;">
           <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
@@ -2329,9 +2347,9 @@ export function buildBehaviorPlanWordDocumentHtml(formData: any = {}, hideDetail
           ${targetsHtml}
         </table>
 
-        <!-- 2. Replacement Behaviors -->
+        <!-- 3. Replacement Behaviors -->
         <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
-          2. תוכנית התנהגויות חלופיות ומיומנויות להוראה
+          3. תוכנית התנהגויות חלופיות והליך הקניה
         </div>
         <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:12pt; font-size:10pt;">
           <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold; text-align:center;">
@@ -2342,43 +2360,109 @@ export function buildBehaviorPlanWordDocumentHtml(formData: any = {}, hideDetail
           ${replacementsHtml}
         </table>
 
-        <!-- 3. Antecedent Strategies -->
+        ${plan.replacementAcquisition && (plan.replacementAcquisition.modelingSteps || plan.replacementAcquisition.promptingHierarchy) ? `
+          <div style="border:1px solid #cbd5e1; background-color:#f8fafc; padding:8pt 10pt; margin-bottom:12pt; font-size:9.5pt; line-height:1.5;">
+            <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">פירוט שלבי ההקניה וההכללה:</div>
+            ${plan.replacementAcquisition.modelingSteps ? `<div><strong>הדגמה ומידול:</strong> ${getRedactedText(plan.replacementAcquisition.modelingSteps, formData, hideDetails)}</div>` : ''}
+            ${plan.replacementAcquisition.promptingHierarchy ? `<div><strong>רמזים וסיוע:</strong> ${getRedactedText(plan.replacementAcquisition.promptingHierarchy, formData, hideDetails)}</div>` : ''}
+            ${plan.replacementAcquisition.inSituPractice ? `<div><strong>תרגול בזמן אמת:</strong> ${getRedactedText(plan.replacementAcquisition.inSituPractice, formData, hideDetails)}</div>` : ''}
+            ${plan.replacementAcquisition.fadingPlan ? `<div><strong>דעיכת רמזים:</strong> ${getRedactedText(plan.replacementAcquisition.fadingPlan, formData, hideDetails)}</div>` : ''}
+            ${plan.replacementAcquisition.generalizationPlan ? `<div><strong>הכללה:</strong> ${getRedactedText(plan.replacementAcquisition.generalizationPlan, formData, hideDetails)}</div>` : ''}
+          </div>
+        ` : ''}
+
+        <!-- 4. Antecedent Strategies -->
         <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
-          3. אסטרטגיות מניעה והתאמות סביבתיות לתנאים מקדימים
+          4. התערבות מניעתית והתאמות סביבתיות לתנאים מקדימים
         </div>
-        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10.5pt; line-height:1.55;">
+        ${plan.antecedentStructured && (plan.antecedentStructured.prepAndWarmup || plan.antecedentStructured.visualSupports) ? `
+          <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:8pt; font-size:9.5pt;">
+            <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold;">
+              <th style="width:25%;">קטגוריית התערבות</th>
+              <th style="width:75%;">פירוט הפעולה, האמצעי והקשר לפונקציה</th>
+            </tr>
+            ${plan.antecedentStructured.prepAndWarmup ? `<tr><td style="font-weight:bold;">הטרמה והכנה מראש</td><td>${getRedactedText(plan.antecedentStructured.prepAndWarmup, formData, hideDetails)}</td></tr>` : ''}
+            ${plan.antecedentStructured.visualSupports ? `<tr><td style="font-weight:bold;">אמצעים חזותיים</td><td>${getRedactedText(plan.antecedentStructured.visualSupports, formData, hideDetails)}</td></tr>` : ''}
+            ${plan.antecedentStructured.taskAdjustments ? `<tr><td style="font-weight:bold;">התאמת דרישות ומטלות</td><td>${getRedactedText(plan.antecedentStructured.taskAdjustments, formData, hideDetails)}</td></tr>` : ''}
+            ${plan.antecedentStructured.environmentOrg ? `<tr><td style="font-weight:bold;">ארגון הסביבה הפיזית</td><td>${getRedactedText(plan.antecedentStructured.environmentOrg, formData, hideDetails)}</td></tr>` : ''}
+            ${plan.antecedentStructured.rolesAndActivities ? `<tr><td style="font-weight:bold;">תפקידים ופעילות חלופית</td><td>${getRedactedText(plan.antecedentStructured.rolesAndActivities, formData, hideDetails)}</td></tr>` : ''}
+          </table>
+        ` : ''}
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10pt; line-height:1.55;">
           ${antecedentStrategies.replace(/\n/g, '<br/>')}
         </div>
 
-        <!-- 4. Reinforcement System -->
+        <!-- 5. Reinforcement System -->
         <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
-          4. מערך חיזוקים ועידוד
+          5. מערך חיזוקים וחיזוק דיפרנציאלי
         </div>
-        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:6pt; font-size:10.5pt; line-height:1.55;">
+        ${plan.differentialReinforcement?.procedureType ? `
+          <div style="border:1px solid #cbd5e1; background-color:#eff6ff; padding:6pt 10pt; margin-bottom:6pt; font-size:10pt;">
+            <strong>הליך חיזוק דיפרנציאלי:</strong> ${getDifferentialProcedureLabelHebrew(plan.differentialReinforcement.procedureType)}
+            ${plan.differentialReinforcement.rationale ? ` &nbsp;|&nbsp; <strong>נימוק:</strong> ${getRedactedText(plan.differentialReinforcement.rationale, formData, hideDetails)}` : ''}
+          </div>
+        ` : ''}
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:6pt; font-size:10pt; line-height:1.55;">
           <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">מחזקים מועדפים:</div>
           ${preferredReinforcers.replace(/\n/g, '<br/>')}
         </div>
-        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10.5pt; line-height:1.55;">
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:6pt; font-size:10pt; line-height:1.55;">
           <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">לוח זמנים ותדירות חיזוק:</div>
           ${scheduleOfReinforcement.replace(/\n/g, '<br/>')}
         </div>
+        ${Array.isArray(plan.differentialReinforcement?.praiseExamples) && plan.differentialReinforcement!.praiseExamples.length > 0 ? `
+          <div style="border:1px solid #bbf7d0; background-color:#f0fdf4; padding:8pt 10pt; margin-bottom:12pt; font-size:9.5pt; line-height:1.5;">
+            <div style="font-weight:bold; color:#166534; margin-bottom:3pt;">דוגמאות למשפטי שבח תיאורי ספציפי:</div>
+            ${plan.differentialReinforcement!.praiseExamples.map((pr: string) => `<div>• "${getRedactedText(pr, formData, hideDetails)}"</div>`).join('')}
+          </div>
+        ` : ''}
 
-        <!-- 5. Reactive & Safety Protocol -->
+        <!-- 6. Reactive & Safety Protocol -->
         <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
-          5. פרוטוקול תגובה במצבי משבר ובטיחות
+          6. פרוטוקול תגובה מדורג ב-4 מצבים ונוהל בטיחות
         </div>
-        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:6pt; font-size:10.5pt; line-height:1.55;">
+        ${plan.stagedReactiveProtocol && (plan.stagedReactiveProtocol.phaseAInitial || plan.stagedReactiveProtocol.phaseBDeescalation) ? `
+          <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:8pt; font-size:9.5pt;">
+            <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold;">
+              <th style="width:25%;">שלב התרחשות</th>
+              <th style="width:75%;">הנחיות תגובה אחידות לצוות</th>
+            </tr>
+            <tr><td style="font-weight:bold;">מצב א' - הופעה ראשונית</td><td>${getRedactedText(plan.stagedReactiveProtocol.phaseAInitial || 'תגובה ניטרלית, רמז חזותי קצר', formData, hideDetails)}</td></tr>
+            <tr><td style="font-weight:bold;">מצב ב' - ירידה בעוצמה</td><td>${getRedactedText(plan.stagedReactiveProtocol.phaseBDeescalation || 'זיהוי חלון הזדמנות וחיזוק מיידי', formData, hideDetails)}</td></tr>
+            <tr><td style="font-weight:bold;">מצב ג' - המשכיות</td><td>${getRedactedText(plan.stagedReactiveProtocol.phaseCContinuation || 'התאמת דרישה ומניעת מאבקי כוח', formData, hideDetails)}</td></tr>
+            <tr><td style="font-weight:bold; color:#dc2626;">מצב ד' - הסלמה ובטיחות</td><td>${getRedactedText(plan.stagedReactiveProtocol.phaseDCrisis || crisisSafetyPlan, formData, hideDetails)}</td></tr>
+          </table>
+        ` : ''}
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:6pt; font-size:10pt; line-height:1.55;">
           <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">תגובת הצוות בעת התרחשות ההתנהגות:</div>
           ${staffResponse.replace(/\n/g, '<br/>')}
         </div>
-        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10.5pt; line-height:1.55;">
+        <div style="border:1px solid #cbd5e1; background-color:#ffffff; padding:8pt 10pt; margin-bottom:12pt; font-size:10pt; line-height:1.55;">
           <div style="font-weight:bold; color:#1e40af; margin-bottom:3pt;">תוכנית בטיחות והתמודדות במשבר:</div>
           ${crisisSafetyPlan.replace(/\n/g, '<br/>')}
         </div>
 
-        <!-- 6. Ongoing Tracking -->
+        <!-- 7. Classroom Implementation Cheat Sheet -->
+        ${plan.classroomCheatSheet && (plan.classroomCheatSheet.beforeTransition || plan.classroomCheatSheet.onCooperation) ? `
+          <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
+            7. פרוטוקול יישום מעשי לכיתה ולצוות החינוכי
+          </div>
+          <table dir="rtl" border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:12pt; font-size:9.5pt;">
+            <tr style="background-color:#eff6ff; color:#1e40af; font-weight:bold;">
+              <th style="width:25%;">מועד / מצב</th>
+              <th style="width:75%;">הנחיית פעולה מעשית לצוות</th>
+            </tr>
+            ${plan.classroomCheatSheet.beforeTransition ? `<tr><td style="font-weight:bold;">לפני המעבר או הפעילות</td><td>${getRedactedText(plan.classroomCheatSheet.beforeTransition, formData, hideDetails)}</td></tr>` : ''}
+            ${plan.classroomCheatSheet.duringTransition ? `<tr><td style="font-weight:bold;">בזמן המעבר או ההוראה</td><td>${getRedactedText(plan.classroomCheatSheet.duringTransition, formData, hideDetails)}</td></tr>` : ''}
+            ${plan.classroomCheatSheet.onCooperation ? `<tr><td style="font-weight:bold;">בעת שיתוף פעולה והיענות</td><td>${getRedactedText(plan.classroomCheatSheet.onCooperation, formData, hideDetails)}</td></tr>` : ''}
+            ${plan.classroomCheatSheet.onRefusal ? `<tr><td style="font-weight:bold;">בעת סירוב או קושי ראשוני</td><td>${getRedactedText(plan.classroomCheatSheet.onRefusal, formData, hideDetails)}</td></tr>` : ''}
+            ${plan.classroomCheatSheet.onCrisis ? `<tr><td style="font-weight:bold;">בעת הסלמה או אירוע חריג</td><td>${getRedactedText(plan.classroomCheatSheet.onCrisis, formData, hideDetails)}</td></tr>` : ''}
+          </table>
+        ` : ''}
+
+        <!-- 8. Ongoing Tracking -->
         <div style="font-weight:bold; font-size:12pt; color:#1e3a5f; margin-bottom:4pt; border-bottom:1.5px solid #2563eb; padding-bottom:2pt;">
-          6. טבלת מעקב שוטף ולוח התקדמות
+          8. טבלת מעקב שוטף ולוח התקדמות
         </div>
         ${progressChartSvg}
         <table dir="rtl" border="1" cellspacing="0" cellpadding="5" style="width:100%; border-collapse:collapse; border:1px solid #cbd5e1; margin-bottom:16pt; font-size:9.5pt;">
@@ -2647,9 +2731,49 @@ export function buildBehaviorPlanPrintHtml(formData: any = {}, hideDetails = fal
           </table>
         </div>
 
-        <!-- 2. Replacement Behaviors -->
+        <!-- 1. Smart Goals (if defined) -->
+        ${plan.smartGoalsNarrative && (plan.smartGoalsNarrative.reductionGoal || plan.smartGoalsNarrative.acquisitionGoal) ? `
+          <div class="behavior-section-box">
+            <div class="behavior-section-title">1. מטרות ההתערבות ויעדים משלימים</div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:50%;">מטרת הפחתה מדידה (מקושרת נתוני בסיס)</th>
+                  <th style="width:50%;">מטרת רכישה ושליטה של ההתנהגות החלופית</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding:8px; line-height:1.5;">${getRedactedText(plan.smartGoalsNarrative.reductionGoal || '—', formData, hideDetails)}</td>
+                  <td style="padding:8px; line-height:1.5;">${getRedactedText(plan.smartGoalsNarrative.acquisitionGoal || '—', formData, hideDetails)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <!-- 2. Target Behaviors -->
         <div class="behavior-section-box">
-          <div class="behavior-section-title">2. תוכנית התנהגויות חלופיות ומיומנויות להוראה</div>
+          <div class="behavior-section-title">2. התנהגויות יעד והגדרות אופרציונליות</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:5%;">#</th>
+                <th style="width:25%;">התנהגות יעד</th>
+                <th style="width:50%;">הגדרה אופרציונלית מדידה ונצפית</th>
+                <th style="width:10%;">ממוצע בסיס</th>
+                <th style="width:10%;">יעד מבוקש</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${targetsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 3. Replacement Behaviors -->
+        <div class="behavior-section-box">
+          <div class="behavior-section-title">3. תוכנית התנהגויות חלופיות והליך הקניה</div>
           <table class="data-table">
             <thead>
               <tr>
@@ -2662,17 +2786,50 @@ export function buildBehaviorPlanPrintHtml(formData: any = {}, hideDetails = fal
               ${replacementsHtml}
             </tbody>
           </table>
+          ${plan.replacementAcquisition && (plan.replacementAcquisition.modelingSteps || plan.replacementAcquisition.promptingHierarchy) ? `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px; margin-top:8px; font-size:12px;">
+              <strong style="color:#1e40af;">פירוט שלבי ההקניה וההכללה:</strong>
+              ${plan.replacementAcquisition.modelingSteps ? `<div style="margin-top:2px;">• <strong>הדגמה ומידול:</strong> ${getRedactedText(plan.replacementAcquisition.modelingSteps, formData, hideDetails)}</div>` : ''}
+              ${plan.replacementAcquisition.promptingHierarchy ? `<div style="margin-top:2px;">• <strong>רמזים וסיוע:</strong> ${getRedactedText(plan.replacementAcquisition.promptingHierarchy, formData, hideDetails)}</div>` : ''}
+              ${plan.replacementAcquisition.inSituPractice ? `<div style="margin-top:2px;">• <strong>תרגול בזמן אמת:</strong> ${getRedactedText(plan.replacementAcquisition.inSituPractice, formData, hideDetails)}</div>` : ''}
+              ${plan.replacementAcquisition.fadingPlan ? `<div style="margin-top:2px;">• <strong>דעיכת רמזים:</strong> ${getRedactedText(plan.replacementAcquisition.fadingPlan, formData, hideDetails)}</div>` : ''}
+              ${plan.replacementAcquisition.generalizationPlan ? `<div style="margin-top:2px;">• <strong>הכללה לסביבות:</strong> ${getRedactedText(plan.replacementAcquisition.generalizationPlan, formData, hideDetails)}</div>` : ''}
+            </div>
+          ` : ''}
         </div>
 
-        <!-- 3. Antecedents -->
+        <!-- 4. Antecedents -->
         <div class="behavior-section-box">
-          <div class="behavior-section-title">3. אסטרטגיות מניעה והתאמות סביבתיות לתנאים מקדימים</div>
+          <div class="behavior-section-title">4. התערבות מניעתית והתאמות סביבתיות לתנאים מקדימים</div>
+          ${plan.antecedentStructured && (plan.antecedentStructured.prepAndWarmup || plan.antecedentStructured.visualSupports) ? `
+            <table class="data-table" style="margin-bottom:8px;">
+              <thead>
+                <tr>
+                  <th style="width:25%;">קטגוריית התערבות</th>
+                  <th style="width:75%;">פירוט הפעולה, האמצעי והקשר לפונקציה</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${plan.antecedentStructured.prepAndWarmup ? `<tr><td><strong>הטרמה והכנה מראש</strong></td><td>${getRedactedText(plan.antecedentStructured.prepAndWarmup, formData, hideDetails)}</td></tr>` : ''}
+                ${plan.antecedentStructured.visualSupports ? `<tr><td><strong>אמצעים חזותיים</strong></td><td>${getRedactedText(plan.antecedentStructured.visualSupports, formData, hideDetails)}</td></tr>` : ''}
+                ${plan.antecedentStructured.taskAdjustments ? `<tr><td><strong>התאמת דרישות</strong></td><td>${getRedactedText(plan.antecedentStructured.taskAdjustments, formData, hideDetails)}</td></tr>` : ''}
+                ${plan.antecedentStructured.environmentOrg ? `<tr><td><strong>ארגון הסביבה</strong></td><td>${getRedactedText(plan.antecedentStructured.environmentOrg, formData, hideDetails)}</td></tr>` : ''}
+                ${plan.antecedentStructured.rolesAndActivities ? `<tr><td><strong>תפקידים ופעילות</strong></td><td>${getRedactedText(plan.antecedentStructured.rolesAndActivities, formData, hideDetails)}</td></tr>` : ''}
+              </tbody>
+            </table>
+          ` : ''}
           <div class="behavior-section-body">${antecedentStrategies}</div>
         </div>
 
-        <!-- 4. Reinforcement -->
+        <!-- 5. Reinforcement -->
         <div class="behavior-section-box">
-          <div class="behavior-section-title">4. מערך חיזוקים ועידוד</div>
+          <div class="behavior-section-title">5. מערך חיזוקים וחיזוק דיפרנציאלי</div>
+          ${plan.differentialReinforcement?.procedureType ? `
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:6px 10px; margin-bottom:8px;">
+              <strong>הליך חיזוק דיפרנציאלי:</strong> ${getDifferentialProcedureLabelHebrew(plan.differentialReinforcement.procedureType)}
+              ${plan.differentialReinforcement.rationale ? ` &nbsp;|&nbsp; <strong>נימוק:</strong> ${getRedactedText(plan.differentialReinforcement.rationale, formData, hideDetails)}` : ''}
+            </div>
+          ` : ''}
           <div style="margin-bottom:8px;">
             <strong>מחזקים מועדפים:</strong>
             <div class="behavior-section-body">${preferredReinforcers}</div>
@@ -2681,11 +2838,33 @@ export function buildBehaviorPlanPrintHtml(formData: any = {}, hideDetails = fal
             <strong>לוח זמנים ותדירות חיזוק:</strong>
             <div class="behavior-section-body">${scheduleOfReinforcement}</div>
           </div>
+          ${Array.isArray(plan.differentialReinforcement?.praiseExamples) && plan.differentialReinforcement!.praiseExamples.length > 0 ? `
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 10px; margin-top:8px;">
+              <strong style="color:#166534;">דוגמאות למשפטי שבח תיאורי ספציפי:</strong>
+              ${plan.differentialReinforcement!.praiseExamples.map((pr: string) => `<div style="color:#14532d; margin-top:2px;">• "${getRedactedText(pr, formData, hideDetails)}"</div>`).join('')}
+            </div>
+          ` : ''}
         </div>
 
-        <!-- 5. Reactive Protocol -->
+        <!-- 6. Reactive Protocol -->
         <div class="behavior-section-box">
-          <div class="behavior-section-title">5. פרוטוקול תגובה במצבי משבר ובטיחות</div>
+          <div class="behavior-section-title">6. פרוטוקול תגובה מדורג ב-4 מצבים ונוהל בטיחות</div>
+          ${plan.stagedReactiveProtocol && (plan.stagedReactiveProtocol.phaseAInitial || plan.stagedReactiveProtocol.phaseBDeescalation) ? `
+            <table class="data-table" style="margin-bottom:8px;">
+              <thead>
+                <tr>
+                  <th style="width:25%;">שלב התרחשות</th>
+                  <th style="width:75%;">הנחיות תגובה אחידות לצוות</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>מצב א' - הופעה ראשונית</strong></td><td>${getRedactedText(plan.stagedReactiveProtocol.phaseAInitial || 'תגובה ניטרלית, רמז חזותי קצר', formData, hideDetails)}</td></tr>
+                <tr><td><strong>מצב ב' - ירידה בעוצמה</strong></td><td>${getRedactedText(plan.stagedReactiveProtocol.phaseBDeescalation || 'זיהוי חלון הזדמנות וחיזוק מיידי', formData, hideDetails)}</td></tr>
+                <tr><td><strong>מצב ג' - המשכיות</strong></td><td>${getRedactedText(plan.stagedReactiveProtocol.phaseCContinuation || 'התאמת דרישה ומניעת מאבקי כוח', formData, hideDetails)}</td></tr>
+                <tr><td><strong style="color:#dc2626;">מצב ד' - הסלמה ובטיחות</strong></td><td>${getRedactedText(plan.stagedReactiveProtocol.phaseDCrisis || crisisSafetyPlan, formData, hideDetails)}</td></tr>
+              </tbody>
+            </table>
+          ` : ''}
           <div style="margin-bottom:8px;">
             <strong>תגובת הצוות בעת התרחשות ההתנהגות:</strong>
             <div class="behavior-section-body">${staffResponse}</div>
@@ -2696,9 +2875,31 @@ export function buildBehaviorPlanPrintHtml(formData: any = {}, hideDetails = fal
           </div>
         </div>
 
-        <!-- 6. Progress Monitoring Chart & Log -->
+        <!-- 7. Classroom Implementation Cheat Sheet -->
+        ${plan.classroomCheatSheet && (plan.classroomCheatSheet.beforeTransition || plan.classroomCheatSheet.onCooperation) ? `
+          <div class="behavior-section-box">
+            <div class="behavior-section-title">7. פרוטוקול יישום מעשי לכיתה ולצוות החינוכי</div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:25%;">מועד / מצב</th>
+                  <th style="width:75%;">הנחיית פעולה מעשית לצוות</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${plan.classroomCheatSheet.beforeTransition ? `<tr><td><strong>לפני המעבר או הפעילות</strong></td><td>${getRedactedText(plan.classroomCheatSheet.beforeTransition, formData, hideDetails)}</td></tr>` : ''}
+                ${plan.classroomCheatSheet.duringTransition ? `<tr><td><strong>בזמן המעבר או ההוראה</strong></td><td>${getRedactedText(plan.classroomCheatSheet.duringTransition, formData, hideDetails)}</td></tr>` : ''}
+                ${plan.classroomCheatSheet.onCooperation ? `<tr><td><strong>בעת שיתוף פעולה והיענות</strong></td><td>${getRedactedText(plan.classroomCheatSheet.onCooperation, formData, hideDetails)}</td></tr>` : ''}
+                ${plan.classroomCheatSheet.onRefusal ? `<tr><td><strong>בעת סירוב או קושי ראשוני</strong></td><td>${getRedactedText(plan.classroomCheatSheet.onRefusal, formData, hideDetails)}</td></tr>` : ''}
+                ${plan.classroomCheatSheet.onCrisis ? `<tr><td><strong>בעת הסלמה או אירוע חריג</strong></td><td>${getRedactedText(plan.classroomCheatSheet.onCrisis, formData, hideDetails)}</td></tr>` : ''}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <!-- 8. Progress Monitoring Chart & Log -->
         <div class="behavior-section-box">
-          <div class="behavior-section-title">6. טבלת מעקב שוטף ולוח התקדמות מול קו הבסיס</div>
+          <div class="behavior-section-title">8. טבלת מעקב שוטף ולוח התקדמות מול קו הבסיס</div>
           ${progressChartSvg}
           <table class="data-table">
             <thead>

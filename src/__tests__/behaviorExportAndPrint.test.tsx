@@ -204,7 +204,7 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
     expect(wordHtml).toContain('יונתן כהן');
     expect(wordHtml).toContain('בקשת הפסקה באמצעות כרטיסייה חזותית');
     expect(wordHtml).toContain('אסטרטגיות הוראה ותרגול יזום');
-    expect(wordHtml).toContain('אסטרטגיות מניעה והתאמות סביבתיות לתנאים מקדימים');
+    expect(wordHtml).toContain('התערבות מניעתית והתאמות סביבתיות לתנאים מקדימים');
     expect(wordHtml).toContain('מחזקים מועדפים:');
     expect(wordHtml).toContain('לוח זמנים ותדירות חיזוק:');
     expect(wordHtml).toContain('תגובת הצוות בעת התרחשות ההתנהגות:');

@@ -6,6 +6,12 @@ import {
   refineOperationalDefinition,
   formulateHypothesisNarrative
 } from '../services/behaviorAiService';
+import {
+  validateBehaviorPlanQuality,
+  getDifferentialProcedureLabelHebrew,
+  calculateBaselineStats,
+  calculateTrackingStats
+} from '../domain/behaviorAnalysis';
 
 describe('Behavior Intervention Plan & AI Assistance Suite', () => {
   const sampleStudentWithAssessment: StudentProfile = {
@@ -99,10 +105,14 @@ describe('Behavior Intervention Plan & AI Assistance Suite', () => {
 
     // Section Titles
     expect(html).toContain('פרטי התוכנית וצוות יישום');
-    expect(html).toContain('התנהגויות יעד להפחתה והתנהגויות חלופיות להוראה');
-    expect(html).toContain('אסטרטגיות מקדימות והתאמות סביבתיות');
-    expect(html).toContain('מערך חיזוקים ונוהל תגובת צוות');
+    expect(html).toContain('מטרות ההתערבות ויעדים משלימים');
+    expect(html).toContain('התנהגויות יעד להפחתה והליך הקניית התנהגות חלופית');
+    expect(html).toContain('התערבות מניעתית והתאמות סביבתיות');
+    expect(html).toContain('מערך חיזוקים וחיזוק דיפרנציאלי');
+    expect(html).toContain('פרוטוקול תגובה מדורג ב-4 מצבים ונוהל בטיחות');
+    expect(html).toContain('פרוטוקול יישום מעשי לכיתה ולצוות החינוכי');
     expect(html).toContain('טבלת מעקב שוטף ולוח התקדמות מול קו הבסיס');
+    expect(html).toContain('בקרת איכות מקצועית של תוכנית ההתערבות');
 
     // Strictly no English in parentheses
     expect(html).not.toContain('(BIP)');
@@ -138,5 +148,61 @@ describe('Behavior Intervention Plan & AI Assistance Suite', () => {
 
     const hypothesis = await formulateHypothesisNarrative('', '', '');
     expect(typeof hypothesis).toBe('string');
+  });
+
+  it('validates professional quality checklist indicators correctly', () => {
+    const plan = sampleStudentWithAssessment.behaviorPlan!;
+    const assessment = sampleStudentWithAssessment.behaviorAssessment!;
+
+    const result = validateBehaviorPlanQuality(plan, assessment);
+    expect(result.total).toBe(6);
+    expect(result.score).toBeGreaterThanOrEqual(4);
+    expect(result.isReady).toBe(true);
+
+    const labels = result.items.map((i) => i.label);
+    expect(labels).toContain('הגדרת התנהגות יעד אופרציונלית');
+    expect(labels).toContain('מטרות התערבות מדידות ומותאמות');
+    expect(labels).toContain('התנהגות חלופית תואמת תפקוד');
+    expect(labels).toContain('התערבות מניעתית והתאמות סביבתיות');
+    expect(labels).toContain('מערך חיזוקים מובנה וחיזוק דיפרנציאלי');
+    expect(labels).toContain('פרוטוקול תגובה מדורג ובטיחות');
+  });
+
+  it('verifies getDifferentialProcedureLabelHebrew produces pure Hebrew with zero English in parentheses', () => {
+    expect(getDifferentialProcedureLabelHebrew('DRA')).toBe('חיזוק דיפרנציאלי של התנהגות חלופית');
+    expect(getDifferentialProcedureLabelHebrew('DRI')).toBe('חיזוק דיפרנציאלי של התנהגות בלתי תואמת');
+    expect(getDifferentialProcedureLabelHebrew('DRO')).toBe('חיזוק דיפרנציאלי של התנהגות אחרת');
+    expect(getDifferentialProcedureLabelHebrew('FCT')).toBe('אימון לתקשורת תפקודית מותאמת');
+
+    // Strictly no English letters
+    ['DRA', 'DRI', 'DRO', 'FCT'].forEach((proc) => {
+      const label = getDifferentialProcedureLabelHebrew(proc);
+      expect(label).not.toMatch(/[a-zA-Z]/);
+      expect(label).not.toContain('(');
+      expect(label).not.toContain(')');
+    });
+  });
+
+  it('strictly rejects or clamps negative values to non-negative numbers in baseline and tracking stats', () => {
+    // Negative points in baselineData must be excluded or clamped
+    const rawBaseline = [
+      { id: 'b1', date: '2026-11-01', value: -5 },
+      { id: 'b2', date: '2026-11-02', value: 8 },
+      { id: 'b3', date: '2026-11-03', value: 4 }
+    ];
+    const baseStats = calculateBaselineStats(rawBaseline as any);
+    expect(baseStats.count).toBe(2);
+    expect(baseStats.average).toBe(6);
+    expect(baseStats.min).toBe(4);
+    expect(baseStats.max).toBe(8);
+
+    // Negative occurrences in tracking must be clamped to 0
+    const rawTracking = [
+      { id: 't1', date: '2026-11-04', period: '1', targetBehaviorOccurrences: -3, replacementBehaviorUsed: true, reinforcementDelivered: true },
+      { id: 't2', date: '2026-11-05', period: '2', targetBehaviorOccurrences: 2, replacementBehaviorUsed: true, reinforcementDelivered: true }
+    ];
+    const trackStats = calculateTrackingStats(rawTracking as any, 6);
+    expect(trackStats.totalOccurrences).toBe(2);
+    expect(trackStats.averageOccurrences).toBe(1);
   });
 });

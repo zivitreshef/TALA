@@ -7,6 +7,7 @@ import {
   BehaviorObservation,
   BehaviorProgressPeriod,
   BehaviorProgressReport,
+  DifferentialReinforcementProcedure,
   OngoingTrackingPoint
 } from './types';
 
@@ -69,7 +70,7 @@ export function calculateTrackingStats(
   let replacementUsedCount = 0;
 
   for (const point of trackingData) {
-    const occ = Number(point.targetBehaviorOccurrences) || 0;
+    const occ = Math.max(0, Number(point.targetBehaviorOccurrences) || 0);
     totalOccurrences += occ;
     if (point.replacementBehaviorUsed === true || Number(point.replacementBehaviorUsed) > 0) {
       replacementUsedCount += 1;
@@ -152,6 +153,46 @@ export function createEmptyBehaviorPlan(): BehaviorInterventionPlan {
     targetBehaviors: [],
     replacementBehaviors: [],
     antecedentStrategies: '',
+    antecedentStructured: {
+      prepAndWarmup: '',
+      visualSupports: '',
+      taskAdjustments: '',
+      environmentOrg: '',
+      rolesAndActivities: ''
+    },
+    smartGoalsNarrative: {
+      reductionGoal: '',
+      acquisitionGoal: '',
+      timeFrameWeeks: 8
+    },
+    replacementAcquisition: {
+      targetSkill: '',
+      modelingSteps: '',
+      promptingHierarchy: '',
+      inSituPractice: '',
+      fadingPlan: '',
+      reinforcementDetails: '',
+      generalizationPlan: ''
+    },
+    differentialReinforcement: {
+      procedureType: 'DRA',
+      rationale: '',
+      scheduleDetails: '',
+      praiseExamples: []
+    },
+    stagedReactiveProtocol: {
+      phaseAInitial: '',
+      phaseBDeescalation: '',
+      phaseCContinuation: '',
+      phaseDCrisis: ''
+    },
+    classroomCheatSheet: {
+      beforeTransition: '',
+      duringTransition: '',
+      onCooperation: '',
+      onRefusal: '',
+      onCrisis: ''
+    },
     reinforcementSystem: {
       preferredReinforcers: '',
       scheduleOfReinforcement: ''
@@ -161,7 +202,144 @@ export function createEmptyBehaviorPlan(): BehaviorInterventionPlan {
       crisisSafetyPlan: ''
     },
     ongoingTracking: [],
+    qualityChecklist: {},
     updatedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Returns clean, professional Hebrew labels for differential reinforcement procedures.
+ * Strictly adheres to Hebrew-Only Titles Rule (Zero English in Parentheses).
+ */
+export function getDifferentialProcedureLabelHebrew(
+  proc?: DifferentialReinforcementProcedure | string | null
+): string {
+  switch (proc) {
+    case 'DRA':
+      return 'חיזוק דיפרנציאלי של התנהגות חלופית';
+    case 'DRI':
+      return 'חיזוק דיפרנציאלי של התנהגות בלתי תואמת';
+    case 'DRO':
+      return 'חיזוק דיפרנציאלי של התנהגות אחרת';
+    case 'FCT':
+      return 'אימון לתקשורת תפקודית מותאמת';
+    default:
+      return 'חיזוק דיפרנציאלי מותאם';
+  }
+}
+
+export interface PlanQualityCheckItem {
+  id: string;
+  label: string;
+  isMet: boolean;
+  hint: string;
+}
+
+export interface PlanQualityValidationResult {
+  score: number;
+  total: number;
+  percentage: number;
+  isReady: boolean;
+  items: PlanQualityCheckItem[];
+}
+
+/**
+ * Evaluates the clinical ABA quality of a Behavioral Intervention Plan against professional standards.
+ */
+export function validateBehaviorPlanQuality(
+  plan?: BehaviorInterventionPlan | null,
+  _assessment?: BehaviorAssessmentReport | null
+): PlanQualityValidationResult {
+  if (!plan) {
+    return { score: 0, total: 6, percentage: 0, isReady: false, items: [] };
+  }
+
+  const hasOperationalTarget =
+    Array.isArray(plan.targetBehaviors) &&
+    plan.targetBehaviors.length > 0 &&
+    plan.targetBehaviors.some((t) => Boolean(t.name?.trim() && t.operationalDefinition?.trim()));
+
+  const hasMeasurableGoal = Boolean(
+    plan.smartGoalsNarrative?.reductionGoal?.trim() ||
+      plan.smartGoalsNarrative?.acquisitionGoal?.trim() ||
+      plan.targetBehaviors.some((t) => typeof t.targetGoal === 'number' && t.targetGoal >= 0)
+  );
+
+  const hasReplacementSkill =
+    (Array.isArray(plan.replacementBehaviors) &&
+      plan.replacementBehaviors.length > 0 &&
+      plan.replacementBehaviors.some((r) => Boolean(r.replacementSkill?.trim()))) ||
+    Boolean(plan.replacementAcquisition?.targetSkill?.trim());
+
+  const hasProactiveStrategies = Boolean(
+    plan.antecedentStrategies?.trim() ||
+      plan.antecedentStructured?.prepAndWarmup?.trim() ||
+      plan.antecedentStructured?.visualSupports?.trim() ||
+      plan.antecedentStructured?.taskAdjustments?.trim()
+  );
+
+  const hasReinforcementSystem = Boolean(
+    plan.reinforcementSystem?.preferredReinforcers?.trim() ||
+      plan.reinforcementSystem?.scheduleOfReinforcement?.trim() ||
+      plan.differentialReinforcement?.rationale?.trim()
+  );
+
+  const hasReactiveProtocol = Boolean(
+    plan.reactiveProtocol?.staffResponse?.trim() ||
+      plan.stagedReactiveProtocol?.phaseAInitial?.trim() ||
+      plan.stagedReactiveProtocol?.phaseBDeescalation?.trim()
+  );
+
+  const items: PlanQualityCheckItem[] = [
+    {
+      id: 'target',
+      label: 'הגדרת התנהגות יעד אופרציונלית',
+      isMet: hasOperationalTarget,
+      hint: 'הגדרת התנהגות ברורה וניתנת לצפייה ומדידה'
+    },
+    {
+      id: 'goals',
+      label: 'מטרות התערבות מדידות ומותאמות',
+      isMet: hasMeasurableGoal,
+      hint: 'מטרת הפחתה ומטרת רכישה מוגדרות בזמן ובקריטריון'
+    },
+    {
+      id: 'replacement',
+      label: 'התנהגות חלופית תואמת תפקוד',
+      isMet: hasReplacementSkill,
+      hint: 'הקניית מיומנות המשרתת את אותה תוצאה בדרך מותאמת'
+    },
+    {
+      id: 'antecedent',
+      label: 'התערבות מניעתית והתאמות סביבתיות',
+      isMet: hasProactiveStrategies,
+      hint: 'הטרמה, אמצעים חזותיים והתאמת דרישות למניעה מראש'
+    },
+    {
+      id: 'reinforcement',
+      label: 'מערך חיזוקים מובנה וחיזוק דיפרנציאלי',
+      isMet: hasReinforcementSystem,
+      hint: 'זיהוי מחזקים מניעים, לוח זמנים והליך חיזוק מנומק'
+    },
+    {
+      id: 'reactive',
+      label: 'פרוטוקול תגובה מדורג ובטיחות',
+      isMet: hasReactiveProtocol,
+      hint: 'הנחיות פעולה ברורות לצוות לכל שלב התרחשות או הסלמה'
+    }
+  ];
+
+  const score = items.filter((i) => i.isMet).length;
+  const total = items.length;
+  const percentage = Math.round((score / total) * 100);
+  const isReady = score >= 4;
+
+  return {
+    score,
+    total,
+    percentage,
+    isReady,
+    items
   };
 }
 

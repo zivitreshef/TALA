@@ -384,7 +384,7 @@ export default function BehaviorAssessmentForm({
       operationalDefinition: newTargetDef.trim(),
       measurementType: newTargetType,
       baselineAverage: baselineStats.average || undefined,
-      targetGoal: newTargetGoal ? Number(newTargetGoal) : undefined
+      targetGoal: newTargetGoal ? Math.max(0, Math.abs(Number(newTargetGoal)) || 0) : undefined
     };
 
     setReport((prev) => ({
@@ -414,11 +414,13 @@ export default function BehaviorAssessmentForm({
     e.preventDefault();
     if (!newBaselineValue || isNaN(Number(newBaselineValue))) return;
 
+    const parsedVal = Math.max(0, Math.abs(Number(newBaselineValue)));
+
     const newPoint: BaselineDataPoint = {
       id: 'base_' + Date.now(),
       date: newBaselineDate,
       sessionOrPeriod: newBaselinePeriod.trim(),
-      value: Number(newBaselineValue),
+      value: parsedVal,
       notes: newBaselineNotes.trim() || undefined
     };
 
@@ -1328,9 +1330,20 @@ export default function BehaviorAssessmentForm({
                   <label className="behavior-field-label">יעד מספרי רצוי</label>
                   <input
                     type="number"
+                    min="0"
                     className="behavior-input"
                     value={newTargetGoal}
-                    onChange={(e) => setNewTargetGoal(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '' || Number(val) >= 0) {
+                        setNewTargetGoal(val);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="למשל: 1"
                   />
                 </div>
@@ -1495,9 +1508,20 @@ export default function BehaviorAssessmentForm({
                     <input
                       type="number"
                       step="any"
+                      min="0"
                       className="behavior-input"
                       value={newBaselineValue}
-                      onChange={(e) => setNewBaselineValue(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || Number(val) >= 0) {
+                          setNewBaselineValue(val);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                          e.preventDefault();
+                        }
+                      }}
                       placeholder="למשל: 5"
                       required
                     />
