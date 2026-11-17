@@ -222,5 +222,18 @@ describe('Behavior HebrewDatePicker Integration & Date Parsing Suite', () => {
       expect(html).toContain('hdp-root');
       expect(html).not.toContain('type="date"');
     });
+
+    it('renders popover with portal support escaping container overflow', () => {
+      const html = renderToStaticMarkup(
+        <HebrewDatePicker
+          value="2026-10-09"
+          onChange={() => {}}
+          ariaLabel="תאריך תחילת יישום התוכנית"
+        />
+      );
+
+      expect(html).toContain('hdp-root');
+      expect(html).toContain('9 באוקטובר 2026');
+    });
   });
 });
