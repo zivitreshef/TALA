@@ -36,8 +36,6 @@ import {
   DEFAULT_TRIAL_DAYS,
   computeTrialExpirationIso,
   getTrialRemainingDays,
-  extendUserTrial,
-  upgradeUserToAnnualPaid,
   getUserSubscriptionStatus,
   renameUserGroupInList,
   computeGroupStats,
@@ -431,7 +429,7 @@ export default function AdminAllowlistModal({
     group: '',
     role: 'teacher',
     accessCode: '',
-    isTrialUser: false,
+    isTrialUser: true,
     trialDays: DEFAULT_TRIAL_DAYS
   });
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
@@ -441,8 +439,9 @@ export default function AdminAllowlistModal({
   const [inviteStatusBanner, setInviteStatusBanner] = useState('');
   const [addUserError, setAddUserError] = useState('');
 
-  const [editingPasswordUserId, setEditingPasswordUserId] = useState(null);
+  const [editingPasswordUserId, setEditingPasswordUserId] = useState<string | null>(null);
   const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [savingPasswordForUserId, setSavingPasswordForUserId] = useState<string | null>(null);
   const [showEditingPassword, setShowEditingPassword] = useState(false); void setShowEditingPassword;
   const [rowPasswordError, setRowPasswordError] = useState(''); void rowPasswordError; void setRowPasswordError;
   const [passwordSavedToastId, setPasswordSavedToastId] = useState<string | null>(null); void passwordSavedToastId;
@@ -453,15 +452,16 @@ export default function AdminAllowlistModal({
   const [isOutreachModalOpen, setIsOutreachModalOpen] = useState(false);
   const [outreachRecipients, setOutreachRecipients] = useState<AllowedUserRecord[]>([]);
 
-  const [editingDetailsUserId, setEditingDetailsUserId] = useState(null);
+  const [editingDetailsUserId, setEditingDetailsUserId] = useState<string | null>(null);
   const [editUserForm, setEditUserForm] = useState({
     name: '',
     email: '',
     title: '',
     group: '',
     role: 'teacher',
-    isTrialUser: false,
+    isTrialUser: true,
     trialDays: DEFAULT_TRIAL_DAYS,
+    paidExtensionDays: 365,
     dailyAiQuotaLimit: '' as string | number
   });
   
@@ -804,32 +804,7 @@ export default function AdminAllowlistModal({
     );
   };
 
-  // Quick Action Handlers
-  const handleExtendTrialDays = (userObj: any, daysToAdd: number) => {
-    const updatedUser = extendUserTrial(userObj, daysToAdd);
-    onUpdateAllowedUsers?.(
-      allowedUsers.map((u) => {
-        const isMatch = (u.id && userObj.id && u.id === userObj.id) ||
-          ((u.email || '').toLowerCase() === (userObj.email || '').toLowerCase());
-        return isMatch ? updatedUser : u;
-      })
-    );
-    setInviteStatusBanner(`✅ תקופת הניסיון של ${userObj.name} הוארכה ב-${daysToAdd} ימים בהצלחה!`);
-    setTimeout(() => setInviteStatusBanner(''), 4000);
-  };
 
-  const handleUpgradeToPaid = (userObj: any) => {
-    const updatedUser = upgradeUserToAnnualPaid(userObj);
-    onUpdateAllowedUsers?.(
-      allowedUsers.map((u) => {
-        const isMatch = (u.id && userObj.id && u.id === userObj.id) ||
-          ((u.email || '').toLowerCase() === (userObj.email || '').toLowerCase());
-        return isMatch ? updatedUser : u;
-      })
-    );
-    setInviteStatusBanner(`🎉 ${userObj.name} שודרג/ה בהצלחה למנוי שנתי פעיל (365 ימים)!`);
-    setTimeout(() => setInviteStatusBanner(''), 4000);
-  };
 
   const handleQuickResetPasswordAndEmail = async (userObj: any) => {
     const freshTempPassword = generateRandomTempPassword();
@@ -957,15 +932,17 @@ export default function AdminAllowlistModal({
 
   const handleStartEditUserDetails = (userObj: any) => {
     setEditUserError('');
-    setEditingDetailsUserId(userObj.id);
+    setEditingDetailsUserId(userObj.id || userObj.email);
+    const isTrial = userObj.isTrialUser !== false && (userObj.isTrialUser || userObj.subscriptionType === 'trial');
     setEditUserForm({
       name: userObj.name || '',
       email: userObj.email || '',
       title: userObj.title || 'גננת / מורה להוראה מותאמת',
       group: userObj.group || '',
       role: userObj.role || 'teacher',
-      isTrialUser: Boolean(userObj.isTrialUser),
+      isTrialUser: isTrial,
       trialDays: userObj.trialDays || DEFAULT_TRIAL_DAYS,
+      paidExtensionDays: 365,
       dailyAiQuotaLimit: userObj.dailyAiQuotaLimit || ''
     });
   };
@@ -993,7 +970,9 @@ export default function AdminAllowlistModal({
     }
 
     const emailCollision = (allowedUsers || []).some(
-      (other) => other.id !== userObj.id && (other.email || '').trim().toLowerCase() === cleanEmail
+      (other) =>
+        other.email?.toLowerCase() !== userObj.email?.toLowerCase() &&
+        (other.email || '').trim().toLowerCase() === cleanEmail
     );
     if (emailCollision) {
       setEditUserError('כתובת האימייל הזו כבר משויכת למשתמש אחר במערכת.');
@@ -1012,11 +991,14 @@ export default function AdminAllowlistModal({
         ? Math.max(1, Math.min(5000, parsedCustomQuota))
         : null;
 
-    let updatedUserRef = null;
+    let updatedUserRef: any = null;
     const updatedList = (allowedUsers || []).map((u) => {
-      if (u.id !== userObj.id) return u;
-      const trialDaysChanged = parsedTrialDays !== (u.trialDays || DEFAULT_TRIAL_DAYS);
-      const nextUser = {
+      const match =
+        (u.id && userObj.id && u.id === userObj.id) ||
+        (u.email && userObj.email && u.email.trim().toLowerCase() === userObj.email.trim().toLowerCase());
+      if (!match) return u;
+
+      let nextUser: any = {
         ...u,
         name: cleanName,
         email: cleanEmail,
@@ -1024,20 +1006,47 @@ export default function AdminAllowlistModal({
         group: cleanGroup,
         role: nextRole,
         dailyAiQuotaLimit: nextCustomQuota,
-        isTrialUser: isTrial,
-        trialDays: isTrial ? parsedTrialDays : null,
-        trialStartedAt: isTrial
-          ? trialDaysChanged || !u.trialStartedAt
-            ? new Date().toISOString()
-            : u.trialStartedAt
-          : null,
-        trialExpiresAt: isTrial
-          ? trialDaysChanged || !u.trialExpiresAt
-            ? computeTrialExpirationIso(parsedTrialDays)
-            : u.trialExpiresAt
-          : null,
-        mustSignNda: isTrial ? !u.ndaSigned : false
+        subscriptionExplicitlyUpdated: true
       };
+
+      if (isTrial) {
+        const trialDaysChanged = parsedTrialDays !== (u.trialDays || DEFAULT_TRIAL_DAYS);
+        nextUser = {
+          ...nextUser,
+          isTrialUser: true,
+          subscriptionType: 'trial',
+          trialDays: parsedTrialDays,
+          trialStartedAt: trialDaysChanged || !u.trialStartedAt ? new Date().toISOString() : u.trialStartedAt,
+          trialExpiresAt: computeTrialExpirationIso(parsedTrialDays),
+          paidExpiresAt: null,
+          upgradedToPaidAt: null,
+          mustSignNda: !u.ndaSigned
+        };
+      } else {
+        const extensionDays = parseInt(String(editUserForm.paidExtensionDays), 10);
+        let computedPaidExpiresAt = u.paidExpiresAt;
+        if (Number.isFinite(extensionDays) && extensionDays > 0) {
+          const baseMs = u.paidExpiresAt && new Date(u.paidExpiresAt).getTime() > Date.now()
+            ? new Date(u.paidExpiresAt).getTime()
+            : Date.now();
+          computedPaidExpiresAt = new Date(baseMs + extensionDays * 24 * 60 * 60 * 1000).toISOString();
+        } else if (!computedPaidExpiresAt) {
+          computedPaidExpiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+        }
+
+        nextUser = {
+          ...nextUser,
+          isTrialUser: false,
+          subscriptionType: 'annual_paid',
+          paidExpiresAt: computedPaidExpiresAt,
+          upgradedToPaidAt: u.upgradedToPaidAt || new Date().toISOString(),
+          trialDays: null,
+          trialExpiresAt: null,
+          trialStartedAt: null,
+          mustSignNda: false
+        };
+      }
+
       updatedUserRef = nextUser;
       return nextUser;
     });
@@ -1049,9 +1058,56 @@ export default function AdminAllowlistModal({
     });
 
     setEditingDetailsUserId(null);
-    setDetailsSavedToastId(userObj.id);
-    setInviteStatusBanner(`✅ פרטי המורה "${cleanName}" עודכנו בהצלחה!`);
+    setDetailsSavedToastId(userObj.id || userObj.email);
+    setInviteStatusBanner(`✅ פרטי המשתמש/ת "${cleanName}" עודכנו בהצלחה!`);
     setTimeout(() => setDetailsSavedToastId(null), 3000);
+  };
+
+  const handleSaveManualPassword = async (targetUser: any) => {
+    const trimmed = newPasswordValue.trim();
+    if (!trimmed) return;
+    if (trimmed.length < 4) {
+      alert('הסיסמה חייבת להכיל לפחות 4 תווים.');
+      return;
+    }
+
+    const targetKey = targetUser.id || targetUser.email;
+    setSavingPasswordForUserId(targetKey);
+    const creds = createPasswordCredentials(trimmed);
+
+    const updatedList = (allowedUsers || []).map((item) => {
+      const match =
+        (item.id && targetUser.id && item.id === targetUser.id) ||
+        (item.email && targetUser.email && item.email.trim().toLowerCase() === targetUser.email.trim().toLowerCase());
+      if (!match) return item;
+
+      const { accessCode: _removed, ...rest } = item;
+      return {
+        ...rest,
+        ...creds,
+        mustChangePassword: false,
+        active: true,
+        lockedOut: false,
+        failedLoginAttempts: 0
+      };
+    });
+
+    try {
+      await onUpdateAllowedUsers?.(updatedList, {
+        updatedPasswordUserEmail: (targetUser.email || '').trim().toLowerCase()
+      });
+      setPasswordSavedToastId(targetKey);
+      setEditingPasswordUserId(null);
+      setNewPasswordValue('');
+      setInviteStatusBanner(`✅ הסיסמה עודכנה בהצלחה עבור ${targetUser.name || targetUser.email}!`);
+      setTimeout(() => setPasswordSavedToastId(null), 3500);
+      setTimeout(() => setInviteStatusBanner(''), 4000);
+    } catch (err: any) {
+      console.error('Failed to update password:', err);
+      alert('חלה שגיאה בעדכון הסיסמה: ' + (err.message || 'שגיאת רשת'));
+    } finally {
+      setSavingPasswordForUserId(null);
+    }
   };
 
   const handleAddUser = async (e: any) => {
@@ -1745,8 +1801,22 @@ export default function AdminAllowlistModal({
                         checked={newUser.isTrialUser}
                         onChange={(e: any) => setNewUser({ ...newUser, isTrialUser: e.target.checked })}
                       />
-                      <span>משתמש ניסיון (Trial + NDA)</span>
+                      <span>משתמש/ת בהתנסות</span>
                     </label>
+
+                    {newUser.isTrialUser && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                        <span style={{ color: '#475569' }}>ימי התנסות:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={newUser.trialDays}
+                          onChange={(e: any) => setNewUser({ ...newUser, trialDays: e.target.value })}
+                          style={{ width: '50px', padding: '3px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                        />
+                      </div>
+                    )}
 
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', cursor: 'pointer' }}>
                       <input
@@ -1852,6 +1922,16 @@ export default function AdminAllowlistModal({
                         </div>
                       </th>
                       <th
+                        onClick={() => handleSortToggle('role')}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                        title="לחץ למיון לפי תפקיד"
+                      >
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span>תפקיד</span>
+                          {renderSortIndicator('role')}
+                        </div>
+                      </th>
+                      <th
                         onClick={() => handleSortToggle('email')}
                         style={{ cursor: 'pointer', userSelect: 'none' }}
                         title="לחץ למיון לפי אימייל"
@@ -1887,7 +1967,7 @@ export default function AdminAllowlistModal({
                         title="לחץ למיון לפי מספר תלמידים"
                       >
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <span>תלמידים (Capacity)</span>
+                          <span>תלמידים ומכסה</span>
                           {renderSortIndicator('capacity')}
                         </div>
                       </th>
@@ -1898,7 +1978,7 @@ export default function AdminAllowlistModal({
                   <tbody>
                     {filteredUsers.length === 0 && (
                       <tr>
-                        <td colSpan={8} style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
+                        <td colSpan={9} style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b' }}>
                           <Users size={32} style={{ margin: '0 auto 8px', color: '#cbd5e1' }} />
                           <div style={{ fontSize: '14px', fontWeight: 700, color: '#334155' }}>לא נמצאו משתמשים בקבוצה זו</div>
                           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
@@ -1911,13 +1991,14 @@ export default function AdminAllowlistModal({
                       const isMainAdmin = u.email?.toLowerCase() === 'zivit.reshef@gmail.com';
                       const userStatus = getUserSubscriptionStatus(u);
                       const remainingDays = getTrialRemainingDays(u);
-                      const isEditingThisUser = editingDetailsUserId === u.id;
+                      const userKey = u.id || u.email;
+                      const isEditingThisUser = editingDetailsUserId === userKey || editingDetailsUserId === u.id;
                       const studentCount = studentCountByEmail.get((u.email || '').toLowerCase()) || 0;
                       const isSelected = selectedUserIds.has(u.id);
 
                       return (
                         <tr
-                          key={u.id}
+                          key={userKey}
                           style={{
                             background: isEditingThisUser ? '#f0f7ff' : isSelected ? '#eff6ff' : undefined,
                             opacity: !u.active || userStatus === 'trial_expired' ? 0.75 : 1
@@ -1934,7 +2015,7 @@ export default function AdminAllowlistModal({
                             />
                           </td>
 
-                          {/* Name & Badges */}
+                          {/* Name & Presence */}
                           <td>
                             {isEditingThisUser ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1944,46 +2025,86 @@ export default function AdminAllowlistModal({
                                   onChange={(e: any) => setEditUserForm({ ...editUserForm, name: e.target.value })}
                                   style={{ padding: '4px 8px', borderRadius: '6px', border: '1.5px solid #2563eb', fontSize: '12px', fontWeight: 700 }}
                                 />
-                                {!isMainAdmin && (
-                                  <select
-                                    value={editUserForm.role}
-                                    onChange={(e: any) => setEditUserForm({ ...editUserForm, role: e.target.value })}
-                                    style={{ padding: '3px 6px', borderRadius: '6px', fontSize: '11px' }}
-                                  >
-                                    <option value="teacher">מורה / גננת</option>
-                                    <option value="behavior_analyst">מנתח/ת התנהגות</option>
-                                    <option value="admin">מנהל מערכת</option>
-                                  </select>
-                                )}
                               </div>
                             ) : (
                               <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                                   <strong>{u.name}</strong>
-                                  {u.role === 'admin' && <span className="badge-admin">Admin</span>}
-                                  {u.role === 'behavior_analyst' && (
-                                    <span
-                                      style={{
-                                        background: '#ccfbf1',
-                                        color: '#0f766e',
-                                        border: '1px solid #99f6e4',
-                                        borderRadius: '4px',
-                                        padding: '1px 6px',
-                                        fontSize: '10.5px',
-                                        fontWeight: 700
-                                      }}
-                                    >
-                                      מנתח/ת התנהגות
-                                    </span>
-                                  )}
                                   {getUserPresenceBadge(u.email)}
-                                  {detailsSavedToastId === u.id && (
+                                  {detailsSavedToastId === userKey && (
                                     <span style={{ color: '#059669', fontSize: '11px', fontWeight: 700 }}>✓ נשמר</span>
                                   )}
                                 </div>
-                                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                                  {u.title || 'צוות חינוכי'}
-                                </div>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Duty (Teacher / Behavioral Analyst / Admin) */}
+                          <td>
+                            {isEditingThisUser ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {!isMainAdmin ? (
+                                  <select
+                                    value={editUserForm.role}
+                                    onChange={(e: any) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                                    style={{ padding: '3px 6px', borderRadius: '6px', fontSize: '11px', border: '1.5px solid #2563eb' }}
+                                  >
+                                    <option value="teacher">מורה / גננת</option>
+                                    <option value="behavior_analyst">מנתח/ת התנהגות</option>
+                                    <option value="admin">מנהל מערכת</option>
+                                  </select>
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 700 }}>מנהל/ת מערכת</span>
+                                )}
+                                <input
+                                  type="text"
+                                  placeholder="תפקיד / הגדרה חופשית..."
+                                  value={editUserForm.title}
+                                  onChange={(e: any) => setEditUserForm({ ...editUserForm, title: e.target.value })}
+                                  style={{ padding: '3px 6px', borderRadius: '4px', fontSize: '11px', border: '1px solid #cbd5e1' }}
+                                />
+                              </div>
+                            ) : (
+                              <div>
+                                {u.role === 'behavior_analyst' ? (
+                                  <span
+                                    style={{
+                                      background: '#ccfbf1',
+                                      color: '#0f766e',
+                                      border: '1px solid #99f6e4',
+                                      borderRadius: '4px',
+                                      padding: '1px 6px',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px'
+                                    }}
+                                  >
+                                    🧩 מנתח/ת התנהגות
+                                  </span>
+                                ) : u.role === 'admin' ? (
+                                  <span
+                                    style={{
+                                      background: '#eff6ff',
+                                      color: '#1d4ed8',
+                                      border: '1px solid #bfdbfe',
+                                      borderRadius: '4px',
+                                      padding: '1px 6px',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px'
+                                    }}
+                                  >
+                                    🛡️ מנהל/ת מערכת
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '12px', color: '#334155', fontWeight: 600 }}>
+                                    {u.title || 'מורה / גננת'}
+                                  </span>
+                                )}
                               </div>
                             )}
                           </td>
@@ -2021,102 +2142,102 @@ export default function AdminAllowlistModal({
                             )}
                           </td>
 
-                          {/* Subscription Status & Quick Extension */}
+                          {/* Subscription Status & Extension */}
                           <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                {(userStatus === 'admin' || u.role === 'admin') && (
-                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#1e3a8a', background: '#dbeafe', padding: '1px 7px', borderRadius: '999px' }}>
-                                    מנהל מערכת (גישה מלאה)
-                                  </span>
-                                )}
-                                {userStatus === 'paid_active' && u.role !== 'admin' && (
-                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#166534', background: '#dcfce7', padding: '1px 7px', borderRadius: '999px' }}>
-                                    ✓ מנוי שנתי פעיל
-                                    {u.paidExpiresAt && (
-                                      <span style={{ fontSize: '10px', opacity: 0.9, marginRight: '4px' }}>
-                                        (עד {new Date(u.paidExpiresAt).toLocaleDateString('he-IL')})
-                                      </span>
-                                    )}
-                                  </span>
-                                )}
-                                {userStatus === 'trial_active' && u.role !== 'admin' && (
-                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#5b21b6', background: '#ede9fe', padding: '1px 7px', borderRadius: '999px' }}>
-                                    ⏳ ניסיון ({remainingDays} ימים)
-                                  </span>
-                                )}
-                                {userStatus === 'trial_expired' && u.role !== 'admin' && (
-                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#991b1b', background: '#fee2e2', padding: '1px 7px', borderRadius: '999px' }}>
-                                    ⏰ פג תוקף הניסיון
-                                  </span>
-                                )}
-                                {userStatus === 'paid_expired' && u.role !== 'admin' && (
-                                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#991b1b', background: '#fee2e2', padding: '1px 7px', borderRadius: '999px' }}>
-                                    ⏰ פג תוקף המנוי
-                                  </span>
+                            {isEditingThisUser && !isMainAdmin && u.role !== 'admin' ? (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '5px',
+                                  background: '#f8fafc',
+                                  padding: '5px 7px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <label style={{ fontSize: '10.5px', fontWeight: 700, color: '#334155' }}>מנוי:</label>
+                                  <select
+                                    value={editUserForm.isTrialUser ? 'trial' : 'paid'}
+                                    onChange={(e: any) =>
+                                      setEditUserForm({ ...editUserForm, isTrialUser: e.target.value === 'trial' })
+                                    }
+                                    style={{ padding: '2px 4px', fontSize: '11px', borderRadius: '4px', border: '1px solid #2563eb' }}
+                                  >
+                                    <option value="trial">התנסות (Trial)</option>
+                                    <option value="paid">מנוי שנתי משלם</option>
+                                  </select>
+                                </div>
+
+                                {editUserForm.isTrialUser ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <label style={{ fontSize: '10px', color: '#475569' }}>ימי התנסות:</label>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={365}
+                                      value={editUserForm.trialDays}
+                                      onChange={(e: any) =>
+                                        setEditUserForm({ ...editUserForm, trialDays: e.target.value })
+                                      }
+                                      style={{ width: '50px', padding: '2px 4px', fontSize: '11px', borderRadius: '4px', border: '1px solid #2563eb' }}
+                                    />
+                                    <span style={{ fontSize: '10px', color: '#64748b' }}>יום</span>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <label style={{ fontSize: '10px', color: '#475569' }}>הארכה:</label>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={1825}
+                                      value={editUserForm.paidExtensionDays}
+                                      onChange={(e: any) =>
+                                        setEditUserForm({ ...editUserForm, paidExtensionDays: e.target.value })
+                                      }
+                                      style={{ width: '50px', padding: '2px 4px', fontSize: '11px', borderRadius: '4px', border: '1px solid #2563eb' }}
+                                    />
+                                    <span style={{ fontSize: '10px', color: '#64748b' }}>ימים</span>
+                                  </div>
                                 )}
                               </div>
-
-                              {/* Quick Action: Extend / Upgrade (Only for non-admin users) */}
-                              {!isMainAdmin && u.role !== 'admin' && userStatus !== 'admin' && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px', flexWrap: 'wrap' }}>
-                                  {u.isTrialUser ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleExtendTrialDays(u, 7)}
-                                        className="btn-secondary-sm"
-                                        style={{ fontSize: '10px', padding: '2px 5px' }}
-                                        title="הארך את תקופת הניסיון ב-7 ימים"
-                                      >
-                                        +7 ימים
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleExtendTrialDays(u, 14)}
-                                        className="btn-secondary-sm"
-                                        style={{ fontSize: '10px', padding: '2px 5px' }}
-                                        title="הארך את תקופת הניסיון ב-14 ימים"
-                                      >
-                                        +14 ימים
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleUpgradeToPaid(u)}
-                                        className="btn-secondary-sm"
-                                        style={{
-                                          fontSize: '10px',
-                                          padding: '2px 6px',
-                                          background: '#f0fdf4',
-                                          color: '#15803d',
-                                          borderColor: '#86efac',
-                                          fontWeight: 700
-                                        }}
-                                        title="המר למנוי שנתי מלא (365 ימים)"
-                                      >
-                                        שדרג למנוי
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleUpgradeToPaid(u)}
-                                      className="btn-secondary-sm"
-                                      style={{
-                                        fontSize: '10px',
-                                        padding: '2px 6px',
-                                        background: '#f8fafc',
-                                        color: '#334155',
-                                        borderColor: '#cbd5e1'
-                                      }}
-                                      title="הארך את המנוי ב-365 ימים נוספים"
-                                    >
-                                      הארך בשנה (+365)
-                                    </button>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                  {(userStatus === 'admin' || u.role === 'admin') && (
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#1e3a8a', background: '#dbeafe', padding: '1px 7px', borderRadius: '999px' }}>
+                                      מנהל מערכת (גישה מלאה)
+                                    </span>
+                                  )}
+                                  {userStatus === 'paid_active' && u.role !== 'admin' && (
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#166534', background: '#dcfce7', padding: '1px 7px', borderRadius: '999px' }}>
+                                      ✓ מנוי שנתי פעיל
+                                      {u.paidExpiresAt && (
+                                        <span style={{ fontSize: '10px', opacity: 0.9, marginRight: '4px' }}>
+                                          (עד {new Date(u.paidExpiresAt).toLocaleDateString('he-IL')})
+                                        </span>
+                                      )}
+                                    </span>
+                                  )}
+                                  {userStatus === 'trial_active' && u.role !== 'admin' && (
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#5b21b6', background: '#ede9fe', padding: '1px 7px', borderRadius: '999px' }}>
+                                      ⏳ ניסיון ({remainingDays} ימים)
+                                    </span>
+                                  )}
+                                  {userStatus === 'trial_expired' && u.role !== 'admin' && (
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#991b1b', background: '#fee2e2', padding: '1px 7px', borderRadius: '999px' }}>
+                                      ⏰ פג תוקף הניסיון
+                                    </span>
+                                  )}
+                                  {userStatus === 'paid_expired' && u.role !== 'admin' && (
+                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#991b1b', background: '#fee2e2', padding: '1px 7px', borderRadius: '999px' }}>
+                                      ⏰ פג תוקף המנוי
+                                    </span>
                                   )}
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </td>
 
                           {/* Capacity & Daily AI Quota Metrics */}
@@ -2199,7 +2320,7 @@ export default function AdminAllowlistModal({
 
                           {/* Password Management */}
                           <td>
-                            {editingPasswordUserId === u.id ? (
+                            {editingPasswordUserId === userKey || editingPasswordUserId === u.id ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <input
@@ -2211,29 +2332,20 @@ export default function AdminAllowlistModal({
                                   />
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      if (!newPasswordValue.trim()) return;
-                                      const creds = createPasswordCredentials(newPasswordValue.trim());
-                                      onUpdateAllowedUsers?.(
-                                        allowedUsers.map((item) =>
-                                          item.id === u.id
-                                            ? { ...item, ...creds, mustChangePassword: true, active: true, lockedOut: false }
-                                            : item
-                                        )
-                                      );
-                                      setEditingPasswordUserId(null);
-                                      setPasswordSavedToastId(u.id);
-                                    }}
+                                    disabled={savingPasswordForUserId === userKey}
+                                    onClick={() => handleSaveManualPassword(u)}
                                     className="btn-primary-sm"
                                     style={{ padding: '3px 6px' }}
+                                    title="שמור סיסמה חדשה"
                                   >
-                                    <Check size={12} />
+                                    {savingPasswordForUserId === userKey ? '...' : <Check size={12} />}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => setEditingPasswordUserId(null)}
                                     className="btn-secondary-sm"
                                     style={{ padding: '3px 6px' }}
+                                    title="ביטול"
                                   >
                                     <X size={12} />
                                   </button>
@@ -2262,13 +2374,16 @@ export default function AdminAllowlistModal({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setEditingPasswordUserId(u.id);
+                                    setEditingPasswordUserId(userKey);
                                     setNewPasswordValue('');
                                   }}
                                   style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '10px', cursor: 'pointer', textAlign: 'right' }}
                                 >
                                   ערוך ידנית...
                                 </button>
+                                {passwordSavedToastId === userKey && (
+                                  <span style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>✓ הסיסמה עודכנה</span>
+                                )}
                               </div>
                             )}
                           </td>

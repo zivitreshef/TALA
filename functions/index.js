@@ -106,11 +106,20 @@ function mergeAdminUsersSafely(storedUsers,incomingUsers,deletedEmails=[]){
     const merged=Object.assign({},stored,inc);
     const storedIsPaid=stored.subscriptionType==="annual_paid"||stored.isTrialUser===false;
     const incomingIsTrial=inc.isTrialUser===true&&inc.subscriptionType!=="annual_paid";
+    const isExplicitTrialChoice=inc.subscriptionExplicitlyUpdated===true;
     if(storedIsPaid&&incomingIsTrial){
-      merged.isTrialUser=false;merged.subscriptionType="annual_paid";
-      merged.paidExpiresAt=stored.paidExpiresAt||inc.paidExpiresAt;
-      merged.upgradedToPaidAt=stored.upgradedToPaidAt||inc.upgradedToPaidAt;
-      merged.trialExpiresAt=null;merged.trialDays=null;
+      if(isExplicitTrialChoice){
+        merged.isTrialUser=true;merged.subscriptionType="trial";
+        merged.trialDays=inc.trialDays||stored.trialDays||14;
+        merged.trialExpiresAt=inc.trialExpiresAt||new Date(Date.now()+(merged.trialDays*86400000)).toISOString();
+        merged.trialStartedAt=inc.trialStartedAt||new Date().toISOString();
+        merged.paidExpiresAt=null;merged.upgradedToPaidAt=null;
+      }else{
+        merged.isTrialUser=false;merged.subscriptionType="annual_paid";
+        merged.paidExpiresAt=stored.paidExpiresAt||inc.paidExpiresAt;
+        merged.upgradedToPaidAt=stored.upgradedToPaidAt||inc.upgradedToPaidAt;
+        merged.trialExpiresAt=null;merged.trialDays=null;
+      }
     }
     const storedHasCustomPw=Boolean(stored.passwordHash&&stored.passwordSalt);
     if(storedHasCustomPw&&!inc.passwordHash){

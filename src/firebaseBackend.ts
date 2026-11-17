@@ -649,7 +649,18 @@ async function postConfigWrite(payload: any): Promise<boolean> {
       (import.meta as any).env?.VITE_TALA_CONFIG_WRITE_URL ||
       `https://us-central1-${projectId}.cloudfunctions.net/talaConfigWrite`;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    const idToken = await getFirebaseAuth()?.currentUser?.getIdToken();
+    const auth = getFirebaseAuth();
+    if (auth) {
+      try {
+        await (auth as any).authStateReady?.();
+      } catch (_) {}
+    }
+    let idToken = await auth?.currentUser?.getIdToken();
+    if (!idToken && auth?.currentUser) {
+      try {
+        idToken = await auth.currentUser.getIdToken(true);
+      } catch (_) {}
+    }
     if (idToken) headers.Authorization = `Bearer ${idToken}`;
     const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
     if (!res.ok) console.warn('[talaConfigWrite] rejected:', res.status, payload.kind);

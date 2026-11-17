@@ -585,6 +585,7 @@ export default function App() {
   });
 
   const studentsRef = useRef<any[]>(students);
+  const recentLocalUserUpdatesRef = useRef<Map<string, { timeMs: number; user: any }>>(new Map());
   useEffect(() => {
     studentsRef.current = students;
   }, [students]);
@@ -946,10 +947,22 @@ export default function App() {
         const { users: cloudUsers, migrated: cloudMigrated } =
           ensureUsersListPasswordsHashed(rawCloudUsers);
         let needsCloudHeal = cloudMigrated;
+        const nowMs = Date.now();
         const mergedUsers = cloudUsers.map((cu) => {
+          const emailKey = (cu.email || '').trim().toLowerCase();
           const lu = localUsers.find(
-            (u) => u.email?.toLowerCase() === cu.email?.toLowerCase()
+            (u) => (u.email || '').trim().toLowerCase() === emailKey
           );
+
+          // If this user was modified in this client session within the last 15s, preserve local edit
+          const recent = recentLocalUserUpdatesRef.current.get(emailKey);
+          if (recent && nowMs - recent.timeMs < 15000 && recent.user) {
+            return {
+              ...cu,
+              ...recent.user
+            };
+          }
+
           const cuIsDefaultPassword =
             verifyUserPassword(cu, 'TALA2026') || verifyUserPassword(cu, '1234');
           const luHasCustomPassword =
@@ -1337,12 +1350,21 @@ export default function App() {
     }
   }, [currentUser?.email, students.length, selectedStudentId]);
 
-  const handleUpdateAllowedUsers = (updatedList: any, editMeta: any = null) => {
+  const handleUpdateAllowedUsers = async (updatedList: any, editMeta: any = null) => {
     const { users: hashedList } = ensureUsersListPasswordsHashed(updatedList);
+    const nowMs = Date.now();
+    for (const u of hashedList) {
+      if (u?.email) {
+        recentLocalUserUpdatesRef.current.set((u.email as string).trim().toLowerCase(), {
+          timeMs: nowMs,
+          user: u
+        });
+      }
+    }
     setAllowedUsers(hashedList);
     saveAllowedUsers(hashedList as any);
     const deletedUserEmails = editMeta?.deletedUserEmail ? [editMeta.deletedUserEmail] : [];
-    saveAllowedUsersToCloud(hashedList as any, { deletedUserEmails });
+    void saveAllowedUsersToCloud(hashedList as any, { deletedUserEmails });
 
     // Sync currentUser session if the currently active user was modified
     if (currentUser?.email) {
