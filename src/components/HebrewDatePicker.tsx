@@ -62,7 +62,12 @@ export default function HebrewDatePicker({
   className = ''
 }: HebrewDatePickerProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; right: number; openUpward: boolean } | null>(null);
+  const [coords, setCoords] = useState<{
+    top: string;
+    bottom: string;
+    right: number;
+    openUpward: boolean;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -74,11 +79,13 @@ export default function HebrewDatePicker({
       const popoverHeight = 350;
       const popoverWidth = 280;
       const spaceBelow = window.innerHeight - rect.bottom;
-      const shouldOpenUpward = spaceBelow < popoverHeight && rect.top > popoverHeight;
+      const spaceAbove = rect.top;
+      const shouldOpenUpward = spaceBelow < popoverHeight && spaceAbove > spaceBelow;
 
-      const top = shouldOpenUpward
-        ? Math.max(10, rect.top - popoverHeight - 6)
-        : Math.min(window.innerHeight - popoverHeight - 10, rect.bottom + 6);
+      const top = shouldOpenUpward ? 'auto' : `${Math.max(10, rect.bottom + 6)}px`;
+      const bottom = shouldOpenUpward
+        ? `${Math.max(10, window.innerHeight - rect.top + 6)}px`
+        : 'auto';
 
       let right = window.innerWidth - rect.right;
       if (right < 10) right = 10;
@@ -86,7 +93,7 @@ export default function HebrewDatePicker({
         right = Math.max(10, window.innerWidth - popoverWidth - 10);
       }
 
-      setCoords({ top, right, openUpward: shouldOpenUpward });
+      setCoords({ top, bottom, right, openUpward: shouldOpenUpward });
     };
 
     updateCoords();
@@ -277,11 +284,19 @@ export default function HebrewDatePicker({
                   coords
                     ? {
                         position: 'fixed',
-                        top: `${coords.top}px`,
+                        top: coords.top,
+                        bottom: coords.bottom,
                         right: `${coords.right}px`,
-                        zIndex: 99999
+                        zIndex: 99999,
+                        backgroundColor: '#ffffff',
+                        background: '#ffffff',
+                        opacity: 1
                       }
-                    : undefined
+                    : {
+                        backgroundColor: '#ffffff',
+                        background: '#ffffff',
+                        opacity: 1
+                      }
                 }
               >
                 {/* Header */}
