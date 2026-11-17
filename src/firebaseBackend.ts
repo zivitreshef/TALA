@@ -781,11 +781,31 @@ export function subscribeToUserPreferences(email: string, onUpdate: (data: any) 
 }
 
 export async function saveStudentToCloud(studentObj: any): Promise<boolean> {
-  if (!studentObj || studentObj.isDemo === true || studentObj.id === 'demo_yonatan_levi') {
+  if (
+    !studentObj ||
+    studentObj.isDemo === true ||
+    studentObj.id === 'demo_yonatan_levi' ||
+    studentObj.id === 'st_demo_1' ||
+    (typeof studentObj.id === 'string' && (studentObj.id.startsWith('st_demo_') || studentObj.id.startsWith('demo_')))
+  ) {
     return false;
   }
   const db = getFirestoreDb();
   if (!db || !studentObj || !studentObj.id) return false;
+
+  // Zero-trust pre-check: verify caller has legitimate ownership or shared rights before attempting Firestore transaction
+  const auth = getFirebaseAuth();
+  const currentEmail = (auth?.currentUser?.email || '').trim().toLowerCase();
+  const ownerEmail = (studentObj.ownerEmail || '').trim().toLowerCase();
+  const PRIMARY_ADMIN_EMAILS = ['zivit.reshef@gmail.com', 'moti.reshef@gmail.com', 'moti_reshef@bmc.com'];
+  const isAdmin = PRIMARY_ADMIN_EMAILS.includes(currentEmail);
+  if (currentEmail && ownerEmail && !isAdmin && ownerEmail !== currentEmail) {
+    const isShared = Array.isArray(studentObj.sharedWith) && studentObj.sharedWith.some((em: string) => (em || '').trim().toLowerCase() === currentEmail);
+    if (!isShared) {
+      console.warn(`[saveStudentToCloud] Skipping cloud save for unowned student ${studentObj.id} (owner: ${ownerEmail}, active user: ${currentEmail})`);
+      return false;
+    }
+  }
   const docRef = doc(db, 'tala_students', studentObj.id);
   const cleanStudent = sanitizeForFirestore(studentObj);
 

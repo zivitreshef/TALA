@@ -291,7 +291,17 @@ export function reconcileLocalAndCloudStudents<T extends Record<string, any>>({
 
     if (!cloudIdSet.has(ls.id)) {
       // Local student missing in cloud!
-      const resolvedOwnerEmail = (ls.ownerEmail || normalizedUserEmail || 'zivit.reshef@gmail.com').toLowerCase();
+      const rawOwner = (ls.ownerEmail || '').trim().toLowerCase();
+      // Zero-Trust Security Boundary: A teacher can only upload local students that belong to them.
+      // If a student belongs to another teacher or the default admin seed, do NOT attempt cloud upload.
+      const isOwnedByCurrentTeacher = Boolean(
+        normalizedUserEmail && (rawOwner === normalizedUserEmail || !rawOwner)
+      );
+
+      const resolvedOwnerEmail = isOwnedByCurrentTeacher
+        ? normalizedUserEmail
+        : (rawOwner || normalizedUserEmail || 'zivit.reshef@gmail.com');
+
       const scopedLocal = {
         ...ls,
         ownerEmail: resolvedOwnerEmail
@@ -301,7 +311,9 @@ export function reconcileLocalAndCloudStudents<T extends Record<string, any>>({
         : scopedLocal;
 
       missingLocalStudents.push(normalizedLocal as T);
-      studentsToUpload.push(normalizedLocal as T);
+      if (isOwnedByCurrentTeacher) {
+        studentsToUpload.push(normalizedLocal as T);
+      }
     }
   });
 

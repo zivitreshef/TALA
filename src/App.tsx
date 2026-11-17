@@ -68,6 +68,8 @@ import AdminAllowlistModal from './components/modals/AdminAllowlistModal';
 import UpgradeBanner from './components/UpgradeBanner';
 import NewVersionBanner from './components/NewVersionBanner';
 import NetworkOfflineBanner from './components/NetworkOfflineBanner';
+import EmergencyRescueBar from './components/EmergencyRescueBar';
+import { isEmergencyRescueMode } from './domain/emergencyRescue';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useAppVersionCheck } from './services/versionChecker';
 import { reloadApplication } from './services/appRefresh';
@@ -586,6 +588,22 @@ export default function App() {
   useEffect(() => {
     studentsRef.current = students;
   }, [students]);
+
+  const [isEmergencyRescueDismissed, setIsEmergencyRescueDismissed] = useState(false);
+  const showEmergencyRescue = !isEmergencyRescueDismissed && isEmergencyRescueMode();
+
+  const handleEmergencyImport = (data: { students: any[]; userPreferences?: any }) => {
+    if (Array.isArray(data.students) && data.students.length > 0) {
+      setStudents(data.students);
+      safeSetStorageJson(STUDENTS_STORAGE_KEY, data.students);
+    }
+    if (data.userPreferences) {
+      setUserPreferences(data.userPreferences);
+      if (currentUser?.email) {
+        saveLocalUserPreferences(currentUser.email, data.userPreferences);
+      }
+    }
+  };
 
   // Scoped student rosters for current user (declared at root level to prevent TDZ and satisfy Rules of Hooks)
   const userStudents = useMemo(
@@ -2631,6 +2649,15 @@ export default function App() {
   if (!currentUser) {
     return (
       <>
+        {showEmergencyRescue && (
+          <EmergencyRescueBar
+            students={students}
+            userPreferences={userPreferences}
+            currentUserEmail={currentUser?.email}
+            onImport={handleEmergencyImport}
+            onClose={() => setIsEmergencyRescueDismissed(true)}
+          />
+        )}
         {evictionModalInfo && (
           <SessionEvictedModal
             evictionInfo={evictionModalInfo}
@@ -2784,6 +2811,15 @@ export default function App() {
   if (currentUser && isMobileScreen && !forceDesktopMode) {
     return (
       <div className="tala-app-root" dir="rtl">
+        {showEmergencyRescue && (
+          <EmergencyRescueBar
+            students={students}
+            userPreferences={userPreferences}
+            currentUserEmail={currentUser?.email}
+            onImport={handleEmergencyImport}
+            onClose={() => setIsEmergencyRescueDismissed(true)}
+          />
+        )}
         <MobileTeacherWorkspace
           students={baseStudentsForView}
           selectedStudentId={selectedStudentId}
@@ -2812,6 +2848,15 @@ export default function App() {
         </div>
       )}
       {/* Network Connectivity & Offline Resilience Banner */}
+      {showEmergencyRescue && (
+        <EmergencyRescueBar
+          students={students}
+          userPreferences={userPreferences}
+          currentUserEmail={currentUser?.email}
+          onImport={handleEmergencyImport}
+          onClose={() => setIsEmergencyRescueDismissed(true)}
+        />
+      )}
       <NetworkOfflineBanner
         isOnline={isOnline}
         justReconnected={justReconnected}
