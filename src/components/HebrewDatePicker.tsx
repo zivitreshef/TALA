@@ -12,6 +12,39 @@ export interface HebrewDatePickerProps {
   showDayNav?: boolean;
   compact?: boolean;
   ariaLabel?: string;
+  disabled?: boolean;
+  fullWidth?: boolean;
+  placeholder?: string;
+  className?: string;
+}
+
+export function parseDateToParts(dateStr: string): { year: number; month: number; day: number } | null {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const trimmed = dateStr.trim();
+
+  // YYYY-MM-DD
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoMatch) {
+    const y = Number(isoMatch[1]);
+    const m = Number(isoMatch[2]);
+    const d = Number(isoMatch[3]);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return { year: y, month: m, day: d };
+    }
+  }
+
+  // DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY
+  const dmyMatch = trimmed.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (dmyMatch) {
+    const d = Number(dmyMatch[1]);
+    const m = Number(dmyMatch[2]);
+    const y = Number(dmyMatch[3]);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return { year: y, month: m, day: d };
+    }
+  }
+
+  return null;
 }
 
 export default function HebrewDatePicker({
@@ -19,29 +52,40 @@ export default function HebrewDatePicker({
   onChange,
   showDayNav = false,
   compact = false,
-  ariaLabel = 'בחירת תאריך'
+  ariaLabel = 'בחירת תאריך',
+  disabled = false,
+  fullWidth = false,
+  placeholder,
+  className = ''
 }: HebrewDatePickerProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const selectedDateStr = value || todayStr;
+  const parsedValue = useMemo(() => parseDateToParts(value), [value]);
+
+  const selectedDateStr = useMemo(() => {
+    if (parsedValue) {
+      return `${parsedValue.year}-${String(parsedValue.month).padStart(2, '0')}-${String(parsedValue.day).padStart(2, '0')}`;
+    }
+    return todayStr;
+  }, [parsedValue, todayStr]);
 
   // Month currently displayed in the picker popup
   const [viewDate, setViewDate] = useState<Date>(() => {
-    const parts = selectedDateStr.split('-').map(Number);
+    if (parsedValue) {
+      return new Date(parsedValue.year, parsedValue.month - 1, parsedValue.day);
+    }
+    const parts = todayStr.split('-').map(Number);
     return new Date(parts[0], parts[1] - 1, parts[2] || 1);
   });
 
   // Keep viewDate in sync when value changes or picker is opened
   useEffect(() => {
-    if (value) {
-      const parts = value.split('-').map(Number);
-      if (parts.length === 3 && !parts.some(Number.isNaN)) {
-        setViewDate(new Date(parts[0], parts[1] - 1, parts[2]));
-      }
+    if (parsedValue) {
+      setViewDate(new Date(parsedValue.year, parsedValue.month - 1, parsedValue.day));
     }
-  }, [value, isOpen]);
+  }, [parsedValue, isOpen]);
 
   // Handle escape key
   useEffect(() => {
@@ -86,6 +130,9 @@ export default function HebrewDatePicker({
   };
 
   const formattedDisplayDate = useMemo(() => {
+    if (!value && placeholder) {
+      return placeholder;
+    }
     try {
       const parts = selectedDateStr.split('-').map(Number);
       const d = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -94,22 +141,28 @@ export default function HebrewDatePicker({
       }
       return d.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
     } catch (_) {
-      return selectedDateStr;
+      return value || selectedDateStr;
     }
-  }, [selectedDateStr, compact]);
+  }, [selectedDateStr, compact, value, placeholder]);
 
   const activeHoliday = useMemo<IsraeliHolidayInfo | null>(
-    () => getIsraeliHolidayInfo(selectedDateStr),
-    [selectedDateStr]
+    () => (value ? getIsraeliHolidayInfo(selectedDateStr) : null),
+    [value, selectedDateStr]
   );
 
   return (
-    <div className={`hdp-root ${compact ? 'hdp-compact' : ''}`} ref={containerRef} dir="rtl">
+    <div
+      className={`hdp-root ${compact ? 'hdp-compact' : ''} ${fullWidth ? 'hdp-full-width' : ''} ${className}`.trim()}
+      ref={containerRef}
+      dir="rtl"
+    >
+      <input type="hidden" value={value || ''} disabled={disabled} readOnly />
       {showDayNav && (
         <div className="hdp-nav-group" dir="ltr">
           <button
             type="button"
-            onClick={() => handleShiftDay(-1)}
+            disabled={disabled}
+            onClick={() => !disabled && handleShiftDay(-1)}
             className="hdp-step-btn"
             title="יום קודם"
             aria-label="יום קודם"
@@ -119,7 +172,8 @@ export default function HebrewDatePicker({
 
           <button
             type="button"
-            onClick={() => onChange(todayStr)}
+            disabled={disabled}
+            onClick={() => !disabled && onChange(todayStr)}
             className={`hdp-today-chip ${selectedDateStr === todayStr ? 'is-active' : ''}`}
             title="עבור להיום"
           >
@@ -128,7 +182,8 @@ export default function HebrewDatePicker({
 
           <button
             type="button"
-            onClick={() => handleShiftDay(1)}
+            disabled={disabled}
+            onClick={() => !disabled && handleShiftDay(1)}
             className="hdp-step-btn"
             title="יום הבא"
             aria-label="יום הבא"
@@ -141,21 +196,26 @@ export default function HebrewDatePicker({
       <div className="hdp-trigger-wrapper">
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`hdp-trigger-btn ${isOpen ? 'is-open' : ''}`}
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          disabled={disabled}
+          className={`hdp-trigger-btn ${isOpen ? 'is-open' : ''} ${disabled ? 'is-disabled' : ''}`}
           aria-label={ariaLabel}
           aria-expanded={isOpen}
         >
-          <CalendarIcon size={14} className="hdp-cal-icon" />
-          <span className="hdp-date-text">{formattedDisplayDate}</span>
-          {activeHoliday && (
-            <span
-              className={`hdp-holiday-pill ${activeHoliday.isVacation ? 'pill-vacation' : 'pill-observance'}`}
-              title={`${activeHoliday.name} (${activeHoliday.statusText})`}
-            >
-              {activeHoliday.isVacation ? '🏖️' : '🕯️'} {activeHoliday.shortName}
+          <div className="hdp-trigger-content">
+            <CalendarIcon size={14} className="hdp-cal-icon" />
+            <span className={`hdp-date-text ${!value && placeholder ? 'hdp-placeholder' : ''}`}>
+              {formattedDisplayDate}
             </span>
-          )}
+            {activeHoliday && (
+              <span
+                className={`hdp-holiday-pill ${activeHoliday.isVacation ? 'pill-vacation' : 'pill-observance'}`}
+                title={`${activeHoliday.name} (${activeHoliday.statusText})`}
+              >
+                {activeHoliday.isVacation ? '🏖️' : '🕯️'} {activeHoliday.shortName}
+              </span>
+            )}
+          </div>
           <ChevronDown size={13} className="hdp-chevron-icon" />
         </button>
 
