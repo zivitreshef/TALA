@@ -19,12 +19,16 @@ import {
   Mail,
   FileText,
   Users,
-  TrendingUp
+  TrendingUp,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { DEFAULT_SCHOOL_YEAR } from '../../domain/yearReport';
 import { SCHOOL_YEARS_LIST } from '../../domain/schoolYearRollover';
 import {
   BehaviorInterventionPlan,
+  DifferentialReinforcementProcedure,
   OngoingTrackingPoint,
   ReplacementBehaviorPlan,
   StudentProfile
@@ -34,7 +38,8 @@ import {
   calculateTrackingStats,
   createEmptyBehaviorPlan,
   getBehaviorFunctionLabelHebrew,
-  getMeasurementTypeLabelHebrew
+  getMeasurementTypeLabelHebrew,
+  validateBehaviorPlanQuality
 } from '../../domain/behaviorAnalysis';
 import { suggestInterventionStrategies } from '../../services/behaviorAiService';
 import BehaviorStudentDetailsCard, { type BehaviorStudentDetailsData } from './BehaviorStudentDetailsCard';
@@ -79,10 +84,35 @@ export default function BehaviorInterventionPlanForm({
 }: BehaviorInterventionPlanFormProps) {
   // Initialize plan from student or clean template
   const [plan, setPlan] = useState<BehaviorInterventionPlan>(() => {
+    const empty = createEmptyBehaviorPlan();
     if (student.behaviorPlan) {
       return {
-        ...createEmptyBehaviorPlan(),
+        ...empty,
         ...student.behaviorPlan,
+        antecedentStructured: {
+          ...empty.antecedentStructured,
+          ...(student.behaviorPlan.antecedentStructured || {})
+        },
+        stagedReactiveProtocol: {
+          ...empty.stagedReactiveProtocol,
+          ...(student.behaviorPlan.stagedReactiveProtocol || {})
+        },
+        smartGoalsNarrative: {
+          ...empty.smartGoalsNarrative,
+          ...(student.behaviorPlan.smartGoalsNarrative || {})
+        },
+        replacementAcquisition: {
+          ...empty.replacementAcquisition,
+          ...(student.behaviorPlan.replacementAcquisition || {})
+        },
+        differentialReinforcement: {
+          ...empty.differentialReinforcement,
+          ...(student.behaviorPlan.differentialReinforcement || {})
+        },
+        classroomCheatSheet: {
+          ...empty.classroomCheatSheet,
+          ...(student.behaviorPlan.classroomCheatSheet || {})
+        },
         targetBehaviors: student.behaviorPlan.targetBehaviors || [],
         replacementBehaviors: student.behaviorPlan.replacementBehaviors || [],
         ongoingTracking: student.behaviorPlan.ongoingTracking || []
@@ -93,7 +123,7 @@ export default function BehaviorInterventionPlanForm({
     const initialTargets = student.behaviorAssessment?.targetBehaviors || [];
 
     return {
-      ...createEmptyBehaviorPlan(),
+      ...empty,
       analystName: currentUser?.name || student.behaviorAssessment?.assessorName || '',
       effectiveDate: new Date().toISOString().split('T')[0],
       targetBehaviors: [...initialTargets],
@@ -146,12 +176,35 @@ export default function BehaviorInterventionPlanForm({
 
   // Progressive Disclosure: Collapsible Card Sections (Default open)
   const [openSections, setOpenSections] = useState<{ [key: string]: boolean }>({
+    quality: true,
     details: true,
+    smartGoals: true,
     targetsAndReplacements: true,
     antecedents: true,
     reinforcementAndReactive: true,
+    classroomCheatSheet: true,
     tracking: true
   });
+
+  const qualityResult = useMemo(() => {
+    return validateBehaviorPlanQuality(plan, student.behaviorAssessment);
+  }, [plan, student.behaviorAssessment]);
+
+  const handleStructuredFieldChange = (
+    parent: keyof BehaviorInterventionPlan,
+    field: string,
+    value: any
+  ) => {
+    setPlan((prev) => ({
+      ...prev,
+      [parent]: {
+        ...((prev[parent] as any) || {}),
+        [field]: value
+      },
+      updatedAt: new Date().toISOString()
+    }));
+    setIsDirty(true);
+  };
 
   // Inline forms state
   const [showAddReplacementForm, setShowAddReplacementForm] = useState<boolean>(false);
@@ -261,11 +314,12 @@ export default function BehaviorInterventionPlanForm({
   // Add Ongoing Tracking Point
   const handleAddTrackingPoint = (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedOccurrences = Math.max(0, Math.abs(Number(newTrackingOccurrences)) || 0);
     const newPoint: OngoingTrackingPoint = {
       id: 'track_' + Date.now(),
       date: newTrackingDate,
       period: newTrackingPeriod.trim(),
-      targetBehaviorOccurrences: Number(newTrackingOccurrences) || 0,
+      targetBehaviorOccurrences: parsedOccurrences,
       replacementBehaviorUsed: newTrackingReplacementUsed,
       reinforcementDelivered: newTrackingReinforcement,
       notes: newTrackingNotes.trim() || undefined
@@ -296,18 +350,40 @@ export default function BehaviorInterventionPlanForm({
   const handleRunAiStrategies = async () => {
     setIsAiGenerating(true);
     try {
-      const targetName =
-        plan.targetBehaviors[0]?.name ||
-        student.behaviorAssessment?.targetBehaviors[0]?.name ||
-        'התנהגות מאתגרת';
+      const targetObj =
+        plan.targetBehaviors[0] ||
+        student.behaviorAssessment?.targetBehaviors?.[0];
+      const targetName = targetObj?.name || 'התנהגות מאתגרת';
       const funcLabel = getBehaviorFunctionLabelHebrew(
         student.behaviorAssessment?.mainHypothesizedFunction || 'escape'
       );
 
-      const strategies = await suggestInterventionStrategies(targetName, funcLabel, student);
+      const strategies = await suggestInterventionStrategies(targetName, funcLabel, student, {
+        targetBehaviorName: targetName,
+        operationalDefinition: targetObj?.operationalDefinition,
+        baselineAverage:
+          targetObj?.baselineAverage ??
+          student.behaviorAssessment?.targetBehaviors?.[0]?.baselineAverage,
+        targetGoal: targetObj?.targetGoal,
+        antecedentAnalysis:
+          student.behaviorAssessment?.antecedentAnalysis ||
+          student.behaviorAssessment?.initialRecommendations,
+        functionalHypothesis: student.behaviorAssessment?.functionalHypothesisNarrative,
+        backgroundSummary: student.behaviorAssessment?.backgroundInfo
+      });
+
       if (strategies) {
         setPlan((prev) => ({
           ...prev,
+          smartGoalsNarrative: strategies.smartGoalsNarrative || prev.smartGoalsNarrative,
+          antecedentStructured: strategies.antecedentStructured || prev.antecedentStructured,
+          replacementAcquisition: strategies.replacementAcquisition || prev.replacementAcquisition,
+          differentialReinforcement:
+            strategies.differentialReinforcement || prev.differentialReinforcement,
+          stagedReactiveProtocol:
+            strategies.stagedReactiveProtocol || prev.stagedReactiveProtocol,
+          classroomCheatSheet:
+            strategies.classroomCheatSheet || prev.classroomCheatSheet,
           replacementBehaviors: strategies.replacementSkill
             ? [
                 ...prev.replacementBehaviors,
@@ -980,6 +1056,49 @@ export default function BehaviorInterventionPlanForm({
         </div>
       )}
 
+      {/* Quality and Readiness Checklist */}
+      <section className="plan-quality-card">
+        <div className="plan-quality-header">
+          <div className="plan-quality-title">
+            <ShieldCheck size={20} color="#2563eb" />
+            <span>בקרת איכות מקצועית של תוכנית ההתערבות</span>
+            <span style={{ fontSize: '0.8rem', color: qualityResult.isReady ? '#16a34a' : '#d97706', fontWeight: 600 }}>
+              {qualityResult.isReady ? '• מוכנה ליישום' : '• נדרשת השלמת רכיבים'}
+            </span>
+          </div>
+          <div className="plan-quality-meter-wrap">
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
+              {qualityResult.score} מתוך {qualityResult.total} מדדים ({qualityResult.percentage}%)
+            </span>
+            <div className="plan-quality-meter-bar">
+              <div
+                className="plan-quality-meter-fill"
+                style={{
+                  width: `${qualityResult.percentage}%`,
+                  background: qualityResult.percentage >= 80 ? '#10b981' : qualityResult.percentage >= 50 ? '#f59e0b' : '#ef4444'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="plan-quality-grid">
+          {qualityResult.items.map((item) => (
+            <div
+              key={item.id}
+              className={`plan-quality-item ${item.isMet ? 'passed' : ''}`}
+              title={item.hint}
+            >
+              {item.isMet ? (
+                <CheckCircle2 size={16} color="#16a34a" />
+              ) : (
+                <AlertCircle size={16} color="#94a3b8" />
+              )}
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Section 1: פרטי התוכנית וצוות יישום */}
       <section className="plan-card">
         <div className="plan-card-header" onClick={() => toggleSection('details')}>
@@ -1037,16 +1156,92 @@ export default function BehaviorInterventionPlanForm({
         )}
       </section>
 
-      {/* Section 2: התנהגויות יעד והתנהגויות חלופיות */}
+      {/* Section 2: מטרות ההתערבות ויעדים משלימים */}
+      <section className="plan-card">
+        <div className="plan-card-header" onClick={() => toggleSection('smartGoals')}>
+          <div className="plan-card-title-wrap">
+            <span className="plan-section-badge">2</span>
+            <h2 className="plan-card-title">מטרות ההתערבות ויעדים משלימים</h2>
+          </div>
+          <button
+            type="button"
+            className="btn-collapse-toggle-32"
+            aria-label={openSections.smartGoals ? 'כיווץ מקטע' : 'הרחבת מקטע'}
+          >
+            {openSections.smartGoals ? <Minus size={16} /> : <Plus size={16} />}
+          </button>
+        </div>
+
+        {openSections.smartGoals && (
+          <div className="plan-card-body">
+            <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#64748b' }}>
+              הגדרת שתי מטרות משלימות, ממוקדות ומדידות: הפחתת ההתנהגות המאתגרת ביחס לקו הבסיס, לצד הקניית התנהגות חלופית תואמת תפקוד.
+            </p>
+            <div className="behavior-form-grid-2">
+              <div className="behavior-field-group">
+                <label className="behavior-field-label">
+                  מטרת הפחתה מדידה המקושרת לנתוני הבסיס
+                </label>
+                <textarea
+                  className="behavior-textarea"
+                  rows={3}
+                  disabled={isPlanLocked}
+                  value={plan.smartGoalsNarrative?.reductionGoal || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('smartGoalsNarrative', 'reductionGoal', e.target.value)
+                  }
+                  placeholder="למשל: הפחתת אירועי עזיבת כיסא במהלך שיעור פרונטלי מ-7 אירועים בממוצע לקו בסיס לעד אירוע 1 ביום..."
+                />
+              </div>
+
+              <div className="behavior-field-group">
+                <label className="behavior-field-label">
+                  מטרת רכישה ושליטה של ההתנהגות החלופית
+                </label>
+                <textarea
+                  className="behavior-textarea"
+                  rows={3}
+                  disabled={isPlanLocked}
+                  value={plan.smartGoalsNarrative?.acquisitionGoal || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('smartGoalsNarrative', 'acquisitionGoal', e.target.value)
+                  }
+                  placeholder="למשל: בתוך 8 שבועות, התלמיד יבקש הפסקה יזומה באמצעות כרטיסייה ב-4 מתוך 5 הזדמנויות של מטלה מאתגרת..."
+                />
+              </div>
+            </div>
+
+            <div className="behavior-field-group" style={{ maxWidth: '240px', marginTop: '0.75rem' }}>
+              <label className="behavior-field-label">טווח זמן מוגדר להשגת היעד (בשבועות)</label>
+              <input
+                type="number"
+                min="1"
+                className="behavior-input"
+                disabled={isPlanLocked}
+                value={plan.smartGoalsNarrative?.timeFrameWeeks ?? 8}
+                onChange={(e) => {
+                  const val = Math.max(1, Math.abs(Number(e.target.value)) || 8);
+                  handleStructuredFieldChange('smartGoalsNarrative', 'timeFrameWeeks', val);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Section 3: התנהגויות יעד והליך הקניית התנהגות חלופית */}
       <section className="plan-card">
         <div
           className="plan-card-header"
           onClick={() => toggleSection('targetsAndReplacements')}
         >
           <div className="plan-card-title-wrap">
-            <span className="plan-section-badge">2</span>
+            <span className="plan-section-badge">3</span>
             <h2 className="plan-card-title">
-              התנהגויות יעד להפחתה והתנהגויות חלופיות להוראה
+              התנהגויות יעד להפחתה והליך הקניית התנהגות חלופית
             </h2>
           </div>
           <button
@@ -1125,11 +1320,76 @@ export default function BehaviorInterventionPlanForm({
               ))
             )}
 
+            {/* Detailed Replacement Acquisition Hierarchy */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', marginTop: '1rem' }}>
+              <h5 style={{ margin: '0 0 0.75rem', fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>
+                פירוט שלבי ההקניה וההכללה של ההתנהגות החלופית
+              </h5>
+              <div className="behavior-form-grid-2">
+                <div className="behavior-field-group">
+                  <label className="behavior-field-label">הדגמה ומידול (כיצד מדגימים לתלמיד)</label>
+                  <input
+                    type="text"
+                    className="behavior-input"
+                    disabled={isPlanLocked}
+                    value={plan.replacementAcquisition?.modelingSteps || ''}
+                    onChange={(e) =>
+                      handleStructuredFieldChange('replacementAcquisition', 'modelingSteps', e.target.value)
+                    }
+                    placeholder="הדגמה חזותית ומשחק תפקידים לפני תחילת המשימה..."
+                  />
+                </div>
+                <div className="behavior-field-group">
+                  <label className="behavior-field-label">רמזים וסיוע (איזה רמז ניתן בזמן אמת)</label>
+                  <input
+                    type="text"
+                    className="behavior-input"
+                    disabled={isPlanLocked}
+                    value={plan.replacementAcquisition?.promptingHierarchy || ''}
+                    onChange={(e) =>
+                      handleStructuredFieldChange('replacementAcquisition', 'promptingHierarchy', e.target.value)
+                    }
+                    placeholder="הצבעה על כרטיסיית הפסקה או רמז מילולי קצר..."
+                  />
+                </div>
+              </div>
+
+              <div className="behavior-form-grid-2" style={{ marginTop: '0.75rem' }}>
+                <div className="behavior-field-group">
+                  <label className="behavior-field-label">דעיכת רמזים (הפחתה הדרגתית של התלות בתיווך)</label>
+                  <input
+                    type="text"
+                    className="behavior-input"
+                    disabled={isPlanLocked}
+                    value={plan.replacementAcquisition?.fadingPlan || ''}
+                    onChange={(e) =>
+                      handleStructuredFieldChange('replacementAcquisition', 'fadingPlan', e.target.value)
+                    }
+                    placeholder="מעבר מרמז ישיר להמתנה של 5 שניות ליוזמה עצמאית..."
+                  />
+                </div>
+                <div className="behavior-field-group">
+                  <label className="behavior-field-label">הכללה לסביבות ולאנשים נוספים</label>
+                  <input
+                    type="text"
+                    className="behavior-input"
+                    disabled={isPlanLocked}
+                    value={plan.replacementAcquisition?.generalizationPlan || ''}
+                    onChange={(e) =>
+                      handleStructuredFieldChange('replacementAcquisition', 'generalizationPlan', e.target.value)
+                    }
+                    placeholder="תרגול בחצר, בשיעורים מקצועיים ועם הסייעת..."
+                  />
+                </div>
+              </div>
+            </div>
+
             {!showAddReplacementForm ? (
               <button
                 type="button"
                 disabled={isPlanLocked}
                 className="btn-behavior-action btn-behavior-secondary"
+                style={{ marginTop: '1rem' }}
                 onClick={() => setShowAddReplacementForm(true)}
               >
                 <Plus size={16} />
@@ -1145,7 +1405,8 @@ export default function BehaviorInterventionPlanForm({
                   borderRadius: '8px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.85rem'
+                  gap: '0.85rem',
+                  marginTop: '1rem'
                 }}
               >
                 <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
@@ -1193,12 +1454,12 @@ export default function BehaviorInterventionPlanForm({
         )}
       </section>
 
-      {/* Section 3: אסטרטגיות מקדימות והתאמות סביבתיות */}
+      {/* Section 4: התערבות מניעתית והתאמות סביבתיות */}
       <section className="plan-card">
         <div className="plan-card-header" onClick={() => toggleSection('antecedents')}>
           <div className="plan-card-title-wrap">
-            <span className="plan-section-badge">3</span>
-            <h2 className="plan-card-title">אסטרטגיות מקדימות והתאמות סביבתיות</h2>
+            <span className="plan-section-badge">4</span>
+            <h2 className="plan-card-title">התערבות מניעתית והתאמות סביבתיות</h2>
           </div>
           <button
             type="button"
@@ -1211,32 +1472,110 @@ export default function BehaviorInterventionPlanForm({
 
         {openSections.antecedents && (
           <div className="plan-card-body">
-            <div className="behavior-field-group">
+            <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#64748b' }}>
+              תכנון מניעתי של הסביבה והדרישות כדי להפחית מלכתחילה את הצורך בהתנהגות המאתגרת. כל המלצה כוללת פעולה קונקרטית, מועד, אופן ביצוע והקשר לפונקציה.
+            </p>
+
+            <div className="behavior-form-grid-2">
+              <div className="behavior-field-group">
+                <label className="behavior-field-label">א. הטרמה והכנה מראש</label>
+                <textarea
+                  className="behavior-textarea"
+                  rows={2}
+                  disabled={isPlanLocked}
+                  value={plan.antecedentStructured?.prepAndWarmup || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('antecedentStructured', 'prepAndWarmup', e.target.value)
+                  }
+                  placeholder="התראה מוקדמת לפני מעבר פעילות, תיאום ציפיות, הכנה לסיום פעילות מועדפת..."
+                />
+              </div>
+
+              <div className="behavior-field-group">
+                <label className="behavior-field-label">ב. אמצעים חזותיים</label>
+                <textarea
+                  className="behavior-textarea"
+                  rows={2}
+                  disabled={isPlanLocked}
+                  value={plan.antecedentStructured?.visualSupports || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('antecedentStructured', 'visualSupports', e.target.value)
+                  }
+                  placeholder="לוח סדר יום חזותי, טיימר חזותי, כרטיסי בחירה, כרטיס בקשת עזרה או הפסקה..."
+                />
+              </div>
+            </div>
+
+            <div className="behavior-form-grid-2" style={{ marginTop: '0.75rem' }}>
+              <div className="behavior-field-group">
+                <label className="behavior-field-label">ג. התאמת דרישות ומטלות</label>
+                <textarea
+                  className="behavior-textarea"
+                  rows={2}
+                  disabled={isPlanLocked}
+                  value={plan.antecedentStructured?.taskAdjustments || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('antecedentStructured', 'taskAdjustments', e.target.value)
+                  }
+                  placeholder="פירוק מטלה לשלבים קצרים, קיצור משך המשימה, מתן בחירה בתוך המטלה, קצב מותאם..."
+                />
+              </div>
+
+              <div className="behavior-field-group">
+                <label className="behavior-field-label">ד. ארגון הסביבה הפיזית</label>
+                <textarea
+                  className="behavior-textarea"
+                  rows={2}
+                  disabled={isPlanLocked}
+                  value={plan.antecedentStructured?.environmentOrg || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('antecedentStructured', 'environmentOrg', e.target.value)
+                  }
+                  placeholder="צמצום מסיחים, מיקום ישיבה מותאם, הכנת חומרי עבודה מראש..."
+                />
+              </div>
+            </div>
+
+            <div className="behavior-field-group" style={{ marginTop: '0.75rem' }}>
+              <label className="behavior-field-label">ה. תפקידים ופעילות חלופית</label>
+              <textarea
+                className="behavior-textarea"
+                rows={2}
+                disabled={isPlanLocked}
+                value={plan.antecedentStructured?.rolesAndActivities || ''}
+                onChange={(e) =>
+                  handleStructuredFieldChange('antecedentStructured', 'rolesAndActivities', e.target.value)
+                }
+                placeholder="מתן תפקיד תפעולי (חלוקת דפים), שילוב פעילות מוטורית יזומה, הזדמנויות השתתפות..."
+              />
+            </div>
+
+            <div className="behavior-field-group" style={{ marginTop: '1rem' }}>
               <label className="behavior-field-label">
-                התאמות סביבתיות, הטרמות ושינוי נסיבות מפעילות
+                סיכום משולב של אסטרטגיות מקדימות והתאמות סביבתיות
               </label>
               <textarea
                 className="behavior-textarea"
-                rows={4}
+                rows={3}
                 disabled={isPlanLocked}
                 value={plan.antecedentStrategies || ''}
                 onChange={(e) => handleFieldChange('antecedentStrategies', e.target.value)}
-                placeholder="פירוט התאמות: מיקום ישיבה מותאם, לוח זמנים חזותי, פירוק משימות למקטעים קצרים, מתן אפשרות בחירה והכנה מראש..."
+                placeholder="פירוט התאמות סביבתיות ופדגוגיות..."
               />
             </div>
           </div>
         )}
       </section>
 
-      {/* Section 4: מערך חיזוקים ונוהל תגובה */}
+      {/* Section 5: מערך חיזוקים וחיזוק דיפרנציאלי */}
       <section className="plan-card">
         <div
           className="plan-card-header"
           onClick={() => toggleSection('reinforcementAndReactive')}
         >
           <div className="plan-card-title-wrap">
-            <span className="plan-section-badge">4</span>
-            <h2 className="plan-card-title">מערך חיזוקים ונוהל תגובת צוות</h2>
+            <span className="plan-section-badge">5</span>
+            <h2 className="plan-card-title">מערך חיזוקים וחיזוק דיפרנציאלי</h2>
           </div>
           <button
             type="button"
@@ -1251,92 +1590,307 @@ export default function BehaviorInterventionPlanForm({
           <div className="plan-card-body">
             <div className="behavior-form-grid-2">
               <div className="behavior-field-group">
-                <label className="behavior-field-label">
-                  מפת חיזוקים מועדפים בעלי ערך מניע
-                </label>
+                <label className="behavior-field-label">סוג הליך חיזוק דיפרנציאלי מותאם</label>
+                <select
+                  className="behavior-select"
+                  disabled={isPlanLocked}
+                  value={plan.differentialReinforcement?.procedureType || 'DRA'}
+                  onChange={(e) =>
+                    handleStructuredFieldChange(
+                      'differentialReinforcement',
+                      'procedureType',
+                      e.target.value as DifferentialReinforcementProcedure
+                    )
+                  }
+                >
+                  <option value="DRA">חיזוק דיפרנציאלי של התנהגות חלופית</option>
+                  <option value="DRI">חיזוק דיפרנציאלי של התנהגות בלתי תואמת</option>
+                  <option value="DRO">חיזוק דיפרנציאלי של התנהגות אחרת</option>
+                  <option value="FCT">אימון לתקשורת תפקודית מותאמת</option>
+                </select>
+              </div>
+
+              <div className="behavior-field-group">
+                <label className="behavior-field-label">נימוק מקצועי לבחירת ההליך</label>
+                <input
+                  type="text"
+                  className="behavior-input"
+                  disabled={isPlanLocked}
+                  value={plan.differentialReinforcement?.rationale || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('differentialReinforcement', 'rationale', e.target.value)
+                  }
+                  placeholder="מדוע הליך זה מתאים לפונקציה ולממצאי ההערכה..."
+                />
+              </div>
+            </div>
+
+            <div className="behavior-form-grid-2" style={{ marginTop: '0.75rem' }}>
+              <div className="behavior-field-group">
+                <label className="behavior-field-label">מפת מחזקים מועדפים בעלי ערך מניע</label>
                 <textarea
                   className="behavior-textarea"
-                  rows={3}
+                  rows={2}
                   disabled={isPlanLocked}
                   value={plan.reinforcementSystem.preferredReinforcers || ''}
                   onChange={(e) =>
-                    handleNestedFieldChange(
-                      'reinforcementSystem',
-                      'preferredReinforcers',
-                      e.target.value
-                    )
+                    handleNestedFieldChange('reinforcementSystem', 'preferredReinforcers', e.target.value)
                   }
-                  placeholder="פעילויות אהובות, זמן מסך מבוקר, משחק משותף, משוב חיובי ספציפי..."
+                  placeholder="פעילויות אהובות, זמן מועדף, משחק משותף, תפקיד כיתתי, מחזקים חברתיים..."
                 />
               </div>
 
               <div className="behavior-field-group">
-                <label className="behavior-field-label">לוח זמנים למתן החיזוק</label>
+                <label className="behavior-field-label">לוח זמנים למתן החיזוק ודילול מדורג</label>
+                <textarea
+                  className="behavior-textarea"
+                  rows={2}
+                  disabled={isPlanLocked}
+                  value={plan.reinforcementSystem.scheduleOfReinforcement || ''}
+                  onChange={(e) =>
+                    handleNestedFieldChange('reinforcementSystem', 'scheduleOfReinforcement', e.target.value)
+                  }
+                  placeholder="מיידי על שימוש בחלופה, חיזוק רציף בתחילת הדרך ודילול הדרגתי..."
+                />
+              </div>
+            </div>
+
+            {/* Praise Examples */}
+            {Array.isArray(plan.differentialReinforcement?.praiseExamples) &&
+              plan.differentialReinforcement!.praiseExamples.length > 0 && (
+                <div style={{ marginTop: '0.75rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.75rem 1rem' }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#166534', display: 'block', marginBottom: '0.35rem' }}>
+                    דוגמאות למשפטי שבח תיאורי ספציפי לשימוש הצוות:
+                  </label>
+                  <ul style={{ margin: 0, paddingRight: '1.25rem', fontSize: '0.85rem', color: '#14532d' }}>
+                    {plan.differentialReinforcement!.praiseExamples.map((praise, pIdx) => (
+                      <li key={pIdx} style={{ marginBottom: '0.25rem' }}>
+                        "{praise}"
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+          </div>
+        )}
+      </section>
+
+      {/* Section 6: פרוטוקול תגובה מדורג ב-4 מצבים ונוהל בטיחות */}
+      <section className="plan-card">
+        <div
+          className="plan-card-header"
+          onClick={() => toggleSection('stagedReactive')}
+        >
+          <div className="plan-card-title-wrap">
+            <span className="plan-section-badge">6</span>
+            <h2 className="plan-card-title">פרוטוקול תגובה מדורג ב-4 מצבים ונוהל בטיחות</h2>
+          </div>
+          <button
+            type="button"
+            className="btn-collapse-toggle-32"
+            aria-label={openSections.stagedReactive ? 'כיווץ מקטע' : 'הרחבת מקטע'}
+          >
+            {openSections.stagedReactive ? <Minus size={16} /> : <Plus size={16} />}
+          </button>
+        </div>
+
+        {openSections.stagedReactive && (
+          <div className="plan-card-body">
+            <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#64748b' }}>
+              פרוטוקול תגובה מדורג לצוות החינוכי להבטחת תגובה אחידה שאינה משמרת את ההתנהגות המאתגרת, תוך מניעת מאבקי כוח ושמירה מוחלטת על בטיחות.
+            </p>
+
+            <div className="staged-protocol-grid">
+              <div className="staged-phase-card phase-a">
+                <div className="staged-phase-header">
+                  <span>מצב א' - הופעה ראשונית</span>
+                </div>
                 <textarea
                   className="behavior-textarea"
                   rows={3}
                   disabled={isPlanLocked}
-                  value={plan.reinforcementSystem.scheduleOfReinforcement || ''}
+                  value={plan.stagedReactiveProtocol?.phaseAInitial || ''}
                   onChange={(e) =>
-                    handleNestedFieldChange(
-                      'reinforcementSystem',
-                      'scheduleOfReinforcement',
-                      e.target.value
-                    )
+                    handleStructuredFieldChange('stagedReactiveProtocol', 'phaseAInitial', e.target.value)
                   }
-                  placeholder="מיידי על הפגנת ההתנהגות החלופית, חיזוק תקופתי בכל 15 דקות ללא אירוע..."
+                  placeholder="הוראה מילולית קצרה, רמז חזותי שקט, תגובה ניטרלית, הימנעות מתשומת לב עודפת..."
+                />
+              </div>
+
+              <div className="staged-phase-card phase-b">
+                <div className="staged-phase-header">
+                  <span>מצב ב' - הפסקה או ירידה בעוצמה</span>
+                </div>
+                <textarea
+                  className="behavior-textarea"
+                  rows={3}
+                  disabled={isPlanLocked}
+                  value={plan.stagedReactiveProtocol?.phaseBDeescalation || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('stagedReactiveProtocol', 'phaseBDeescalation', e.target.value)
+                  }
+                  placeholder="זיהוי רגע ההירגעות, חיזוק מיידי על חזרה לוויסות, חזרה מותאמת לפעילות..."
+                />
+              </div>
+
+              <div className="staged-phase-card phase-c">
+                <div className="staged-phase-header">
+                  <span>מצב ג' - המשכיות ההתנהגות</span>
+                </div>
+                <textarea
+                  className="behavior-textarea"
+                  rows={3}
+                  disabled={isPlanLocked}
+                  value={plan.stagedReactiveProtocol?.phaseCContinuation || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('stagedReactiveProtocol', 'phaseCContinuation', e.target.value)
+                  }
+                  placeholder="שינוי סביבתי, התאמת דרישה ללא מאבקי כוח, הצגה מחדש של ההתנהגות החלופית..."
+                />
+              </div>
+
+              <div className="staged-phase-card phase-d">
+                <div className="staged-phase-header">
+                  <span>מצב ד' - הסלמה ובטיחות</span>
+                </div>
+                <textarea
+                  className="behavior-textarea"
+                  rows={3}
+                  disabled={isPlanLocked}
+                  value={plan.stagedReactiveProtocol?.phaseDCrisis || plan.reactiveProtocol.crisisSafetyPlan || ''}
+                  onChange={(e) => {
+                    handleStructuredFieldChange('stagedReactiveProtocol', 'phaseDCrisis', e.target.value);
+                    handleNestedFieldChange('reactiveProtocol', 'crisisSafetyPlan', e.target.value);
+                  }}
+                  placeholder="בטיחות הילד והסביבה, הפחתת גירויים, עצירת הדרישה, גורם אחראי. ללא כפייה פיזית..."
                 />
               </div>
             </div>
 
             <div className="behavior-field-group" style={{ marginTop: '1.25rem' }}>
               <label className="behavior-field-label">
-                פרוטוקול תגובה אחיד לצוות בעת התרחשות התנהגות היעד
-              </label>
-              <textarea
-                className="behavior-textarea"
-                rows={3}
-                disabled={isPlanLocked}
-                value={plan.reactiveProtocol.staffResponse || ''}
-                onChange={(e) =>
-                  handleNestedFieldChange(
-                    'reactiveProtocol',
-                    'staffResponse',
-                    e.target.value
-                  )
-                }
-                placeholder="הנחיות מדויקות: מה לעשות ומה לא לעשות (למשל: תגובה שקטה ללא תשומת לב מילולית מיותרת, הפניה מחדש לכרטיסיית הפסקה)..."
-              />
-            </div>
-
-            <div className="behavior-field-group" style={{ marginTop: '1.25rem' }}>
-              <label className="behavior-field-label">
-                נוהל בטיחות והרגעה במצבי קיצון (במידת הצורך)
+                סיכום פרוטוקול תגובה אחיד לצוות בעת התרחשות התנהגות היעד
               </label>
               <textarea
                 className="behavior-textarea"
                 rows={2}
                 disabled={isPlanLocked}
-                value={plan.reactiveProtocol.crisisSafetyPlan || ''}
+                value={plan.reactiveProtocol.staffResponse || ''}
                 onChange={(e) =>
-                  handleNestedFieldChange(
-                    'reactiveProtocol',
-                    'crisisSafetyPlan',
-                    e.target.value
-                  )
+                  handleNestedFieldChange('reactiveProtocol', 'staffResponse', e.target.value)
                 }
-                placeholder="פינוי חפצים מסוכנים, מרחב שקט בליווי איש צוות קבוע, הודעה למנהל/ת..."
+                placeholder="הנחיות מדויקות: מה לעשות ומה לא לעשות..."
               />
             </div>
           </div>
         )}
       </section>
 
-      {/* Section 5: טבלת מעקב שוטף ולוח התקדמות */}
+      {/* Section 7: פרוטוקול יישום מעשי לצוות ולסייעת */}
+      <section className="plan-card">
+        <div
+          className="plan-card-header"
+          onClick={() => toggleSection('classroomCheatSheet')}
+        >
+          <div className="plan-card-title-wrap">
+            <span className="plan-section-badge">7</span>
+            <h2 className="plan-card-title">פרוטוקול יישום מעשי לכיתה ולצוות החינוכי</h2>
+          </div>
+          <button
+            type="button"
+            className="btn-collapse-toggle-32"
+            aria-label={openSections.classroomCheatSheet ? 'כיווץ מקטע' : 'הרחבת מקטע'}
+          >
+            {openSections.classroomCheatSheet ? <Minus size={16} /> : <Plus size={16} />}
+          </button>
+        </div>
+
+        {openSections.classroomCheatSheet && (
+          <div className="plan-card-body">
+            <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#64748b' }}>
+              תרגום ההתערבות להנחיות פעולה תמציתיות, ישירות ומעשיות עבור המורה, הסייעת וההורים בסביבה הטבעית.
+            </p>
+
+            <div className="cheat-sheet-container">
+              <div className="cheat-sheet-row">
+                <div className="cheat-sheet-label">לפני המעבר או הפעילות:</div>
+                <input
+                  type="text"
+                  className="behavior-input"
+                  disabled={isPlanLocked}
+                  value={plan.classroomCheatSheet?.beforeTransition || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('classroomCheatSheet', 'beforeTransition', e.target.value)
+                  }
+                  placeholder="הצגת טיימר חזותי והתראה 2 דקות לפני סיום הפעילות..."
+                />
+              </div>
+
+              <div className="cheat-sheet-row">
+                <div className="cheat-sheet-label">בזמן המעבר או ההוראה:</div>
+                <input
+                  type="text"
+                  className="behavior-input"
+                  disabled={isPlanLocked}
+                  value={plan.classroomCheatSheet?.duringTransition || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('classroomCheatSheet', 'duringTransition', e.target.value)
+                  }
+                  placeholder="הצגת לוח רצף והוראה קצרה ועניינית..."
+                />
+              </div>
+
+              <div className="cheat-sheet-row">
+                <div className="cheat-sheet-label">בעת שיתוף פעולה והיענות:</div>
+                <input
+                  type="text"
+                  className="behavior-input"
+                  disabled={isPlanLocked}
+                  value={plan.classroomCheatSheet?.onCooperation || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('classroomCheatSheet', 'onCooperation', e.target.value)
+                  }
+                  placeholder="מתן שבח תיאורי ספציפי וחיזוק מיידי שנקבע..."
+                />
+              </div>
+
+              <div className="cheat-sheet-row">
+                <div className="cheat-sheet-label">בעת סירוב או קושי ראשוני:</div>
+                <input
+                  type="text"
+                  className="behavior-input"
+                  disabled={isPlanLocked}
+                  value={plan.classroomCheatSheet?.onRefusal || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('classroomCheatSheet', 'onRefusal', e.target.value)
+                  }
+                  placeholder="הימנעות מוויכוח ממושך, הוראה קצרה והפניה לכרטיסייה חלופית..."
+                />
+              </div>
+
+              <div className="cheat-sheet-row">
+                <div className="cheat-sheet-label">בעת הסלמה או אירוע חריג:</div>
+                <input
+                  type="text"
+                  className="behavior-input"
+                  disabled={isPlanLocked}
+                  value={plan.classroomCheatSheet?.onCrisis || ''}
+                  onChange={(e) =>
+                    handleStructuredFieldChange('classroomCheatSheet', 'onCrisis', e.target.value)
+                  }
+                  placeholder="פעולה בהתאם לתוכנית הבטיחות המוסדית ושמירה על סביבה בטוחה..."
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* Section 8: טבלת מעקב שוטף ולוח התקדמות */}
       <section className="plan-card">
         <div className="plan-card-header" onClick={() => toggleSection('tracking')}>
           <div className="plan-card-title-wrap">
-            <span className="plan-section-badge">5</span>
+            <span className="plan-section-badge">8</span>
             <h2 className="plan-card-title">טבלת מעקב שוטף ולוח התקדמות מול קו הבסיס</h2>
           </div>
           <button
@@ -1498,7 +2052,17 @@ export default function BehaviorInterventionPlanForm({
                       min="0"
                       className="behavior-input"
                       value={newTrackingOccurrences}
-                      onChange={(e) => setNewTrackingOccurrences(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || Number(val) >= 0) {
+                          setNewTrackingOccurrences(val);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                          e.preventDefault();
+                        }
+                      }}
                       required
                     />
                   </div>

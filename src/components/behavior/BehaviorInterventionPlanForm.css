@@ -180,6 +180,147 @@
   gap: 0.5rem;
 }
 
+/* Quality and Readiness Checklist */
+.plan-quality-card {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-right: 4px solid #3b82f6;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.plan-quality-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.plan-quality-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.plan-quality-meter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.plan-quality-meter-bar {
+  width: 140px;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.plan-quality-meter-fill {
+  height: 100%;
+  background: #10b981;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.plan-quality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.6rem;
+}
+
+.plan-quality-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: #334155;
+}
+
+.plan-quality-item.passed {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+/* Staged Reactive Protocol 4 Phases */
+.staged-protocol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.staged-phase-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.staged-phase-card.phase-a {
+  border-top: 3px solid #3b82f6;
+}
+
+.staged-phase-card.phase-b {
+  border-top: 3px solid #10b981;
+}
+
+.staged-phase-card.phase-c {
+  border-top: 3px solid #f59e0b;
+}
+
+.staged-phase-card.phase-d {
+  border-top: 3px solid #ef4444;
+}
+
+.staged-phase-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* Classroom Action Card */
+.cheat-sheet-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.cheat-sheet-row {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.cheat-sheet-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
 /* Print Stylesheet */
 @media print {
   .plan-form-actions,

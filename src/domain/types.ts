@@ -441,6 +441,54 @@ export interface OngoingTrackingPoint {
   notes?: string;
 }
 
+export type DifferentialReinforcementProcedure = 'DRA' | 'DRI' | 'DRO' | 'FCT';
+
+export interface PlanSmartGoals {
+  reductionGoal?: string;
+  acquisitionGoal?: string;
+  timeFrameWeeks?: number;
+}
+
+export interface AntecedentStrategiesStructured {
+  prepAndWarmup?: string;
+  visualSupports?: string;
+  taskAdjustments?: string;
+  environmentOrg?: string;
+  rolesAndActivities?: string;
+}
+
+export interface ReplacementSkillAcquisitionPlan {
+  targetSkill?: string;
+  modelingSteps?: string;
+  promptingHierarchy?: string;
+  inSituPractice?: string;
+  fadingPlan?: string;
+  reinforcementDetails?: string;
+  generalizationPlan?: string;
+}
+
+export interface DifferentialReinforcementSystem {
+  procedureType?: DifferentialReinforcementProcedure;
+  rationale?: string;
+  scheduleDetails?: string;
+  praiseExamples?: string[];
+}
+
+export interface StagedReactiveProtocol {
+  phaseAInitial?: string;
+  phaseBDeescalation?: string;
+  phaseCContinuation?: string;
+  phaseDCrisis?: string;
+}
+
+export interface ClassroomImplementationCheatSheet {
+  beforeTransition?: string;
+  duringTransition?: string;
+  onCooperation?: string;
+  onRefusal?: string;
+  onCrisis?: string;
+}
+
 export interface BehaviorInterventionPlan {
   id?: string;
   analystName?: string;
@@ -449,6 +497,13 @@ export interface BehaviorInterventionPlan {
   targetBehaviors: BehaviorTarget[];
   replacementBehaviors: ReplacementBehaviorPlan[];
   antecedentStrategies: string;
+  antecedentStructured?: AntecedentStrategiesStructured;
+  smartGoalsNarrative?: PlanSmartGoals;
+  replacementAcquisition?: ReplacementSkillAcquisitionPlan;
+  differentialReinforcement?: DifferentialReinforcementSystem;
+  stagedReactiveProtocol?: StagedReactiveProtocol;
+  classroomCheatSheet?: ClassroomImplementationCheatSheet;
+  qualityChecklist?: { [key: string]: boolean };
   reinforcementSystem: {
     preferredReinforcers: string;
     scheduleOfReinforcement: string;
