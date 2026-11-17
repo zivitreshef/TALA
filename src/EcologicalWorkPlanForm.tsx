@@ -293,8 +293,6 @@ export default function EcologicalWorkPlanForm({
   const [isDossierOpen, setIsDossierOpen] = useState(false); // Collapsed by default ("תיק מסמכי אבחון")
   const [copyTeamSuccessMsg, setCopyTeamSuccessMsg] = useState('');
 
-  const attachedDocs = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
-
   const activeSnippets = useMemo<PedagogicalSnippet[]>(() => {
     return migrateLegacyFreeTextToSnippets(
       formData.teacherFreeText,
@@ -302,6 +300,20 @@ export default function EcologicalWorkPlanForm({
       userPreferences?.fullName || currentUser?.name
     );
   }, [formData.teacherFreeText, formData.pedagogicalSnippets, userPreferences?.fullName, currentUser?.name]);
+
+  const attachedDocs = useMemo(() => {
+    const direct = Array.isArray(formData.diagnosticDocuments) ? formData.diagnosticDocuments : [];
+    if (direct.length > 0) return direct;
+    return activeSnippets
+      .filter((s) => s.sourceType === 'document')
+      .map((s) => ({
+        id: s.documentId || s.id,
+        fileName: s.sourceTitle || 'מסמך רקע',
+        fullText: s.content,
+        fileSizeFormatted: '',
+        uploadedAt: s.createdAt
+      }));
+  }, [formData.diagnosticDocuments, activeSnippets]);
 
   const handleAddSnippet = (snippet: PedagogicalSnippet) => {
     const currentList = formData.pedagogicalSnippets && formData.pedagogicalSnippets.length > 0
@@ -5287,6 +5299,21 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                 >
                   {activeSnippets.length > 0 ? `${activeSnippets.length} מקורות פעילים` : '0 מקורות'}
                 </span>
+                {attachedDocs.length > 0 && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: '#0369a1',
+                      background: '#f0f9ff',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '999px',
+                      padding: '1px 8px'
+                    }}
+                  >
+                    📄 {attachedDocs.length} מסמכי אבחון
+                  </span>
+                )}
                 {isRawFreeTextAlreadyAnalyzed(formData) && (
                   <span
                     style={{
@@ -5306,6 +5333,9 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                {isFreeTextCollapsed ? 'פתיחת ציר תובנות ומסמכים לעריכה והוספה' : 'סגירת ציר תובנות'}
+              </span>
               <button
                 type="button"
                 onClick={(e) => {
@@ -5334,6 +5364,80 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               </button>
             </div>
           </div>
+
+          {isFreeTextCollapsed && attachedDocs.length > 0 && (
+            <div
+              style={{
+                marginTop: '10px',
+                paddingTop: '8px',
+                borderTop: '1px dashed #cbd5e1',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>מסמכי רקע שמורים:</span>
+              {attachedDocs.map((doc: any) => (
+                <div
+                  key={doc.id || doc.fileName}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '3px 9px',
+                    fontSize: '12px',
+                    color: '#1e293b',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                  }}
+                >
+                  <FileText size={13} color="#0284c7" />
+                  <span
+                    style={{
+                      maxWidth: '220px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontWeight: 500
+                    }}
+                    title={doc.fileName}
+                  >
+                    {doc.fileName}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      setSelectedIntakeDoc(doc);
+                      setShowDiagnosticIntakeModal(true);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      background: '#f0f9ff',
+                      color: '#0284c7',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '4px',
+                      padding: '2px 6px',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                    title="צפייה במסמך ובתקציר"
+                    aria-label="צפייה במסמך ובתקציר"
+                  >
+                    <Eye size={12} />
+                    <span>צפייה</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {!isFreeTextCollapsed && (
             <div style={{ marginTop: '14px' }}>

@@ -31,7 +31,8 @@ import {
   DifferentialReinforcementProcedure,
   OngoingTrackingPoint,
   ReplacementBehaviorPlan,
-  StudentProfile
+  StudentProfile,
+  PedagogicalSnippet
 } from '../../domain/types';
 import {
   calculateBaselineStats,
@@ -44,6 +45,15 @@ import {
 import { suggestInterventionStrategies } from '../../services/behaviorAiService';
 import BehaviorStudentDetailsCard, { type BehaviorStudentDetailsData } from './BehaviorStudentDetailsCard';
 import type { StaffMergePayload } from '../form/StaffVoiceControl';
+import ParentVoiceControl from '../form/ParentVoiceControl';
+import PedagogicalFeed from '../form/PedagogicalFeed';
+import DiagnosticIntakeModal from '../form/DiagnosticIntakeModal';
+import {
+  addSnippet,
+  removeSnippet,
+  updateSnippet,
+  createParentVoiceSnippet
+} from '../../domain/pedagogicalFeed';
 import { ProgressMonitoringDualLineChart } from './BehaviorCharts';
 import {
   buildBehaviorPlanWordDocumentHtml,
@@ -171,6 +181,53 @@ export default function BehaviorInterventionPlanForm({
   };
 
   const isPlanLocked = Boolean(plan.isLocked);
+
+  // Pedagogical Feed & Diagnostic Intake State (Default collapsed in intervention plan)
+  const [activeSnippets, setActiveSnippets] = useState<PedagogicalSnippet[]>(
+    () => student.pedagogicalSnippets || []
+  );
+  const [isPedagogicalFeedOpen, setIsPedagogicalFeedOpen] = useState<boolean>(false);
+  const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState<boolean>(false);
+  const [selectedIntakeDoc, setSelectedIntakeDoc] = useState<any>(null);
+
+  const attachedDocs = useMemo(() => {
+    const direct = Array.isArray(student.diagnosticDocuments) ? student.diagnosticDocuments : [];
+    if (direct.length > 0) return direct;
+    return activeSnippets
+      .filter((s) => s.sourceType === 'document')
+      .map((s) => ({
+        id: s.documentId || s.id,
+        fileName: s.sourceTitle || 'מסמך רקע',
+        fullText: s.content,
+        fileSizeFormatted: '',
+        uploadedAt: s.createdAt
+      }));
+  }, [student.diagnosticDocuments, activeSnippets]);
+
+  const handleAddSnippet = (snippet: PedagogicalSnippet) => {
+    setActiveSnippets((prev) => addSnippet(prev, snippet));
+    setIsDirty(true);
+  };
+
+  const handleUpdateSnippet = (snippetId: string, updatedContent: string) => {
+    setActiveSnippets((prev) => updateSnippet(prev, snippetId, updatedContent));
+    setIsDirty(true);
+  };
+
+  const handleRemoveSnippet = (snippetId: string) => {
+    setActiveSnippets((prev) => removeSnippet(prev, snippetId));
+    setIsDirty(true);
+  };
+
+  const handleMergeParentVoice = (mergedText: string) => {
+    const parentSnippet = createParentVoiceSnippet(
+      mergedText,
+      currentUser?.name || 'הורי התלמיד',
+      new Date().toISOString()
+    );
+    setActiveSnippets((prev) => addSnippet(prev, parentSnippet));
+    setIsDirty(true);
+  };
 
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<boolean>(false);
@@ -425,6 +482,7 @@ export default function BehaviorInterventionPlanForm({
     const updatedStudent: StudentProfile = {
       ...student,
       ...studentDetails,
+      pedagogicalSnippets: activeSnippets,
       behaviorPlan: plan,
       updatedAt: new Date().toISOString()
     };
@@ -1004,6 +1062,163 @@ export default function BehaviorInterventionPlanForm({
         onMergeStaffFeedback={handleMergeStaffFeedback}
         titlePrefix="פרטי התלמיד והמסגרת החינוכית"
       />
+
+      {/* Pedagogical Feed, Voice Capture & Diagnostic Documents Section */}
+      <section className="behavior-card" style={{ marginBottom: '1.25rem' }}>
+        <div
+          className="behavior-card-header"
+          onClick={() => setIsPedagogicalFeedOpen((prev) => !prev)}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+        >
+          <div className="behavior-card-title-wrap">
+            <span className="behavior-section-badge" style={{ background: '#0d9488', color: '#ffffff' }}>
+              <Sparkles size={14} />
+            </span>
+            <h2 className="behavior-card-title">ציר תובנות פדגוגי ומסמכי רקע</h2>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '2px 9px', borderRadius: '999px' }}>
+              {activeSnippets.length} תובנות ומסמכים
+            </span>
+            {attachedDocs.length > 0 && (
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0369a1', background: '#f0f9ff', border: '1px solid #bae6fd', padding: '2px 9px', borderRadius: '999px' }}>
+                📄 {attachedDocs.length} מסמכי אבחון
+              </span>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>
+              {isPedagogicalFeedOpen ? 'סגירת ציר תובנות' : 'פתיחת תובנות ומסמכים לעריכה והוספה'}
+            </span>
+            <ParentVoiceControl
+              student={student}
+              currentUser={currentUser}
+              disabled={isPlanLocked}
+              mode="behavior"
+              onMerge={handleMergeParentVoice}
+            />
+            <button
+              type="button"
+              className="btn-collapse-toggle-32"
+              onClick={() => setIsPedagogicalFeedOpen((prev) => !prev)}
+              aria-label={isPedagogicalFeedOpen ? 'כיווץ ציר תובנות' : 'הרחבת ציר תובנות'}
+            >
+              {isPedagogicalFeedOpen ? <Minus size={16} /> : <Plus size={16} />}
+            </button>
+          </div>
+        </div>
+
+        {!isPedagogicalFeedOpen && attachedDocs.length > 0 && (
+          <div
+            style={{
+              padding: '8px 16px 12px 16px',
+              borderTop: '1px dashed #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
+              background: '#fafbfc'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>מסמכי רקע שמורים:</span>
+            {attachedDocs.map((doc: any) => (
+              <div
+                key={doc.id || doc.fileName}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '3px 9px',
+                  fontSize: '0.78rem',
+                  color: '#1e293b'
+                }}
+              >
+                <FileText size={13} color="#0284c7" />
+                <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={doc.fileName}>
+                  {doc.fileName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedIntakeDoc(doc);
+                    setShowDiagnosticIntakeModal(true);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    background: '#f0f9ff',
+                    color: '#0284c7',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    fontSize: '0.72rem',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                  title="צפייה במסמך ובתקציר"
+                  aria-label="צפייה במסמך ובתקציר"
+                >
+                  <Eye size={12} />
+                  <span>צפייה</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isPedagogicalFeedOpen && (
+          <div className="behavior-card-body">
+            <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#64748b' }}>
+              איסוף תצפיות יומיומיות, הקלטות קוליות, חוות דעת מקצועיות ומסמכי אבחון. כל המידע המצטבר מוזן ישירות כהקשר למנוע הבינה המלאכותית בעת ניסוח תוכנית ההתערבות.
+            </p>
+            <PedagogicalFeed
+              snippets={activeSnippets}
+              onAddSnippet={handleAddSnippet}
+              onUpdateSnippet={handleUpdateSnippet}
+              onRemoveSnippet={handleRemoveSnippet}
+              onOpenUploadModal={() => {
+                setSelectedIntakeDoc(null);
+                setShowDiagnosticIntakeModal(true);
+              }}
+              onTriggerAiAnalysis={() => setShowAiModal(true)}
+              isAnalyzing={isAiGenerating}
+              isLocked={isPlanLocked}
+              currentUserName={currentUser?.name}
+            />
+          </div>
+        )}
+      </section>
+
+      {/* Diagnostic Intake Modal */}
+      {showDiagnosticIntakeModal && (
+        <DiagnosticIntakeModal
+          formData={{
+            id: student.id,
+            name: student.name,
+            gender: (student as any).gender || 'boy',
+            pedagogicalSnippets: activeSnippets,
+            diagnosticDocuments: (student as any).diagnosticDocuments
+          }}
+          isOpen={showDiagnosticIntakeModal}
+          initialText={selectedIntakeDoc?.fullText || ''}
+          initialDocName={selectedIntakeDoc?.fileName || ''}
+          onApplyIntake={(_updated, newSnippet) => {
+            if (newSnippet) {
+              setActiveSnippets((prev) => addSnippet(prev, newSnippet));
+              setIsDirty(true);
+            }
+            setShowDiagnosticIntakeModal(false);
+          }}
+          onClose={() => {
+            setShowDiagnosticIntakeModal(false);
+            setSelectedIntakeDoc(null);
+          }}
+          authorName={currentUser?.name}
+        />
+      )}
 
       {/* AI Modal Confirmation */}
       {showAiModal && (

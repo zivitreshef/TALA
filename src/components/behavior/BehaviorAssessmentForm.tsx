@@ -155,6 +155,21 @@ export default function BehaviorAssessmentForm({
   );
   const [isPedagogicalFeedOpen, setIsPedagogicalFeedOpen] = useState<boolean>(true);
   const [showDiagnosticIntakeModal, setShowDiagnosticIntakeModal] = useState<boolean>(false);
+  const [selectedIntakeDoc, setSelectedIntakeDoc] = useState<any>(null);
+
+  const attachedDocs = useMemo(() => {
+    const direct = Array.isArray(student.diagnosticDocuments) ? student.diagnosticDocuments : [];
+    if (direct.length > 0) return direct;
+    return activeSnippets
+      .filter((s) => s.sourceType === 'document')
+      .map((s) => ({
+        id: s.documentId || s.id,
+        fileName: s.sourceTitle || 'מסמך רקע',
+        fullText: s.content,
+        fileSizeFormatted: '',
+        uploadedAt: s.createdAt
+      }));
+  }, [student.diagnosticDocuments, activeSnippets]);
 
   const handleAddSnippet = (snippet: PedagogicalSnippet) => {
     setActiveSnippets((prev) => addSnippet(prev, snippet));
@@ -1047,8 +1062,16 @@ export default function BehaviorAssessmentForm({
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '2px 9px', borderRadius: '999px' }}>
               {activeSnippets.length} תובנות ומסמכים
             </span>
+            {attachedDocs.length > 0 && (
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0369a1', background: '#f0f9ff', border: '1px solid #bae6fd', padding: '2px 9px', borderRadius: '999px' }}>
+                📄 {attachedDocs.length} מסמכי אבחון
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>
+              {isPedagogicalFeedOpen ? 'סגירת ציר תובנות' : 'פתיחת תובנות ומסמכים לעריכה והוספה'}
+            </span>
             <ParentVoiceControl
               student={student}
               currentUser={currentUser}
@@ -1067,6 +1090,69 @@ export default function BehaviorAssessmentForm({
           </div>
         </div>
 
+        {!isPedagogicalFeedOpen && attachedDocs.length > 0 && (
+          <div
+            style={{
+              padding: '8px 16px 12px 16px',
+              borderTop: '1px dashed #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexWrap: 'wrap',
+              background: '#fafbfc'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>מסמכי רקע שמורים:</span>
+            {attachedDocs.map((doc: any) => (
+              <div
+                key={doc.id || doc.fileName}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '3px 9px',
+                  fontSize: '0.78rem',
+                  color: '#1e293b'
+                }}
+              >
+                <FileText size={13} color="#0284c7" />
+                <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }} title={doc.fileName}>
+                  {doc.fileName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedIntakeDoc(doc);
+                    setShowDiagnosticIntakeModal(true);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    background: '#f0f9ff',
+                    color: '#0284c7',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    fontSize: '0.72rem',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                  title="צפייה במסמך ובתקציר"
+                  aria-label="צפייה במסמך ובתקציר"
+                >
+                  <Eye size={12} />
+                  <span>צפייה</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {isPedagogicalFeedOpen && (
           <div className="behavior-card-body">
             <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#64748b' }}>
@@ -1077,7 +1163,10 @@ export default function BehaviorAssessmentForm({
               onAddSnippet={handleAddSnippet}
               onUpdateSnippet={handleUpdateSnippet}
               onRemoveSnippet={handleRemoveSnippet}
-              onOpenUploadModal={() => setShowDiagnosticIntakeModal(true)}
+              onOpenUploadModal={() => {
+                setSelectedIntakeDoc(null);
+                setShowDiagnosticIntakeModal(true);
+              }}
               onTriggerAiAnalysis={(overrideSnippets) => handleRunFullAiDraft(overrideSnippets)}
               isAnalyzing={isAiGenerating}
               isLocked={isReportLocked}
@@ -1110,9 +1199,12 @@ export default function BehaviorAssessmentForm({
             id: student.id,
             name: student.name,
             gender: (student as any).gender || 'boy',
-            pedagogicalSnippets: activeSnippets
+            pedagogicalSnippets: activeSnippets,
+            diagnosticDocuments: (student as any).diagnosticDocuments
           }}
           isOpen={showDiagnosticIntakeModal}
+          initialText={selectedIntakeDoc?.fullText || ''}
+          initialDocName={selectedIntakeDoc?.fileName || ''}
           onApplyIntake={(_updated, newSnippet) => {
             if (newSnippet) {
               setActiveSnippets((prev) => addSnippet(prev, newSnippet));
@@ -1120,7 +1212,10 @@ export default function BehaviorAssessmentForm({
             }
             setShowDiagnosticIntakeModal(false);
           }}
-          onClose={() => setShowDiagnosticIntakeModal(false)}
+          onClose={() => {
+            setShowDiagnosticIntakeModal(false);
+            setSelectedIntakeDoc(null);
+          }}
           authorName={currentUser?.name}
         />
       )}
