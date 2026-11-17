@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import HebrewDatePicker, { parseDateToParts } from '../components/HebrewDatePicker';
 import BehaviorStudentDetailsCard from '../components/behavior/BehaviorStudentDetailsCard';
@@ -96,6 +98,50 @@ describe('Behavior HebrewDatePicker Integration & Date Parsing Suite', () => {
       );
 
       expect(html).toContain('hdp-full-width');
+    });
+
+    it('formats clean date without weekday in standard form mode to prevent text truncation', () => {
+      const html = renderToStaticMarkup(
+        <HebrewDatePicker
+          value="2026-11-15"
+          onChange={() => {}}
+        />
+      );
+
+      expect(html).toContain('15 בנובמבר 2026');
+      expect(html).not.toContain('יום א');
+    });
+
+    it('includes weekday when showWeekday or showDayNav is true', () => {
+      const htmlNav = renderToStaticMarkup(
+        <HebrewDatePicker
+          value="2026-11-15"
+          onChange={() => {}}
+          showDayNav={true}
+        />
+      );
+
+      expect(htmlNav).toContain('יום א');
+
+      const htmlWeekday = renderToStaticMarkup(
+        <HebrewDatePicker
+          value="2026-11-15"
+          onChange={() => {}}
+          showWeekday={true}
+        />
+      );
+
+      expect(htmlWeekday).toContain('יום א');
+    });
+
+    it('guarantees behavior card containers use overflow visible so popovers are never clipped', () => {
+      const assessCss = fs.readFileSync(path.resolve(__dirname, '../components/behavior/BehaviorAssessmentForm.css'), 'utf8');
+      const planCss = fs.readFileSync(path.resolve(__dirname, '../components/behavior/BehaviorInterventionPlanForm.css'), 'utf8');
+      const progressCss = fs.readFileSync(path.resolve(__dirname, '../components/behavior/BehaviorProgressReportForm.css'), 'utf8');
+
+      expect(assessCss).toMatch(/\.behavior-card\s*\{[^}]*overflow:\s*visible/);
+      expect(planCss).toMatch(/\.plan-card\s*\{[^}]*overflow:\s*visible/);
+      expect(progressCss).toMatch(/\.progress-card\s*\{[^}]*overflow:\s*visible/);
     });
   });
 

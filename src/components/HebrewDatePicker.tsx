@@ -11,6 +11,7 @@ export interface HebrewDatePickerProps {
   onChange: (date: string) => void;
   showDayNav?: boolean;
   compact?: boolean;
+  showWeekday?: boolean;
   ariaLabel?: string;
   disabled?: boolean;
   fullWidth?: boolean;
@@ -52,6 +53,7 @@ export default function HebrewDatePicker({
   onChange,
   showDayNav = false,
   compact = false,
+  showWeekday = false,
   ariaLabel = 'בחירת תאריך',
   disabled = false,
   fullWidth = false,
@@ -59,7 +61,20 @@ export default function HebrewDatePicker({
   className = ''
 }: HebrewDatePickerProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 340 && rect.top > 340) {
+        setOpenUpward(true);
+      } else {
+        setOpenUpward(false);
+      }
+    }
+  }, [isOpen]);
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const parsedValue = useMemo(() => parseDateToParts(value), [value]);
@@ -129,6 +144,8 @@ export default function HebrewDatePicker({
     } catch (_) {}
   };
 
+  const shouldShowWeekday = showWeekday || (showDayNav && !compact);
+
   const formattedDisplayDate = useMemo(() => {
     if (!value && placeholder) {
       return placeholder;
@@ -139,11 +156,14 @@ export default function HebrewDatePicker({
       if (compact) {
         return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'short', year: 'numeric' });
       }
-      return d.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+      if (shouldShowWeekday) {
+        return d.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+      }
+      return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
     } catch (_) {
       return value || selectedDateStr;
     }
-  }, [selectedDateStr, compact, value, placeholder]);
+  }, [selectedDateStr, compact, shouldShowWeekday, value, placeholder]);
 
   const activeHoliday = useMemo<IsraeliHolidayInfo | null>(
     () => (value ? getIsraeliHolidayInfo(selectedDateStr) : null),
@@ -152,7 +172,7 @@ export default function HebrewDatePicker({
 
   return (
     <div
-      className={`hdp-root ${compact ? 'hdp-compact' : ''} ${fullWidth ? 'hdp-full-width' : ''} ${className}`.trim()}
+      className={`hdp-root ${compact ? 'hdp-compact' : ''} ${fullWidth ? 'hdp-full-width' : ''} ${isOpen ? 'is-open' : ''} ${className}`.trim()}
       ref={containerRef}
       dir="rtl"
     >
@@ -222,7 +242,7 @@ export default function HebrewDatePicker({
         {isOpen && (
           <>
             <div className="hdp-backdrop" onClick={() => setIsOpen(false)} />
-            <div className="hdp-popover" dir="rtl">
+            <div className={`hdp-popover ${openUpward ? 'open-upward' : ''}`} dir="rtl">
               {/* Header */}
               <div className="hdp-popover-header" dir="ltr">
                 <button
