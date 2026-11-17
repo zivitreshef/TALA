@@ -243,7 +243,7 @@ describe('Behavior HebrewDatePicker Integration & Date Parsing Suite', () => {
       expect(cssContent).toContain('.hdp-popover {');
       expect(cssContent).toContain('background-color: #ffffff !important;');
       expect(cssContent).toContain('opacity: 1 !important;');
-      expect(cssContent).not.toContain('.hdp-popover.open-upward {\n  top: auto;\n  bottom: calc(100% + 6px);');
+      expect(cssContent).not.toContain('bottom: calc(100% + 6px);');
 
       const tsxPath = path.resolve(__dirname, '../components/HebrewDatePicker.tsx');
       const tsxContent = fs.readFileSync(tsxPath, 'utf-8');
