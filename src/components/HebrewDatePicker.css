@@ -199,7 +199,9 @@
   right: 0;
   z-index: 1000;
   width: 270px;
-  background: #ffffff;
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  opacity: 1 !important;
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.15), 0 4px 12px -2px rgba(15, 23, 42, 0.08);
@@ -207,9 +209,12 @@
   animation: hdpFadeIn 0.15s ease-out;
 }
 
-.hdp-popover.open-upward {
+.hdp-trigger-wrapper > .hdp-popover.open-upward {
   top: auto;
   bottom: calc(100% + 6px);
+}
+
+.hdp-popover.open-upward {
   box-shadow: 0 -12px 30px -4px rgba(15, 23, 42, 0.15), 0 -4px 12px -2px rgba(15, 23, 42, 0.08);
   animation: hdpFadeInUp 0.15s ease-out;
 }

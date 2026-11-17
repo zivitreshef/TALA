@@ -235,5 +235,22 @@ describe('Behavior HebrewDatePicker Integration & Date Parsing Suite', () => {
       expect(html).toContain('hdp-root');
       expect(html).toContain('9 באוקטובר 2026');
     });
+
+    it('ensures HebrewDatePicker popover has solid opaque background and no height collapsing', () => {
+      const cssPath = path.resolve(__dirname, '../components/HebrewDatePicker.css');
+      const cssContent = fs.readFileSync(cssPath, 'utf-8');
+
+      expect(cssContent).toContain('.hdp-popover {');
+      expect(cssContent).toContain('background-color: #ffffff !important;');
+      expect(cssContent).toContain('opacity: 1 !important;');
+      expect(cssContent).not.toContain('.hdp-popover.open-upward {\n  top: auto;\n  bottom: calc(100% + 6px);');
+
+      const tsxPath = path.resolve(__dirname, '../components/HebrewDatePicker.tsx');
+      const tsxContent = fs.readFileSync(tsxPath, 'utf-8');
+      expect(tsxContent).toContain("backgroundColor: '#ffffff'");
+      expect(tsxContent).toContain('opacity: 1');
+      expect(tsxContent).toContain('bottom: coords.bottom');
+      expect(tsxContent).toContain('top: coords.top');
+    });
   });
 });
