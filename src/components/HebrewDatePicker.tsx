@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { getIsraeliHolidayInfo } from '../domain/dailyPedagogicalTracking';
 import type { IsraeliHolidayInfo } from '../domain/types';
@@ -61,19 +62,41 @@ export default function HebrewDatePicker({
   className = ''
 }: HebrewDatePickerProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; right: number; openUpward: boolean } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (isOpen && containerRef.current) {
+    if (!isOpen || !containerRef.current) return;
+
+    const updateCoords = () => {
+      if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
+      const popoverHeight = 350;
+      const popoverWidth = 280;
       const spaceBelow = window.innerHeight - rect.bottom;
-      if (spaceBelow < 340 && rect.top > 340) {
-        setOpenUpward(true);
-      } else {
-        setOpenUpward(false);
+      const shouldOpenUpward = spaceBelow < popoverHeight && rect.top > popoverHeight;
+
+      const top = shouldOpenUpward
+        ? Math.max(10, rect.top - popoverHeight - 6)
+        : Math.min(window.innerHeight - popoverHeight - 10, rect.bottom + 6);
+
+      let right = window.innerWidth - rect.right;
+      if (right < 10) right = 10;
+      if (right + popoverWidth > window.innerWidth - 10) {
+        right = Math.max(10, window.innerWidth - popoverWidth - 10);
       }
-    }
+
+      setCoords({ top, right, openUpward: shouldOpenUpward });
+    };
+
+    updateCoords();
+
+    window.addEventListener('scroll', updateCoords, true);
+    window.addEventListener('resize', updateCoords);
+    return () => {
+      window.removeEventListener('scroll', updateCoords, true);
+      window.removeEventListener('resize', updateCoords);
+    };
   }, [isOpen]);
 
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -239,106 +262,130 @@ export default function HebrewDatePicker({
           <ChevronDown size={13} className="hdp-chevron-icon" />
         </button>
 
-        {isOpen && (
-          <>
-            <div className="hdp-backdrop" onClick={() => setIsOpen(false)} />
-            <div className={`hdp-popover ${openUpward ? 'open-upward' : ''}`} dir="rtl">
-              {/* Header */}
-              <div className="hdp-popover-header" dir="ltr">
-                <button
-                  type="button"
-                  onClick={handlePrevMonth}
-                  className="hdp-month-arrow"
-                  title="חודש קודם"
-                  aria-label="חודש קודם"
-                >
-                  <ChevronLeft size={16} />
-                </button>
+        {isOpen && (() => {
+          const popoverContent = (
+            <>
+              <div
+                className="hdp-backdrop"
+                onClick={() => setIsOpen(false)}
+                style={typeof document !== 'undefined' ? { position: 'fixed', inset: 0, zIndex: 99998 } : undefined}
+              />
+              <div
+                className={`hdp-popover ${coords?.openUpward ? 'open-upward' : ''}`}
+                dir="rtl"
+                style={
+                  coords
+                    ? {
+                        position: 'fixed',
+                        top: `${coords.top}px`,
+                        right: `${coords.right}px`,
+                        zIndex: 99999
+                      }
+                    : undefined
+                }
+              >
+                {/* Header */}
+                <div className="hdp-popover-header" dir="ltr">
+                  <button
+                    type="button"
+                    onClick={handlePrevMonth}
+                    className="hdp-month-arrow"
+                    title="חודש קודם"
+                    aria-label="חודש קודם"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
 
-                <div className="hdp-month-title">
-                  <strong>{monthName} {viewYear}</strong>
+                  <div className="hdp-month-title">
+                    <strong>{monthName} {viewYear}</strong>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    className="hdp-month-arrow"
+                    title="חודש הבא"
+                    aria-label="חודש הבא"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleNextMonth}
-                  className="hdp-month-arrow"
-                  title="חודש הבא"
-                  aria-label="חודש הבא"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-
-              {/* Weekdays */}
-              <div className="hdp-weekdays-grid" dir="ltr">
-                {HEBREW_WEEKDAYS.map((wd, idx) => (
-                  <span
-                    key={idx}
-                    dir="rtl"
-                    className={`hdp-weekday-col ${idx === 5 || idx === 6 ? 'is-weekend' : ''}`}
-                  >
-                    {wd}
-                  </span>
-                ))}
-              </div>
-
-              {/* Days Grid */}
-              <div className="hdp-days-grid" dir="ltr">
-                {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-                  <span key={`empty-${i}`} className="hdp-day-empty" />
-                ))}
-                {Array.from({ length: daysInMonth }).map((_, idx) => {
-                  const dayNum = idx + 1;
-                  const dayStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                  const isSelected = dayStr === selectedDateStr;
-                  const isToday = dayStr === todayStr;
-                  const dayOfWeek = (firstDayOfWeek + idx) % 7;
-                  const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
-                  const holiday = getIsraeliHolidayInfo(dayStr);
-
-                  return (
-                    <button
-                      type="button"
-                      key={dayStr}
-                      onClick={() => handleSelectDay(dayNum)}
-                      className={`hdp-day-cell ${isSelected ? 'is-selected' : ''} ${isToday && !isSelected ? 'is-today' : ''} ${isWeekend && !isSelected ? 'is-weekend' : ''} ${holiday && !isSelected ? (holiday.isVacation ? 'is-vacation' : 'is-observance') : ''}`}
-                      title={holiday ? `${dayStr} • ${holiday.name} (${holiday.statusText})` : dayStr}
+                {/* Weekdays */}
+                <div className="hdp-weekdays-grid" dir="ltr">
+                  {HEBREW_WEEKDAYS.map((wd, idx) => (
+                    <span
+                      key={idx}
+                      dir="rtl"
+                      className={`hdp-weekday-col ${idx === 5 || idx === 6 ? 'is-weekend' : ''}`}
                     >
-                      <span className="hdp-day-num">{dayNum}</span>
-                      {holiday && (
-                        <span
-                          className={`hdp-day-holiday-dot ${holiday.isVacation ? 'dot-vacation' : 'dot-observance'}`}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                      {wd}
+                    </span>
+                  ))}
+                </div>
 
-              {/* Footer */}
-              <div className="hdp-popover-footer">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(todayStr);
-                    setIsOpen(false);
-                  }}
-                  className="hdp-footer-today-btn"
-                >
-                  עבור להיום
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="hdp-footer-close-btn"
-                >
-                  סגור
-                </button>
+                {/* Days Grid */}
+                <div className="hdp-days-grid" dir="ltr">
+                  {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                    <span key={`empty-${i}`} className="hdp-day-empty" />
+                  ))}
+                  {Array.from({ length: daysInMonth }).map((_, idx) => {
+                    const dayNum = idx + 1;
+                    const dayStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                    const isSelected = dayStr === selectedDateStr;
+                    const isToday = dayStr === todayStr;
+                    const dayOfWeek = (firstDayOfWeek + idx) % 7;
+                    const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+                    const holiday = getIsraeliHolidayInfo(dayStr);
+
+                    return (
+                      <button
+                        type="button"
+                        key={dayStr}
+                        onClick={() => handleSelectDay(dayNum)}
+                        className={`hdp-day-cell ${isSelected ? 'is-selected' : ''} ${isToday && !isSelected ? 'is-today' : ''} ${isWeekend && !isSelected ? 'is-weekend' : ''} ${holiday && !isSelected ? (holiday.isVacation ? 'is-vacation' : 'is-observance') : ''}`}
+                        title={holiday ? `${dayStr} • ${holiday.name} (${holiday.statusText})` : dayStr}
+                      >
+                        <span className="hdp-day-num">{dayNum}</span>
+                        {holiday && (
+                          <span
+                            className={`hdp-day-holiday-dot ${holiday.isVacation ? 'dot-vacation' : 'dot-observance'}`}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Footer */}
+                <div className="hdp-popover-footer">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(todayStr);
+                      setIsOpen(false);
+                    }}
+                    className="hdp-footer-today-btn"
+                  >
+                    עבור להיום
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="hdp-footer-close-btn"
+                  >
+                    סגור
+                  </button>
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          );
+
+          if (typeof document !== 'undefined' && document.body) {
+            return createPortal(popoverContent, document.body);
+          }
+          return popoverContent;
+        })()}
       </div>
     </div>
   );
