@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { isStudentSharedWithUser, canViewStudent } from '../domain/permissions';
 
-describe('Firestore Rules & Shared Students Permissions (v3.0.78)', () => {
+describe('Firestore Rules & Shared Students Permissions (v3.0.79)', () => {
   it('verifies firestore.rules properly authorizes array-contains query for shared teachers', () => {
     const rulesPath = path.resolve(__dirname, '../../firestore.rules');
     const rulesContent = fs.readFileSync(rulesPath, 'utf8');

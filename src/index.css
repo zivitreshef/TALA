@@ -380,15 +380,17 @@ input, textarea, select, button {
   background:
     radial-gradient(circle at 50% 0%, rgba(224, 242, 254, 0.45) 0%, transparent 60%),
     #f8fafc;
-  padding: 0 0 40px 0;
+  padding: 0;
 }
 
 .saas-landing-container {
   width: 100%;
   max-width: 100%;
+  min-height: 100vh;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 24px;
   overflow-x: hidden;
   box-sizing: border-box;
@@ -715,21 +717,21 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   background: linear-gradient(135deg, #1e3a47 0%, #2b4c73 60%, #3d6391 100%);
   color: #ffffff;
-  padding: 10px 18px;
+  padding: 8px 14px;
 }
 
 .whatsapp-chat-header-info {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
 }
 
 .whatsapp-chat-avatar {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: #25d366;
   display: flex;
@@ -737,7 +739,7 @@ input, textarea, select, button {
   justify-content: center;
   color: #ffffff;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.4);
+  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.35);
 }
 
 .whatsapp-chat-title-group {
@@ -750,11 +752,11 @@ input, textarea, select, button {
 .whatsapp-chat-name-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .whatsapp-chat-title {
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-weight: 800;
   color: #ffffff;
 }
@@ -762,63 +764,63 @@ input, textarea, select, button {
 .whatsapp-chat-verified-badge {
   background: #25d366;
   color: #ffffff;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
-  padding: 1px 7px;
+  padding: 1px 6px;
   border-radius: 999px;
 }
 
 .whatsapp-chat-status {
-  font-size: 11px;
+  font-size: 10.5px;
   color: rgba(255, 255, 255, 0.88);
 }
 
 .whatsapp-chat-header-date span {
   background: rgba(0, 0, 0, 0.22);
   color: #ffffff;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
 }
 
 .saas-whatsapp-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 15px;
+  gap: 8px;
+  padding: 10px;
 }
 
 .whatsapp-bubble-card {
   position: relative;
   background: #ffffff;
-  border-radius: 12px 2px 12px 12px;
-  padding: 11px 13px 8px 13px;
+  border-radius: 10px 2px 10px 10px;
+  padding: 8px 10px 6px 10px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 6px;
+  gap: 4px;
   text-align: right;
-  box-shadow: 0 1px 1.5px rgba(11, 20, 26, 0.14);
+  box-shadow: 0 1px 2px rgba(11, 20, 26, 0.1);
   border: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .whatsapp-bubble-card.whatsapp-outgoing-bubble {
   background: #d9fdd3;
-  border-radius: 2px 12px 12px 12px;
+  border-radius: 2px 10px 10px 10px;
 }
 
 .whatsapp-bubble-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1);
 }
 
 .whatsapp-sender-tag {
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 800;
   color: #128c7e;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .whatsapp-bubble-card.whatsapp-outgoing-bubble .whatsapp-sender-tag {
@@ -828,23 +830,23 @@ input, textarea, select, button {
 .whatsapp-voice-player-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: rgba(0, 0, 0, 0.035);
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 3px 8px;
+  border-radius: 6px;
   direction: ltr;
 }
 
 .whatsapp-play-circle {
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: #25d366;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.35);
+  box-shadow: 0 1px 4px rgba(37, 211, 102, 0.3);
 }
 
 .whatsapp-play-triangle {
@@ -854,27 +856,27 @@ input, textarea, select, button {
 .whatsapp-voice-waveform {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2.5px;
   flex: 1;
 }
 
 .whatsapp-voice-waveform span {
-  width: 3px;
+  width: 2.5px;
   background: #00a884;
   border-radius: 2px;
   display: inline-block;
 }
 
 .whatsapp-voice-duration {
-  font-size: 11px;
+  font-size: 10px;
   color: #667781;
   font-weight: 700;
 }
 
 .whatsapp-bubble-text {
   margin: 0;
-  font-size: 12.8px;
-  line-height: 1.5;
+  font-size: 11.5px;
+  line-height: 1.42;
   color: #111b21;
   font-weight: 450;
 }
@@ -883,10 +885,10 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
-  font-size: 10.5px;
+  gap: 3px;
+  font-size: 9.5px;
   color: #667781;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .whatsapp-checks {
@@ -1019,13 +1021,13 @@ input, textarea, select, button {
 }
 
 .preview-image-container {
-  padding: 12px;
-  background: #f8fafc;
+  padding: 8px 10px;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 370px;
+  min-height: 420px;
   box-sizing: border-box;
 }
 
@@ -1072,8 +1074,8 @@ input, textarea, select, button {
 .preview-real-screenshot {
   width: 100%;
   max-width: 100%;
-  height: 345px;
-  max-height: 345px;
+  height: 415px;
+  max-height: 415px;
   object-fit: contain;
   display: block;
 }
@@ -1481,11 +1483,11 @@ input, textarea, select, button {
 
 /* Compact New Teacher Onboarding Strip */
 .saas-new-teacher-box.compact {
-  margin-top: 2px;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 1.5px solid #7dd3fc;
-  border-radius: 12px;
+  margin-top: 3px;
+  padding: 11px 15px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 55%, #eef6ff 100%);
+  border: 1.5px solid #cbd5e1;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1501,13 +1503,13 @@ input, textarea, select, button {
 
 .saas-new-teacher-text.compact strong {
   font-size: 12.5px;
-  color: #0369a1;
+  color: #1e293b;
   font-weight: 800;
 }
 
 .saas-new-teacher-text.compact span {
   font-size: 11.5px;
-  color: #334155;
+  color: #475569;
 }
 
 .btn-saas-open-trial.compact {
@@ -1515,24 +1517,24 @@ input, textarea, select, button {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  background: linear-gradient(135deg, #2b4c73 0%, #3d6391 55%, #5c4b85 100%);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
-  padding: 7.5px 14px;
+  border-radius: 10px;
+  padding: 8px 16px;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
-  transition: all 0.15s ease;
+  box-shadow: 0 3px 10px rgba(43, 76, 115, 0.22);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-saas-open-trial.compact:hover {
-  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  background: linear-gradient(135deg, #345a87 0%, #4671a3 55%, #685594 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+  box-shadow: 0 5px 14px rgba(43, 76, 115, 0.32);
 }
 
 .auth-contact-admin-footer.compact {
@@ -1630,7 +1632,7 @@ input, textarea, select, button {
 }
 
 .survey-heading {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 800;
   color: #0f172a;
 }
@@ -1653,7 +1655,7 @@ input, textarea, select, button {
 }
 
 .survey-score-number {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 900;
   color: #b45309;
 }
@@ -1677,24 +1679,24 @@ input, textarea, select, button {
 
 .survey-recommendation-text strong {
   display: block;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 800;
   color: #1e293b;
-  margin-bottom: 1px;
+  margin-bottom: 2px;
 }
 
 .survey-recommendation-text p {
   margin: 0;
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: #475569;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #334155;
   font-style: italic;
 }
 
 .survey-metrics-grid {
   display: flex;
   flex-direction: column;
-  gap: 5.5px;
+  gap: 6px;
 }
 
 .survey-metric-row {
@@ -1702,16 +1704,17 @@ input, textarea, select, button {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  background: #ffffff;
-  border: 1px solid #f1f5f9;
+  background: #f8fafc;
+  border: 1px solid #eef2f6;
   border-radius: 7px;
-  padding: 5px 9px;
-  font-size: 11.5px;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .survey-metric-label {
-  color: #334155;
+  color: #1e293b;
   font-weight: 600;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1730,7 +1733,7 @@ input, textarea, select, button {
 }
 
 .metric-grade {
-  font-size: 11.5px;
+  font-size: 12px;
   color: #059669;
   font-weight: 800;
 }
@@ -1739,10 +1742,10 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 11.5px;
   color: #475569;
   font-weight: 600;
-  padding-top: 4px;
+  padding-top: 5px;
   border-top: 1px solid #f1f5f9;
 }
 
@@ -1796,16 +1799,16 @@ input, textarea, select, button {
 }
 
 .saas-pillar-card .auth-feature-card-header strong {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   color: #0f172a;
 }
 
 .saas-pillar-card p {
   margin: 0;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #334155;
 }
 
 .auth-feature-icon {
@@ -1858,6 +1861,76 @@ input, textarea, select, button {
   border: 1px solid #cbd5e1;
   padding: 5px 14px;
   border-radius: 999px;
+}
+
+/* Grounded Pedagogical Product Footer Bar */
+.saas-landing-footer {
+  width: 100%;
+  border-top: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 20px clamp(12px, 3vw, 32px);
+  box-sizing: border-box;
+  margin-top: 24px;
+}
+
+.saas-landing-footer-inner {
+  width: 100%;
+  max-width: 1720px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.saas-landing-footer-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: right;
+}
+
+.saas-footer-logo-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.saas-footer-tagline {
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.saas-landing-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.saas-footer-link-btn {
+  background: transparent;
+  border: none;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.saas-footer-link-btn:hover {
+  color: #0284c7;
+  background: #f0f7ff;
+}
+
+.saas-landing-footer-meta {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
 }
 
 @media (max-width: 1080px) {

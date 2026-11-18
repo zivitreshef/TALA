@@ -945,6 +945,44 @@ export function AllowlistAuthGate({
             </span>
           </div>
         </section>
+
+        {/* Grounded Pedagogical Product Footer Bar */}
+        <footer className="saas-landing-footer" aria-label="מידע משלים וזכויות">
+          <div className="saas-landing-footer-inner">
+            <div className="saas-landing-footer-brand">
+              <strong className="saas-footer-logo-title">מערכת TALA</strong>
+              <span className="saas-footer-tagline">
+                סביבת עבודה פדגוגית חכמה • פחות בירוקרטיה, יותר זמן לכל ילד
+              </span>
+            </div>
+            <div className="saas-landing-footer-links">
+              <button
+                type="button"
+                className="saas-footer-link-btn"
+                onClick={() => setShowIntroVideoModal(true)}
+              >
+                סרטון הדרכה
+              </button>
+              <button
+                type="button"
+                className="saas-footer-link-btn"
+                onClick={() => handleOpenContactAdmin('שאלות כלליות ותמיכה')}
+              >
+                תמיכה ושירות
+              </button>
+              <button
+                type="button"
+                className="saas-footer-link-btn"
+                onClick={handleOpenTrialSignup}
+              >
+                פתיחת חשבון התנסות
+              </button>
+            </div>
+            <div className="saas-landing-footer-meta">
+              <span>כל הזכויות שמורות © {new Date().getFullYear()}</span>
+            </div>
+          </div>
+        </footer>
       </div>
 
       {/* Self-Service 7-Day Trial Signup Modal */}
