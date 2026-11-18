@@ -720,7 +720,7 @@ export function AllowlistAuthGate({
 
                 <div className="form-field compact">
                   <label>קוד גישה אישי / סיסמה:</label>
-                  <div className="input-with-icon" style={{ position: 'relative' }}>
+                  <div className="input-with-icon">
                     <KeyRound size={15} className="field-icon" />
                     <input
                       type={showLoginPassword ? 'text' : 'password'}
@@ -733,7 +733,6 @@ export function AllowlistAuthGate({
                       onChange={(e) => setAccessCode(e.target.value)}
                       onFocus={() => prewarmTalaLogin().catch(() => {})}
                       disabled={isLoggingIn}
-                      style={{ paddingLeft: '38px', paddingRight: '34px' }}
                     />
                     <button
                       type="button"

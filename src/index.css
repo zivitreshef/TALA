@@ -1432,6 +1432,29 @@ input, textarea, select, button {
   cursor: wait;
 }
 
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-with-icon .field-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.input-with-icon input {
+  width: 100%;
+  padding-right: 36px !important;
+  padding-left: 36px !important;
+}
+
 .password-eye-toggle-btn.compact {
   position: absolute;
   left: 7px;
@@ -1444,8 +1467,17 @@ input, textarea, select, button {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
   border-radius: 6px;
+  z-index: 2;
+}
+
+.password-eye-toggle-btn.compact:hover {
+  color: #1e293b;
+  background: rgba(148, 163, 184, 0.16);
 }
 
 /* Compact New Teacher Onboarding Strip */
