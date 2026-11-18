@@ -34,9 +34,9 @@ describe('Landing Page Redesign (v3 Pedagogical Workspace Spirit)', () => {
 
     expect(html).toContain('סביבת עבודה פדגוגית חכמה ומעקב שוטף');
     expect(html).toContain('מערכת TALA');
-    expect(html).toContain('סביבת עבודה פדגוגית משותפת, יומן יעדים שוטף, תיעוד תצפיות מהיר ומאגר מטרות אקולוגי');
-    expect(html).toContain('הפכי שעות של ניירת וסיכומים');
-    expect(html).toContain('לדקות של עשייה פדגוגית ממוקדת');
+    expect(html).toContain('TALA – פחות בירוקרטיה.');
+    expect(html).toContain('יותר זמן לכל ילד.');
+    expect(html).toContain('סביבת עבודה חכמה לאנשי חינוך, המאפשרת לנהל מטרות, מעקב התקדמות, תיעוד ודוחות במקום אחד.');
   });
 
   it('renders the live interactive product showcase with real screenshots tabs and mobile view', () => {

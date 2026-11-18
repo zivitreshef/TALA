@@ -23,7 +23,6 @@ import {
   ShieldCheck,
   Play,
   UserPlus,
-  Zap,
   Award,
   Star,
   Calendar,
@@ -387,22 +386,21 @@ export function AllowlistAuthGate({
 
         {/* Main Full-Width Hero & Login Split Showcase */}
         <div className="auth-landing-shell saas-hero-shell">
-          {/* Right Column: Warm Human Hero Pitch + Authentic WhatsApp Voices + Live Workflow Preview */}
+          {/* Right Column: Hero Pitch + Live Workflow Preview + Authentic Teacher Voices */}
           <div className="auth-showcase-panel saas-hero-showcase human-daylight-showcase">
             <div className="auth-showcase-top saas-hero-copy">
               <div className="saas-eyebrow-pill">
-                <Zap size={13} className="saas-eyebrow-icon" />
-                <span>נבנה מהשטח עבור צוותי חינוך מיוחד • סוף לניירת ולעבודה אל תוך הלילה</span>
+                <Sparkles size={13} className="saas-eyebrow-icon" />
+                <span>סביבת עבודה פדגוגית חכמה ומעקב שוטף</span>
               </div>
 
               <h1 className="saas-hero-headline">
-                הפכי שעות של ניירת וסיכומים{' '}
-                <span className="saas-hero-highlight">לדקות של עשייה פדגוגית ממוקדת</span>
+                TALA – פחות בירוקרטיה.{' '}
+                <span className="saas-hero-highlight">יותר זמן לכל ילד.</span>
               </h1>
 
               <p className="auth-subtitle saas-hero-subtitle">
-                סביבת עבודה פדגוגית משותפת, יומן יעדים שוטף, תיעוד תצפיות מהיר ומאגר מטרות אקולוגי –
-                כלי עזר יומיומי חם, מונגש ופשוט שמלווה אותך מהטלפון בכיתה ומהמחשב בבית.
+                סביבת עבודה חכמה לאנשי חינוך, המאפשרת לנהל מטרות, מעקב התקדמות, תיעוד ודוחות במקום אחד.
               </p>
 
               <div className="saas-hero-cta-group">
@@ -424,6 +422,100 @@ export function AllowlistAuthGate({
                   <Play size={15} className="btn-auth-play-icon" />
                   <span>צפייה בסרטון היכרות והדרכה (3 דק׳)</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Authentic Live Product Showcase with Real Screenshots ("Show, Don't Tell") */}
+            <div className="saas-product-mockup daylight-mockup real-screenshots-showcase" aria-label="תצוגת יכולות המערכת מתוך השטח">
+              <div className="saas-mockup-topbar">
+                <div className="saas-mockup-dots">
+                  <span className="mockup-dot dot-red" />
+                  <span className="mockup-dot dot-amber" />
+                  <span className="mockup-dot dot-green" />
+                </div>
+                <span className="saas-mockup-window-title">
+                  טעימה אמיתית מהשטח • ממשק המערכת בפעולה
+                </span>
+                <span className="saas-mockup-live-badge">
+                  <span className="live-pulse-dot" />
+                  צילומי מסך חיים
+                </span>
+              </div>
+
+              {/* Interactive Tabs Bar */}
+              <div className="preview-tabs-bar" role="tablist" aria-label="בחירת מודול לצפייה">
+                {PREVIEW_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activePreviewTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`preview-tab-btn ${isActive ? 'active' : ''}`}
+                      onClick={() => setActivePreviewTab(tab.id as any)}
+                    >
+                      <Icon size={14} className="preview-tab-icon" />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Tab Screenshot Display (Zero Jump, Smooth Crossfade & Fullscreen Zoom) */}
+              <div className="preview-image-container">
+                {PREVIEW_TABS.map((tab) => {
+                  if (tab.id !== activePreviewTab) return null;
+                  return (
+                    <div key={tab.id} className="preview-image-wrapper">
+                      <div
+                        className="preview-image-clickable"
+                        onClick={() =>
+                          setFullscreenPreview({
+                            src: tab.img,
+                            title: tab.label,
+                            caption: tab.caption
+                          })
+                        }
+                        title="לחצי להגדלת התמונה במסך מלא"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setFullscreenPreview({
+                              src: tab.img,
+                              title: tab.label,
+                              caption: tab.caption
+                            });
+                          }
+                        }}
+                      >
+                        <img
+                          src={tab.img}
+                          alt={tab.label}
+                          className="preview-real-screenshot"
+                          loading="lazy"
+                        />
+                        <div className="preview-zoom-overlay">
+                          <ZoomIn size={16} />
+                          <span>לחצי להגדלת התמונה במסך מלא</span>
+                        </div>
+                      </div>
+                      <div className="preview-screenshot-caption">
+                        <span className="caption-dot" />
+                        <span>{tab.caption}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="saas-mockup-footer-metric">
+                <Award size={15} className="metric-award-icon" />
+                <span>
+                  מורות וגננות מדווחות על <strong>חיסכון של כ-4 שעות שבועיות</strong> בריכוז תיעוד, הכנת תל״א והפקת דוחות
+                </span>
               </div>
             </div>
 
@@ -543,100 +635,6 @@ export function AllowlistAuthGate({
                     <span className="whatsapp-checks" aria-hidden="true">✓✓</span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Authentic Live Product Showcase with Real Screenshots ("Show, Don't Tell") */}
-            <div className="saas-product-mockup daylight-mockup real-screenshots-showcase" aria-label="תצוגת יכולות המערכת מתוך השטח">
-              <div className="saas-mockup-topbar">
-                <div className="saas-mockup-dots">
-                  <span className="mockup-dot dot-red" />
-                  <span className="mockup-dot dot-amber" />
-                  <span className="mockup-dot dot-green" />
-                </div>
-                <span className="saas-mockup-window-title">
-                  טעימה אמיתית מהשטח • ממשק המערכת בפעולה
-                </span>
-                <span className="saas-mockup-live-badge">
-                  <span className="live-pulse-dot" />
-                  צילומי מסך חיים
-                </span>
-              </div>
-
-              {/* Interactive Tabs Bar */}
-              <div className="preview-tabs-bar" role="tablist" aria-label="בחירת מודול לצפייה">
-                {PREVIEW_TABS.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activePreviewTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={isActive}
-                      className={`preview-tab-btn ${isActive ? 'active' : ''}`}
-                      onClick={() => setActivePreviewTab(tab.id as any)}
-                    >
-                      <Icon size={14} className="preview-tab-icon" />
-                      <span>{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Active Tab Screenshot Display (Zero Jump, Smooth Crossfade & Fullscreen Zoom) */}
-              <div className="preview-image-container">
-                {PREVIEW_TABS.map((tab) => {
-                  if (tab.id !== activePreviewTab) return null;
-                  return (
-                    <div key={tab.id} className="preview-image-wrapper">
-                      <div
-                        className="preview-image-clickable"
-                        onClick={() =>
-                          setFullscreenPreview({
-                            src: tab.img,
-                            title: tab.label,
-                            caption: tab.caption
-                          })
-                        }
-                        title="לחצי להגדלת התמונה במסך מלא"
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            setFullscreenPreview({
-                              src: tab.img,
-                              title: tab.label,
-                              caption: tab.caption
-                            });
-                          }
-                        }}
-                      >
-                        <img
-                          src={tab.img}
-                          alt={tab.label}
-                          className="preview-real-screenshot"
-                          loading="lazy"
-                        />
-                        <div className="preview-zoom-overlay">
-                          <ZoomIn size={16} />
-                          <span>לחצי להגדלת התמונה במסך מלא</span>
-                        </div>
-                      </div>
-                      <div className="preview-screenshot-caption">
-                        <span className="caption-dot" />
-                        <span>{tab.caption}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="saas-mockup-footer-metric">
-                <Award size={15} className="metric-award-icon" />
-                <span>
-                  מורות וגננות מדווחות על <strong>חיסכון של כ-4 שעות שבועיות</strong> בריכוז תיעוד, הכנת תל״א והפקת דוחות
-                </span>
               </div>
             </div>
           </div>
@@ -890,7 +888,7 @@ export function AllowlistAuthGate({
             <div className="auth-feature-card saas-pillar-card">
               <div className="auth-feature-card-header">
                 <div className="auth-feature-icon icon-tracker">
-                  <CalendarCheck size={19} />
+                  <CalendarCheck size={22} />
                 </div>
                 <strong>יומן יעדים ומעקב שוטף</strong>
               </div>
@@ -900,7 +898,7 @@ export function AllowlistAuthGate({
             <div className="auth-feature-card saas-pillar-card">
               <div className="auth-feature-card-header">
                 <div className="auth-feature-icon icon-capture">
-                  <Mic size={19} />
+                  <Mic size={22} />
                 </div>
                 <strong>תיעוד תצפיות והקלטה קולית</strong>
               </div>
@@ -910,7 +908,7 @@ export function AllowlistAuthGate({
             <div className="auth-feature-card saas-pillar-card">
               <div className="auth-feature-card-header">
                 <div className="auth-feature-icon icon-team">
-                  <Users size={19} />
+                  <Users size={22} />
                 </div>
                 <strong>מוכנות לצוות ודוחות ישיבות</strong>
               </div>
@@ -920,7 +918,7 @@ export function AllowlistAuthGate({
             <div className="auth-feature-card saas-pillar-card">
               <div className="auth-feature-card-header">
                 <div className="auth-feature-icon icon-ai">
-                  <Sparkles size={19} />
+                  <Sparkles size={22} />
                 </div>
                 <strong>מאגר אקולוגי ובינה מלאכותית</strong>
               </div>
