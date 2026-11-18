@@ -3145,7 +3145,7 @@ export default function App() {
                 title="מידע על תקופת הניסיון והסדרת מנוי שנתי"
               >
                 <Sparkles size={15} />
-                <span>מנוי שנתי</span>
+                <span>הסדרת מנוי</span>
                 {trialRemainingDays !== null && trialRemainingDays <= 2 && (
                   <span className="header-trial-badge">
                     {trialRemainingDays === 0

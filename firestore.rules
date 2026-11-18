@@ -37,13 +37,20 @@ service cloud.firestore {
 
     function isSharedOnResource(data) {
       return isSignedIn() &&
-        data.sharedWith is list &&
-        currentEmail() in data.sharedWith;
+        data != null &&
+        'sharedWith' in data &&
+        (
+          (request.auth.token.email != null && request.auth.token.email != '' && request.auth.token.email in data.sharedWith) ||
+          (currentEmail() != '' && currentEmail() in data.sharedWith)
+        );
     }
 
     function isAdmin() {
       return isPrimaryAdmin() ||
-        (isSignedIn() && (request.auth.token.role == 'admin' || request.auth.token.isAdmin == true));
+        (isSignedIn() && (
+          request.auth.token.role == 'admin' ||
+          ('isAdmin' in request.auth.token && request.auth.token.isAdmin == true)
+        ));
     }
 
     // Users list: admin read only. All writes go through the talaConfigWrite /
@@ -156,7 +163,13 @@ service cloud.firestore {
 
     // Student plans & status reports. Owner, shared teachers and the primary admin only.
     match /tala_students/{studentId} {
-      allow read: if isOwnerOfResource(resource.data) || isSharedOnResource(resource.data);
+      allow get: if isOwnerOfResource(resource.data) || isSharedOnResource(resource.data);
+
+      allow list: if isAdmin() || (isSignedIn() && (
+        resource.data.ownerEmail == currentEmail() ||
+        (request.auth.token.email != null && request.auth.token.email in resource.data.sharedWith) ||
+        (currentEmail() != '' && currentEmail() in resource.data.sharedWith)
+      ));
 
       allow create: if isSignedIn() &&
         (isAdmin() || request.resource.data.ownerEmail == currentEmail());
