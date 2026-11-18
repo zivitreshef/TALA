@@ -32,6 +32,8 @@ import {
 } from 'lucide-react';
 
 import { loginWithTala, prewarmTalaLogin, signOutFirebaseAuthSession } from './firebaseBackend';
+import { createPasswordCredentials } from './allowedUsers';
+import { validateTrialSignupForm, createTrialUserRecord } from './domain/trialOutreach';
 import TakeoverModal from './components/modals/TakeoverModal';
 import {
   checkActiveSession,
@@ -43,7 +45,7 @@ import {
 export interface AllowlistAuthGateProps {
   allowedUsers?: any[];
   onLoginSuccess?: (user: any) => void;
-  onUpdateAllowedUsers?: (users: any[]) => void;
+  onUpdateAllowedUsers?: (users: any[], meta?: any) => void | Promise<void>;
   onSubmitAdminRequest?: (req: any) => void;
   [key: string]: any;
 }
@@ -89,7 +91,7 @@ const PREVIEW_TABS = [
 export function AllowlistAuthGate({
   allowedUsers = [],
   onLoginSuccess = () => {},
-  onUpdateAllowedUsers: _onUpdateAllowedUsers,
+  onUpdateAllowedUsers,
   onSubmitAdminRequest = () => {}
 }: AllowlistAuthGateProps) {
   const [email, setEmail] = useState('');
@@ -97,6 +99,18 @@ export function AllowlistAuthGate({
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isAccountLockedError, setIsAccountLockedError] = useState(false);
+
+  // Self-Service 7-day Trial Signup Modal state
+  const [showTrialSignupModal, setShowTrialSignupModal] = useState(false);
+  const [trialName, setTrialName] = useState('');
+  const [trialEmail, setTrialEmail] = useState('');
+  const [trialPhone, setTrialPhone] = useState('');
+  const [trialGroup, setTrialGroup] = useState('');
+  const [trialTitle, setTrialTitle] = useState('מורת שילוב');
+  const [trialPassword, setTrialPassword] = useState('');
+  const [showTrialPassword, setShowTrialPassword] = useState(false);
+  const [trialSignupError, setTrialSignupError] = useState('');
+  const [isSubmittingTrialSignup, setIsSubmittingTrialSignup] = useState(false);
 
   // Contact Admin modal / drawer state on landing page
   const [showContactAdmin, setShowContactAdmin] = useState(false);
@@ -216,6 +230,80 @@ export function AllowlistAuthGate({
     setShowContactAdmin(true);
   };
 
+  const handleOpenTrialSignup = () => {
+    setTrialName('');
+    setTrialEmail(email || '');
+    setTrialPhone('');
+    setTrialGroup('');
+    setTrialTitle('מורת שילוב');
+    setTrialPassword('');
+    setShowTrialPassword(false);
+    setTrialSignupError('');
+    setShowTrialSignupModal(true);
+  };
+
+  const handleTrialSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTrialSignupError('');
+
+    const validation = validateTrialSignupForm(
+      {
+        name: trialName,
+        email: trialEmail,
+        phone: trialPhone,
+        group: trialGroup,
+        title: trialTitle,
+        password: trialPassword
+      },
+      allowedUsers
+    );
+
+    if (!validation.valid) {
+      setTrialSignupError(validation.error || 'שגיאה בפרטים שהוזנו.');
+      return;
+    }
+
+    setIsSubmittingTrialSignup(true);
+    try {
+      const creds = createPasswordCredentials(trialPassword);
+      const newTrialUser = createTrialUserRecord(
+        {
+          name: trialName,
+          email: trialEmail,
+          phone: trialPhone,
+          group: trialGroup,
+          title: trialTitle
+        },
+        creds,
+        7
+      );
+
+      const nextAllowedUsers = [...(allowedUsers || []), newTrialUser];
+      if (typeof onUpdateAllowedUsers === 'function') {
+        await onUpdateAllowedUsers(nextAllowedUsers, { addedUser: newTrialUser });
+      }
+
+      if (typeof onSubmitAdminRequest === 'function') {
+        onSubmitAdminRequest({
+          id: `trial_reg_${Date.now()}`,
+          topic: 'פתיחת חשבון התנסות עצמאי (7 ימים)',
+          name: newTrialUser.name,
+          email: newTrialUser.email,
+          phone: trialPhone.trim(),
+          notes: `מתי״א / מסגרת: ${newTrialUser.group} | תפקיד: ${newTrialUser.title} | טלפון: ${trialPhone.trim()}`,
+          createdAt: new Date().toLocaleString('he-IL')
+        });
+      }
+
+      setShowTrialSignupModal(false);
+      onLoginSuccess(newTrialUser);
+    } catch (_err) {
+      setTrialSignupError('אירעה שגיאה ביצירת החשבון. אנא נסי שוב או פני למנהל/ת המערכת.');
+    } finally {
+      setIsSubmittingTrialSignup(false);
+    }
+  };
+
   const handleSendContactRequest = (e: any) => {
     e.preventDefault();
     if (!contactEmail.trim() && !contactName.trim()) return;
@@ -288,10 +376,10 @@ export function AllowlistAuthGate({
               <button
                 type="button"
                 className="btn-saas-nav-trial"
-                onClick={() => handleOpenContactAdmin('בקשת הרשאת גישה למערכת')}
+                onClick={handleOpenTrialSignup}
               >
                 <UserPlus size={15} />
-                <span>בקשת גישה והתנסות</span>
+                <span>פתיחת חשבון התנסות</span>
               </button>
             </div>
           </div>
@@ -321,10 +409,10 @@ export function AllowlistAuthGate({
                 <button
                   type="button"
                   className="btn-saas-primary-trial"
-                  onClick={() => handleOpenContactAdmin('בקשת הרשאת גישה למערכת')}
+                  onClick={handleOpenTrialSignup}
                 >
                   <UserPlus size={17} />
-                  <span>בקשת גישה והתנסות ראשונית</span>
+                  <span>פתיחת חשבון התנסות חינם</span>
                 </button>
 
                 <button
@@ -689,10 +777,10 @@ export function AllowlistAuthGate({
                 <button
                   type="button"
                   className="btn-saas-open-trial compact"
-                  onClick={() => handleOpenContactAdmin('בקשת הרשאת גישה למערכת')}
+                  onClick={handleOpenTrialSignup}
                 >
                   <UserPlus size={14} />
-                  <span>פתיחת חשבון התנסות / בקשת גישה</span>
+                  <span>פתיחת חשבון התנסות (7 ימים)</span>
                 </button>
               </div>
 
@@ -861,6 +949,271 @@ export function AllowlistAuthGate({
           </div>
         </section>
       </div>
+
+      {/* Self-Service 7-Day Trial Signup Modal */}
+      {showTrialSignupModal && (
+        <div
+          className="modal-backdrop"
+          onClick={() => !isSubmittingTrialSignup && setShowTrialSignupModal(false)}
+          dir="rtl"
+        >
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '520px', borderRadius: '16px', overflow: 'hidden' }}
+          >
+            <div
+              className="modal-header"
+              style={{
+                background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
+                color: '#ffffff',
+                padding: '16px 20px'
+              }}
+            >
+              <div className="modal-header-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Sparkles size={22} style={{ color: '#fef08a' }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#ffffff' }}>
+                    פתיחת חשבון התנסות חינם
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#bfdbfe', marginTop: '2px' }}>
+                    7 ימי התנסות מלאים • תלמיד לדוגמה ייטען אוטומטית • ללא התחייבות
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-icon-close"
+                onClick={() => setShowTrialSignupModal(false)}
+                disabled={isSubmittingTrialSignup}
+                style={{ color: '#ffffff' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleTrialSignupSubmit}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
+                {trialSignupError && (
+                  <div
+                    style={{
+                      background: '#fef2f2',
+                      border: '1px solid #f87171',
+                      color: '#991b1b',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                    <span>{trialSignupError}</span>
+                  </div>
+                )}
+
+                <div className="form-field">
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                    שם מלא: <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="לדוגמה: רחל ישראלי"
+                    value={trialName}
+                    onChange={(e) => setTrialName(e.target.value)}
+                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-field">
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                      כתובת דוא״ל: <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="teacher@school.org.il"
+                      value={trialEmail}
+                      onChange={(e) => setTrialEmail(e.target.value)}
+                      dir="ltr"
+                      style={{ textAlign: 'right', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                      טלפון נייד: <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="050-1234567"
+                      value={trialPhone}
+                      onChange={(e) => setTrialPhone(e.target.value)}
+                      dir="ltr"
+                      style={{ textAlign: 'right', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                  <div className="form-field">
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                      מתי״א / מסגרת חינוכית: <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="לדוגמה: מתי״א תל אביב / בי״ס ארזים"
+                      value={trialGroup}
+                      onChange={(e) => setTrialGroup(e.target.value)}
+                      style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                      תפקיד פדגוגי:
+                    </label>
+                    <select
+                      value={trialTitle}
+                      onChange={(e) => setTrialTitle(e.target.value)}
+                      style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', background: '#ffffff' }}
+                    >
+                      <option value="מורת שילוב">מורת שילוב</option>
+                      <option value="גננת שילוב / חנ״מ">גננת שילוב / חנ״מ</option>
+                      <option value="מורת כיתת חינוך מיוחד">מורת כיתת חינוך מיוחד</option>
+                      <option value="מטפלת פרא-רפואית">מטפלת פרא-רפואית</option>
+                      <option value="יועצת חינוכית">יועצת חינוכית</option>
+                      <option value="מנהלת / סגנית פדגוגית">מנהלת / סגנית פדגוגית</option>
+                      <option value="אחר">אחר</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-field">
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
+                    בחירת סיסמה אישית: <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showTrialPassword ? 'text' : 'password'}
+                      required
+                      placeholder="לפחות 6 תווים..."
+                      value={trialPassword}
+                      onChange={(e) => setTrialPassword(e.target.value)}
+                      dir="ltr"
+                      style={{
+                        width: '100%',
+                        padding: '9px 40px 9px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px',
+                        textAlign: 'right'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowTrialPassword(!showTrialPassword)}
+                      tabIndex={-1}
+                      style={{
+                        position: 'absolute',
+                        left: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        padding: '4px'
+                      }}
+                    >
+                      {showTrialPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <span style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                    סיסמה זו תשמש אותך לכניסה למערכת לאורך תקופת הניסיון.
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    padding: '10px 14px',
+                    fontSize: '12px',
+                    color: '#475569',
+                    lineHeight: 1.5
+                  }}
+                >
+                  ✨ <strong>מה קורה לאחר פתיחת החשבון?</strong>
+                  <br />
+                  תיכנסי מיד למערכת, תחתמי דיגיטלית על כתב סודיות קצר, ותיק התלמיד לדוגמה
+                  (<strong>יונתן לוי</strong>) ייטען אוטומטית כדי שתוכלי להתנסות מיד בכל הכלים.
+                </div>
+              </div>
+
+              <div
+                className="modal-footer"
+                style={{
+                  padding: '14px 20px',
+                  background: '#f8fafc',
+                  borderTop: '1px solid #e2e8f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn-secondary-sm"
+                  onClick={() => setShowTrialSignupModal(false)}
+                  disabled={isSubmittingTrialSignup}
+                >
+                  ביטול
+                </button>
+
+                <button
+                  type="submit"
+                  className="btn-primary-sm"
+                  disabled={isSubmittingTrialSignup}
+                  data-testid="submit-trial-signup-btn"
+                  style={{
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    color: '#ffffff',
+                    padding: '9px 18px',
+                    fontSize: '13.5px',
+                    fontWeight: 700,
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {isSubmittingTrialSignup ? (
+                    <>
+                      <Loader2 size={16} className="spin" />
+                      <span>יוצר חשבון...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} />
+                      <span>פתיחת חשבון והתחלת התנסות</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Contact Admin Modal on Landing Page */}
       {showContactAdmin && (

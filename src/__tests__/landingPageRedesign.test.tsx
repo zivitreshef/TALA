@@ -88,9 +88,9 @@ describe('Landing Page Redesign (v3 Pedagogical Workspace Spirit)', () => {
   it('renders dual conversion tracks for both returning teachers and prospective trial teachers', () => {
     const html = renderLandingPage();
 
-    expect(html).toContain('בקשת גישה והתנסות ראשונית');
+    expect(html).toContain('פתיחת חשבון התנסות חינם');
     expect(html).toContain('עדיין אין לך חשבון במערכת?');
-    expect(html).toContain('פתיחת חשבון התנסות / בקשת גישה');
+    expect(html).toContain('פתיחת חשבון התנסות (7 ימים)');
     expect(html).toContain('כניסה למערכת TALA');
   });
 

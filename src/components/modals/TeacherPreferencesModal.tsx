@@ -38,6 +38,11 @@ import {
   verifyUserPassword,
   validatePasswordPolicy
 } from '../../allowedUsers';
+import {
+  createTrialOutreachWhatsappUrl,
+  createTrialOutreachEmailUrl,
+  ZIVIT_CALL_PHONE
+} from '../../domain/trialOutreach';
 import { StudentProfile } from '../../domain/types';
 
 const DAILY_DIGEST_TIME_SLOTS = [
@@ -149,6 +154,8 @@ export interface TeacherPreferencesModalProps {
   onToggleNotifySharedReport?: (enabled: boolean) => void;
   onDismissSharedReportNotification?: (student: SharedReportStudent) => void;
   onDismissAllSharedReports?: () => void;
+  showTrialOutreachNotice?: boolean;
+  onDismissTrialOutreach?: () => void;
 }
 
 export default function TeacherPreferencesModal({
@@ -166,7 +173,9 @@ export default function TeacherPreferencesModal({
   onOpenSharedReportNotification,
   onToggleNotifySharedReport,
   onDismissSharedReportNotification,
-  onDismissAllSharedReports
+  onDismissAllSharedReports,
+  showTrialOutreachNotice = false,
+  onDismissTrialOutreach
 }: TeacherPreferencesModalProps): React.JSX.Element | null {
   const [activeTab, setActiveTab] = useState(() => {
     if (Array.isArray(unreadSharedReports) && unreadSharedReports.length > 0) {
@@ -543,6 +552,140 @@ export default function TeacherPreferencesModal({
             <X size={20} />
           </button>
         </div>
+
+        {/* Proactive Personal Outreach Card from Zivit (Shown 1 hour after trial NDA signature) */}
+        {showTrialOutreachNotice && (
+          <div
+            data-testid="trial-outreach-personal-card"
+            style={{
+              margin: '12px 16px 4px 16px',
+              padding: '14px 18px',
+              background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
+              border: '1.5px solid #86efac',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(22, 101, 52, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '20px' }}>👋</span>
+                <div>
+                  <strong style={{ fontSize: '14px', color: '#166534' }}>
+                    הודעה אישית מזיוית
+                  </strong>
+                  <div style={{ fontSize: '12.5px', color: '#1e3a5f', marginTop: '2px', lineHeight: 1.4 }}>
+                    שלום {currentUser?.name ? currentUser.name.trim() : 'מורה יקרה'}, איך הולכת ההתנסות שלך במערכת תל״א?
+                    רציתי לבדוק שהכל ברור ונוח לך. אני כאן כדי לעזור בכל שאלה, התלבטות, דיוק מטרות או הכוונה פדגוגית.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onDismissTrialOutreach}
+                title="סגירת ההודעה"
+                data-testid="dismiss-trial-outreach-btn"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  padding: '4px',
+                  display: 'inline-flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
+              <a
+                href={createTrialOutreachWhatsappUrl(currentUser?.name, currentUser?.email)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onDismissTrialOutreach}
+                data-testid="trial-outreach-whatsapp-link"
+                style={{
+                  background: '#16a34a',
+                  color: '#ffffff',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)'
+                }}
+              >
+                <span>💬 פנייה בוואטסאפ לזיוית</span>
+              </a>
+
+              <a
+                href={`tel:${ZIVIT_CALL_PHONE.replace(/[-–\s]/g, '')}`}
+                onClick={onDismissTrialOutreach}
+                data-testid="trial-outreach-phone-link"
+                style={{
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                <span>📞 שיחה טלפונית ({ZIVIT_CALL_PHONE})</span>
+              </a>
+
+              <a
+                href={createTrialOutreachEmailUrl(currentUser?.name, currentUser?.email)}
+                onClick={onDismissTrialOutreach}
+                data-testid="trial-outreach-email-link"
+                style={{
+                  background: '#f8fafc',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>✉️ שליחת מייל</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={onDismissTrialOutreach}
+                data-testid="trial-outreach-got-it-btn"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#64748b',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  marginRight: 'auto',
+                  textDecoration: 'underline'
+                }}
+              >
+                הבנתי, תודה
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div
