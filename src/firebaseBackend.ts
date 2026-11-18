@@ -548,7 +548,18 @@ export function subscribeToTalaBackend({
             }
             emit(querySnap.docs.map((d) => {
               const data = d.data();
-              return { ...data, id: data?.id || d.id };
+              const id = data?.id || d.id;
+              const updatedAt = data?.updatedAt || new Date().toISOString();
+              return {
+                ...data,
+                id,
+                updatedAt,
+                lastLoadedAt: data?.lastLoadedAt || updatedAt,
+                _baseSnapshot: data?._baseSnapshot || {
+                  id,
+                  goals: Array.isArray(data?.goals) ? JSON.parse(JSON.stringify(data.goals)) : []
+                }
+              };
             }));
           },
           listenError('tala_students', true)
@@ -567,7 +578,20 @@ export function subscribeToTalaBackend({
             owned.clear();
             snap.forEach((d: any) => {
               const data = d.data();
-              if (data) owned.set(d.id, { ...data, id: data.id || d.id });
+              if (data) {
+                const id = data.id || d.id;
+                const updatedAt = data.updatedAt || new Date().toISOString();
+                owned.set(id, {
+                  ...data,
+                  id,
+                  updatedAt,
+                  lastLoadedAt: data.lastLoadedAt || updatedAt,
+                  _baseSnapshot: data._baseSnapshot || {
+                    id,
+                    goals: Array.isArray(data.goals) ? JSON.parse(JSON.stringify(data.goals)) : []
+                  }
+                });
+              }
             });
             emitCombined();
           },
@@ -579,7 +603,20 @@ export function subscribeToTalaBackend({
             shared.clear();
             snap.forEach((d: any) => {
               const data = d.data();
-              if (data) shared.set(d.id, { ...data, id: data.id || d.id });
+              if (data) {
+                const id = data.id || d.id;
+                const updatedAt = data.updatedAt || new Date().toISOString();
+                shared.set(id, {
+                  ...data,
+                  id,
+                  updatedAt,
+                  lastLoadedAt: data.lastLoadedAt || updatedAt,
+                  _baseSnapshot: data._baseSnapshot || {
+                    id,
+                    goals: Array.isArray(data.goals) ? JSON.parse(JSON.stringify(data.goals)) : []
+                  }
+                });
+              }
             });
             emitCombined();
           },
@@ -823,9 +860,10 @@ export async function saveStudentToCloud(studentObj: any): Promise<boolean> {
   try {
     await runTransaction(db, async (transaction) => {
       const serverSnap = await transaction.get(docRef);
+      const serverNow = new Date().toISOString();
       let payload = {
         ...cleanStudent,
-        updatedAt: new Date().toISOString()
+        updatedAt: serverNow
       };
       if (serverSnap.exists()) {
         const serverData = serverSnap.data();
@@ -837,21 +875,35 @@ export async function saveStudentToCloud(studentObj: any): Promise<boolean> {
               baseSnapshot: studentObj._baseSnapshot || {}
             })
           );
+          payload.updatedAt = serverNow;
         }
       }
       transaction.set(docRef, payload);
+      studentObj.lastLoadedAt = serverNow;
+      studentObj.updatedAt = serverNow;
+      studentObj._baseSnapshot = {
+        id: payload.id,
+        goals: Array.isArray(payload.goals) ? JSON.parse(JSON.stringify(payload.goals)) : []
+      };
     });
     return true;
   } catch (err) {
     try {
+      const fallbackNow = new Date().toISOString();
       await setDoc(
         docRef,
         {
           ...cleanStudent,
-          updatedAt: new Date().toISOString()
+          updatedAt: fallbackNow
         },
         { merge: true }
       );
+      studentObj.lastLoadedAt = fallbackNow;
+      studentObj.updatedAt = fallbackNow;
+      studentObj._baseSnapshot = {
+        id: cleanStudent.id,
+        goals: Array.isArray(cleanStudent.goals) ? JSON.parse(JSON.stringify(cleanStudent.goals)) : []
+      };
       return true;
     } catch (fallbackErr) {
       console.error('Failed to save student to Firestore:', fallbackErr);
