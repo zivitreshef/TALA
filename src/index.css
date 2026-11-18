@@ -2458,6 +2458,37 @@ input, textarea, select, button {
   border-radius: 999px;
 }
 
+.header-trial-outreach-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(220, 38, 38, 0.4);
+  animation: pulse-outreach 2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-outreach {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
 /* Zone 3: User Profile & Admin Group */
 .header-user-group {
   display: inline-flex;

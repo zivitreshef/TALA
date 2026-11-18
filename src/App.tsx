@@ -57,6 +57,7 @@ import {
   DEFAULT_SCHOOL_YEAR,
   associateStudentToWorkingYear
 } from './domain/yearReport';
+import { shouldShowTrialOutreachNotification } from './domain/trialOutreach';
 import { reconcileLocalAndCloudStudents } from './domain/studentSyncMerge';
 import {
   DEFAULT_USER_PREFERENCES,
@@ -1647,6 +1648,7 @@ export default function App() {
   const handleCompleteTrialNda = async (ndaPayload: any) => {
     if (!currentUser) return;
     const signedAtStr = new Date().toLocaleString('he-IL');
+    const signedAtMs = Date.now();
     const resolvedSignedDate =
       ndaPayload.signedDate ||
       ndaPayload.signerDate ||
@@ -1660,7 +1662,8 @@ export default function App() {
             ndaSigned: true,
             ndaSignedAt: signedAtStr,
             ndaSignedDate: resolvedSignedDate,
-            ndaSignerIdNumber: ndaPayload.signerIdNumber
+            ndaSignerIdNumber: ndaPayload.signerIdNumber,
+            ndaSignedAtMs: signedAtMs
           }
         : u
     );
@@ -1672,7 +1675,8 @@ export default function App() {
       ndaSigned: true,
       ndaSignedAt: signedAtStr,
       ndaSignedDate: resolvedSignedDate,
-      ndaSignerIdNumber: ndaPayload.signerIdNumber
+      ndaSignerIdNumber: ndaPayload.signerIdNumber,
+      ndaSignedAtMs: signedAtMs
     };
     setCurrentUser(updatedCurrent);
     safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
@@ -1697,6 +1701,30 @@ export default function App() {
         err
       );
     });
+  };
+
+  const handleDismissTrialOutreach = () => {
+    if (!currentUser) return;
+    const updatedCurrent = {
+      ...currentUser,
+      trialOutreachDismissed: true
+    };
+    setCurrentUser(updatedCurrent);
+    safeSetStorageJson(SESSION_USER_KEY, updatedCurrent);
+    if (currentUser.email) {
+      try {
+        localStorage.setItem(
+          `tala_trial_outreach_dismissed_${currentUser.email.trim().toLowerCase()}`,
+          'true'
+        );
+      } catch (_) {}
+    }
+    const updatedList = allowedUsers.map((u) =>
+      u.email?.toLowerCase() === currentUser.email?.toLowerCase()
+        ? { ...u, trialOutreachDismissed: true }
+        : u
+    );
+    handleUpdateAllowedUsers(updatedList);
   };
 
   const handleCompletePaidLicense = async (licensePayload: {
@@ -2768,15 +2796,31 @@ export default function App() {
   const trialRemainingDays = currentUser?.isTrialUser ? getTrialRemainingDays(currentUser) : null;
   const paidRemainingDays = (!currentUser?.isTrialUser && currentUser) ? getPaidRemainingDays(currentUser) : null;
 
+  const isTrialOutreachDismissed = Boolean(
+    currentUser?.trialOutreachDismissed ||
+      (currentUser?.email &&
+        localStorage.getItem(
+          `tala_trial_outreach_dismissed_${currentUser.email.trim().toLowerCase()}`
+        ) === 'true')
+  );
+
+  const showTrialOutreachNotice = Boolean(
+    currentUser &&
+      !isTrialOutreachDismissed &&
+      shouldShowTrialOutreachNotification(currentUser)
+  );
+
+  const isTrialFirstRun = Boolean(currentUser?.isTrialUser && userStudents.length === 0 && demoStudent);
   const baseStudentsForView =
-    SHOW_NEW_USER_JOURNEY && onboardingState?.mode === 'demo' && demoStudent
+    SHOW_NEW_USER_JOURNEY && ((onboardingState?.mode === 'demo' && demoStudent) || isTrialFirstRun)
       ? [demoStudent, ...userStudents.filter((s) => s.id !== demoStudent.id)]
       : userStudents;
 
   const selectedStudent =
-    SHOW_NEW_USER_JOURNEY &&
-    demoStudent &&
-    (selectedStudentId === demoStudent.id || selectedStudentId === 'demo_yonatan_levi')
+    (SHOW_NEW_USER_JOURNEY &&
+      demoStudent &&
+      (selectedStudentId === demoStudent.id || selectedStudentId === 'demo_yonatan_levi')) ||
+    (isTrialFirstRun && !selectedStudentId && demoStudent)
       ? demoStudent
       : userStudents.find((s) => s.id === selectedStudentId);
 
@@ -3119,7 +3163,9 @@ export default function App() {
               onClick={() => setShowSelfPasswordModal(true)}
               style={{ position: 'relative' }}
               title={
-                unreadSharedReports.length > 0
+                showTrialOutreachNotice
+                  ? 'יש לך הודעה אישית חדשה מזיוית – לחצי לפתיחה'
+                  : unreadSharedReports.length > 0
                   ? `יש לך ${unreadSharedReports.length} דו"חות משותפים חדשים – לחץ לצפייה ופתיחה`
                   : 'לחץ לצפייה בהתראות דו"חות משותפים ושינוי סיסמה אישית'
               }
@@ -3139,7 +3185,15 @@ export default function App() {
                 <strong className="header-user-name">{effectiveCurrentUser.name}</strong>
                 <span className="header-user-role">{effectiveCurrentUser.title || 'משתמש'}</span>
               </div>
-              {currentUser.notifyOnSharedReport !== false && unreadSharedReports.length > 0 ? (
+              {showTrialOutreachNotice ? (
+                <span
+                  className="header-trial-outreach-badge"
+                  data-testid="header-trial-outreach-badge"
+                  title="הודעה אישית חדשה מזיוית – לחצי לפתיחה"
+                >
+                  1
+                </span>
+              ) : currentUser.notifyOnSharedReport !== false && unreadSharedReports.length > 0 ? (
                 <span className="header-unread-badge">
                   <Bell size={11} />
                   <span>{unreadSharedReports.length}</span>
@@ -4321,6 +4375,8 @@ export default function App() {
         onToggleNotifySharedReport={handleToggleNotifySharedReport}
         onDismissSharedReportNotification={handleDismissSharedReportNotification}
         onDismissAllSharedReports={handleDismissAllSharedReports}
+        showTrialOutreachNotice={showTrialOutreachNotice}
+        onDismissTrialOutreach={handleDismissTrialOutreach}
       />
 
       {/* Mandatory Hebrew NDA Modal for Trial Users (opens immediately after password change) */}
