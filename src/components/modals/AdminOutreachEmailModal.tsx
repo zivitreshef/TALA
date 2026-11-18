@@ -4,7 +4,12 @@ import {
   buildAdminOutreachEmailHtml,
   sendAdminOutreachEmailInBackground
 } from '../../emailService';
-import { getTrialRemainingDays, AllowedUserRecord } from '../../allowedUsers';
+import {
+  getTrialRemainingDays,
+  isTrialUserExpired,
+  isPaidUserExpired,
+  AllowedUserRecord
+} from '../../allowedUsers';
 
 export interface AdminOutreachEmailModalProps {
   isOpen: boolean;
@@ -12,6 +17,7 @@ export interface AdminOutreachEmailModalProps {
   onClose: () => void;
   onRemoveRecipient?: (userId: string) => void;
   onSuccess?: (message: string) => void;
+  onUpdateUserField?: (userIds: string[], fields: Partial<AllowedUserRecord>) => void;
 }
 
 export interface OutreachTemplateDefinition {
@@ -22,6 +28,20 @@ export interface OutreachTemplateDefinition {
 }
 
 export const OUTREACH_TEMPLATES: OutreachTemplateDefinition[] = [
+  {
+    key: 'expired_deletion_warning',
+    name: 'התראת סיום תקופת פעילות ומחיקת נתונים בעוד 30 יום',
+    subject: 'מערכת TALA – סיום תקופת הפעילות ומועד מחיקת הנתונים בעוד 30 יום',
+    body: `שלום {name},
+
+תקופת הפעילות שלך במערכת TALA הסתיימה.
+
+בהתאם למדיניות המערכת, תנאי הרישיון וכתב ההתחייבות, אנו שומרים את נתונייך (לרבות תוכניות עבודה, מסמכים והקלטות) למשך חודש ימים (30 יום) ממועד סיום הפעילות, במטרה לאפשר לך להוריד ולגבות את החומרים או להסדיר מנוי שנתי.
+
+לתשומת לבך: בחלוף 30 יום ממועד שליחת הודעה זו, כל המידע, התוכניות והקבצים שהוזנו יימחקו משרתי המערכת לצמיתות וללא אפשרות שחזור.
+
+אם ברצונך להמשיך להשתמש במערכת או להסדיר מנוי, נשמח מאוד לסייע! אפשר להשיב ישירות למייל זה או ליצור איתי קשר בוואטסאפ: 052-4286501.`
+  },
   {
     key: 'trial_ending',
     name: 'סיום תקופת ניסיון והצעת סיוע',
@@ -82,11 +102,19 @@ export default function AdminOutreachEmailModal({
   recipients,
   onClose,
   onRemoveRecipient,
-  onSuccess
+  onSuccess,
+  onUpdateUserField
 }: AdminOutreachEmailModalProps) {
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('trial_ending');
-  const [subjectTemplate, setSubjectTemplate] = useState<string>(OUTREACH_TEMPLATES[0].subject);
-  const [bodyTemplate, setBodyTemplate] = useState<string>(OUTREACH_TEMPLATES[0].body);
+  const isAllExpired =
+    recipients.length > 0 &&
+    recipients.every((r) => isTrialUserExpired(r) || isPaidUserExpired(r));
+  const initialKey = isAllExpired ? 'expired_deletion_warning' : 'trial_ending';
+  const initialTmpl =
+    OUTREACH_TEMPLATES.find((t) => t.key === initialKey) || OUTREACH_TEMPLATES[0];
+
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>(initialKey);
+  const [subjectTemplate, setSubjectTemplate] = useState<string>(initialTmpl.subject);
+  const [bodyTemplate, setBodyTemplate] = useState<string>(initialTmpl.body);
   const [activeViewTab, setActiveViewTab] = useState<'edit' | 'preview'>('edit');
   const [previewRecipientId, setPreviewRecipientId] = useState<string>(recipients[0]?.id || '');
 
@@ -139,6 +167,7 @@ export default function AdminOutreachEmailModal({
     setIsSending(true);
     let successCount = 0;
     const failures: string[] = [];
+    const successfulUserIds: string[] = [];
 
     for (let i = 0; i < recipients.length; i++) {
       const user = recipients[i];
@@ -171,6 +200,9 @@ export default function AdminOutreachEmailModal({
           messageContent: userMessage
         });
         successCount++;
+        if (user.id) {
+          successfulUserIds.push(user.id);
+        }
       } catch (err: any) {
         console.error(`Failed to send outreach email to ${user.email}:`, err);
         failures.push(`${user.name || user.email}: ${err.message || 'שגיאת שליחה'}`);
@@ -180,6 +212,12 @@ export default function AdminOutreachEmailModal({
       if (i < recipients.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
+    }
+
+    if (selectedTemplateKey === 'expired_deletion_warning' && successfulUserIds.length > 0) {
+      onUpdateUserField?.(successfulUserIds, {
+        deletionWarningSentAt: new Date().toISOString()
+      });
     }
 
     setIsSending(false);

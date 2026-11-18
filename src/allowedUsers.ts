@@ -262,6 +262,7 @@ export interface AllowedUserRecord {
   dailyAiQuotaLimit?: number | null;
   lastAiUsedAt?: string;
   notifyOnSharedReport?: boolean;
+  deletionWarningSentAt?: string | null;
   sessionDate?: string;
   loginAt?: number;
   [key: string]: unknown;
@@ -785,6 +786,41 @@ export function getUserSubscriptionStatus(user?: Partial<AllowedUserRecord> | nu
   }
 
   return 'paid_active';
+}
+
+export interface DeletionWarningStatus {
+  warningSent: boolean;
+  warningDateIso?: string;
+  daysRemaining: number;
+  canBePermanentlyDeleted: boolean;
+}
+
+/**
+ * Returns tracking metrics for data retention and permanent deletion warning.
+ * Users with expired status get a 30-day grace period following warning delivery.
+ */
+export function getDeletionWarningStatus(
+  user?: Partial<AllowedUserRecord> | null,
+  now: Date | string | number = new Date()
+): DeletionWarningStatus {
+  if (!user?.deletionWarningSentAt) {
+    return {
+      warningSent: false,
+      daysRemaining: 30,
+      canBePermanentlyDeleted: false
+    };
+  }
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const sentDate = new Date(user.deletionWarningSentAt);
+  const diffMs = nowDate.getTime() - sentDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const daysRemaining = Math.max(0, 30 - diffDays);
+  return {
+    warningSent: true,
+    warningDateIso: user.deletionWarningSentAt,
+    daysRemaining,
+    canBePermanentlyDeleted: diffDays >= 30
+  };
 }
 
 /**

@@ -113,6 +113,7 @@ import {
 } from './firebaseBackend';
 import { countUnreviewedHealthEvents } from './domain/healthEvents';
 import { dispatchServerInquiryAlerts } from './services/alertDispatcher';
+import { deleteDossierFileFromCloud } from './services/dossierFileStorage';
 import {
   shouldSendPedagogicalDigest,
   getObservationGaps,
@@ -1366,6 +1367,33 @@ export default function App() {
     saveAllowedUsers(hashedList as any);
     const deletedUserEmails = editMeta?.deletedUserEmail ? [editMeta.deletedUserEmail] : [];
     void saveAllowedUsersToCloud(hashedList as any, { deletedUserEmails });
+
+    // Cascade clean deletion: if a teacher was removed, also permanently purge their students and cloud storage files
+    if (editMeta?.deletedUserEmail) {
+      const delEmailLower = editMeta.deletedUserEmail.trim().toLowerCase();
+      const studentsToDelete = students.filter(
+        (st) => (st.ownerEmail || '').trim().toLowerCase() === delEmailLower
+      );
+      if (studentsToDelete.length > 0) {
+        const remainingStudents = students.filter(
+          (st) => (st.ownerEmail || '').trim().toLowerCase() !== delEmailLower
+        );
+        setStudents(remainingStudents);
+        safeSetStorageJson(STUDENTS_STORAGE_KEY, remainingStudents);
+
+        studentsToDelete.forEach((st) => {
+          void deleteStudentFromCloud(st.id);
+          // Delete any uploaded diagnostic dossier files / audio recordings from Firebase Storage
+          if (Array.isArray(st.diagnosticDossier?.documents)) {
+            st.diagnosticDossier.documents.forEach((docItem: any) => {
+              if (docItem?.storagePath) {
+                void deleteDossierFileFromCloud(docItem.storagePath);
+              }
+            });
+          }
+        });
+      }
+    }
 
     // Sync currentUser session if the currently active user was modified
     if (currentUser?.email) {
