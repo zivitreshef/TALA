@@ -141,6 +141,9 @@ export interface YearReportSnapshot {
   statusReportUpdatedAt: string;
   lastSavedAt: string;
   goals: YearReportGoal[];
+  removedGoalIds?: string[];
+  lastLoadedAt?: string;
+  _baseSnapshot?: Record<string, unknown>;
   schoolYear?: string;
   reportsByYear?: Record<string, YearReportSnapshot | Record<string, unknown>>;
   reportsByPlanType?: Record<string, YearReportSnapshot | Record<string, unknown>>;
@@ -295,6 +298,7 @@ export const extractYearReportFromFormData = (data?: FormStudentInput | null): Y
   statusReportSections: Array.isArray(data?.statusReportSections) ? data.statusReportSections : [],
   statusReportUpdatedAt: data?.statusReportUpdatedAt || '',
   lastSavedAt: data?.lastSavedAt || '',
+  removedGoalIds: Array.isArray((data as any)?.removedGoalIds) ? (data as any).removedGoalIds : [],
   goals: ((data?.goals || []) as YearReportGoal[]).map((g) =>
     adaptGoalToGender(g, (data?.gender as 'boy' | 'girl') || 'boy')
   ) as YearReportGoal[]
@@ -498,6 +502,14 @@ export const normalizeStudentForForm = <T extends FormStudentInput>(st: T): T & 
   return {
     ...preparedStudent,
     ...baseSnapshot,
+    lastLoadedAt: (preparedStudent as any)?.lastLoadedAt || (preparedStudent as any)?.updatedAt,
+    _baseSnapshot: (preparedStudent as any)?._baseSnapshot || {
+      id: preparedStudent?.id,
+      goals: normalizedGoals.map((g) => ({ ...g }))
+    },
+    removedGoalIds: Array.isArray((preparedStudent as any)?.removedGoalIds)
+      ? (preparedStudent as any).removedGoalIds
+      : [],
     schoolYear: currentYear,
     gender: initialGender,
     sharedWith: Array.isArray(preparedStudent?.sharedWith) ? preparedStudent.sharedWith : [],

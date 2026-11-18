@@ -168,6 +168,12 @@ export function mergeStudentSnapshots<T extends StudentSnapshot>({
   const mergedGoals: SyncGoal[] = [];
   const seenIds = new Set<string | undefined>();
 
+  // Gather all explicitly deleted goal IDs from local deletions or AI removal tracking
+  const explicitDeletedIds = new Set<string>([
+    ...(((localStudent as any)?.removedGoalIds || []) as string[]),
+    ...((((localStudent as any)?.removedAiGoals || []) as Array<{ id?: string }>).map((r) => r?.id).filter(Boolean) as string[])
+  ]);
+
   // Process all local goals
   localGoals.forEach((lg) => {
     seenIds.add(lg.id);
@@ -181,11 +187,13 @@ export function mergeStudentSnapshots<T extends StudentSnapshot>({
   });
 
   // Include any new goals created concurrently on the server by colleagues.
-  // Do NOT resurrect goals that were present in baseSnapshot and explicitly deleted locally.
+  // Do NOT resurrect goals that were present in baseSnapshot and explicitly deleted locally,
+  // or that were explicitly marked as deleted locally.
   serverGoals.forEach((sg) => {
     if (!seenIds.has(sg.id)) {
       const wasInBase = sg.id ? baseGoalMap.has(sg.id) : false;
-      if (!wasInBase) {
+      const wasExplicitlyDeleted = sg.id ? explicitDeletedIds.has(sg.id) : false;
+      if (!wasInBase && !wasExplicitlyDeleted) {
         mergedGoals.push(sg);
       }
     }
@@ -265,9 +273,15 @@ export function reconcileLocalAndCloudStudents<T extends Record<string, any>>({
   // 1. Normalize cloud students
   const cloudList = Array.isArray(cloudStudents) ? cloudStudents : [];
   const normalizedCloud = cloudList.map((s) => {
+    const updatedAt = s.updatedAt || new Date().toISOString();
     const scoped = {
       ...s,
-      ownerEmail: (s.ownerEmail || normalizedUserEmail || 'zivit.reshef@gmail.com').toLowerCase()
+      ownerEmail: (s.ownerEmail || normalizedUserEmail || 'zivit.reshef@gmail.com').toLowerCase(),
+      lastLoadedAt: s.lastLoadedAt || updatedAt,
+      _baseSnapshot: s._baseSnapshot || {
+        id: s.id,
+        goals: Array.isArray(s.goals) ? JSON.parse(JSON.stringify(s.goals)) : []
+      }
     };
     return (scoped.schoolYear === 'תשפ"ו (2025-2026)')
       ? associateStudentToWorkingYear(scoped, defaultSchoolYear)
@@ -302,9 +316,15 @@ export function reconcileLocalAndCloudStudents<T extends Record<string, any>>({
         ? normalizedUserEmail
         : (rawOwner || normalizedUserEmail || 'zivit.reshef@gmail.com');
 
+      const localUpdatedAt = ls.updatedAt || new Date().toISOString();
       const scopedLocal = {
         ...ls,
-        ownerEmail: resolvedOwnerEmail
+        ownerEmail: resolvedOwnerEmail,
+        lastLoadedAt: ls.lastLoadedAt || localUpdatedAt,
+        _baseSnapshot: ls._baseSnapshot || {
+          id: ls.id,
+          goals: Array.isArray(ls.goals) ? JSON.parse(JSON.stringify(ls.goals)) : []
+        }
       };
       const normalizedLocal = (scopedLocal.schoolYear === 'תשפ"ו (2025-2026)')
         ? associateStudentToWorkingYear(scopedLocal, defaultSchoolYear)

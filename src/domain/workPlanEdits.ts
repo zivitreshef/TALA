@@ -217,7 +217,7 @@ export const toggleGoalAiLock = <T extends FormStudentInput>(
 export const removeGoalRow = <T extends FormStudentInput>(
   prev: T,
   goalId: string
-): T & { goals: YearReportGoal[]; removedAiGoals: RemovedAiGoalSnapshot[] } => {
+): T & { goals: YearReportGoal[]; removedAiGoals: RemovedAiGoalSnapshot[]; removedGoalIds: string[] } => {
   const targetGoal = ((prev?.goals || []) as YearReportGoal[]).find((g) => g.id === goalId);
   const nextRemoved: RemovedAiGoalSnapshot[] = [...((prev?.removedAiGoals || []) as RemovedAiGoalSnapshot[])];
   if (targetGoal && !isGoalEmpty(targetGoal)) {
@@ -229,9 +229,13 @@ export const removeGoalRow = <T extends FormStudentInput>(
       aiSnapshot: targetGoal.aiSnapshot || null
     });
   }
+  const prevRemovedIds = Array.isArray((prev as any)?.removedGoalIds) ? (prev as any).removedGoalIds : [];
+  const nextRemovedIds = Array.from(new Set([...prevRemovedIds, String(goalId || '')])).filter(Boolean);
+
   return {
     ...prev,
     removedAiGoals: nextRemoved,
+    removedGoalIds: nextRemovedIds,
     goals: ((prev?.goals || []) as YearReportGoal[]).filter((g) => g.id !== goalId)
   };
 };
