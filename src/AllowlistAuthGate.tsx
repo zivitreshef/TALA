@@ -965,18 +965,34 @@ export function AllowlistAuthGate({
             <div
               className="modal-header"
               style={{
-                background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)',
-                color: '#ffffff',
-                padding: '16px 20px'
+                background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+                borderBottom: '1px solid #e2e8f0',
+                padding: '16px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
               }}
             >
-              <div className="modal-header-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Sparkles size={22} style={{ color: '#fef08a' }} />
+              <div className="modal-header-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: '#dbeafe',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <Sparkles size={20} style={{ color: '#2563eb' }} />
+                </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#ffffff' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#1e3a5f' }}>
                     פתיחת חשבון התנסות חינם
                   </h3>
-                  <div style={{ fontSize: '12px', color: '#bfdbfe', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                     7 ימי התנסות מלאים • תלמיד לדוגמה ייטען אוטומטית • ללא התחייבות
                   </div>
                 </div>
@@ -986,14 +1002,14 @@ export function AllowlistAuthGate({
                 className="btn-icon-close"
                 onClick={() => setShowTrialSignupModal(false)}
                 disabled={isSubmittingTrialSignup}
-                style={{ color: '#ffffff' }}
+                style={{ color: '#64748b' }}
               >
                 <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handleTrialSignupSubmit}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '20px' }}>
                 {trialSignupError && (
                   <div
                     style={{
@@ -1024,7 +1040,14 @@ export function AllowlistAuthGate({
                     placeholder="לדוגמה: רחל ישראלי"
                     value={trialName}
                     onChange={(e) => setTrialName(e.target.value)}
-                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                    style={{
+                      height: '42px',
+                      boxSizing: 'border-box',
+                      padding: '0 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '14px'
+                    }}
                   />
                 </div>
 
@@ -1040,7 +1063,15 @@ export function AllowlistAuthGate({
                       value={trialEmail}
                       onChange={(e) => setTrialEmail(e.target.value)}
                       dir="ltr"
-                      style={{ textAlign: 'right', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                      style={{
+                        height: '42px',
+                        boxSizing: 'border-box',
+                        textAlign: 'right',
+                        padding: '0 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px'
+                      }}
                     />
                   </div>
 
@@ -1055,7 +1086,15 @@ export function AllowlistAuthGate({
                       value={trialPhone}
                       onChange={(e) => setTrialPhone(e.target.value)}
                       dir="ltr"
-                      style={{ textAlign: 'right', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                      style={{
+                        height: '42px',
+                        boxSizing: 'border-box',
+                        textAlign: 'right',
+                        padding: '0 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px'
+                      }}
                     />
                   </div>
                 </div>
@@ -1071,7 +1110,14 @@ export function AllowlistAuthGate({
                       placeholder="לדוגמה: מתי״א תל אביב / בי״ס ארזים"
                       value={trialGroup}
                       onChange={(e) => setTrialGroup(e.target.value)}
-                      style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                      style={{
+                        height: '42px',
+                        boxSizing: 'border-box',
+                        padding: '0 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px'
+                      }}
                     />
                   </div>
 
@@ -1082,7 +1128,15 @@ export function AllowlistAuthGate({
                     <select
                       value={trialTitle}
                       onChange={(e) => setTrialTitle(e.target.value)}
-                      style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', background: '#ffffff' }}
+                      style={{
+                        height: '42px',
+                        boxSizing: 'border-box',
+                        padding: '0 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '14px',
+                        background: '#ffffff'
+                      }}
                     >
                       <option value="מורת שילוב">מורת שילוב</option>
                       <option value="גננת שילוב / חנ״מ">גננת שילוב / חנ״מ</option>
@@ -1099,7 +1153,7 @@ export function AllowlistAuthGate({
                   <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
                     בחירת סיסמה אישית: <span style={{ color: '#dc2626' }}>*</span>
                   </label>
-                  <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input
                       type={showTrialPassword ? 'text' : 'password'}
                       required
@@ -1109,7 +1163,9 @@ export function AllowlistAuthGate({
                       dir="ltr"
                       style={{
                         width: '100%',
-                        padding: '9px 40px 9px 12px',
+                        height: '42px',
+                        boxSizing: 'border-box',
+                        padding: '0 42px 0 12px',
                         borderRadius: '8px',
                         border: '1px solid #cbd5e1',
                         fontSize: '14px',
@@ -1120,19 +1176,27 @@ export function AllowlistAuthGate({
                       type="button"
                       onClick={() => setShowTrialPassword(!showTrialPassword)}
                       tabIndex={-1}
+                      title={showTrialPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                      aria-label={showTrialPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
                       style={{
                         position: 'absolute',
-                        left: '10px',
+                        left: '8px',
                         top: '50%',
                         transform: 'translateY(-50%)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '28px',
+                        height: '28px',
+                        padding: 0,
+                        margin: 0,
                         background: 'transparent',
                         border: 'none',
                         color: '#64748b',
-                        cursor: 'pointer',
-                        padding: '4px'
+                        cursor: 'pointer'
                       }}
                     >
-                      {showTrialPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      {showTrialPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                   <span style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
