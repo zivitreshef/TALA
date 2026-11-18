@@ -47,6 +47,7 @@ import {
   setGroupDailyAiQuotaInList,
   classifyUserGroup,
   sortUsersList,
+  getDeletionWarningStatus,
   AllowedUserRecord
 } from '../../allowedUsers';
 import { sendUserInvitationEmailInBackground } from '../../emailService';
@@ -651,6 +652,16 @@ export default function AdminAllowlistModal({
     });
   };
 
+  const handleUpdateUsersField = (userIds: string[], fields: Partial<AllowedUserRecord>) => {
+    const nextUsers = allowedUsers.map((u) => {
+      if (userIds.includes(u.id)) {
+        return { ...u, ...fields };
+      }
+      return u;
+    });
+    onUpdateAllowedUsers?.(nextUsers);
+  };
+
   const handleSortToggle = (field: any) => {
     if (sortField === field) {
       if (sortDirection === 'asc') setSortDirection('desc');
@@ -922,7 +933,16 @@ export default function AdminAllowlistModal({
       alert('לא ניתן למחוק את מנהל/ת המערכת הראשי/ת.');
       return;
     }
-    if (window.confirm('האם להסיר משתמש זה לצמיתות מרשימת המורשים? (ניתן גם להשבית זמנית במקום למחוק)')) {
+    const emailLower = String(emailStr || '').trim().toLowerCase();
+    const teacherStudents = (students || []).filter(
+      (s) => (s.ownerEmail || '').trim().toLowerCase() === emailLower
+    );
+    const count = teacherStudents.length;
+    const confirmMessage = count > 0
+      ? `האם להסיר משתמש/ת זה לצמיתות מרשימת המורשים?\n\nשים לב: פעולה זו תמחק לצמיתות גם את כל ${count} התלמידים, התוכניות, המסמכים וההקלטות שנוצרו על ידה ללא אפשרות שחזור!`
+      : 'האם להסיר משתמש זה לצמיתות מרשימת המורשים? (ניתן גם להשבית זמנית במקום למחוק)';
+
+    if (window.confirm(confirmMessage)) {
       onUpdateAllowedUsers?.(
         allowedUsers.filter((u) => u.id !== id),
         { deletedUserEmail: emailStr }
@@ -2235,6 +2255,70 @@ export default function AdminAllowlistModal({
                                       ⏰ פג תוקף המנוי
                                     </span>
                                   )}
+                                  {(userStatus === 'trial_expired' || userStatus === 'paid_expired') && u.role !== 'admin' && (() => {
+                                    const warningStatus = getDeletionWarningStatus(u);
+                                    if (!warningStatus.warningSent) {
+                                      return (
+                                        <span
+                                          style={{
+                                            fontSize: '10.5px',
+                                            fontWeight: 600,
+                                            color: '#b45309',
+                                            background: '#fef3c7',
+                                            border: '1px solid #fde68a',
+                                            padding: '1px 6px',
+                                            borderRadius: '4px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px'
+                                          }}
+                                          title="טרם נשלחה התראת מחיקה במייל. לחצי על סמל המעטפה לשליחת התראה."
+                                        >
+                                          ⚠️ טרם נשלחה התראת מחיקה
+                                        </span>
+                                      );
+                                    }
+                                    if (!warningStatus.canBePermanentlyDeleted) {
+                                      return (
+                                        <span
+                                          style={{
+                                            fontSize: '10.5px',
+                                            fontWeight: 600,
+                                            color: '#1d4ed8',
+                                            background: '#eff6ff',
+                                            border: '1px solid #bfdbfe',
+                                            padding: '1px 6px',
+                                            borderRadius: '4px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px'
+                                          }}
+                                          title={`התראה נשלחה ב-${new Date(warningStatus.warningDateIso!).toLocaleDateString('he-IL')}. מחיקה סופית תתאפשר בחלוף 30 יום.`}
+                                        >
+                                          📬 התראה נשלחה • נותרו {warningStatus.daysRemaining} ימים למחיקה
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <span
+                                        style={{
+                                          fontSize: '10.5px',
+                                          fontWeight: 700,
+                                          color: '#15803d',
+                                          background: '#dcfce7',
+                                          border: '1px solid #86efac',
+                                          padding: '1px 6px',
+                                          borderRadius: '4px',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px'
+                                        }}
+                                        title={`חלפו 30 יום משליחת ההתראה (נשלחה ב-${new Date(warningStatus.warningDateIso!).toLocaleDateString('he-IL')}). החשבון מוכן למחיקה סופית ומלאה.`}
+                                      >
+                                        🗑️ חלפו 30 יום • מאושר למחיקה סופית
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                             )}
@@ -3891,6 +3975,7 @@ export default function AdminAllowlistModal({
         recipients={outreachRecipients}
         onClose={() => setIsOutreachModalOpen(false)}
         onRemoveRecipient={handleRemoveOutreachRecipient}
+        onUpdateUserField={handleUpdateUsersField}
         onSuccess={(msg) => {
           setInviteStatusBanner(msg);
           handleClearSelection();
