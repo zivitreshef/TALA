@@ -11,7 +11,8 @@ import {
   Plus,
   Trash2,
   History,
-  RotateCcw
+  RotateCcw,
+  SlidersHorizontal
 } from 'lucide-react';
 import { getFirebaseAuth } from '../../firebaseBackend';
 import { usageTelemetryService } from '../../services/usageTelemetryService';
@@ -420,35 +421,60 @@ export default function ParentVoiceControl({
                           }
                         }}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#4338ca',
-                          cursor: 'pointer',
-                          padding: '4px 0',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          display: 'inline-flex',
+                          width: '100%',
+                          display: 'flex',
                           alignItems: 'center',
-                          gap: '5px'
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          background: isCustomExpanded ? '#ede9fe' : '#f5f3ff',
+                          border: isCustomExpanded ? '1.5px solid #818cf8' : '1px solid #c7d2fe',
+                          borderRadius: isCustomExpanded ? '10px 10px 0 0' : '10px',
+                          color: '#3730a3',
+                          cursor: 'pointer',
+                          textAlign: 'right',
+                          transition: 'all 0.15s ease-in-out',
+                          boxShadow: isCustomExpanded ? 'none' : '0 1px 2px rgba(99, 102, 241, 0.05)'
                         }}
+                        title="לחצי כדי לערוך, להוסיף או להסיר שאלות בשאלון להורים"
                       >
-                        {isCustomExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        <span>
-                          התאמת שאלות השאלון להורים{' '}
-                          {questionsList !== null
-                            ? `(${activeQuestions.filter((q) => q && q.trim()).length} שאלות)`
-                            : '(צפייה ועריכה)'}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <SlidersHorizontal size={16} style={{ color: '#4f46e5', flexShrink: 0 }} />
+                          <span style={{ fontWeight: 700, fontSize: '13.5px' }}>
+                            התאמת שאלות השאלון להורים
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              color: isCustomExpanded ? '#4338ca' : '#4f46e5',
+                              background: '#ffffff',
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              border: '1px solid #ddd6fe'
+                            }}
+                          >
+                            {questionsList !== null
+                              ? `מותאם אישית (${activeQuestions.filter((q) => q && q.trim()).length} שאלות) ✏️`
+                              : 'לחצי לצפייה ועריכה ✏️'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#4f46e5', flexShrink: 0 }}>
+                          <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                            {isCustomExpanded ? 'סגירת עריכה' : 'עריכת שאלות'}
+                          </span>
+                          {isCustomExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
                       </button>
 
                       {isCustomExpanded && (
                         <div
                           style={{
-                            marginTop: '8px',
-                            padding: '12px',
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px'
+                            padding: '14px',
+                            background: '#faf5ff',
+                            border: '1.5px solid #818cf8',
+                            borderTop: 'none',
+                            borderRadius: '0 0 10px 10px',
+                            marginBottom: '10px'
                           }}
                         >
                           <div

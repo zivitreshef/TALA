@@ -13,7 +13,8 @@ import {
   History,
   RotateCcw,
   UserPlus,
-  Sparkles
+  Sparkles,
+  SlidersHorizontal
 } from 'lucide-react';
 import { getFirebaseAuth } from '../../firebaseBackend';
 import { usageTelemetryService } from '../../services/usageTelemetryService';
@@ -173,7 +174,7 @@ export default function StaffVoiceControl({
     }
   }, [candidates, selectedCandidateId]);
 
-  const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || null;
+  const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0] || null;
 
   const summary = summarizeInvites(invites as InviteDoc[], Date.now(), 'staff');
   const pendingStaffInvites = useMemo(
@@ -550,7 +551,7 @@ export default function StaffVoiceControl({
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
                     {candidates.map((cand) => {
-                      const isSelected = cand.id === selectedCandidateId;
+                      const isSelected = cand.id === (selectedCandidate?.id || selectedCandidateId);
                       const hasPending = pendingStaffInvites.some(
                         (p) => p.recipientName === cand.name && p.recipientRole === cand.role
                       );
@@ -595,8 +596,8 @@ export default function StaffVoiceControl({
 
                 {/* Question customization */}
                 {selectedCandidate && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ marginBottom: '8px' }}>
+                  <div style={{ marginBottom: '14px' }}>
+                    <div style={{ marginBottom: isCustomExpanded ? '0' : '10px' }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -607,37 +608,63 @@ export default function StaffVoiceControl({
                           }
                         }}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#4338ca',
-                          cursor: 'pointer',
-                          padding: '4px 0',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          display: 'inline-flex',
+                          width: '100%',
+                          display: 'flex',
                           alignItems: 'center',
-                          gap: '5px'
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          background: isCustomExpanded ? '#ede9fe' : '#f5f3ff',
+                          border: isCustomExpanded ? '1.5px solid #818cf8' : '1px solid #c7d2fe',
+                          borderRadius: isCustomExpanded ? '10px 10px 0 0' : '10px',
+                          color: '#3730a3',
+                          cursor: 'pointer',
+                          textAlign: 'right',
+                          transition: 'all 0.15s ease-in-out',
+                          boxShadow: isCustomExpanded ? 'none' : '0 1px 2px rgba(99, 102, 241, 0.05)'
                         }}
+                        title="לחצי כדי לערוך, להוסיף או להסיר שאלות בשאלון לאיש/אשת הצוות"
                       >
-                        {isCustomExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        <span>
-                          התאמת שאלות השאלון עבור {selectedCandidate.name} ({selectedCandidate.role})
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <SlidersHorizontal size={16} style={{ color: '#4f46e5', flexShrink: 0 }} />
+                          <span style={{ fontWeight: 700, fontSize: '13.5px' }}>
+                            התאמת שאלות השאלון עבור {selectedCandidate.name} ({selectedCandidate.role})
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              color: isCustomExpanded ? '#4338ca' : '#4f46e5',
+                              background: '#ffffff',
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              border: '1px solid #ddd6fe'
+                            }}
+                          >
+                            {questionsList !== null ? 'מותאם אישית ✏️' : 'לחצי לצפייה ועריכה ✏️'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#4f46e5', flexShrink: 0 }}>
+                          <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                            {isCustomExpanded ? 'סגירת עריכה' : 'עריכת שאלות'}
+                          </span>
+                          {isCustomExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </div>
                       </button>
 
                       {isCustomExpanded && (
                         <div
                           style={{
-                            marginTop: '8px',
-                            padding: '12px',
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px'
+                            padding: '14px',
+                            background: '#faf5ff',
+                            border: '1.5px solid #818cf8',
+                            borderTop: 'none',
+                            borderRadius: '0 0 10px 10px',
+                            marginBottom: '10px'
                           }}
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '12px', color: '#64748b' }}>
-                              שאלות השאלון לאיש הצוות (עד 5 שאלות):
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
+                            <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#4b5563' }}>
+                              באפשרותך לערוך, להוסיף או להסיר את השאלות (עד 5 שאלות):
                             </span>
                             {questionsList !== null && (
                               <button

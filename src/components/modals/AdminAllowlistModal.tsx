@@ -52,7 +52,7 @@ import {
 } from '../../allowedUsers';
 import { sendUserInvitationEmailInBackground } from '../../emailService';
 import AdminOutreachEmailModal from './AdminOutreachEmailModal';
-import { subscribeToUserPresence, recordUserPresence } from '../../firebaseBackend';
+import { subscribeToUserPresence, recordUserPresence, getFirebaseAuth, ensureFirebaseAuthSession } from '../../firebaseBackend';
 import { DEFAULT_UPGRADE_BANNER_MESSAGE } from '../UpgradeBanner';
 import SystemHealthPanel from './SystemHealthPanel';
 import AdminAlertsPanel from '../admin/AdminAlertsPanel';
@@ -202,6 +202,15 @@ export default function AdminAllowlistModal({
       if (typeof unsub === 'function') unsub();
     };
   }, [isOpen]);
+
+  // Proactively reconcile cloud sync session when entering admin control center
+  useEffect(() => {
+    if (!isOpen) return;
+    const auth = typeof getFirebaseAuth === 'function' ? getFirebaseAuth() : null;
+    if (auth?.currentUser && !cloudSyncState?.connected && typeof ensureFirebaseAuthSession === 'function') {
+      ensureFirebaseAuthSession(currentUser?.email).catch(() => {});
+    }
+  }, [isOpen, cloudSyncState?.connected, currentUser?.email]);
 
   // Unify real-time support chat threads and legacy contact requests
   const unifiedInquiries = useMemo(() => {
@@ -1285,20 +1294,53 @@ export default function AdminAllowlistModal({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {/* Cloud Sync Status Badge */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'rgba(255, 255, 255, 0.15)',
-                padding: '4px 12px',
-                borderRadius: '999px',
-                fontSize: '11.5px',
-                fontWeight: 600
-              }}
-            >
-              <span>{cloudSyncState?.connected ? '☁️ ענן מחובר' : '💾 מקומי'}</span>
-            </div>
+            {(() => {
+              const auth = typeof getFirebaseAuth === 'function' ? getFirebaseAuth() : null;
+              const isCloudConnected = Boolean(cloudSyncState?.connected || cloudSyncState?.status === 'synced');
+              const isCloudConnecting = !isCloudConnected && (
+                cloudSyncState?.status === 'connecting' ||
+                (Boolean(auth?.currentUser) && cloudSyncState?.status !== 'error')
+              );
+              return (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: isCloudConnected
+                      ? 'rgba(34, 197, 94, 0.25)'
+                      : isCloudConnecting
+                      ? 'rgba(234, 179, 8, 0.25)'
+                      : 'rgba(255, 255, 255, 0.15)',
+                    border: isCloudConnected
+                      ? '1px solid rgba(134, 239, 172, 0.4)'
+                      : isCloudConnecting
+                      ? '1px solid rgba(253, 224, 71, 0.4)'
+                      : '1px solid rgba(255, 255, 255, 0.2)',
+                    padding: '4px 12px',
+                    borderRadius: '999px',
+                    fontSize: '11.5px',
+                    fontWeight: 600,
+                    transition: 'all 0.2s ease-in-out'
+                  }}
+                  title={
+                    isCloudConnected
+                      ? 'מחובר לסנכרון ענן בזמן אמת'
+                      : isCloudConnecting
+                      ? 'מתחבר לשרת הענן...'
+                      : 'מצב מקומי (לא מחובר לענן)'
+                  }
+                >
+                  <span>
+                    {isCloudConnected
+                      ? '☁️ ענן מחובר'
+                      : isCloudConnecting
+                      ? '🔄 מתחבר לענן...'
+                      : '💾 מקומי'}
+                  </span>
+                </div>
+              );
+            })()}
 
             <button
               type="button"
