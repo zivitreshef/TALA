@@ -272,7 +272,7 @@ export function blobToBase64(blob: Blob): Promise<string> {
 
 /**
  * Generate a real PDF Blob in the background using html2pdf.js (no print window needed!)
- * Supports both portrait and landscape orientation with off-screen DOM positioning.
+ * Supports both portrait and landscape orientation with robust in-flow DOM rendering.
  */
 export async function generatePdfBlobFromHtml(
   htmlString: string,
@@ -285,28 +285,34 @@ export async function generatePdfBlobFromHtml(
   );
   const containerWidth = isPortrait ? '794px' : '1060px';
 
+  // Ensure body selectors in <style> blocks apply to our container div as well
+  const adaptedHtml = htmlString.replace(
+    /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi,
+    (_match, openTag, cssContent, closeTag) => {
+      const enhancedCss = cssContent.replace(/(^|[},]\s*)body\b/g, '$1body, .tala-pdf-export-container');
+      return `${openTag}${enhancedCss}${closeTag}`;
+    }
+  );
+
   const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.top = '0px';
-  container.style.left = '0px';
-  container.style.zIndex = '-99999';
-  container.style.pointerEvents = 'none';
-  container.style.opacity = '1';
+  container.className = 'tala-pdf-export-container';
   container.style.width = containerWidth;
   container.style.direction = 'rtl';
   container.style.background = '#ffffff';
   container.style.padding = isPortrait ? '14px' : '16px';
   container.style.boxSizing = 'border-box';
-  container.innerHTML = htmlString;
-  document.body.appendChild(container);
+  container.innerHTML = adaptedHtml;
 
   try {
-    // Wait for layout and ensure any embedded images are loaded
+    // Wait for layout and ensure any embedded images are loaded and decoded
     const images = Array.from(container.querySelectorAll('img'));
     if (images.length > 0) {
       await Promise.all(
         images.map((img) => {
-          if (img.complete) return Promise.resolve(null);
+          if (img.complete && img.naturalWidth > 0) return Promise.resolve(null);
+          if (typeof (img as any).decode === 'function') {
+            return (img as any).decode().catch(() => null);
+          }
           return new Promise((resolve) => {
             img.onload = () => resolve(null);
             img.onerror = () => resolve(null);
@@ -339,6 +345,9 @@ export async function generatePdfBlobFromHtml(
     const html2pdfModule: any = await import('html2pdf.js');
     const html2pdf = html2pdfModule.default || html2pdfModule;
     const pdfBlob: Blob = await html2pdf().set(opt).from(container).outputPdf('blob');
+    if (!pdfBlob || pdfBlob.size < 500) {
+      throw new Error('הפקת קובץ ה-PDF נכשלה או שהקובץ ריק');
+    }
     return pdfBlob;
   } finally {
     if (container.parentNode) {
