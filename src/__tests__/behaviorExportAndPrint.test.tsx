@@ -375,8 +375,8 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
     expect(printHtml).toContain('גרף ניטור התקדמות: קו בסיס מול שלב התערבות');
   });
 
-  it('12. verifies generatePdfBlobFromHtml configures portrait A4 width and off-screen fixed positioning', async () => {
-    const mockOutputPdf = vi.fn().mockResolvedValue(new Blob(['fake-pdf-content'], { type: 'application/pdf' }));
+  it('12. verifies generatePdfBlobFromHtml configures portrait A4 width, RTL layout, and robust in-flow container styling', async () => {
+    const mockOutputPdf = vi.fn().mockResolvedValue(new Blob(['fake-pdf-content-for-testing-purposes-only-1234567890'.repeat(20)], { type: 'application/pdf' }));
     const mockFrom = vi.fn().mockReturnValue({ outputPdf: mockOutputPdf });
     const mockSet = vi.fn().mockImplementation((opt: any) => {
       expect(opt.jsPDF.orientation).toBe('portrait');
@@ -408,16 +408,18 @@ describe('Behavior Export, Word Documents & Print Builders (Stage 4)', () => {
 
     try {
       const { generatePdfBlobFromHtml } = await import('../emailService');
-      const portraitHtml = '<!DOCTYPE html><html><head><style>@page { size: A4 portrait; }</style></head><body><h1>בדיקה</h1></body></html>';
+      const portraitHtml = '<!DOCTYPE html><html><head><style>@page { size: A4 portrait; } body { color: red; }</style></head><body><h1>בדיקה</h1></body></html>';
       const blob = await generatePdfBlobFromHtml(portraitHtml, 'behavior_report.pdf');
 
       expect(blob).toBeDefined();
-      expect(fakeContainer.style.position).toBe('fixed');
-      expect(fakeContainer.style.top).toBe('0px');
-      expect(fakeContainer.style.left).toBe('0px');
-      expect(fakeContainer.style.zIndex).toBe('-99999');
       expect(fakeContainer.style.width).toBe('794px');
-      expect(fakeContainer.style.pointerEvents).toBe('none');
+      expect(fakeContainer.style.direction).toBe('rtl');
+      expect(fakeContainer.style.background).toBe('#ffffff');
+      expect(fakeContainer.className).toBe('tala-pdf-export-container');
+      expect(fakeContainer.innerHTML).toContain('.tala-pdf-export-container');
+      // Guarantee regression fix: must NOT be fixed positioned or negative z-indexed
+      expect(fakeContainer.style.position).not.toBe('fixed');
+      expect(fakeContainer.style.zIndex).not.toBe('-99999');
     } finally {
       (globalThis as any).document = prevDoc;
       vi.restoreAllMocks();

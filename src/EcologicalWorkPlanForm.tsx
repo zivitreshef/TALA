@@ -2510,22 +2510,34 @@ ${JSON.stringify(studentCardPayload, null, 2)}
   const buildEvalWordDocumentHtml = () => renderEvalWordDocumentHtml(getExportPayload(), hideStudentDetailsOnPrint);
   const buildStatusReportWordDocumentHtml = () => renderStatusReportWordDocumentHtml(getExportPayload(), hideStudentDetailsOnPrint);
 
+  const getReportLogoUrl = () => {
+    try {
+      return typeof window !== 'undefined' ? new URL('./tala-logo.png', window.location.href).href : '';
+    } catch {
+      return '';
+    }
+  };
+
+  const buildWorkPlanPrintDocumentHtml = () =>
+    buildWorkPlanPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, getReportLogoUrl());
+  const buildEvalReportPrintDocumentHtml = () =>
+    buildEvalReportPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, getReportLogoUrl());
+  const buildStatusReportPrintDocumentHtml = () =>
+    buildStatusReportPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, getReportLogoUrl());
+
   const handlePrintDocument = () => {
     handleSaveProgress();
-    const logoUrl = new URL('./tala-logo.png', window.location.href).href;
-    openHtmlPrintWindow(buildWorkPlanPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, logoUrl));
+    openHtmlPrintWindow(buildWorkPlanPrintDocumentHtml());
   };
 
   const handlePrintEvalReport = () => {
     handleSaveProgress();
-    const logoUrl = new URL('./tala-logo.png', window.location.href).href;
-    openHtmlPrintWindow(buildEvalReportPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, logoUrl));
+    openHtmlPrintWindow(buildEvalReportPrintDocumentHtml());
   };
 
   const handlePrintStatusReport = () => {
     handleSaveProgress();
-    const logoUrl = new URL('./tala-logo.png', window.location.href).href;
-    openHtmlPrintWindow(buildStatusReportPrintHtml(getExportPayload(), hideStudentDetailsOnPrint, logoUrl));
+    openHtmlPrintWindow(buildStatusReportPrintDocumentHtml());
   };
 
   const createWordBlob = (mode = 'tala') => {
@@ -2559,11 +2571,12 @@ ${JSON.stringify(studentCardPayload, null, 2)}
     const filename = getSafeReportFilename('pdf', mode);
     const reportHtml =
       mode === 'status'
-        ? buildStatusReportWordDocumentHtml()
+        ? buildStatusReportPrintDocumentHtml()
         : mode === 'eval'
-        ? buildEvalWordDocumentHtml()
-        : buildWordDocumentHtml();
-    const blob = await generatePdfBlobFromHtml(reportHtml, filename);
+        ? buildEvalReportPrintDocumentHtml()
+        : buildWorkPlanPrintDocumentHtml();
+    const forcedOrientation = mode === 'status' ? 'portrait' : 'landscape';
+    const blob = await generatePdfBlobFromHtml(reportHtml, filename, forcedOrientation);
     return { blob, filename, mimeType: 'application/pdf', htmlContent: reportHtml };
   };
 
