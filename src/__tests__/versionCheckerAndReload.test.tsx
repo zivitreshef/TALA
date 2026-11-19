@@ -176,7 +176,7 @@ describe('Version Checker, Notification Banner & Application Reload Protocol', (
       expect(html).toContain('tala-new-version-banner');
       expect(html).toContain('dir="rtl"');
       expect(html).toContain('role="status"');
-      expect(html).toContain('גרסה חדשה של טל״א זמינה (2.6.4)!');
+      expect(html).toContain('גרסה חדשה של תל״א זמינה (2.6.4)!');
       expect(html).toContain('הגרסה העדכנית כוללת שיפורים ותיקונים');
       expect(html).toContain('btn-version-refresh');
       expect(html).toContain('btn-version-dismiss');

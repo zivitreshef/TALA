@@ -1,6 +1,14 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 if (!admin.apps.length) admin.initializeApp();
+const crypto = require("crypto");
+const sha256 = (s) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
+function hashPw(pw, salt) {
+  const p = String(pw || "").trim(), s = String(salt || "").trim();
+  let d = sha256(`TALA_PBKDF_V1:${s}:${p}`);
+  for (let r = 1; r < 256; r++) d = sha256(`${d}:${s}:${p}:${r}`);
+  return d;
+}
 const ALLOWED_OPERATIONS = new Set(["facilitate","applyAnswers","reverseEngineer","summary","eval","evalFull","statusReport","rawPrompt","goalMatch","ping","transcribeAudio"]);
 const ALLOWED_MODELS = new Set(["gemini-2.5-flash","gemini-2.0-flash","gemini-1.5-flash"]);
 const OPERATION_LIMITS = {facilitate:{rpm:20,tpmWeight:1},applyAnswers:{rpm:20,tpmWeight:1},reverseEngineer:{rpm:6,tpmWeight:3},summary:{rpm:10,tpmWeight:2},eval:{rpm:20,tpmWeight:1},evalFull:{rpm:10,tpmWeight:2},statusReport:{rpm:6,tpmWeight:3},rawPrompt:{rpm:10,tpmWeight:1},goalMatch:{rpm:15,tpmWeight:1},transcribeAudio:{rpm:15,tpmWeight:2}};
@@ -193,6 +201,105 @@ async function handleTalaConfigWrite(req,res){
       }
       res.status(200).json({ok:true});return;
     }
+
+    // Public: self-service trial signup on the login page
+    if(body.kind==="registerTrial"){
+      const r=body.trialPayload||body.user||body.request||{};
+      const s=(v,n)=>String(v==null?"":v).trim().slice(0,n);
+      const cleanName=s(r.name,120);
+      const cleanEmail=s(r.email,200).toLowerCase();
+      const cleanPhone=s(r.phone,30).replace(/[-–\s]/g,"");
+      const cleanGroup=s(r.group,120);
+      const cleanTitle=s(r.title,120)||"מורת שילוב / גננת";
+      let cleanSalt=s(r.passwordSalt,128);
+      let cleanHash=s(r.passwordHash,128);
+
+      if(r.password && (!cleanSalt || !cleanHash)){
+        cleanSalt=crypto.randomBytes(16).toString("hex");
+        cleanHash=hashPw(String(r.password).trim(),cleanSalt);
+      }
+
+      if(!cleanName||cleanName.length<2){res.status(400).json({error:"נא להזין שם מלא תקין (לפחות 2 תווים)."});return;}
+      const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if(!cleanEmail||!emailRegex.test(cleanEmail)){res.status(400).json({error:"נא להזין כתובת דוא״ל תקינה."});return;}
+      if(!cleanPhone||cleanPhone.length<9){res.status(400).json({error:"נא להזין מספר טלפון תקין (לפחות 9 ספרות)."});return;}
+      if(!cleanGroup){res.status(400).json({error:"נא להזין מתי״א או מסגרת חינוכית."});return;}
+      if(!cleanHash||!cleanSalt){res.status(400).json({error:"סיסמה או פרטי אבטחה חסרים ליצירת החשבון."});return;}
+
+      let newTrialUser=null;
+      let adminsForAlert=[];
+      let allUsersAfter=[];
+      let allUsersBefore=[];
+
+      await db.runTransaction(async(tx)=>{
+        const [usersSnap,reqsSnap]=await Promise.all([tx.get(usersRef),tx.get(reqsRef)]);
+        const stored=(usersSnap.exists&&usersSnap.data().users)||[];
+        allUsersBefore=stored;
+        if(stored.length>=400)throw Object.assign(new Error("מכסת המשתמשים במערכת מלאה."),{status:400});
+
+        const collision=stored.some((u)=>u&&lc(u.email)===cleanEmail);
+        if(collision)throw Object.assign(new Error("כתובת דוא״ל זו כבר רשומה במערכת. אנא התחברי באמצעות מסך הכניסה."),{status:409});
+
+        const now=new Date();
+        const trialDays=7;
+        const trialExpiresAt=new Date(now.getTime()+(trialDays*86400000)).toISOString();
+        newTrialUser={
+          id:`trial_${now.getTime()}_${crypto.randomBytes(4).toString("hex")}`,
+          name:cleanName,
+          email:cleanEmail,
+          phone:cleanPhone,
+          group:cleanGroup,
+          title:cleanTitle,
+          role:"teacher",
+          passwordSalt:cleanSalt,
+          passwordHash:cleanHash,
+          active:true,
+          isTrialUser:true,
+          trialDays,
+          trialStartedAt:now.toISOString(),
+          trialExpiresAt,
+          mustSignNda:true,
+          ndaSigned:false,
+          subscriptionType:"trial"
+        };
+
+        allUsersAfter=[...stored,newTrialUser];
+        tx.set(usersRef,{users:allUsersAfter,updatedAt:now.toISOString()});
+
+        const curReqs=(reqsSnap.exists&&reqsSnap.data().requests)||[];
+        const reqItem={
+          id:`trial_reg_${now.getTime()}`,
+          name:cleanName,
+          email:cleanEmail,
+          phone:cleanPhone,
+          topic:"פתיחת חשבון התנסות עצמאי (7 ימים)",
+          notes:`מתי״א / מסגרת: ${cleanGroup} | תפקיד: ${cleanTitle} | טלפון: ${cleanPhone}`,
+          createdAt:now.toLocaleString("he-IL")
+        };
+        tx.set(reqsRef,{requests:[reqItem,...curReqs].slice(0,300),updatedAt:now.toISOString()});
+
+        adminsForAlert=stored.filter((u)=>u&&u.role==="admin"&&u.active!==false);
+      });
+
+      await publishUsers(allUsersAfter,allUsersBefore,true);
+
+      if(adminsForAlert.length){
+        await dispatchInquiryAlertsFromServer({
+          teacherName:cleanName,
+          teacherEmail:cleanEmail,
+          topic:"פתיחת חשבון התנסות עצמאי (7 ימים)",
+          messageText:`מתי״א / מסגרת: ${cleanGroup} | תפקיד: ${cleanTitle} | טלפון: ${cleanPhone}`,
+          hasAttachment:false,
+          admins:adminsForAlert
+        }).catch(()=>{});
+      }
+
+      const targetUid=uidFor(cleanEmail);
+      const token=await admin.auth().createCustomToken(targetUid,{email:cleanEmail,role:"teacher"});
+
+      res.status(200).json({ok:true,user:newTrialUser,token,allUsers:allUsersAfter});
+      return;
+    }
     if(!email){res.status(401).json({error:"Unauthorized"});return;}
     let published=null;
     await db.runTransaction(async(tx)=>{
@@ -245,10 +352,7 @@ async function publishUsers(users,prev,full){
 }
 
 // ---- talaLogin: server-side password check + Firebase custom token ----
-const crypto=require("crypto");
 const MAX_FAILED=5;
-const sha256=(s)=>crypto.createHash("sha256").update(s,"utf8").digest("hex");
-function hashPw(pw,salt){const p=String(pw||"").trim(),s=String(salt||"").trim();let d=sha256(`TALA_PBKDF_V1:${s}:${p}`);for(let r=1;r<256;r++)d=sha256(`${d}:${s}:${p}:${r}`);return d;}
 function pwOk(u,code){const c=String(code||"").trim();if(u.passwordHash&&u.passwordSalt){const eq=(h)=>h.length===u.passwordHash.length&&crypto.timingSafeEqual(Buffer.from(h),Buffer.from(u.passwordHash));return eq(hashPw(c,u.passwordSalt))||(c.toUpperCase()==="TALA2026"&&eq(hashPw("TALA2026",u.passwordSalt)));}return false;}
 let isDirectoryBootstrapped=false;
 const verifiedAuthUsers=new Set();

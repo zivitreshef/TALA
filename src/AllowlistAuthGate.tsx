@@ -30,7 +30,12 @@ import {
   ZoomIn
 } from 'lucide-react';
 
-import { loginWithTala, prewarmTalaLogin, signOutFirebaseAuthSession } from './firebaseBackend';
+import {
+  loginWithTala,
+  prewarmTalaLogin,
+  signOutFirebaseAuthSession,
+  registerTrialUserInCloud
+} from './firebaseBackend';
 import { createPasswordCredentials } from './allowedUsers';
 import { validateTrialSignupForm, createTrialUserRecord } from './domain/trialOutreach';
 import TakeoverModal from './components/modals/TakeoverModal';
@@ -265,7 +270,23 @@ export function AllowlistAuthGate({
     setIsSubmittingTrialSignup(true);
     try {
       const creds = createPasswordCredentials(trialPassword);
-      const newTrialUser = createTrialUserRecord(
+      const trialPayload = {
+        name: trialName,
+        email: trialEmail,
+        phone: trialPhone,
+        group: trialGroup,
+        title: trialTitle,
+        passwordSalt: creds.passwordSalt,
+        passwordHash: creds.passwordHash
+      };
+
+      const regResult = await registerTrialUserInCloud(trialPayload);
+      if (!regResult.ok) {
+        setTrialSignupError(regResult.error || 'אירעה שגיאה ביצירת החשבון. אנא נסי שוב או פני למנהל/ת המערכת.');
+        return;
+      }
+
+      const newTrialUser = regResult.user || createTrialUserRecord(
         {
           name: trialName,
           email: trialEmail,
@@ -277,27 +298,15 @@ export function AllowlistAuthGate({
         7
       );
 
-      const nextAllowedUsers = [...(allowedUsers || []), newTrialUser];
+      const nextAllowedUsers = regResult.allUsers || [...(allowedUsers || []), newTrialUser];
       if (typeof onUpdateAllowedUsers === 'function') {
         await onUpdateAllowedUsers(nextAllowedUsers, { addedUser: newTrialUser });
       }
 
-      if (typeof onSubmitAdminRequest === 'function') {
-        onSubmitAdminRequest({
-          id: `trial_reg_${Date.now()}`,
-          topic: 'פתיחת חשבון התנסות עצמאי (7 ימים)',
-          name: newTrialUser.name,
-          email: newTrialUser.email,
-          phone: trialPhone.trim(),
-          notes: `מתי״א / מסגרת: ${newTrialUser.group} | תפקיד: ${newTrialUser.title} | טלפון: ${trialPhone.trim()}`,
-          createdAt: new Date().toLocaleString('he-IL')
-        });
-      }
-
       setShowTrialSignupModal(false);
       onLoginSuccess(newTrialUser);
-    } catch (_err) {
-      setTrialSignupError('אירעה שגיאה ביצירת החשבון. אנא נסי שוב או פני למנהל/ת המערכת.');
+    } catch (_err: any) {
+      setTrialSignupError(_err?.message || 'אירעה שגיאה ביצירת החשבון. אנא נסי שוב או פני למנהל/ת המערכת.');
     } finally {
       setIsSubmittingTrialSignup(false);
     }

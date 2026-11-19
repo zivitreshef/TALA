@@ -49,7 +49,7 @@ export default function NewVersionBanner({
 
           <div className="tala-new-version-text">
             <span className="tala-new-version-title">
-              גרסה חדשה של טל״א זמינה ({latestVersion})!
+              גרסה חדשה של תל״א זמינה ({latestVersion})!
             </span>{' '}
             <span className="tala-new-version-desc">
               הגרסה העדכנית כוללת שיפורים ותיקונים. מומלץ לרענן את העמוד כדי להחיל את השינויים.
