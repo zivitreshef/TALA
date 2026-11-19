@@ -2340,6 +2340,28 @@ export default function App() {
     saveStudentToCloud(updatedStudent);
   };
 
+  const handleSaveDemoAsRealStudent = (demoStudentData: any) => {
+    if (!demoStudentData || !currentUser?.email) return;
+    const now = new Date();
+    const newId = `student_${now.getTime()}_${Math.random().toString(36).substring(2, 7)}`;
+    const rawName = String(demoStudentData.name || '').replace(/\s*\([^)]*דוגמ[^)]*\)/g, '').trim();
+    const cleanName = rawName || 'נועם כהן';
+    const realStudent = {
+      ...demoStudentData,
+      id: newId,
+      name: cleanName,
+      isDemo: false,
+      ownerEmail: currentUser.email,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      lastSavedAt: now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    setStudents((prev) => [realStudent, ...prev]);
+    saveStudentToCloud(realStudent);
+    setSelectedStudentId(newId);
+  };
+
   /* =========================================================================
      Guided Onboarding Journey Handlers (Milestone 1)
      ========================================================================= */
@@ -3795,6 +3817,7 @@ export default function App() {
                   activeOnboardingStep={activeOnboardingStep as any}
                   onboardingSpotlightTick={onboardingSpotlightTick}
                   onGoHome={() => setSelectedStudentId(null)}
+                  onSaveAsRealStudent={handleSaveDemoAsRealStudent}
                 />
               )}
             </ErrorBoundary>

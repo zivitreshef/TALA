@@ -40,19 +40,19 @@ describe('Onboarding User Journey Experience & Minimal Demo Student Fix', () => 
     it('initializes demo student with minimal personal & educational details only', () => {
       const demo = createFreshDemoStudent();
 
-      // Basic identity must be present
+      // Basic identity must be present (defaults to kindergarten)
       expect(demo.id).toBe('demo_yonatan_levi');
-      expect(demo.name).toBe('יונתן לוי (תלמיד לדוגמה)');
+      expect(demo.name).toBe('נועם כהן (ילד גן לדוגמה)');
       expect(demo.gender).toBe('boy');
-      expect(demo.birthDate).toBe('15/04/2018');
+      expect(demo.birthDate).toBe('12/03/2021');
       expect(demo.idNumber).toBe('039874512');
-      expect(demo.educationalFramework).toContain('בית ספר');
-      expect(demo.gradeClass).toBe('כיתה ב׳2');
+      expect(demo.educationalFramework).toContain('גן');
+      expect(demo.gradeClass).toBe('גן חובה');
 
       // Raw example text MUST be present so the teacher has data to process
       expect(demo.teacherFreeText).toBeDefined();
       expect(demo.teacherFreeText.length).toBeGreaterThan(100);
-      expect(demo.teacherFreeText).toContain('יונתן לומד בכיתה רגילה');
+      expect(demo.teacherFreeText).toContain('נועם ילד מתוק');
 
       // Crucial requirement: ZERO pre-processed AI flags or pre-filled AI outputs
       expect(demo.freeTextAnalyzed).toBe(false);

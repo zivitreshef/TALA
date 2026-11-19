@@ -431,6 +431,12 @@ export function getDemoStudent(
   const stored = safeGetStorageJson<Record<string, unknown>>(key, null as unknown as Record<string, unknown>);
 
   if (stored && stored.id === 'demo_yonatan_levi') {
+    // If user has old school demo and didn't explicitly ask for school, migrate to kindergarten
+    if (stored.stage === 'school' && options?.stage !== 'school') {
+      const freshKg = createFreshDemoStudent({ stage: 'kindergarten' });
+      saveDemoStudent(email, freshKg as Record<string, unknown>);
+      return freshKg as Record<string, unknown>;
+    }
     inMemoryStore.set(key, stored);
     return stored;
   }

@@ -667,18 +667,30 @@ export function isDemoStudent(student?: Record<string, unknown> | null): boolean
  * Creates a fresh clone of the demo student plan with current timestamps.
  */
 export function createFreshDemoStudent(options: { stage?: string } = {}): Record<string, unknown> {
-  const isKindergarten = options?.stage === 'kindergarten';
+  const isSchool = options?.stage === 'school';
+  const isKindergarten = options?.stage === 'kindergarten' || !isSchool;
   const cloned = JSON.parse(JSON.stringify(DEMO_STUDENT_DATA));
 
   if (isKindergarten) {
     cloned.name = 'נועם כהן (ילד גן לדוגמה)';
+    cloned.gender = 'boy';
+    cloned.birthDate = '12/03/2021';
+    cloned.age = '5.5';
     cloned.stage = 'kindergarten';
     cloned.stageReason = 'ילד גן חובה במסגרת גן ילדים';
     cloned.gradeClass = 'גן חובה';
     cloned.educationalFramework = 'גן אלון';
+    cloned.schoolName = 'גן אלון';
+    cloned.homeroomTeacher = 'ענת גולן (גננת)';
+    cloned.integrationTeacher = 'רחל כהן (גננת שילוב)';
     cloned.planType = 'תוכנית חינוכית יחידנית (תח"י) - גן ילדים';
     cloned.teacherFreeText =
       'נועם ילד מתוק, סקרן וחברותי בן 5.5 בגן חובה. מתקשה במעברים בין חצר למפגש, זקוק לתיווך בפתרון קונפליקטים ובמשחק משותף במוקדי הגן, ומתקשה באחיזת מספריים ועפרון. מגלה חוזקות רבות במוזיקה, יצירתיות בקוביות ואמפתיה רבה לחבריו לגן.';
+    cloned.studentGeneralBackground =
+      'נועם ילד בן 5.5 בגן חובה "אלון". מתגורר עם הוריו ואחיו הבכור. ילד חביב, נבון ובעל מוטיבציה גבוהה, המגלה קושי בוויסות רגשי במעברים והתארגנות במרחב הגן.';
+    cloned.studentMainGoal =
+      'חיזוק מיומנויות הוויסות העצמי והמשחק המשותף של נועם במוקדי הגן ובחצר, לצד פיתוח מיומנויות מוטוריקה עדינה.';
+    cloned.talaFocusDomains = ['מפגש ושיח', 'מוקדי פעילות וחצר', 'מוטוריקה עדינה'];
   } else {
     cloned.teacherFreeText =
       'יונתן לומד בכיתה רגילה ומקבל תמיכה שבועית מסל שילוב. מאובחן עם הפרעת קשב ופעלתנות יתר (ADHD) וקשיי ויסות חושי. מפגין סקרנות יוצאת דופן ואינטליגנציה תקינה, אך מתקשה להתמיד במשימות כתיבה ממושכות, מגלה מוסחות גבוהה ברעש כיתתי, ונזקק לתיווך במעברים בין שיעור להפסקה. בתחום האורייני קיים פער ברכישת שטף ודיוק בקריאה. אוהב מאוד לבנות בלגו וסקרן לגבי בעלי חיים ודינוזאורים.';

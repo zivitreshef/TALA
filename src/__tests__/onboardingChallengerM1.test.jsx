@@ -654,7 +654,7 @@ describe('Challenger 2 Empirical Stress Suite: Milestone 1', () => {
       expect(demo.id).toBe('demo_yonatan_levi');
       expect(demo.isDemo).toBe(true);
       expect(isDemoStudent(demo)).toBe(true);
-      expect(demo.name).toContain('יונתן לוי');
+      expect(demo.name).toContain('נועם כהן');
     });
 
     it('saveStudentToCloud absolutely blocks demo records from writing to Firestore', async () => {

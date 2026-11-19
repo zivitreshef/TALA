@@ -744,16 +744,8 @@ describe('Onboarding Journey Engine & Help Modal Re-launch Suite', () => {
     });
 
     it('Scenario 11: createFreshDemoStudent starts with blank goals & observations for live AI walkthrough, supporting School and Kindergarten', () => {
-      // 1. School (Default)
-      const schoolStudent = createFreshDemoStudent();
-      expect(schoolStudent.name).toContain('יונתן לוי');
-      expect(schoolStudent.goals).toEqual([]);
-      expect(schoolStudent.talaProfileRows).toEqual([]);
-      expect(schoolStudent.observations).toEqual([]);
-      expect(schoolStudent.teacherFreeText).toContain('יונתן לומד בכיתה רגילה');
-
-      // 2. Kindergarten
-      const kindergartenStudent = createFreshDemoStudent({ stage: 'kindergarten' });
+      // 1. Kindergarten (Default)
+      const kindergartenStudent = createFreshDemoStudent();
       expect(kindergartenStudent.name).toContain('נועם כהן');
       expect(kindergartenStudent.stage).toBe('kindergarten');
       expect(kindergartenStudent.gradeClass).toContain('גן');
@@ -761,6 +753,15 @@ describe('Onboarding Journey Engine & Help Modal Re-launch Suite', () => {
       expect(kindergartenStudent.talaProfileRows).toEqual([]);
       expect(kindergartenStudent.observations).toEqual([]);
       expect(kindergartenStudent.teacherFreeText).toContain('נועם ילד מתוק');
+
+      // 2. School
+      const schoolStudent = createFreshDemoStudent({ stage: 'school' });
+      expect(schoolStudent.name).toContain('יונתן לוי');
+      expect(schoolStudent.stage).toBe('school');
+      expect(schoolStudent.goals).toEqual([]);
+      expect(schoolStudent.talaProfileRows).toEqual([]);
+      expect(schoolStudent.observations).toEqual([]);
+      expect(schoolStudent.teacherFreeText).toContain('יונתן לומד בכיתה רגילה');
     });
   });
 });
