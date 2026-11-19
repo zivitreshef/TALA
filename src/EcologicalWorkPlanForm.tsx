@@ -36,7 +36,10 @@ import {
   ClipboardCopy,
   FolderOpen,
   WifiOff,
-  CloudUpload
+  CloudUpload,
+  GripVertical,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import {
@@ -170,6 +173,8 @@ import {
   applyGoalChange,
   toggleGoalAiLock,
   removeGoalRow,
+  reorderGoals,
+  moveGoalByStep,
   buildNewGoalRow,
   applyShareToggle,
   applyShareSettings,
@@ -181,6 +186,7 @@ import {
   addManualStatusSection
 } from './domain/workPlanEdits';
 import { personalizeBankItem, fillGoalRowFromBank } from './domain/bankGoalApplication';
+import { getGoalEnvironmentTheme } from './domain/goalThemes';
 import { callAiJson } from './services/aiJsonClient';
 import { isDemoStudent } from './domain/onboardingJourney';
 import { maskDateInput, normalizeDateOnBlur } from './utils/dateMask';
@@ -295,6 +301,8 @@ export default function EcologicalWorkPlanForm({
   const [isAdditionalInfoOpen, setIsAdditionalInfoOpen] = useState(false); // Collapsed by default ("מידע נוסף")
   const [isDossierOpen, setIsDossierOpen] = useState(false); // Collapsed by default ("תיק מסמכי אבחון")
   const [copyTeamSuccessMsg, setCopyTeamSuccessMsg] = useState('');
+  const [draggedGoalIndex, setDraggedGoalIndex] = useState<number | null>(null);
+  const [dragOverGoalIndex, setDragOverGoalIndex] = useState<number | null>(null);
 
   const activeSnippets = useMemo<PedagogicalSnippet[]>(() => {
     return migrateLegacyFreeTextToSnippets(
@@ -1209,6 +1217,16 @@ export default function EcologicalWorkPlanForm({
       if (!window.confirm('זוהי המטרה היחידה בתכנית. האם למחוק אותה?')) return;
     }
     setFormData((prev: any) => removeGoalRow(prev, goalId));
+  };
+
+  const handleMoveGoal = (goalId: string, direction: 'up' | 'down') => {
+    if (formData.isLocked) return;
+    setFormData((prev: any) => moveGoalByStep(prev, goalId, direction));
+  };
+
+  const handleReorderGoals = (fromIndex: number, toIndex: number) => {
+    if (formData.isLocked) return;
+    setFormData((prev: any) => reorderGoals(prev, fromIndex, toIndex));
   };
 
   // Select a goal from the Dynamic Goal Bank (automatically adjusted to student's gender!)
@@ -3891,7 +3909,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                           </tr>
                         </thead>
                         <tbody>
-                          {(formData.goals || []).map((g: any) => {
+                          {(formData.goals || []).map((g: any, gIdx: number) => {
+                            const gTheme = getGoalEnvironmentTheme(g.environment);
                             const objectivesWithDuration = [
                               getRedactedText(g.objectives),
                               String(g.duration || '').trim()
@@ -3901,13 +3920,79 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                               .filter(Boolean)
                               .join('\n\n');
                             return (
-                              <tr key={g.id}>
+                              <tr
+                                key={g.id}
+                                style={{
+                                  borderRight: `5px solid ${gTheme.accent}`,
+                                  backgroundColor: gTheme.bg
+                                }}
+                              >
                                 <td style={{ whiteSpace: 'pre-line' }}>
-                                  {String(g.environment || '').trim() && (
-                                    <div style={{ fontSize: '11.5px', color: '#475569', marginBottom: '3px' }}>
-                                      [{g.environment}]
-                                    </div>
-                                  )}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px', gap: '6px' }}>
+                                    {String(g.environment || '').trim() && (
+                                      <span
+                                        style={{
+                                          fontSize: '11px',
+                                          fontWeight: 700,
+                                          color: gTheme.badgeText,
+                                          background: gTheme.badgeBg,
+                                          border: `1px solid ${gTheme.border}`,
+                                          borderRadius: '4px',
+                                          padding: '1px 7px'
+                                        }}
+                                      >
+                                        {g.environment}
+                                      </span>
+                                    )}
+                                    {!isReportLocked && (formData.goals || []).length > 1 && (
+                                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                        <button
+                                          type="button"
+                                          disabled={gIdx === 0}
+                                          onClick={() => handleMoveGoal(g.id, 'up')}
+                                          title="הזז מטרה למעלה"
+                                          aria-label="הזז מטרה למעלה"
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '20px',
+                                            height: '20px',
+                                            borderRadius: '4px',
+                                            border: `1px solid ${gTheme.border}`,
+                                            background: '#ffffff',
+                                            color: gIdx === 0 ? '#cbd5e1' : gTheme.badgeText,
+                                            cursor: gIdx === 0 ? 'not-allowed' : 'pointer',
+                                            padding: 0
+                                          }}
+                                        >
+                                          <ArrowUp size={11} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={gIdx === (formData.goals || []).length - 1}
+                                          onClick={() => handleMoveGoal(g.id, 'down')}
+                                          title="הזז מטרה למטה"
+                                          aria-label="הזז מטרה למטה"
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: '20px',
+                                            height: '20px',
+                                            borderRadius: '4px',
+                                            border: `1px solid ${gTheme.border}`,
+                                            background: '#ffffff',
+                                            color: gIdx === (formData.goals || []).length - 1 ? '#cbd5e1' : gTheme.badgeText,
+                                            cursor: gIdx === (formData.goals || []).length - 1 ? 'not-allowed' : 'pointer',
+                                            padding: 0
+                                          }}
+                                        >
+                                          <ArrowDown size={11} />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
                                   <div style={{ fontWeight: 700, color: '#0d2b56' }}>
                                     {getRedactedText(g.title)}
                                   </div>
@@ -4012,14 +4097,93 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   </tbody>
                 </table>
 
-                {(formData.goals || []).map((g: any) => (
-                  <table key={g.id} className="preview-doc-table" style={{ marginTop: '12px' }}>
-                    <tbody>
-                      <tr style={{ background: '#eef3fb' }}>
-                        <td colSpan={6}>
-                          <strong>סביבה: {g.environment}</strong> | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
-                        </td>
-                      </tr>
+                {(formData.goals || []).map((g: any, gIdx: number) => {
+                  const gTheme = getGoalEnvironmentTheme(g.environment);
+                  return (
+                    <table
+                      key={g.id}
+                      className="preview-doc-table"
+                      style={{
+                        marginTop: '12px',
+                        borderRight: `5px solid ${gTheme.accent}`
+                      }}
+                    >
+                      <tbody>
+                        <tr style={{ background: gTheme.bg, color: gTheme.badgeText, borderBottom: `1px solid ${gTheme.border}` }}>
+                          <td colSpan={6}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                              <div>
+                                <span
+                                  style={{
+                                    background: gTheme.badgeBg,
+                                    color: gTheme.badgeText,
+                                    border: `1px solid ${gTheme.border}`,
+                                    borderRadius: '4px',
+                                    padding: '2px 8px',
+                                    fontWeight: 700,
+                                    fontSize: '12px',
+                                    marginLeft: '8px'
+                                  }}
+                                >
+                                  סביבה: {g.environment}
+                                </span>
+                                {g.activityParticipation && (
+                                  <span>
+                                    | <strong>פעילות והשתתפות:</strong> {getRedactedText(g.activityParticipation)}
+                                  </span>
+                                )}
+                              </div>
+                              {!isReportLocked && (formData.goals || []).length > 1 && (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                  <button
+                                    type="button"
+                                    disabled={gIdx === 0}
+                                    onClick={() => handleMoveGoal(g.id, 'up')}
+                                    title="הזז מטרה למעלה"
+                                    aria-label="הזז מטרה למעלה"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: '22px',
+                                      height: '22px',
+                                      borderRadius: '4px',
+                                      border: `1px solid ${gTheme.border}`,
+                                      background: '#ffffff',
+                                      color: gIdx === 0 ? '#cbd5e1' : gTheme.badgeText,
+                                      cursor: gIdx === 0 ? 'not-allowed' : 'pointer',
+                                      padding: 0
+                                    }}
+                                  >
+                                    <ArrowUp size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={gIdx === (formData.goals || []).length - 1}
+                                    onClick={() => handleMoveGoal(g.id, 'down')}
+                                    title="הזז מטרה למטה"
+                                    aria-label="הזז מטרה למטה"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: '22px',
+                                      height: '22px',
+                                      borderRadius: '4px',
+                                      border: `1px solid ${gTheme.border}`,
+                                      background: '#ffffff',
+                                      color: gIdx === (formData.goals || []).length - 1 ? '#cbd5e1' : gTheme.badgeText,
+                                      cursor: gIdx === (formData.goals || []).length - 1 ? 'not-allowed' : 'pointer',
+                                      padding: 0
+                                    }}
+                                  >
+                                    <ArrowDown size={12} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
                       <tr style={{ background: '#eaf3fc', color: '#2b4c73', fontWeight: 'bold' }}>
                         <td>מטרה</td>
                         <td>יעדים, ציוני דרך</td>
@@ -4098,7 +4262,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       </tr>
                     </tbody>
                   </table>
-                ))}
+                );
+              })}
               </>
             )}
 
@@ -6110,12 +6275,138 @@ ${JSON.stringify(studentCardPayload, null, 2)}
               return matchesStage && matchesEnv && matchesQuery;
             });
 
+            const goalTheme = getGoalEnvironmentTheme(goalRow.environment);
+
             return (
-              <div key={goalRow.id} id={goalRow.id} className="ecological-goal-card">
+              <div
+                key={goalRow.id}
+                id={goalRow.id}
+                className="ecological-goal-card"
+                style={{
+                  borderRight: `6px solid ${goalTheme.accent}`,
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
+                  boxShadow: dragOverGoalIndex === index ? `0 0 0 2px ${goalTheme.accent}, 0 8px 24px rgba(0,0,0,0.12)` : undefined,
+                  opacity: draggedGoalIndex === index ? 0.45 : 1
+                }}
+                onDragOver={(e) => {
+                  if (isReportLocked) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (dragOverGoalIndex !== index) {
+                    setDragOverGoalIndex(index);
+                  }
+                }}
+                onDragLeave={() => {
+                  if (dragOverGoalIndex === index) {
+                    setDragOverGoalIndex(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  if (isReportLocked) return;
+                  e.preventDefault();
+                  const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                  if (!isNaN(fromIdx) && fromIdx !== index) {
+                    handleReorderGoals(fromIdx, index);
+                  }
+                  setDraggedGoalIndex(null);
+                  setDragOverGoalIndex(null);
+                }}
+              >
                 {/* Goal Block Top Bar: Environment + Delete */}
-                <div className="goal-card-top-bar">
+                <div
+                  className="goal-card-top-bar"
+                  style={{
+                    background: goalTheme.bg,
+                    borderBottom: `1px solid ${goalTheme.border}`
+                  }}
+                >
                   <div className="goal-index-And-env">
-                    <span className="goal-number-badge">מטרה #{index + 1}</span>
+                    {/* Reorder controls: Drag handle and Up/Down arrows */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', marginLeft: '6px' }}>
+                      <div
+                        draggable={!isReportLocked}
+                        onDragStart={(e) => {
+                          if (isReportLocked) return;
+                          e.dataTransfer.setData('text/plain', String(index));
+                          e.dataTransfer.effectAllowed = 'move';
+                          setDraggedGoalIndex(index);
+                        }}
+                        onDragEnd={() => {
+                          setDraggedGoalIndex(null);
+                          setDragOverGoalIndex(null);
+                        }}
+                        title="גררי לשינוי סדר המטרות"
+                        style={{
+                          cursor: isReportLocked ? 'default' : 'grab',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '24px',
+                          height: '26px',
+                          color: goalTheme.accent,
+                          opacity: isReportLocked ? 0.3 : 0.8
+                        }}
+                      >
+                        <GripVertical size={16} />
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isReportLocked || index === 0}
+                        onClick={() => handleMoveGoal(goalRow.id, 'up')}
+                        title="הזז מטרה למעלה"
+                        aria-label="הזז מטרה למעלה"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '6px',
+                          border: `1px solid ${goalTheme.border}`,
+                          background: '#ffffff',
+                          color: index === 0 || isReportLocked ? '#94a3b8' : goalTheme.badgeText,
+                          cursor: index === 0 || isReportLocked ? 'not-allowed' : 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        <ArrowUp size={13} />
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isReportLocked || index === (formData.goals || []).length - 1}
+                        onClick={() => handleMoveGoal(goalRow.id, 'down')}
+                        title="הזז מטרה למטה"
+                        aria-label="הזז מטרה למטה"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '6px',
+                          border: `1px solid ${goalTheme.border}`,
+                          background: '#ffffff',
+                          color: index === (formData.goals || []).length - 1 || isReportLocked ? '#94a3b8' : goalTheme.badgeText,
+                          cursor: index === (formData.goals || []).length - 1 || isReportLocked ? 'not-allowed' : 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        <ArrowDown size={13} />
+                      </button>
+                    </div>
+
+                    <span
+                      className="goal-number-badge"
+                      style={{
+                        background: goalTheme.badgeBg,
+                        color: goalTheme.badgeText,
+                        border: `1px solid ${goalTheme.border}`
+                      }}
+                    >
+                      מטרה #{index + 1}
+                    </span>
                     <label style={{ fontWeight: 600, fontSize: '13px' }}>סביבה / תחום:</label>
                     <select
                       disabled={isReportLocked}
@@ -7719,24 +8010,35 @@ ${JSON.stringify(studentCardPayload, null, 2)}
 
           {/* Goals Evaluation Cards inside the Separate Report */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {(formData.goals || []).map((goalRow: any, idx: any) => (
-              <div
-                key={goalRow.id}
-                style={{
-                  background: '#ffffff',
-                  border: '1.5px solid #cbd5e1',
-                  borderRadius: '10px',
-                  padding: '14px 16px'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
-                  <div>
-                    <span className="goal-number-badge" style={{ marginLeft: '8px' }}>
-                      מטרה #{idx + 1}
-                    </span>
-                    <strong style={{ color: '#1e3a5f', fontSize: '14px' }}>
-                      {goalRow.environment}
-                    </strong>
+            {(formData.goals || []).map((goalRow: any, idx: any) => {
+              const evalGoalTheme = getGoalEnvironmentTheme(goalRow.environment);
+              return (
+                <div
+                  key={goalRow.id}
+                  style={{
+                    background: '#ffffff',
+                    border: `1px solid ${evalGoalTheme.border}`,
+                    borderRight: `5px solid ${evalGoalTheme.accent}`,
+                    borderRadius: '10px',
+                    padding: '14px 16px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+                    <div>
+                      <span
+                        className="goal-number-badge"
+                        style={{
+                          marginLeft: '8px',
+                          background: evalGoalTheme.badgeBg,
+                          color: evalGoalTheme.badgeText,
+                          border: `1px solid ${evalGoalTheme.border}`
+                        }}
+                      >
+                        מטרה #{idx + 1}
+                      </span>
+                      <strong style={{ color: '#1e3a5f', fontSize: '14px' }}>
+                        {goalRow.environment}
+                      </strong>
                     {goalRow.title && (
                       <span style={{ color: '#334155', fontSize: '13.5px', marginRight: '8px' }}>
                         – {goalRow.title}
@@ -7859,7 +8161,8 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                   </div>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
 
           {/* Separate Report Actions Bar */}
