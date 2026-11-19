@@ -256,7 +256,7 @@ describe('Challenger 1 Stress-Test Suite: Milestone 1 Robustness & Isolation', (
       const demo = getDemoStudent(TEST_EMAIL);
       expect(demo).toBeDefined();
       expect(demo.id).toBe('demo_yonatan_levi');
-      expect(demo.name).toContain('יונתן לוי');
+      expect(demo.name).toContain('נועם כהן');
     });
 
     it('normalizes null, undefined, empty, whitespace, and dirty email strings without throwing', () => {

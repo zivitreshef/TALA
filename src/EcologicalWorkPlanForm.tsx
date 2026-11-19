@@ -35,7 +35,8 @@ import {
   MessageSquare,
   ClipboardCopy,
   FolderOpen,
-  WifiOff
+  WifiOff,
+  CloudUpload
 } from 'lucide-react';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import {
@@ -215,6 +216,7 @@ export interface EcologicalWorkPlanFormProps {
   activeOnboardingStep?: number;
   onboardingSpotlightTick?: number;
   onGoHome?: any;
+  onSaveAsRealStudent?: (studentData: any) => void;
   userPreferences?: any;
   privateGoals?: any[];
   [key: string]: any;
@@ -239,6 +241,7 @@ export default function EcologicalWorkPlanForm({
   activeOnboardingStep = 0,
   onboardingSpotlightTick = 0,
   onGoHome,
+  onSaveAsRealStudent,
   userPreferences = {},
   privateGoals = []
 }: EcologicalWorkPlanFormProps) {
@@ -2989,6 +2992,33 @@ ${JSON.stringify(studentCardPayload, null, 2)}
             תוכנית עבודה זו שותפה עמך במצב <strong>קריאה בלבד</strong> (התוכנית נעולה לעריכה על ידי המורה האחראי/ת). ניתן לצפות בכל הסעיפים, לשלוח הודעות בשיח הצוות, או להדפיס.
           </span>
         </div>
+      )}
+
+      {/* Demo Student Guidance & Cloud Save Banner */}
+      {isDemoStudent(formData) && (
+        <aside
+          className="tala-demo-student-guidance-banner"
+          role="status"
+          dir="rtl"
+        >
+          <div className="demo-guidance-content">
+            <span className="demo-guidance-badge">סביבת התנסות (דוגמה)</span>
+            <span className="demo-guidance-text">
+              זהו תלמיד לדוגמה לצורכי התנסות והיכרות. השינויים שתבצעי נשמרים מקומית בדפדפן זה ואינם מסונכרנים לענן.
+            </span>
+          </div>
+          {typeof onSaveAsRealStudent === 'function' && (
+            <button
+              type="button"
+              className="btn-save-as-real-student"
+              onClick={() => onSaveAsRealStudent(formData)}
+              title="שמירת התלמיד והתוכנית כתלמיד אמיתי שלך בענן"
+            >
+              <CloudUpload size={16} />
+              <span>שמירה כתלמיד שלי בענן</span>
+            </button>
+          )}
+        </aside>
       )}
 
       {/* Level 1: Master Document Mode Tabs */}
