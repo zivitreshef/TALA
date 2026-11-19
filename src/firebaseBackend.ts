@@ -733,6 +733,64 @@ export async function submitAdminRequestToCloud(request: any): Promise<boolean> 
   return postConfigWrite({ kind: 'submitRequest', request: sanitizeForFirestore(request) });
 }
 
+export interface TrialRegistrationPayload {
+  name: string;
+  email: string;
+  phone: string;
+  group: string;
+  title?: string;
+  passwordSalt?: string;
+  passwordHash?: string;
+  password?: string;
+}
+
+export interface TrialRegistrationResult {
+  ok: boolean;
+  user?: any;
+  allUsers?: any[];
+  error?: string;
+}
+
+/**
+ * Public self-service trial registration: creates user securely in Firestore cloud,
+ * adds admin request notification, and signs in with the custom token.
+ */
+export async function registerTrialUserInCloud(
+  trialPayload: TrialRegistrationPayload
+): Promise<TrialRegistrationResult> {
+  try {
+    const auth = getFirebaseAuth();
+    const projectId = getActiveFirebaseConfig()?.projectId || 'tala-d9aaa';
+    const url =
+      (import.meta as any).env?.VITE_TALA_CONFIG_WRITE_URL ||
+      `https://us-central1-${projectId}.cloudfunctions.net/talaConfigWrite`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: 'registerTrial', trialPayload })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.ok) {
+      return { ok: false, error: data?.error || 'אירעה שגיאה ביצירת החשבון בענן.' };
+    }
+
+    if (auth && data.token) {
+      try {
+        await signInWithCustomToken(auth, data.token);
+      } catch (authErr) {
+        console.warn('Failed to sign in with custom token for trial:', authErr);
+      }
+    }
+
+    return { ok: true, user: data.user, allUsers: data.allUsers };
+  } catch (err: any) {
+    console.error('registerTrialUserInCloud error:', err);
+    return { ok: false, error: err?.message || 'שגיאת תקשורת עם שרת הרישום.' };
+  }
+}
+
 export async function saveGoalBankToCloud(goalsList: any[]): Promise<boolean> {
   const db = getFirestoreDb();
   if (!db) return false;
