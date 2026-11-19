@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildPedagogicalOpportunitiesGuidance } from '../domain/stageGuard';
+import { INITIAL_GOAL_BANK } from '../goalBankData';
 
 describe('buildPedagogicalOpportunitiesGuidance', () => {
   it('generates rich, actionable guidance for school stage with concrete examples', () => {
@@ -14,6 +15,13 @@ describe('buildPedagogicalOpportunitiesGuidance', () => {
     // Concrete contrastive examples
     expect(guidance).toContain('לוח הצלחות חזותי');
     expect(guidance).toContain('שניים-שלושה כללים ברורים וקצרים');
+
+    // Scaffolding, scripts & duration pillars
+    expect(guidance).toContain('עקרון דרכי תמיכה מדורגות');
+    expect(guidance).toContain('הקניית שפה ותסריטי שיח');
+    expect(guidance).toContain('כל הכבוד למנצח');
+    expect(guidance).toContain('מינון ומשך זמן');
+    expect(guidance).toContain('תוכנית מדורגת');
 
     // School role mapping
     expect(guidance).toContain('המורה / המחנכת');
@@ -56,5 +64,25 @@ describe('buildPedagogicalOpportunitiesGuidance', () => {
     expect(schoolGuidance.length).toBeGreaterThan(500);
     expect(kdgGuidance.length).toBeLessThan(2500);
     expect(kdgGuidance.length).toBeGreaterThan(500);
+  });
+
+  it('includes enriched, graded opportunities in INITIAL_GOAL_BANK for core domains', () => {
+    const drawingGoal = INITIAL_GOAL_BANK.find((g) => g.id === 'gb_workshop_3');
+    expect(drawingGoal).toBeDefined();
+    expect(drawingGoal?.defaultOpportunities).toContain('תוכנית מדורגת לפיתוח מיומנויות ציור');
+    expect(drawingGoal?.defaultOpportunities).toContain('5–7 דקות');
+    expect(drawingGoal?.defaultOpportunities).toContain('פיתוח יכולת סגירה');
+
+    const gameLossGoal = INITIAL_GOAL_BANK.find((g) => g.id === 'gb_table_3');
+    expect(gameLossGoal).toBeDefined();
+    expect(gameLossGoal?.defaultOpportunities).toContain('דרכי תמיכה מדורגות להתמודדות עם הפסד במשחק');
+    expect(gameLossGoal?.defaultOpportunities).toContain('כל הכבוד למנצח');
+    expect(gameLossGoal?.defaultOpportunities).toContain('אני מאוכזב');
+
+    const socioDramaticGoal = INITIAL_GOAL_BANK.find((g) => g.id === 'gb_space_1');
+    expect(socioDramaticGoal).toBeDefined();
+    expect(socioDramaticGoal?.defaultOpportunities).toContain('דרכי תמיכה מדורגות בפיתוח משחק סוציו־דרמטי');
+    expect(socioDramaticGoal?.defaultOpportunities).toContain('אפשר להצטרף?');
+    expect(socioDramaticGoal?.defaultOpportunities).toContain('בוא נעשה כאילו...');
   });
 });
