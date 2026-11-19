@@ -240,6 +240,43 @@ export const removeGoalRow = <T extends FormStudentInput>(
   };
 };
 
+export const reorderGoals = <T extends FormStudentInput>(
+  prev: T,
+  fromIndex: number,
+  toIndex: number
+): T & { goals: YearReportGoal[] } => {
+  const currentGoals = [...((prev?.goals || []) as YearReportGoal[])];
+  if (
+    fromIndex < 0 ||
+    fromIndex >= currentGoals.length ||
+    toIndex < 0 ||
+    toIndex >= currentGoals.length ||
+    fromIndex === toIndex
+  ) {
+    return { ...prev, goals: currentGoals };
+  }
+  const [movedGoal] = currentGoals.splice(fromIndex, 1);
+  currentGoals.splice(toIndex, 0, movedGoal);
+  return {
+    ...prev,
+    goals: currentGoals
+  };
+};
+
+export const moveGoalByStep = <T extends FormStudentInput>(
+  prev: T,
+  goalId: string,
+  direction: 'up' | 'down'
+): T & { goals: YearReportGoal[] } => {
+  const currentGoals = [...((prev?.goals || []) as YearReportGoal[])];
+  const index = currentGoals.findIndex((g) => g.id === goalId);
+  if (index === -1) {
+    return { ...prev, goals: currentGoals };
+  }
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  return reorderGoals(prev, index, targetIndex);
+};
+
 export const buildNewGoalRow = ({
   id,
   stage = 'school',
