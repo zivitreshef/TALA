@@ -115,11 +115,6 @@ import { countUnreviewedHealthEvents } from './domain/healthEvents';
 import { dispatchServerInquiryAlerts } from './services/alertDispatcher';
 import { deleteDossierFileFromCloud } from './services/dossierFileStorage';
 import {
-  shouldSendPedagogicalDigest,
-  getObservationGaps,
-  getPedagogicalAccomplishmentsSummary
-} from './domain/dailyPedagogicalTracking';
-import {
   getLastObservationInfo,
   formatLastObservationLabel,
   formatCompactLastObservationLabel
@@ -132,8 +127,7 @@ import {
   loadEmailEngineConfig,
   saveEmailEngineConfig,
   sendSignedNdaEmailToAdmin,
-  sendUserSurveyEmailToAdmin,
-  sendPedagogicalReminderEmailInBackground
+  sendUserSurveyEmailToAdmin
 } from './emailService';
 import {
   PRIMARY_ADMIN_EMAIL,
@@ -1930,59 +1924,7 @@ export default function App() {
     return cleanup;
   }, [currentUser?.email]);
 
-  // Automated Pedagogical Digest Scheduler based on Teacher Preferences
-  useEffect(() => {
-    if (!currentUser?.email) return;
-    const isReminderEnabled = Boolean(
-      userPreferences?.pedagogicalReminderEnabled || userPreferences?.monthlyPedagogicalReminder
-    );
-    if (!isReminderEnabled) return;
-
-    const checkAndDispatchDigest = async () => {
-      try {
-        const storageKey = `tala_pedagogical_digest_last_sent_${currentUser.email.toLowerCase()}`;
-        const lastSent = (userPreferences as any)?.pedagogicalDigestLastSentAt || localStorage.getItem(storageKey);
-        const now = new Date();
-        if (shouldSendPedagogicalDigest(userPreferences as any, lastSent, now)) {
-          const gaps = getObservationGaps(userStudents || [], 45, now);
-          const accomplishments = getPedagogicalAccomplishmentsSummary(userStudents || [], 30, now);
-          await sendPedagogicalReminderEmailInBackground({
-            toEmail: currentUser.email,
-            teacherName: userPreferences?.fullName || currentUser.name || 'צוות חינוכי',
-            gaps: gaps as any,
-            accomplishments,
-            students: userStudents || [],
-            totalStudents: (userStudents || []).length,
-            privacyMode: userPreferences?.defaultPrivacyMode || 'full_name'
-          });
-          trackPedagogicalSummaryGenerated({
-            summaryType: 'staff_meeting',
-            studentCount: (userStudents || []).length,
-            email: currentUser.email
-          });
-          trackStaffMeetingReadinessChecked({
-            itemsCompletedCount: 3,
-            isFullyReady: gaps.length === 0,
-            email: currentUser.email
-          });
-          const nowIso = now.toISOString();
-          localStorage.setItem(storageKey, nowIso);
-          if (currentUser.email && userPreferences) {
-            saveUserPreferencesToCloud(currentUser.email, {
-              ...userPreferences,
-              pedagogicalDigestLastSentAt: nowIso
-            }).catch(() => {});
-          }
-        }
-      } catch (err) {
-        console.warn('Background pedagogical digest dispatch error:', err);
-      }
-    };
-
-    checkAndDispatchDigest();
-    const timer = setInterval(checkAndDispatchDigest, 5 * 60 * 1000);
-    return () => clearInterval(timer);
-  }, [currentUser?.email, userPreferences, userStudents]);
+  // Automated Pedagogical Digest Scheduler (Server-side Cloud Scheduler via functions/pedagogicalReminders.js prevents client-side duplicate dispatches)
 
   // Proactive Trial Expiration Alert Modal (pops up once per browser session when remaining trial days <= 2)
   useEffect(() => {

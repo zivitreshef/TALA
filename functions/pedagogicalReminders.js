@@ -268,6 +268,16 @@ function buildPedagogicalReminderEmailHtmlServer({
 </head>
 <body style="margin: 0; padding: 20px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; direction: rtl; text-align: right;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 620px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+    <!-- בר עליון לפתיחה בדפדפן -->
+    <tr>
+      <td style="background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; padding: 8px 16px; font-size: 12px; color: #1e40af; text-align: center;">
+        💡 בעיות בהצגת המייל? ניתן לפתוח את הקובץ המצורף בדפדפן או 
+        <a href="${directReadinessUrl}" target="_blank" style="color: #1d4ed8; font-weight: bold; text-decoration: underline;">
+          לפתוח את דוח המוכנות ישירות במערכת TALA בדפדפן
+        </a>
+      </td>
+    </tr>
+
     <!-- כותרת ראשית -->
     <tr>
       <td style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 28px 24px; color: #ffffff; text-align: center;">
@@ -430,6 +440,7 @@ async function dispatchPedagogicalRemindersServer({
 
       // 5. Send Email if not dry-run
       if (!dryRun) {
+        const attachmentBase64 = Buffer.from('\ufeff' + htmlBody, 'utf8').toString('base64');
         const response = await fetch(appsScriptUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -438,7 +449,10 @@ async function dispatchPedagogicalRemindersServer({
             subject: 'ישיבת צוות ביום ראשון? דוח המצב הכיתתי שלך מוכן לצפייה בלחיצה אחת 📋',
             htmlBody,
             textBody,
-            senderName: 'מערכת TALA – סביבת עבודה פדגוגית ומעקב שוטף'
+            senderName: 'מערכת TALA – סביבת עבודה פדגוגית ומעקב שוטף',
+            filename: 'דוח_מוכנות_פדגוגי_TALA.html',
+            mimeType: 'text/html',
+            attachmentBase64
           })
         });
 
