@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken, signOut, Auth, User } from 'firebase/auth';
+import { getAuth, signInWithCustomToken, signOut, onAuthStateChanged, Auth, User } from 'firebase/auth';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import {
   getFirestore,
@@ -386,30 +386,61 @@ export function subscribeToTalaBackend({
   const sawAll = Boolean(isAdmin) || PRIMARY_ADMIN_EMAILS.includes(me);
   const unsubscribers: Unsubscribe[] = [];
   let cancelled = false;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let isStarting = false;
+
+  const cleanUpListeners = () => {
+    while (unsubscribers.length > 0) {
+      const u = unsubscribers.pop();
+      try {
+        u?.();
+      } catch (_) {}
+    }
+  };
+
   const listenError = (label: string, report?: boolean) => (err: Error) => {
     console.error(`Firestore ${label} listener error:`, err);
     if (report) {
       onSyncStatusChange?.({ connected: false, status: 'error', error: `[${label}] ${err.message}` });
     }
+    // Auto-heal on transient permission or network token race conditions
+    if (!cancelled && auth.currentUser && !retryTimer) {
+      retryTimer = setTimeout(async () => {
+        retryTimer = null;
+        if (cancelled || !auth.currentUser) return;
+        try {
+          await auth.currentUser.getIdToken(true);
+        } catch (_) {}
+        cleanUpListeners();
+        void start();
+      }, 2000);
+    }
   };
 
   const start = async () => {
-    await (auth as any).authStateReady?.();
-    if (cancelled) return;
-    if (!auth.currentUser && me) {
-      try {
-        await ensureFirebaseAuthSession(me);
-      } catch (_) {}
-    }
-    if (cancelled) return;
-    if (!auth.currentUser) {
-      onSyncStatusChange?.({ connected: false, status: 'local_only' });
-      return;
-    }
+    if (cancelled || isStarting) return;
+    if (unsubscribers.length > 0 && !retryTimer) return;
+    isStarting = true;
     try {
-      await auth.currentUser.getIdToken(true);
-    } catch (_) {}
-    onSyncStatusChange?.({ connected: true, status: 'connecting' });
+      await (auth as any).authStateReady?.();
+      if (cancelled) return;
+      if (!auth.currentUser && me) {
+        try {
+          await ensureFirebaseAuthSession(me);
+        } catch (_) {}
+      }
+      if (cancelled) return;
+      if (!auth.currentUser) {
+        onSyncStatusChange?.({ connected: false, status: 'local_only' });
+        return;
+      }
+      try {
+        await auth.currentUser.getIdToken(true);
+      } catch (_) {}
+      onSyncStatusChange?.({ connected: true, status: 'connecting' });
+
+      // Clean existing before re-attaching
+      cleanUpListeners();
 
     if (sawAll) {
       // 1a. Allowed users (admin only). Writes go through the talaConfigWrite function.
@@ -628,17 +659,31 @@ export function subscribeToTalaBackend({
         )
       );
     }
+    } finally {
+      isStarting = false;
+    }
   };
 
-  start();
+  // Live auth observer: connects or updates backend subscriptions when auth resolves or changes
+  const unsubAuth = onAuthStateChanged(auth, (user) => {
+    if (cancelled) return;
+    if (user) {
+      void start();
+    } else {
+      cleanUpListeners();
+      onSyncStatusChange?.({ connected: false, status: 'local_only' });
+    }
+  });
+
+  void start();
 
   return () => {
     cancelled = true;
-    unsubscribers.forEach((u) => {
-      try {
-        u();
-      } catch (_) {}
-    });
+    if (retryTimer) clearTimeout(retryTimer);
+    try {
+      unsubAuth();
+    } catch (_) {}
+    cleanUpListeners();
   };
 }
 

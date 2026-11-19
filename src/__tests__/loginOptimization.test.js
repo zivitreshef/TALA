@@ -19,7 +19,11 @@ vi.mock('firebase/app', () => ({
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(() => mockAuth),
   signInWithCustomToken: (...args) => mockSignInWithCustomToken(...args),
-  signOut: vi.fn()
+  signOut: vi.fn(),
+  onAuthStateChanged: vi.fn((_auth, cb) => {
+    if (typeof cb === 'function') cb(mockAuth.currentUser);
+    return () => {};
+  })
 }));
 
 vi.mock('firebase/firestore', () => ({

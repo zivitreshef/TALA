@@ -11,7 +11,9 @@ vi.mock('../firebaseBackend', () => {
     subscribeToUserPresence: vi.fn().mockImplementation((cb) => {
       cb({});
       return vi.fn();
-    })
+    }),
+    getFirebaseAuth: vi.fn(() => null),
+    ensureFirebaseAuthSession: vi.fn().mockResolvedValue(null)
   };
 });
 
