@@ -137,23 +137,8 @@ describe('Allowed Users Stale Overwrite Protection (Architecture & Cloud Integri
     expect(mergedAnafa?.passwordSalt).toBe('7e2c9fda2d2c33646071f11e5c8af3f0');
   });
 
-  it('allows password update when passwordExplicitlyUpdated is true or email in updatedPasswordEmails', () => {
+  it('allows password update when email is in updatedPasswordEmails parameter', () => {
     const stored = [baseAdmin, anafa];
-    // Explicit password update by admin or user
-    const explicitUpdate = {
-      ...anafa,
-      passwordHash: 'new_fresh_hash',
-      passwordSalt: 'new_fresh_salt',
-      passwordExplicitlyUpdated: true
-    };
-
-    const result = mergeAdminUsersSafely(stored, [baseAdmin, explicitUpdate]);
-    const mergedAnafa = result.find((u) => u.email === '1000300595@educ.org.il');
-    expect(mergedAnafa?.passwordHash).toBe('new_fresh_hash');
-    expect(mergedAnafa?.passwordSalt).toBe('new_fresh_salt');
-    expect(mergedAnafa?.passwordExplicitlyUpdated).toBeUndefined();
-
-    // Via updatedPasswordEmails parameter
     const explicitViaParam = {
       ...anafa,
       passwordHash: 'param_fresh_hash',
@@ -173,12 +158,23 @@ describe('Allowed Users Stale Overwrite Protection (Architecture & Cloud Integri
     expect(fileContent).toContain('mergeAdminUsersSafely(stored,sub,deletedEmails,updatedPasswordEmails)');
   });
 
-  it('passes deletedUserEmails and updatedPasswordUserEmails option through saveAllowedUsersToCloud to postConfigWrite', async () => {
+  it('keeps both deletedUserEmails-only and combined options supported by saveAllowedUsersToCloud', async () => {
     const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mockFetch;
 
     try {
+      // 1. deletedUserEmails only (coverage preserved)
+      await saveAllowedUsersToCloud([baseAdmin], { deletedUserEmails: ['deleted@school.org'] });
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('talaConfigWrite'),
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"deletedUserEmails":["deleted@school.org"]')
+        })
+      );
+
+      // 2. both deletedUserEmails and updatedPasswordUserEmails
       await saveAllowedUsersToCloud([baseAdmin], {
         deletedUserEmails: ['deleted@school.org'],
         updatedPasswordUserEmails: ['reset@school.org']

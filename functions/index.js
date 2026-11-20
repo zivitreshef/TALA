@@ -137,7 +137,7 @@ function mergeAdminUsersSafely(storedUsers,incomingUsers,deletedEmails=[],update
       }
     }
     const storedHasCreds=Boolean(stored.passwordHash&&stored.passwordSalt);
-    const isExplicitPasswordUpdate=Boolean(inc.passwordExplicitlyUpdated===true||updatedPwSet.has(emailKey));
+    const isExplicitPasswordUpdate=updatedPwSet.has(emailKey);
     if(storedHasCreds&&!isExplicitPasswordUpdate){
       merged.passwordHash=stored.passwordHash;
       merged.passwordSalt=stored.passwordSalt;

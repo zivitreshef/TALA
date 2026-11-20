@@ -993,7 +993,9 @@ export default function App() {
         }
 
         if (needsCloudHeal) {
-          saveAllowedUsersToCloud(mergedUsers);
+          const healEmail = (currentUser?.email || '').trim().toLowerCase();
+          const updatedPasswordUserEmails = healEmail ? [healEmail] : [];
+          saveAllowedUsersToCloud(mergedUsers, { updatedPasswordUserEmails });
         }
         setAllowedUsers(mergedUsers);
         saveAllowedUsers(mergedUsers);
@@ -1353,7 +1355,14 @@ export default function App() {
   }, [currentUser?.email, students.length, selectedStudentId]);
 
   const handleUpdateAllowedUsers = async (updatedList: any, editMeta: any = null) => {
-    const { users: hashedList } = ensureUsersListPasswordsHashed(updatedList);
+    const { users: rawHashedList } = ensureUsersListPasswordsHashed(updatedList);
+    const hashedList = (rawHashedList || []).map((u: any) => {
+      if (u && 'passwordExplicitlyUpdated' in u) {
+        const { passwordExplicitlyUpdated: _drop, ...cleanUser } = u;
+        return cleanUser;
+      }
+      return u;
+    });
     const nowMs = Date.now();
     for (const u of hashedList) {
       if (u?.email) {
@@ -1665,7 +1674,7 @@ export default function App() {
     const updatedList = allowedUsers.map((u) => {
       if (u.email.toLowerCase() !== currentUser.email.toLowerCase()) return u;
       const { accessCode: _removed, ...rest } = u;
-      return { ...rest, ...creds, mustChangePassword: false, passwordExplicitlyUpdated: true };
+      return { ...rest, ...creds, mustChangePassword: false };
     });
     handleUpdateAllowedUsers(updatedList, { updatedPasswordUserEmail: currentUser.email.toLowerCase() });
     const { accessCode: _removedCurrent, ...restCurrent } = currentUser;

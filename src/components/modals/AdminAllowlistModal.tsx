@@ -840,8 +840,7 @@ export default function AdminAllowlistModal({
           mustChangePassword: true,
           active: true,
           lockedOut: false,
-          failedLoginAttempts: 0,
-          passwordExplicitlyUpdated: true
+          failedLoginAttempts: 0
         };
       }),
       { updatedPasswordUserEmail: (userObj.email || '').trim().toLowerCase() }
@@ -1119,8 +1118,7 @@ export default function AdminAllowlistModal({
         mustChangePassword: false,
         active: true,
         lockedOut: false,
-        failedLoginAttempts: 0,
-        passwordExplicitlyUpdated: true
+        failedLoginAttempts: 0
       };
     });
 
