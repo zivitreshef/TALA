@@ -1252,3 +1252,58 @@ export function mergeAdminUsersSafely<T extends { email?: string; [key: string]:
 
   return result;
 }
+
+const DEFAULT_PASSWORDS = ['TALA2026', '1234'];
+const isDefaultPassword = (u: any) => DEFAULT_PASSWORDS.some((p) => verifyUserPassword(u, p));
+
+/**
+ * Reconciles a cloud users snapshot with the local cache.
+ * - Users edited locally in the last 15s keep their local edit.
+ * - Only the signed-in user's custom local password may heal a default cloud password.
+ * Returns the emails whose password was healed so the caller can pass them
+ * as `updatedPasswordUserEmails` (the server ignores passwords not listed there).
+ */
+export function reconcileCloudUsersWithLocal<T extends { email?: string; [key: string]: any }>({
+  cloudUsers,
+  localUsers,
+  currentUserEmail,
+  recentLocalUpdates,
+  nowMs,
+  recentWindowMs = 15000
+}: {
+  cloudUsers: T[];
+  localUsers: T[];
+  currentUserEmail?: string | null;
+  recentLocalUpdates?: Map<string, { timeMs: number; user: any }>;
+  nowMs: number;
+  recentWindowMs?: number;
+}): { users: T[]; healedPasswordEmails: string[] } {
+  const norm = (s: any) => String(s || '').trim().toLowerCase();
+  const me = norm(currentUserEmail);
+  const healedPasswordEmails: string[] = [];
+
+  const users = (cloudUsers || []).map((cu) => {
+    const emailKey = norm(cu.email);
+    const recent = recentLocalUpdates?.get(emailKey);
+    if (recent && nowMs - recent.timeMs < recentWindowMs && recent.user) {
+      return { ...cu, ...recent.user };
+    }
+
+    if (!me || emailKey !== me) return cu;
+    const lu: any = (localUsers || []).find((u) => norm(u.email) === emailKey);
+    const luHasCustomPassword = Boolean(lu?.passwordHash && lu?.passwordSalt && !isDefaultPassword(lu));
+    if (luHasCustomPassword && isDefaultPassword(cu) && lu.passwordHash !== (cu as any).passwordHash) {
+      healedPasswordEmails.push(emailKey);
+      return {
+        ...cu,
+        passwordHash: lu.passwordHash,
+        passwordSalt: lu.passwordSalt,
+        failedLoginAttempts: 0,
+        lockedOut: false
+      };
+    }
+    return cu;
+  });
+
+  return { users, healedPasswordEmails };
+}

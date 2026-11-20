@@ -45,7 +45,7 @@ import {
   isUserAdmin,
   createPasswordCredentials,
   ensureUsersListPasswordsHashed,
-  verifyUserPassword
+  reconcileCloudUsersWithLocal
 } from './allowedUsers';
 import {
   AllowlistAuthGate,
@@ -942,50 +942,14 @@ export default function App() {
         const localUsers = loadAllowedUsers();
         const { users: cloudUsers, migrated: cloudMigrated } =
           ensureUsersListPasswordsHashed(rawCloudUsers);
-        let needsCloudHeal = cloudMigrated;
-        const nowMs = Date.now();
-        const mergedUsers = cloudUsers.map((cu) => {
-          const emailKey = (cu.email || '').trim().toLowerCase();
-          const lu = localUsers.find(
-            (u) => (u.email || '').trim().toLowerCase() === emailKey
-          );
-
-          // If this user was modified in this client session within the last 15s, preserve local edit
-          const recent = recentLocalUserUpdatesRef.current.get(emailKey);
-          if (recent && nowMs - recent.timeMs < 15000 && recent.user) {
-            return {
-              ...cu,
-              ...recent.user
-            };
-          }
-
-          const isCurrentUser = Boolean(
-            currentUser?.email &&
-            emailKey === (currentUser.email || '').trim().toLowerCase()
-          );
-
-          const cuIsDefaultPassword =
-            verifyUserPassword(cu, 'TALA2026') || verifyUserPassword(cu, '1234');
-          const luHasCustomPassword =
-            lu &&
-            lu.passwordHash &&
-            lu.passwordSalt &&
-            !verifyUserPassword(lu, 'TALA2026') &&
-            !verifyUserPassword(lu, '1234');
-
-          // Only heal local password if this is the currently authenticated user; never overwrite other users' credentials
-          if (isCurrentUser && luHasCustomPassword && cuIsDefaultPassword && lu.passwordHash !== cu.passwordHash) {
-            needsCloudHeal = true;
-            return {
-              ...cu,
-              passwordHash: lu.passwordHash,
-              passwordSalt: lu.passwordSalt,
-              failedLoginAttempts: 0,
-              lockedOut: false
-            };
-          }
-          return cu;
+        const { users: mergedUsers, healedPasswordEmails } = reconcileCloudUsersWithLocal({
+          cloudUsers,
+          localUsers,
+          currentUserEmail: currentUser?.email,
+          recentLocalUpdates: recentLocalUserUpdatesRef.current,
+          nowMs: Date.now()
         });
+        const needsCloudHeal = cloudMigrated || healedPasswordEmails.length > 0;
 
         // On initial cloud sync, keep cloud list authoritative. Do not auto-reinject deleted local users.
         if (!didInitialUsersMerge) {
@@ -993,9 +957,7 @@ export default function App() {
         }
 
         if (needsCloudHeal) {
-          const healEmail = (currentUser?.email || '').trim().toLowerCase();
-          const updatedPasswordUserEmails = healEmail ? [healEmail] : [];
-          saveAllowedUsersToCloud(mergedUsers, { updatedPasswordUserEmails });
+          saveAllowedUsersToCloud(mergedUsers, { updatedPasswordUserEmails: healedPasswordEmails });
         }
         setAllowedUsers(mergedUsers);
         saveAllowedUsers(mergedUsers);
@@ -1355,14 +1317,7 @@ export default function App() {
   }, [currentUser?.email, students.length, selectedStudentId]);
 
   const handleUpdateAllowedUsers = async (updatedList: any, editMeta: any = null) => {
-    const { users: rawHashedList } = ensureUsersListPasswordsHashed(updatedList);
-    const hashedList = (rawHashedList || []).map((u: any) => {
-      if (u && 'passwordExplicitlyUpdated' in u) {
-        const { passwordExplicitlyUpdated: _drop, ...cleanUser } = u;
-        return cleanUser;
-      }
-      return u;
-    });
+    const { users: hashedList } = ensureUsersListPasswordsHashed(updatedList);
     const nowMs = Date.now();
     for (const u of hashedList) {
       if (u?.email) {
