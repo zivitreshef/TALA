@@ -151,6 +151,7 @@ import { usageTelemetryService } from './services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy';
 import { reportHealthEvent } from './services/healthTelemetry';
 import { HEALTH_EVENT_KINDS } from './domain/healthEvents';
+import { diagnoseAiAnalysisError } from './domain/aiAnalysisDiagnostics';
 
 // NEW: Firebase Functions imports
 import {
@@ -1611,7 +1612,7 @@ export default function EcologicalWorkPlanForm({
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setReverseEngineerError(
-        'אין חיבור לאינטרנט. הפקת יעדים ומטרות באמצעות בינה מלאכותית דורשת חיבור פעיל לרשת. כל הנתונים, התצפיות והטיוטות שרשמת שמורים בבטחה במכשירך ויסונכרנו לענן עם חזרת הרשת.'
+        'אין חיבור לאינטרנט. הפקת יעדים ומטרות באמצעות בינה מלאכותית דורשת חיבור פעיל לרשת (חיבור הרשת אינו זמין). כל הנתונים, התצפיות והטיוטות שרשמת שמורים בבטחה במכשירך ויסונכרנו לענן עם חזרת הרשת.'
       );
       return;
     }
@@ -1906,36 +1907,45 @@ ${textToUse}
       }
     }
 
-    // If AI result was empty or malformed, provide transparent notice without silently falling back to low-quality rules
+    // If AI result was empty or malformed, provide transparent notice with granular diagnosis and tailored guidance
+    const diagnostic = diagnoseAiAnalysisError({
+      rawText,
+      aiResult: aiParsedResult,
+      stage: currentStage
+    });
+
     reportHealthEvent({
       kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
       operation: 'reverseEngineerFullReport',
       extra: {
-        reason: aiParsedResult ? (aiParsedResult.raw ? 'ai_raw_output_not_json' : 'ai_missing_goals') : 'ai_empty_response',
+        reason: diagnostic.rcaReason,
         stage: currentStage,
         promptLength: rawText.length,
-        category: aiParsedResult ? 'empty_response' : 'unknown'
+        category: diagnostic.category
       }
     });
 
-    setReverseEngineerError(
-      'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור הרשת או עומס רגעי). הטקסט והתצפיות שרשמת שמורים במלואם במכשירך ויסונכרנו לענן. אנא נסי שוב בעוד מספר רגעים.'
-    );
+    setReverseEngineerError(diagnostic.teacherMessage);
     } catch (err: any) {
       console.warn('[handleReverseEngineerFullReport] AI processing encountered error:', err);
+      const diagnostic = diagnoseAiAnalysisError({
+        rawText,
+        error: err,
+        stage: currentStage
+      });
       reportHealthEvent({
         kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
         operation: 'reverseEngineerFullReport',
         error: err,
         extra: {
+          reason: diagnostic.rcaReason,
           stage: currentStage,
           promptLength: rawText ? rawText.length : 0,
-          errorMessage: err?.message || String(err)
+          errorMessage: err?.message || String(err),
+          category: diagnostic.category
         }
       });
-      setReverseEngineerError(
-        'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור הרשת או עומס רגעי). הטקסט והתצפיות שרשמת שמורים במלואם במכשירך ויסונכרנו לענן. אנא נסי שוב בעוד מספר רגעים.'
-      );
+      setReverseEngineerError(diagnostic.teacherMessage);
     } finally {
       setIsReverseEngineering(false);
     }

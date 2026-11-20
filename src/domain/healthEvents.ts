@@ -25,6 +25,11 @@ export const HEALTH_CATEGORY_LABELS_HE: Record<string, string> = {
   network: 'שגיאת רשת / השרת לא זמין',
   db_error: 'שגיאת מסד נתונים',
   empty_response: 'תשובת AI ריקה או לא תקינה',
+  input_too_short: 'קלט קצר מדי לניתוח',
+  conversational_response: 'תשובה שיחתית ללא מטרות',
+  output_truncated: 'קטיעת פלט בינה מלאכותית',
+  malformed_json: 'שיבוש תחביר בתשובת בינה מלאכותית',
+  missing_goals: 'תשובה תקינה ללא מטרות',
   unknown: 'שגיאה לא מזוהה'
 };
 
