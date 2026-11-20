@@ -840,9 +840,11 @@ export default function AdminAllowlistModal({
           mustChangePassword: true,
           active: true,
           lockedOut: false,
-          failedLoginAttempts: 0
+          failedLoginAttempts: 0,
+          passwordExplicitlyUpdated: true
         };
-      })
+      }),
+      { updatedPasswordUserEmail: (userObj.email || '').trim().toLowerCase() }
     );
 
     setSendingInviteForUserId(userObj.id);
@@ -1117,7 +1119,8 @@ export default function AdminAllowlistModal({
         mustChangePassword: false,
         active: true,
         lockedOut: false,
-        failedLoginAttempts: 0
+        failedLoginAttempts: 0,
+        passwordExplicitlyUpdated: true
       };
     });
 

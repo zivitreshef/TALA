@@ -119,26 +119,75 @@ describe('Allowed Users Stale Overwrite Protection (Architecture & Cloud Integri
     expect(result.some((u) => u.email === 'newteacher@school.org')).toBe(true);
   });
 
+  it('ignores incoming stale password hash on profile updates and preserves cloud credentials (gitignore style)', () => {
+    const stored = [baseAdmin, anafa];
+    // Admin edited Anafa's title/group from an old tab where Anafa had a different/stale password
+    const incomingStalePw = {
+      ...anafa,
+      title: 'מדריכת שילוב בכירה',
+      passwordHash: 'stale_old_hash_from_months_ago',
+      passwordSalt: 'stale_old_salt'
+    };
+
+    const result = mergeAdminUsersSafely(stored, [baseAdmin, incomingStalePw]);
+    const mergedAnafa = result.find((u) => u.email === '1000300595@educ.org.il');
+    expect(mergedAnafa?.title).toBe('מדריכת שילוב בכירה');
+    // Stored credentials MUST be preserved, stale incoming hash ignored!
+    expect(mergedAnafa?.passwordHash).toBe('5ae8a62a94122a7400a87ce5613ad691d0d4b5cc9fdb3f71cb7d6eab3c64a252');
+    expect(mergedAnafa?.passwordSalt).toBe('7e2c9fda2d2c33646071f11e5c8af3f0');
+  });
+
+  it('allows password update when passwordExplicitlyUpdated is true or email in updatedPasswordEmails', () => {
+    const stored = [baseAdmin, anafa];
+    // Explicit password update by admin or user
+    const explicitUpdate = {
+      ...anafa,
+      passwordHash: 'new_fresh_hash',
+      passwordSalt: 'new_fresh_salt',
+      passwordExplicitlyUpdated: true
+    };
+
+    const result = mergeAdminUsersSafely(stored, [baseAdmin, explicitUpdate]);
+    const mergedAnafa = result.find((u) => u.email === '1000300595@educ.org.il');
+    expect(mergedAnafa?.passwordHash).toBe('new_fresh_hash');
+    expect(mergedAnafa?.passwordSalt).toBe('new_fresh_salt');
+    expect(mergedAnafa?.passwordExplicitlyUpdated).toBeUndefined();
+
+    // Via updatedPasswordEmails parameter
+    const explicitViaParam = {
+      ...anafa,
+      passwordHash: 'param_fresh_hash',
+      passwordSalt: 'param_fresh_salt'
+    };
+    const resultParam = mergeAdminUsersSafely(stored, [baseAdmin, explicitViaParam], [], ['1000300595@educ.org.il']);
+    const mergedParam = resultParam.find((u) => u.email === '1000300595@educ.org.il');
+    expect(mergedParam?.passwordHash).toBe('param_fresh_hash');
+    expect(mergedParam?.passwordSalt).toBe('param_fresh_salt');
+  });
+
   it('guarantees cloud function index.js implements mergeAdminUsersSafely and calls it for admin users write', () => {
     const functionsIndexPath = path.resolve(__dirname, '../../functions/index.js');
     const fileContent = fs.readFileSync(functionsIndexPath, 'utf-8');
 
     expect(fileContent).toContain('function mergeAdminUsersSafely');
-    expect(fileContent).toContain('mergeAdminUsersSafely(stored,sub,deletedEmails)');
+    expect(fileContent).toContain('mergeAdminUsersSafely(stored,sub,deletedEmails,updatedPasswordEmails)');
   });
 
-  it('passes deletedUserEmails option through saveAllowedUsersToCloud to postConfigWrite', async () => {
+  it('passes deletedUserEmails and updatedPasswordUserEmails option through saveAllowedUsersToCloud to postConfigWrite', async () => {
     const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
     const originalFetch = globalThis.fetch;
     globalThis.fetch = mockFetch;
 
     try {
-      await saveAllowedUsersToCloud([baseAdmin], { deletedUserEmails: ['deleted@school.org'] });
+      await saveAllowedUsersToCloud([baseAdmin], {
+        deletedUserEmails: ['deleted@school.org'],
+        updatedPasswordUserEmails: ['reset@school.org']
+      });
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('talaConfigWrite'),
         expect.objectContaining({
           method: 'POST',
-          body: expect.stringContaining('"deletedUserEmails":["deleted@school.org"]')
+          body: expect.stringContaining('"updatedPasswordUserEmails":["reset@school.org"]')
         })
       );
     } finally {

@@ -755,13 +755,14 @@ async function postConfigWrite(payload: any): Promise<boolean> {
 
 export async function saveAllowedUsersToCloud(
   usersList: any[],
-  options?: { deletedUserEmails?: string[] }
+  options?: { deletedUserEmails?: string[]; updatedPasswordUserEmails?: string[] }
 ): Promise<boolean> {
   const { users: hashedUsers } = ensureUsersListPasswordsHashed(usersList || []);
   return postConfigWrite({
     kind: 'users',
     users: sanitizeForFirestore(hashedUsers),
-    deletedUserEmails: options?.deletedUserEmails || []
+    deletedUserEmails: options?.deletedUserEmails || [],
+    updatedPasswordUserEmails: options?.updatedPasswordUserEmails || []
   });
 }
 
