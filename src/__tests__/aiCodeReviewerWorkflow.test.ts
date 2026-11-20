@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { loadReviewerConfig } from '../../scripts/ai-reviewer/config.js';
@@ -13,6 +13,7 @@ import {
   sanitizeUntrusted
 } from '../../scripts/ai-reviewer/prompts.js';
 import { GitHubClient } from '../../scripts/ai-reviewer/github.js';
+import { AIReviewerEngine } from '../../scripts/ai-reviewer/reviewer.js';
 
 describe('Independent AI Code Reviewer System', () => {
   const rootDir = path.resolve(__dirname, '../../');
@@ -289,6 +290,70 @@ describe('Independent AI Code Reviewer System', () => {
       expect(extracted.commitSha).toBe('prev1234');
       expect(extracted.findings.length).toBe(1);
       expect(extracted.findings[0].title).toBe('Minor typo');
+    });
+  });
+
+  describe('AIReviewerEngine Model Fallback Mechanism', () => {
+    it('automatically tries fallback models when primary model returns 404', async () => {
+      const originalFetch = global.fetch;
+      const calls: string[] = [];
+
+      // Mock fetch: first model returns 404, second model succeeds
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        calls.push(url);
+        if (url.includes('gemini-non-existent')) {
+          return {
+            ok: false,
+            status: 404,
+            text: async () => 'Model not found'
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: JSON.stringify({
+                        assessment: 'APPROVED',
+                        summary: 'Fallback model succeeded.',
+                        findings: [],
+                        architecturalObservations: []
+                      })
+                    }
+                  ]
+                }
+              }
+            ]
+          })
+        };
+      }) as any;
+
+      try {
+        const engine = new AIReviewerEngine({
+          apiKey: 'test_api_key',
+          model: 'gemini-non-existent'
+        });
+
+        const result = await engine.reviewPullRequest({
+          config: { aiModels: ['gemini-2.5-flash'] },
+          prTitle: 'Test Fallback',
+          prBody: 'Testing model fallback',
+          baseSha: '111',
+          headSha: '222',
+          diff: '+ test'
+        });
+
+        expect(result.assessment).toBe('APPROVED');
+        expect(calls.length).toBeGreaterThanOrEqual(2);
+        expect(calls[0]).toContain('gemini-non-existent');
+        expect(calls[1]).toContain('gemini-2.5-flash');
+      } finally {
+        global.fetch = originalFetch;
+      }
     });
   });
 });
