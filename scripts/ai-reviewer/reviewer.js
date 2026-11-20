@@ -6,8 +6,19 @@
 import { buildSystemPrompt, buildReviewUserPrompt } from './prompts.js';
 import { validateReviewOutput } from './validator.js';
 
+const DEFAULT_MODELS = [
+  'gemini-3.1-pro-preview',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-pro'
+];
+
 export class AIReviewerEngine {
-  constructor({ apiKey, model = 'gemini-2.5-pro', apiBaseUrl = 'https://generativelanguage.googleapis.com/v1beta' }) {
+  constructor({
+    apiKey,
+    model = process.env.GEMINI_MODEL || 'gemini-3.1-pro-preview',
+    apiBaseUrl = 'https://generativelanguage.googleapis.com/v1beta'
+  }) {
     if (!apiKey) {
       throw new Error('AIReviewerEngine requires an API key (GEMINI_API_KEY or ANTIGRAVITY_API_KEY)');
     }
@@ -39,8 +50,6 @@ export class AIReviewerEngine {
       codingStandards
     });
 
-    const endpoint = `${this.apiBaseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`;
-
     const requestBody = {
       systemInstruction: {
         parts: [{ text: systemInstruction }]
@@ -58,23 +67,37 @@ export class AIReviewerEngine {
       }
     };
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+    const modelsToTry = Array.from(new Set([this.model, ...(config?.aiModels || []), ...DEFAULT_MODELS]));
+    let lastError = null;
 
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`AI Review API request failed (${res.status}): ${errText}`);
+    for (const modelName of modelsToTry) {
+      const endpoint = `${this.apiBaseUrl}/models/${modelName}:generateContent?key=${this.apiKey}`;
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const candidate = json.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!candidate) {
+            throw new Error(`AI Review API (${modelName}) returned empty response candidate`);
+          }
+          console.log(`[Stage B] Successfully generated review analysis using model: ${modelName}`);
+          return validateReviewOutput(candidate);
+        }
+
+        const errText = await res.text();
+        lastError = new Error(`AI Review API request failed for ${modelName} (${res.status}): ${errText}`);
+        console.warn(`[Stage B] Model ${modelName} returned status ${res.status}. Trying fallback model if available...`);
+      } catch (networkErr) {
+        lastError = networkErr;
+        console.warn(`[Stage B] Network error with ${modelName}: ${networkErr.message}. Trying next fallback...`);
+      }
     }
 
-    const json = await res.json();
-    const candidate = json.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidate) {
-      throw new Error('AI Review API returned empty response candidate');
-    }
-
-    return validateReviewOutput(candidate);
+    throw lastError || new Error('All candidate AI models failed.');
   }
 }
