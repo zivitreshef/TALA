@@ -23,6 +23,8 @@ declare module '*/scripts/ai-reviewer/github.js' {
     getPullRequest(prNumber: number): Promise<any>;
     getPullRequestDiff(prNumber: number): Promise<string>;
     getPreviousReviews(prNumber: number): Promise<any>;
+    extractPreviousFindings(previousReviews: any[]): any;
+    compareFindings(previousFindings: any[], currentFindings: any[]): any;
     publishReview(params: any): Promise<any>;
     buildReviewMarkdown(params: any): string;
   }

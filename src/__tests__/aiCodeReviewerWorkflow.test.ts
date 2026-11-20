@@ -220,5 +220,75 @@ describe('Independent AI Code Reviewer System', () => {
       expect(markdown).toContain('1 כשלים');
       expect(markdown).toContain('אישור המיזוג הסופי נותר באחריות המפתח האנושי בלבד');
     });
+
+    it('handles re-review comparison detecting resolved, unresolved, and new findings', () => {
+      const gh = new GitHubClient({
+        token: 'test_token',
+        owner: 'test_owner',
+        repo: 'test_repo'
+      });
+
+      const previousFindings = [
+        { severity: 'HIGH', title: 'Missing Input Sanitization', file: 'src/input.ts', line: 20 },
+        { severity: 'MEDIUM', title: 'Uncached Calculation', file: 'src/calc.ts', line: 55 }
+      ];
+
+      const currentFindings = [
+        // 'Missing Input Sanitization' is removed/resolved
+        { severity: 'MEDIUM', title: 'Uncached Calculation', file: 'src/calc.ts', line: 55 }, // Still unresolved
+        { severity: 'CRITICAL', title: 'New Injection Risk', file: 'src/auth.ts', line: 12 } // Newly introduced
+      ];
+
+      const comparison = gh.compareFindings(previousFindings, currentFindings);
+
+      expect(comparison.hasPreviousReview).toBe(true);
+      expect(comparison.resolved.length).toBe(1);
+      expect(comparison.resolved[0].title).toBe('Missing Input Sanitization');
+      expect(comparison.unresolved.length).toBe(1);
+      expect(comparison.unresolved[0].title).toBe('Uncached Calculation');
+      expect(comparison.newFindings.length).toBe(1);
+      expect(comparison.newFindings[0].title).toBe('New Injection Risk');
+
+      // Verify that markdown report includes re-review tracking section
+      const markdown = gh.buildReviewMarkdown({
+        commitSha: 'fedcba0987654321',
+        assessment: 'CHANGES_REQUESTED',
+        summary: 'נבדקה גרסה מעודכנת של בקשת המשיכה.',
+        findings: currentFindings,
+        architecturalObservations: [],
+        comparison
+      });
+
+      expect(markdown).toContain('מעקב שינויים והשוואה לביקורת קודמת');
+      expect(markdown).toContain('ממצאים שתוקנו ונפתרו**: 1');
+      expect(markdown).toContain('ממצאים שנותרו פתוחים**: 1');
+      expect(markdown).toContain('ממצאים חדשים שהתגלו**: 1');
+      expect(markdown).toContain('Missing Input Sanitization');
+      expect(markdown).toContain('New Injection Risk');
+    });
+
+    it('extracts embedded review payload from previous review markdown', () => {
+      const gh = new GitHubClient({
+        token: 'test_token',
+        owner: 'test_owner',
+        repo: 'test_repo'
+      });
+
+      const embeddedJson = JSON.stringify({
+        commitSha: 'prev1234',
+        findings: [{ severity: 'LOW', title: 'Minor typo', file: 'src/text.ts', line: 5 }]
+      });
+
+      const mockReviews = [
+        { id: 1, commit_id: 'prev0000', body: 'Human reviewer comment' },
+        { id: 2, commit_id: 'prev1234', body: `Some text\n<!-- AI_REVIEW_PAYLOAD: ${embeddedJson} -->` }
+      ];
+
+      const extracted = gh.extractPreviousFindings(mockReviews);
+      expect(extracted).not.toBeNull();
+      expect(extracted.commitSha).toBe('prev1234');
+      expect(extracted.findings.length).toBe(1);
+      expect(extracted.findings[0].title).toBe('Minor typo');
+    });
   });
 });
