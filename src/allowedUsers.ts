@@ -1214,19 +1214,15 @@ export function mergeAdminUsersSafely<T extends { email?: string; [key: string]:
       }
     }
 
-    // Protection 2: Gitignore-style password protection.
-    // Existing user passwords are NEVER overwritten by profile/status/subscription edits.
-    // Passwords only change when explicitly requested (passwordExplicitlyUpdated or in updatedPasswordEmails).
+    // Protection 2: Existing user passwords are NEVER overwritten by profile/status/subscription edits.
+    // Passwords only change when explicitly listed in updatedPasswordEmails.
     const storedHasCreds = Boolean((stored as any).passwordHash && (stored as any).passwordSalt);
-    const isExplicitPasswordUpdate = Boolean(
-      (inc as any).passwordExplicitlyUpdated === true ||
-      updatedPwSet.has(emailKey)
-    );
+    const isExplicitPasswordUpdate = updatedPwSet.has(emailKey);
 
     if (storedHasCreds && !isExplicitPasswordUpdate) {
       merged.passwordHash = (stored as any).passwordHash;
       merged.passwordSalt = (stored as any).passwordSalt;
-      if ('mustChangePassword' in (stored as any)) {
+      if ((stored as any).mustChangePassword !== undefined) {
         merged.mustChangePassword = (stored as any).mustChangePassword;
       }
     }
