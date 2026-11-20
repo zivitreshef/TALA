@@ -1,14 +1,14 @@
 /**
  * Pedagogical AI Analysis Diagnostics & RCA.
  * Pure deterministic functions to classify AI generation failures, provide
- * tailored Hebrew guidance to teachers, and granular RCA reasons to admins.
+ * tailored Hebrew guidance to teachers, and granular static RCA reasons to admins
+ * with strict zero-PII boundaries.
  */
 
 export interface AiDiagnosticParams {
   rawText?: string | null;
   aiResult?: any;
   error?: any;
-  stage?: string;
 }
 
 export interface AiDiagnosticResult {
@@ -16,6 +16,9 @@ export interface AiDiagnosticResult {
   teacherMessage: string;
   category: string;
 }
+
+export const OFFLINE_AI_ERROR_MESSAGE =
+  'אין חיבור לאינטרנט. הפקת יעדים ומטרות באמצעות בינה מלאכותית דורשת חיבור פעיל לרשת. כל הנתונים, התצפיות והטיוטות שרשמת שמורים בבטחה במכשירך ויסונכרנו לענן עם חזרת הרשת.';
 
 const MIN_INPUT_CHARS = 35;
 const MIN_INPUT_WORDS = 6;
@@ -32,15 +35,8 @@ export function isInputTooShortForPedagogicalDerivation(rawText?: string | null)
 }
 
 /**
- * Extracts a concise snippet for RCA logging without exposing sensitive full PII.
- */
-function sanitizeSnippet(text?: unknown, maxLen = 60): string {
-  if (typeof text !== 'string') return '';
-  return text.trim().replace(/\s+/g, ' ').slice(0, maxLen);
-}
-
-/**
  * Diagnoses an AI reverse-engineering or goal generation error.
+ * Guaranteed zero-PII: rcaReason uses strictly static categorization codes.
  */
 export function diagnoseAiAnalysisError(params: AiDiagnosticParams): AiDiagnosticResult {
   const { rawText, aiResult, error } = params;
@@ -51,8 +47,7 @@ export function diagnoseAiAnalysisError(params: AiDiagnosticParams): AiDiagnosti
       return {
         category: 'network',
         rcaReason: 'offline_no_internet',
-        teacherMessage:
-          'אין חיבור לאינטרנט. הפקת יעדים ומטרות באמצעות בינה מלאכותית דורשת חיבור פעיל לרשת. כל הנתונים, התצפיות והטיוטות שרשמת שמורים בבטחה במכשירך ויסונכרנו לענן עם חזרת הרשת.'
+        teacherMessage: OFFLINE_AI_ERROR_MESSAGE
       };
     }
 
@@ -85,7 +80,7 @@ export function diagnoseAiAnalysisError(params: AiDiagnosticParams): AiDiagnosti
 
     return {
       category: errStatus >= 500 ? 'server_error' : 'network',
-      rcaReason: `ai_network_error: ${sanitizeSnippet(errMsg || 'unknown', 50)}`,
+      rcaReason: 'ai_network_error',
       teacherMessage:
         'חלה בעיית תקשורת בעת העיבוד בבינה המלאכותית (שיבוש זמני ברשת או עומס רגעי). הטקסט והתצפיות שרשמת שמורים במלואם במכשירך ויסונכרנו לענן. אנא נסי שוב בעוד מספר רגעים.'
     };
@@ -93,10 +88,9 @@ export function diagnoseAiAnalysisError(params: AiDiagnosticParams): AiDiagnosti
 
   // 2. Input too short check
   if (isInputTooShortForPedagogicalDerivation(rawText)) {
-    const chars = rawText ? rawText.trim().length : 0;
     return {
       category: 'input_too_short',
-      rcaReason: `ai_input_too_short (chars=${chars})`,
+      rcaReason: 'ai_input_too_short',
       teacherMessage:
         'התיאור שהוזן קצר מדי מכדי לגזור ממנו מטרות פדגוגיות. אנא הוסיפי עוד 1–2 משפטים המתארים תפקוד, קשיים או חוזקות של התלמיד/ה, ולחצי שוב.'
     };
@@ -106,27 +100,32 @@ export function diagnoseAiAnalysisError(params: AiDiagnosticParams): AiDiagnosti
   if (aiResult && typeof aiResult.raw === 'string') {
     const rawOutput = aiResult.raw.trim();
 
+    // Strip markdown code fences if present (e.g. ```json ... ```)
+    const cleanOutput = rawOutput
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+
     // Check if the output has no JSON open bracket at all -> conversational reply / refusal
-    if (!rawOutput.includes('{')) {
-      const snippet = sanitizeSnippet(rawOutput, 60);
+    if (!cleanOutput.includes('{')) {
       return {
         category: 'conversational_response',
-        rcaReason: snippet ? `ai_conversational_reply: ${snippet}` : 'ai_conversational_reply',
+        rcaReason: 'ai_conversational_reply',
         teacherMessage:
           'הבינה המלאכותית זקוקה למידע תפקודי ממוקד יותר על מנת לנסח יעדים. כדאי להוסיף דוגמה לפעילות, קושי ספציפי או תצפית מהשטח, וללחוץ שוב.'
       };
     }
 
     // Check if output begins with JSON open bracket or contains one, but is truncated before closing
-    const hasOpenBrace = rawOutput.includes('{');
-    const endsWithClose = /(\}|\])\s*$/.test(rawOutput);
-    const openCount = (rawOutput.match(/\{/g) || []).length;
-    const closeCount = (rawOutput.match(/\}/g) || []).length;
+    const hasOpenBrace = cleanOutput.includes('{');
+    const endsWithClose = /(\}|\])\s*$/.test(cleanOutput);
+    const openCount = (cleanOutput.match(/\{/g) || []).length;
+    const closeCount = (cleanOutput.match(/\}/g) || []).length;
 
     if (hasOpenBrace && (!endsWithClose || openCount > closeCount)) {
       return {
         category: 'output_truncated',
-        rcaReason: `ai_output_truncated (rawLength=${rawOutput.length})`,
+        rcaReason: 'ai_output_truncated',
         teacherMessage:
           'התשובה מהבינה המלאכותית נקטעה באמצע עקב עומס או מגבלת אורך. כל הנתונים שמורים – לחצי על "נסי שוב" כדי להפיק מחדש את הדוח.'
       };

@@ -1,9 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   isInputTooShortForPedagogicalDerivation,
-  diagnoseAiAnalysisError
+  diagnoseAiAnalysisError,
+  OFFLINE_AI_ERROR_MESSAGE
 } from '../domain/aiAnalysisDiagnostics';
 import { HEALTH_CATEGORY_LABELS_HE } from '../domain/healthEvents';
+import { callAiJson } from '../services/aiJsonClient';
+import * as aiProxyClient from '../services/aiProxyClient';
 
 describe('aiAnalysisDiagnostics', () => {
   describe('isInputTooShortForPedagogicalDerivation', () => {
@@ -57,37 +60,40 @@ describe('aiAnalysisDiagnostics', () => {
       expect(diag.teacherMessage).toContain('עומס בקשות רגעי');
     });
 
-    it('diagnoses generic network/server errors with sanitized message', () => {
+    it('diagnoses generic network/server errors with zero PII in static RCA code', () => {
       const diag = diagnoseAiAnalysisError({
         rawText: validRawText,
-        error: { status: 500, message: 'Internal Server Error' }
+        error: { status: 500, message: 'Internal Server Error (Student: Dan)' }
       });
       expect(diag.category).toBe('server_error');
-      expect(diag.rcaReason).toContain('ai_network_error: Internal Server Error');
+      expect(diag.rcaReason).toBe('ai_network_error');
+      expect(diag.rcaReason).not.toContain('Dan');
       expect(diag.teacherMessage).toContain('חלה בעיית תקשורת');
     });
 
-    it('diagnoses short input text when no runtime error occurred', () => {
+    it('diagnoses short input text with static RCA code avoiding any text leak', () => {
       const shortText = 'דניאל מפריע';
       const diag = diagnoseAiAnalysisError({
         rawText: shortText,
         aiResult: { raw: 'לא ניתן לנסח מטרות' }
       });
       expect(diag.category).toBe('input_too_short');
-      expect(diag.rcaReason).toBe('ai_input_too_short (chars=11)');
+      expect(diag.rcaReason).toBe('ai_input_too_short');
       expect(diag.teacherMessage).toContain('התיאור שהוזן קצר מדי');
       expect(diag.teacherMessage).toContain('1–2 משפטים');
     });
 
-    it('diagnoses conversational model responses (model returned text without JSON)', () => {
+    it('diagnoses conversational model responses with static code avoiding any student PII leak', () => {
       const diag = diagnoseAiAnalysisError({
         rawText: validRawText,
         aiResult: {
-          raw: 'לא ניתן לגזור תוכנית עבודה מלאה מכיוון שחסר מידע על תחום השפה והתקשורת.'
+          raw: 'שלום, לגבי דניאל כהן לא ניתן לגזור תוכנית עבודה מלאה מכיוון שחסר מידע.'
         }
       });
       expect(diag.category).toBe('conversational_response');
-      expect(diag.rcaReason).toContain('ai_conversational_reply: לא ניתן לגזור תוכנית עבודה מלאה');
+      // Strictly static - zero leak of student name or raw snippet
+      expect(diag.rcaReason).toBe('ai_conversational_reply');
+      expect(diag.rcaReason).not.toContain('דניאל');
       expect(diag.teacherMessage).toContain('הבינה המלאכותית זקוקה למידע תפקודי ממוקד יותר');
     });
 
@@ -99,8 +105,32 @@ describe('aiAnalysisDiagnostics', () => {
         }
       });
       expect(diag.category).toBe('output_truncated');
-      expect(diag.rcaReason).toContain('ai_output_truncated');
+      expect(diag.rcaReason).toBe('ai_output_truncated');
       expect(diag.teacherMessage).toContain('נקטעה באמצע עקב עומס או מגבלת אורך');
+    });
+
+    it('correctly handles markdown fences around complete JSON without falsely classifying as truncated', () => {
+      const fencedComplete = '```json\n{"goals": [{"title": "מטרה ראשונה"}], "recommendations": "המלצה"}\n```';
+      const diag = diagnoseAiAnalysisError({
+        rawText: validRawText,
+        aiResult: {
+          raw: fencedComplete
+        }
+      });
+      // Complete JSON wrapped in markdown fences should NOT be output_truncated
+      expect(diag.category).not.toBe('output_truncated');
+    });
+
+    it('correctly classifies markdown fenced incomplete JSON as output_truncated', () => {
+      const fencedIncomplete = '```json\n{"goals": [{"title": "מטרה ראשונה"';
+      const diag = diagnoseAiAnalysisError({
+        rawText: validRawText,
+        aiResult: {
+          raw: fencedIncomplete
+        }
+      });
+      expect(diag.category).toBe('output_truncated');
+      expect(diag.rcaReason).toBe('ai_output_truncated');
     });
 
     it('diagnoses malformed JSON syntax (has braces but invalid syntax)', () => {
@@ -134,6 +164,22 @@ describe('aiAnalysisDiagnostics', () => {
       expect(diag.rcaReason).toBe('ai_empty_response');
       expect(diag.teacherMessage).toContain('תשובה ריקה');
     });
+
+    it('returns consistent OFFLINE_AI_ERROR_MESSAGE when offline', () => {
+      const originalOnLine = navigator.onLine;
+      try {
+        Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+        const diag = diagnoseAiAnalysisError({
+          rawText: validRawText,
+          error: new Error('Failed to fetch')
+        });
+        expect(diag.category).toBe('network');
+        expect(diag.rcaReason).toBe('offline_no_internet');
+        expect(diag.teacherMessage).toBe(OFFLINE_AI_ERROR_MESSAGE);
+      } finally {
+        Object.defineProperty(navigator, 'onLine', { value: originalOnLine, configurable: true });
+      }
+    });
   });
 
   describe('HEALTH_CATEGORY_LABELS_HE taxonomy', () => {
@@ -160,6 +206,56 @@ describe('aiAnalysisDiagnostics', () => {
           expect(label).not.toMatch(/\([a-zA-Z\s]+\)/);
         }
       });
+    });
+  });
+
+  describe('callAiJson throwOnError option', () => {
+    it('returns null on failure by default for backward compatibility', async () => {
+      const spy = vi.spyOn(aiProxyClient, 'callAiProxyEndpoint').mockRejectedValueOnce(new Error('timeout'));
+      const result = await callAiJson('prompt', {});
+      expect(result).toBeNull();
+      spy.mockRestore();
+    });
+
+    it('rethrows error when throwOnError is true to enable granular RCA', async () => {
+      const timeoutError = new Error('AI request timed out');
+      const spy = vi.spyOn(aiProxyClient, 'callAiProxyEndpoint').mockRejectedValueOnce(timeoutError);
+      await expect(callAiJson('prompt', {}, { throwOnError: true })).rejects.toThrow('AI request timed out');
+      spy.mockRestore();
+    });
+  });
+
+  describe('Admin RCA Console Integration', () => {
+    it('renders granular rcaReason in SystemHealthPanel table', async () => {
+      const { default: SystemHealthPanel } = await import('../components/modals/SystemHealthPanel');
+      const { renderToStaticMarkup } = await import('react-dom/server');
+      const React = await import('react');
+
+      const mockEvent = {
+        kind: 'ai_client_processing_error',
+        operation: 'reverseEngineerFullReport',
+        category: 'conversational_response',
+        status: 0,
+        message: 'No JSON returned',
+        userEmail: 'teacher@test.com',
+        createdAtMs: Date.now() - 500,
+        createdAtIso: new Date().toISOString(),
+        reason: 'ai_conversational_reply'
+      };
+
+      const html = renderToStaticMarkup(
+        React.createElement(SystemHealthPanel, {
+          healthEvents: [mockEvent as any],
+          healthReviewedMs: 0,
+          cloudSyncState: { connected: true, status: 'synced' },
+          onMarkHealthReviewed: vi.fn(),
+          onClearHealthEvents: vi.fn()
+        })
+      );
+
+      expect(html).toContain('ai_conversational_reply');
+      expect(html).toContain('תשובה שיחתית ללא מטרות');
+      expect(html).toContain('system-health-rca-reason');
     });
   });
 });
