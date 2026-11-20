@@ -16,6 +16,16 @@ declare module '*/scripts/ai-reviewer/prompts.js' {
   export function sanitizeUntrusted(text: string): string;
 }
 
+declare module '*/scripts/ai-reviewer/reviewer.js' {
+  export class AIReviewerEngine {
+    constructor(options: { apiKey: string; model?: string; apiBaseUrl?: string });
+    apiKey: string;
+    model: string;
+    apiBaseUrl: string;
+    reviewPullRequest(params: any): Promise<any>;
+  }
+}
+
 declare module '*/scripts/ai-reviewer/github.js' {
   export class GitHubClient {
     constructor(options: { token: string; owner: string; repo: string; apiUrl?: string });
