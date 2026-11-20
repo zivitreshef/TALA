@@ -1,0 +1,102 @@
+name: Independent AI Code Reviewer
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+        type: number
+      commit_sha:
+        description: 'Exact commit SHA to review'
+        required: true
+        type: string
+
+concurrency:
+  # Prevent duplicate or concurrent reviews for the same PR and commit
+  group: ai-reviewer-${{ github.event.pull_request.number || github.event.inputs.pr_number }}-${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }}
+  cancel-in-progress: true
+
+jobs:
+  # =========================================================================
+  # STAGE A: Untrusted Validation (Runs tests in unprivileged environment)
+  # =========================================================================
+  stage-a-validation:
+    name: Stage A - Untrusted Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout pull request code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }}
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies (clean)
+        run: npm ci
+
+      - name: Execute tests and generate validation artifact
+        run: node scripts/ai-reviewer/cli.js --stage validate
+
+      - name: Upload test report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }}
+          path: test-report.json
+          retention-days: 1
+          if-no-files-found: ignore
+
+  # =========================================================================
+  # STAGE B: Trusted AI Review (Runs with secrets only in trusted context)
+  # =========================================================================
+  stage-b-review:
+    name: Stage B - Trusted AI Review
+    needs: [stage-a-validation]
+    # For pull_request events, execute Stage B only if from same repo (not an untrusted fork)
+    # Untrusted forks are handled safely via workflow_dispatch or separate privileged gate
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout trusted base repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download test report artifact from Stage A
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: test-report-${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }}
+          path: ./stage-a-artifacts
+
+      - name: Execute Independent Reviewer Agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTIGRAVITY_API_KEY: ${{ secrets.ANTIGRAVITY_API_KEY }}
+        run: |
+          REPORT_ARG=""
+          if [ -f "./stage-a-artifacts/test-report.json" ]; then
+            REPORT_ARG="--report ./stage-a-artifacts/test-report.json"
+          fi
+          node scripts/ai-reviewer/cli.js --stage review \
+            --pr ${{ github.event.pull_request.number || github.event.inputs.pr_number }} \
+            --commit ${{ github.event.pull_request.head.sha || github.event.inputs.commit_sha }} \
+            $REPORT_ARG
