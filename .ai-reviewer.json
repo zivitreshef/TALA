@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/schema",
+  "projectLanguage": "typescript",
+  "technologyStack": "React, Vite, TypeScript, Vitest, Firebase Firestore",
+  "architectureDocs": [
+    "GEMINI.md",
+    "AGENTS.md",
+    "docs/adr/"
+  ],
+  "codingStandards": [
+    "AGENTS.md",
+    "GEMINI.md"
+  ],
+  "securityRequirements": [
+    "Zero-trust client inputs",
+    "Binary magic-byte inspection for uploads",
+    "Sanitize all inputs against XSS and injection",
+    "Student PII masking and privacy controls",
+    "No secret exposure in client bundles or logs"
+  ],
+  "reviewFocusAreas": [
+    "Functional correctness",
+    "Requirement compliance",
+    "Security vulnerabilities",
+    "Data integrity and Firestore consistency",
+    "Hebrew RTL formatting and zero English in parentheses",
+    "Performance and minimal re-renders",
+    "Test coverage for all new/modified logic"
+  ],
+  "severityThresholds": {
+    "blocking": ["CRITICAL", "HIGH"],
+    "warning": ["MEDIUM"],
+    "advisory": ["LOW", "INFO"]
+  },
+  "testCommands": [
+    "npm run test:run"
+  ],
+  "excludedPaths": [
+    "node_modules/**",
+    "dist/**",
+    "package-lock.json",
+    "**/*.lock",
+    "graphify-out/**",
+    ".gemini/**",
+    ".superpowers/**",
+    "scratch/**"
+  ]
+}
