@@ -1,10 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
-import { mergeAdminUsersSafely, createPasswordCredentials } from '../allowedUsers';
-import { saveAllowedUsersToCloud } from '../firebaseBackend';
+import { describe, it, expect } from 'vitest';
+import { mergeAdminUsersSafely, createPasswordCredentials, reconcileCloudUsersWithLocal } from '../allowedUsers';
 import fs from 'fs';
 import path from 'path';
 
-describe('Explicit Password Update and Overwrite Protection Suite (v3.0.88)', () => {
+describe('Password overwrite protection', () => {
   const adminUser: any = {
     id: 'u_admin_1',
     email: 'zivit.reshef@gmail.com',
@@ -55,7 +54,7 @@ describe('Explicit Password Update and Overwrite Protection Suite (v3.0.88)', ()
     expect(mergedMichal?.passwordHash).not.toBe(defaultCreds.passwordHash);
   });
 
-  it('Finding 1 regression guard: successive updates from the same tab never resurrect an overwrite', () => {
+  it('does not let a previous explicit password update leak into a later profile edit from the same tab', () => {
     const stored = [adminUser, teacherWithCustomPw];
 
     // 1st update: intentional password change via updatedPasswordEmails
@@ -99,31 +98,80 @@ describe('Explicit Password Update and Overwrite Protection Suite (v3.0.88)', ()
     expect(finalMichal?.passwordSalt).toBe(cloudLatestCreds.passwordSalt);
   });
 
-  it('Finding 2 regression guard: saveAllowedUsersToCloud passes updatedPasswordUserEmails during cloud healing', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200 });
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch;
+  describe('reconcileCloudUsersWithLocal (cloud password heal)', () => {
+    const me = 'michal@school.org.il';
+    const defaultCloud = { ...teacherWithCustomPw, ...createPasswordCredentials('TALA2026', 'cloud_default_salt') };
+    const base = { nowMs: 1_000_000, recentLocalUpdates: new Map() };
 
-    try {
-      // Simulating cloud healing in App.tsx:
-      const currentUserEmail = 'teacher@tala.edu.il';
-      await saveAllowedUsersToCloud([adminUser], {
-        updatedPasswordUserEmails: [currentUserEmail]
+    it('heals the signed-in user default cloud password with the local custom one and reports the email', () => {
+      const { users, healedPasswordEmails } = reconcileCloudUsersWithLocal({
+        ...base,
+        cloudUsers: [adminUser, defaultCloud],
+        localUsers: [adminUser, teacherWithCustomPw],
+        currentUserEmail: '  Michal@School.org.il '
       });
+      const healed = users.find((u) => u.email === me);
+      expect(healed?.passwordHash).toBe(teacherWithCustomPw.passwordHash);
+      expect(healed?.passwordSalt).toBe(teacherWithCustomPw.passwordSalt);
+      expect(healed?.lockedOut).toBe(false);
+      expect(healed?.failedLoginAttempts).toBe(0);
+      expect(healedPasswordEmails).toEqual([me]);
+    });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('talaConfigWrite'),
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('"updatedPasswordUserEmails":["teacher@tala.edu.il"]')
-        })
-      );
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    it('never heals another user password', () => {
+      const { users, healedPasswordEmails } = reconcileCloudUsersWithLocal({
+        ...base,
+        cloudUsers: [adminUser, defaultCloud],
+        localUsers: [adminUser, teacherWithCustomPw],
+        currentUserEmail: adminUser.email
+      });
+      expect(users.find((u) => u.email === me)?.passwordHash).toBe(defaultCloud.passwordHash);
+      expect(healedPasswordEmails).toEqual([]);
+    });
+
+    it('does not heal when the cloud password is already custom or the local one is default', () => {
+      const cloudCustom = reconcileCloudUsersWithLocal({
+        ...base,
+        cloudUsers: [{ ...teacherWithCustomPw, ...createPasswordCredentials('Other!', 's') }],
+        localUsers: [teacherWithCustomPw],
+        currentUserEmail: me
+      });
+      expect(cloudCustom.healedPasswordEmails).toEqual([]);
+
+      const localDefault = reconcileCloudUsersWithLocal({
+        ...base,
+        cloudUsers: [defaultCloud],
+        localUsers: [{ ...teacherWithCustomPw, ...createPasswordCredentials('1234', 's') }],
+        currentUserEmail: me
+      });
+      expect(localDefault.healedPasswordEmails).toEqual([]);
+      expect(localDefault.users[0].passwordHash).toBe(defaultCloud.passwordHash);
+    });
+
+    it('does nothing without a signed-in user', () => {
+      const { users, healedPasswordEmails } = reconcileCloudUsersWithLocal({
+        ...base,
+        cloudUsers: [defaultCloud],
+        localUsers: [teacherWithCustomPw],
+        currentUserEmail: null
+      });
+      expect(users[0]).toBe(defaultCloud);
+      expect(healedPasswordEmails).toEqual([]);
+    });
+
+    it('keeps a local edit made within the recent window and drops it after', () => {
+      const recentLocalUpdates = new Map([[me, { timeMs: 1_000_000, user: { ...defaultCloud, title: 'עריכה מקומית' } }]]);
+      const args = { cloudUsers: [defaultCloud], localUsers: [teacherWithCustomPw], currentUserEmail: adminUser.email, recentLocalUpdates };
+
+      const inside = reconcileCloudUsersWithLocal({ ...args, nowMs: 1_000_000 + 14_999 });
+      expect(inside.users[0].title).toBe('עריכה מקומית');
+
+      const after = reconcileCloudUsersWithLocal({ ...args, nowMs: 1_000_000 + 15_000 });
+      expect(after.users[0].title).toBe(defaultCloud.title);
+    });
   });
 
-  it('Finding 3 regression guard: preserves mustChangePassword consistently when defined', () => {
+  it('preserves stored mustChangePassword on a non-password edit', () => {
     const storedUserMustChange = {
       ...teacherWithCustomPw,
       mustChangePassword: true
@@ -140,6 +188,11 @@ describe('Explicit Password Update and Overwrite Protection Suite (v3.0.88)', ()
     const merged = result.find((u) => u.email === 'michal@school.org.il');
     // Stored mustChangePassword is preserved when not explicitly reset
     expect(merged?.mustChangePassword).toBe(true);
+
+    // Stored key present but undefined: incoming value wins (matches server `!==undefined` check)
+    const storedUndefined = { ...teacherWithCustomPw, mustChangePassword: undefined };
+    const r2 = mergeAdminUsersSafely([adminUser, storedUndefined], [adminUser, { ...teacherWithCustomPw, mustChangePassword: true }], [], []);
+    expect(r2.find((u) => u.email === 'michal@school.org.il')?.mustChangePassword).toBe(true);
   });
 
   it('ignores incoming passwords when an admin resets daily AI quota', () => {
