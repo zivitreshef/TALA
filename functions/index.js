@@ -102,15 +102,22 @@ const SELF_FIELDS=["passwordHash","passwordSalt","mustChangePassword","mustSignN
 const OTHER_FIELDS=["dismissedSharedReportIds"]; // any signed-in user may re-notify a colleague
 const pick=(o,keys)=>{const r={};for(const k of keys)if(o&&k in o)r[k]=o[k];return r;};
 const lc=(s)=>String(s||"").trim().toLowerCase();
-function mergeAdminUsersSafely(storedUsers,incomingUsers,deletedEmails=[]){
+function mergeAdminUsersSafely(storedUsers,incomingUsers,deletedEmails=[],updatedPasswordEmails=[]){
   const deletedSet=new Set((deletedEmails||[]).map((e)=>lc(e)));
+  const updatedPwSet=new Set((updatedPasswordEmails||[]).map((e)=>lc(e)));
   const result=[];const handledEmails=new Set();
   for(const inc of incomingUsers||[]){
     if(!inc||typeof inc.email!=="string")continue;
     const emailKey=lc(inc.email);
     if(deletedSet.has(emailKey))continue;
     const stored=(storedUsers||[]).find((s)=>s&&lc(s.email)===emailKey);
-    if(!stored){result.push(inc);handledEmails.add(emailKey);continue;}
+    if(!stored){
+      const cleanNew=Object.assign({},inc);
+      delete cleanNew.passwordExplicitlyUpdated;
+      result.push(cleanNew);
+      handledEmails.add(emailKey);
+      continue;
+    }
     const merged=Object.assign({},stored,inc);
     const storedIsPaid=stored.subscriptionType==="annual_paid"||stored.isTrialUser===false;
     const incomingIsTrial=inc.isTrialUser===true&&inc.subscriptionType!=="annual_paid";
@@ -129,10 +136,16 @@ function mergeAdminUsersSafely(storedUsers,incomingUsers,deletedEmails=[]){
         merged.trialExpiresAt=null;merged.trialDays=null;
       }
     }
-    const storedHasCustomPw=Boolean(stored.passwordHash&&stored.passwordSalt);
-    if(storedHasCustomPw&&!inc.passwordHash){
-      merged.passwordHash=stored.passwordHash;merged.passwordSalt=stored.passwordSalt;
+    const storedHasCreds=Boolean(stored.passwordHash&&stored.passwordSalt);
+    const isExplicitPasswordUpdate=Boolean(inc.passwordExplicitlyUpdated===true||updatedPwSet.has(emailKey));
+    if(storedHasCreds&&!isExplicitPasswordUpdate){
+      merged.passwordHash=stored.passwordHash;
+      merged.passwordSalt=stored.passwordSalt;
+      if(stored.mustChangePassword!==undefined){
+        merged.mustChangePassword=stored.mustChangePassword;
+      }
     }
+    delete merged.passwordExplicitlyUpdated;
     if(stored.lockedOut===false&&inc.lockedOut===true&&(Number(inc.failedLoginAttempts)||0)<5){
       merged.lockedOut=false;merged.failedLoginAttempts=0;
     }
@@ -318,7 +331,8 @@ async function handleTalaConfigWrite(req,res){
         const pa=sub.find((u)=>u&&lc(u.email)===PRIMARY_ADMIN);
         if(!pa||pa.role!=="admin"||pa.active===false||sub.some((u)=>!u||typeof u.email!=="string"))throw Object.assign(new Error("Bad request"),{status:400});
         const deletedEmails=Array.isArray(body.deletedUserEmails)?body.deletedUserEmails:[];
-        const merged=mergeAdminUsersSafely(stored,sub,deletedEmails);
+        const updatedPasswordEmails=Array.isArray(body.updatedPasswordUserEmails)?body.updatedPasswordUserEmails:[];
+        const merged=mergeAdminUsersSafely(stored,sub,deletedEmails,updatedPasswordEmails);
         tx.set(usersRef,{users:merged,updatedAt:new Date().toISOString()});published={users:merged,prev:stored,full:true};return;
       }
       if(!me)throw Object.assign(new Error("Forbidden"),{status:403});

@@ -1161,10 +1161,12 @@ export function sortUsersList<T extends Partial<AllowedUserRecord>>(
 export function mergeAdminUsersSafely<T extends { email?: string; [key: string]: any }>(
   storedUsers: T[],
   incomingUsers: T[],
-  deletedEmails: string[] = []
+  deletedEmails: string[] = [],
+  updatedPasswordEmails: string[] = []
 ): T[] {
   const normalizeEmail = (s: any) => String(s || '').trim().toLowerCase();
   const deletedSet = new Set((deletedEmails || []).map((e) => normalizeEmail(e)));
+  const updatedPwSet = new Set((updatedPasswordEmails || []).map((e) => normalizeEmail(e)));
 
   const result: T[] = [];
   const handledEmails = new Set<string>();
@@ -1178,7 +1180,9 @@ export function mergeAdminUsersSafely<T extends { email?: string; [key: string]:
     const stored = (storedUsers || []).find((s) => s && normalizeEmail(s.email) === emailKey);
     if (!stored) {
       // New user being created by admin
-      result.push(inc);
+      const cleanNew = { ...inc };
+      delete cleanNew.passwordExplicitlyUpdated;
+      result.push(cleanNew);
       handledEmails.add(emailKey);
       continue;
     }
@@ -1210,12 +1214,23 @@ export function mergeAdminUsersSafely<T extends { email?: string; [key: string]:
       }
     }
 
-    // Protection 2: Never overwrite a custom password with default TALA2026 or empty
-    const storedHasCustomPw = Boolean((stored as any).passwordHash && (stored as any).passwordSalt);
-    if (storedHasCustomPw && !(inc as any).passwordHash) {
+    // Protection 2: Gitignore-style password protection.
+    // Existing user passwords are NEVER overwritten by profile/status/subscription edits.
+    // Passwords only change when explicitly requested (passwordExplicitlyUpdated or in updatedPasswordEmails).
+    const storedHasCreds = Boolean((stored as any).passwordHash && (stored as any).passwordSalt);
+    const isExplicitPasswordUpdate = Boolean(
+      (inc as any).passwordExplicitlyUpdated === true ||
+      updatedPwSet.has(emailKey)
+    );
+
+    if (storedHasCreds && !isExplicitPasswordUpdate) {
       merged.passwordHash = (stored as any).passwordHash;
       merged.passwordSalt = (stored as any).passwordSalt;
+      if ('mustChangePassword' in (stored as any)) {
+        merged.mustChangePassword = (stored as any).mustChangePassword;
+      }
     }
+    delete merged.passwordExplicitlyUpdated;
 
     // Protection 3: Never re-lock a user who was unlocked in cloud unless incoming explicitly has 5+ failed attempts
     if ((stored as any).lockedOut === false && (inc as any).lockedOut === true && (Number((inc as any).failedLoginAttempts) || 0) < 5) {

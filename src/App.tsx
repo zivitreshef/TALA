@@ -959,6 +959,11 @@ export default function App() {
             };
           }
 
+          const isCurrentUser = Boolean(
+            currentUser?.email &&
+            emailKey === (currentUser.email || '').trim().toLowerCase()
+          );
+
           const cuIsDefaultPassword =
             verifyUserPassword(cu, 'TALA2026') || verifyUserPassword(cu, '1234');
           const luHasCustomPassword =
@@ -968,7 +973,8 @@ export default function App() {
             !verifyUserPassword(lu, 'TALA2026') &&
             !verifyUserPassword(lu, '1234');
 
-          if (luHasCustomPassword && cuIsDefaultPassword && lu.passwordHash !== cu.passwordHash) {
+          // Only heal local password if this is the currently authenticated user; never overwrite other users' credentials
+          if (isCurrentUser && luHasCustomPassword && cuIsDefaultPassword && lu.passwordHash !== cu.passwordHash) {
             needsCloudHeal = true;
             return {
               ...cu,
@@ -1360,7 +1366,12 @@ export default function App() {
     setAllowedUsers(hashedList);
     saveAllowedUsers(hashedList as any);
     const deletedUserEmails = editMeta?.deletedUserEmail ? [editMeta.deletedUserEmail] : [];
-    void saveAllowedUsersToCloud(hashedList as any, { deletedUserEmails });
+    const updatedPasswordUserEmails = editMeta?.updatedPasswordUserEmail
+      ? [editMeta.updatedPasswordUserEmail]
+      : Array.isArray(editMeta?.updatedPasswordUserEmails)
+      ? editMeta.updatedPasswordUserEmails
+      : [];
+    void saveAllowedUsersToCloud(hashedList as any, { deletedUserEmails, updatedPasswordUserEmails });
 
     // Cascade clean deletion: if a teacher was removed, also permanently purge their students and cloud storage files
     if (editMeta?.deletedUserEmail) {
@@ -1654,9 +1665,9 @@ export default function App() {
     const updatedList = allowedUsers.map((u) => {
       if (u.email.toLowerCase() !== currentUser.email.toLowerCase()) return u;
       const { accessCode: _removed, ...rest } = u;
-      return { ...rest, ...creds, mustChangePassword: false };
+      return { ...rest, ...creds, mustChangePassword: false, passwordExplicitlyUpdated: true };
     });
-    handleUpdateAllowedUsers(updatedList);
+    handleUpdateAllowedUsers(updatedList, { updatedPasswordUserEmail: currentUser.email.toLowerCase() });
     const { accessCode: _removedCurrent, ...restCurrent } = currentUser;
     const updatedCurrent = {
       ...restCurrent,
