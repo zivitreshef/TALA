@@ -166,9 +166,14 @@ describe('aiAnalysisDiagnostics', () => {
     });
 
     it('returns consistent OFFLINE_AI_ERROR_MESSAGE when offline', () => {
-      const originalOnLine = navigator.onLine;
+      const hadNavigator = typeof globalThis.navigator !== 'undefined';
+      const originalOnLine = hadNavigator ? globalThis.navigator.onLine : undefined;
       try {
-        Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+        if (!hadNavigator) {
+          (globalThis as any).navigator = { onLine: false };
+        } else {
+          Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
+        }
         const diag = diagnoseAiAnalysisError({
           rawText: validRawText,
           error: new Error('Failed to fetch')
@@ -177,7 +182,11 @@ describe('aiAnalysisDiagnostics', () => {
         expect(diag.rcaReason).toBe('offline_no_internet');
         expect(diag.teacherMessage).toBe(OFFLINE_AI_ERROR_MESSAGE);
       } finally {
-        Object.defineProperty(navigator, 'onLine', { value: originalOnLine, configurable: true });
+        if (!hadNavigator) {
+          delete (globalThis as any).navigator;
+        } else if (originalOnLine !== undefined) {
+          Object.defineProperty(globalThis.navigator, 'onLine', { value: originalOnLine, configurable: true });
+        }
       }
     });
   });
