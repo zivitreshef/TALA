@@ -348,9 +348,16 @@ export default function SystemHealthPanel({
                         {e.userEmail || '—'}
                       </td>
                       <td style={{ padding: '6px 8px' }}>{HEALTH_KIND_LABELS_HE[e.kind as HealthEventKind] || e.kind}</td>
-                      <td style={{ padding: '6px 8px' }}>{HEALTH_CATEGORY_LABELS_HE[e.category] || e.category}</td>
+                      <td style={{ padding: '6px 8px' }}>
+                        <div style={{ fontWeight: 600 }}>{HEALTH_CATEGORY_LABELS_HE[e.category] || e.category}</div>
+                        {e.reason && (
+                          <div style={{ fontSize: '10.5px', color: '#4338ca', fontFamily: 'monospace', marginTop: '2px' }} data-testid="system-health-rca-reason">
+                            {e.reason}
+                          </div>
+                        )}
+                      </td>
                       <td style={{ padding: '6px 8px', color: '#64748b' }}>
-                        {[e.status ? `HTTP ${e.status}` : '', e.stage ? `שלב: ${e.stage}` : '', e.reason || '', e.message || '']
+                        {[e.status ? `HTTP ${e.status}` : '', e.stage ? `שלב: ${e.stage}` : '', e.message || '']
                           .filter(Boolean)
                           .join(' • ')}
                       </td>

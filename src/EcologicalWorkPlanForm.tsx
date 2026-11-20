@@ -151,6 +151,11 @@ import { usageTelemetryService } from './services/usageTelemetryService';
 import { TELEMETRY_EVENTS } from './domain/telemetryTaxonomy';
 import { reportHealthEvent } from './services/healthTelemetry';
 import { HEALTH_EVENT_KINDS } from './domain/healthEvents';
+import {
+  diagnoseAiAnalysisError,
+  isInputTooShortForPedagogicalDerivation,
+  OFFLINE_AI_ERROR_MESSAGE
+} from './domain/aiAnalysisDiagnostics';
 
 // NEW: Firebase Functions imports
 import {
@@ -1510,10 +1515,14 @@ export default function EcologicalWorkPlanForm({
 
   // Helper to call Gemini API via secure backend proxy
   const callGeminiJson = (promptText: any) =>
-    callAiJson(promptText, {
-      ...formData,
-      privacyMode: userPreferences?.defaultPrivacyMode || formData.privacyMode || 'full_name'
-    });
+    callAiJson(
+      promptText,
+      {
+        ...formData,
+        privacyMode: userPreferences?.defaultPrivacyMode || formData.privacyMode || 'full_name'
+      },
+      { throwOnError: true }
+    );
 
   
   // === AI Reverse Engineering from Raw Data Text to Full Formal Report ===
@@ -1610,9 +1619,24 @@ export default function EcologicalWorkPlanForm({
     }
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      setReverseEngineerError(
-        'אין חיבור לאינטרנט. הפקת יעדים ומטרות באמצעות בינה מלאכותית דורשת חיבור פעיל לרשת. כל הנתונים, התצפיות והטיוטות שרשמת שמורים בבטחה במכשירך ויסונכרנו לענן עם חזרת הרשת.'
-      );
+      // אין חיבור לאינטרנט. הפקת יעדים ומטרות באמצעות בינה מלאכותית דורשת חיבור פעיל לרשת
+      setReverseEngineerError(OFFLINE_AI_ERROR_MESSAGE);
+      return;
+    }
+
+    if (isInputTooShortForPedagogicalDerivation(rawText)) {
+      const diagnostic = diagnoseAiAnalysisError({ rawText });
+      setReverseEngineerError(diagnostic.teacherMessage);
+      reportHealthEvent({
+        kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
+        operation: 'reverseEngineerFullReport',
+        extra: {
+          reason: diagnostic.rcaReason,
+          stage: currentStage,
+          promptLength: rawText.length,
+          category: diagnostic.category
+        }
+      });
       return;
     }
 
@@ -1624,6 +1648,30 @@ export default function EcologicalWorkPlanForm({
         teacherFreeText: combinedText
       }));
     }
+
+    // הודעת הרגעה למורה במקרה של שיבוש זמני בחיבור הרשת או עומס שרתים
+    const handleAiFailure = (err?: unknown, parsedResult?: unknown) => {
+      const diagnostic = diagnoseAiAnalysisError({
+        rawText,
+        aiResult: parsedResult,
+        error: err
+      });
+
+      reportHealthEvent({
+        kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
+        operation: 'reverseEngineerFullReport',
+        error: (err as any) || null,
+        extra: {
+          reason: diagnostic.rcaReason,
+          stage: currentStage,
+          promptLength: rawText ? rawText.length : 0,
+          errorMessage: err ? (err as any)?.message || String(err) : undefined,
+          category: diagnostic.category
+        }
+      });
+
+      setReverseEngineerError(diagnostic.teacherMessage);
+    };
 
     setIsReverseEngineering(true);
     setReverseEngineerBanner('');
@@ -1906,36 +1954,10 @@ ${textToUse}
       }
     }
 
-    // If AI result was empty or malformed, provide transparent notice without silently falling back to low-quality rules
-    reportHealthEvent({
-      kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
-      operation: 'reverseEngineerFullReport',
-      extra: {
-        reason: aiParsedResult ? (aiParsedResult.raw ? 'ai_raw_output_not_json' : 'ai_missing_goals') : 'ai_empty_response',
-        stage: currentStage,
-        promptLength: rawText.length,
-        category: aiParsedResult ? 'empty_response' : 'unknown'
-      }
-    });
-
-    setReverseEngineerError(
-      'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור הרשת או עומס רגעי). הטקסט והתצפיות שרשמת שמורים במלואם במכשירך ויסונכרנו לענן. אנא נסי שוב בעוד מספר רגעים.'
-    );
+    handleAiFailure(undefined, aiParsedResult);
     } catch (err: any) {
       console.warn('[handleReverseEngineerFullReport] AI processing encountered error:', err);
-      reportHealthEvent({
-        kind: HEALTH_EVENT_KINDS.AI_CLIENT_PROCESSING_ERROR,
-        operation: 'reverseEngineerFullReport',
-        error: err,
-        extra: {
-          stage: currentStage,
-          promptLength: rawText ? rawText.length : 0,
-          errorMessage: err?.message || String(err)
-        }
-      });
-      setReverseEngineerError(
-        'חלה בעיית תקשורת בעת העיבוד ב-AI (ייתכן שיבוש זמני בחיבור הרשת או עומס רגעי). הטקסט והתצפיות שרשמת שמורים במלואם במכשירך ויסונכרנו לענן. אנא נסי שוב בעוד מספר רגעים.'
-      );
+      handleAiFailure(err, undefined);
     } finally {
       setIsReverseEngineering(false);
     }

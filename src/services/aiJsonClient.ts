@@ -34,9 +34,14 @@ export const parseAiJsonResult = <T = unknown>(result: T): T => {
   return result;
 };
 
+export interface CallAiJsonOptions {
+  throwOnError?: boolean;
+}
+
 export const callAiJson = async (
   promptText: string,
-  student: StudentAiContext = {}
+  student: StudentAiContext = {},
+  options?: CallAiJsonOptions
 ): Promise<unknown> => {
   try {
     const maskedPromptClientSide = maskPromptForAi(
@@ -68,6 +73,9 @@ export const callAiJson = async (
 
     return parseAiJsonResult(result);
   } catch (error) {
+    if (options?.throwOnError) {
+      throw error;
+    }
     console.warn('Backend AI Proxy request failed, falling back to local processing:', error);
     return null;
   }

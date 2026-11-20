@@ -1386,11 +1386,26 @@ export default function AdminAnalyticsDashboard({
                           borderRight: '3px solid ' + (evt.category === 'rate_limit' ? '#eab308' : '#ef4444')
                         }}
                       >
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 600, color: '#334155' }}>
                             {HEALTH_CATEGORY_LABELS_HE[evt.category] || evt.category}
                           </span>
                           <span style={{ color: '#64748b' }}>({evt.operation || 'AI call'})</span>
+                          {evt.reason && (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                background: '#e0e7ff',
+                                color: '#3730a3',
+                                fontFamily: 'monospace'
+                              }}
+                              data-testid="admin-health-event-reason"
+                            >
+                              {evt.reason}
+                            </span>
+                          )}
                           {evt.message && <span style={{ color: '#94a3b8', fontSize: '11px' }}>— {evt.message}</span>}
                         </div>
                         <div style={{ color: '#64748b', fontSize: '11px', whiteSpace: 'nowrap' }}>
