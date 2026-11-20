@@ -137,10 +137,9 @@ export class GitHubClient {
     }
 
     // Map assessment to GitHub review event
+    // GitHub Actions GITHUB_TOKEN cannot approve PRs by security policy; we submit as COMMENT with approval badge in body
     let event = 'COMMENT';
-    if (assessment === 'APPROVED') {
-      event = 'APPROVE';
-    } else if (assessment === 'CHANGES_REQUESTED') {
+    if (assessment === 'CHANGES_REQUESTED') {
       event = 'REQUEST_CHANGES';
     }
 
@@ -185,7 +184,7 @@ export class GitHubClient {
       const fallbackPayload = {
         commit_id: commitSha,
         body: fallbackBody,
-        event
+        event: 'COMMENT'
       };
 
       const res = await this.request(`/pulls/${prNumber}/reviews`, {
