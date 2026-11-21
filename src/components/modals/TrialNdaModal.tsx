@@ -652,7 +652,7 @@ export default function TrialNdaModal({
             }}
           >
             <span style={{ fontSize: '12px', color: '#64748b' }}>
-              עותק חתום יישלח אוטומטית אל מנהלת המערכת (zivit.reshef@gmail.com)
+              עותק חתום יישלח אוטומטית אל מנהלת המערכת (admin@matala.education)
             </span>
             <button type="submit" className="btn-primary-sm" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 size={16} className="tala-spin-icon" /> : <FileCheck2 size={16} />}

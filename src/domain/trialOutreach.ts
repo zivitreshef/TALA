@@ -3,7 +3,9 @@ import { computeTrialExpirationIso, DEFAULT_TRIAL_DAYS } from '../allowedUsers';
 export const TRIAL_OUTREACH_DELAY_MS = 60 * 60 * 1000; // 1 hour (60 minutes)
 export const ZIVIT_WHATSAPP_PHONE = '972559236606';
 export const ZIVIT_CALL_PHONE = '052-4286501';
-export const ZIVIT_CONTACT_EMAIL = 'zivit.reshef@gmail.com';
+export const ZIVIT_CONTACT_EMAIL = 'zivit.reshef@matala.education';
+export const INFO_CONTACT_EMAIL = 'info@matala.education';
+export const ADMIN_CONTACT_EMAIL = 'admin@matala.education';
 
 export interface TrialSignupFormFields {
   name: string;

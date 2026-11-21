@@ -350,6 +350,39 @@ export function AllowlistAuthGate({
         />
       )}
       <div className="saas-landing-container">
+        {/* Top High-Impact Commercial Announcement Banner */}
+        <aside className="saas-top-commercial-banner" role="banner" aria-label="הודעה שיווקית ומבצע התנסות">
+          <div className="saas-commercial-banner-inner">
+            <div className="saas-commercial-banner-content">
+              <span className="saas-commercial-slogan-badge">
+                <Sparkles size={13} className="slogan-sparkle-icon" />
+                <strong>מטלה?! מה? תל״א!</strong>
+              </span>
+              <span className="saas-commercial-banner-text">
+                הצטרפו למאות מורות וגננות שחוסכות כ-4 שעות שבועיות • <strong>7 ימי התנסות מלאים חינם לכל מורה</strong> (ללא צורך בכרטיס אשראי)
+              </span>
+            </div>
+            <div className="saas-commercial-banner-actions">
+              <button
+                type="button"
+                className="btn-commercial-banner-cta"
+                onClick={handleOpenTrialSignup}
+              >
+                <UserPlus size={14} />
+                <span>פתיחת 7 ימי התנסות חינם</span>
+              </button>
+              <a
+                href="mailto:info@matala.education?subject=%D7%A4%D7%A0%D7%99%D7%99%D7%94%20%D7%91%D7%A0%D7%95%D7%A9%D7%90%20%D7%94%D7%AA%D7%A0%D7%A1%D7%95%D7%AA%20%D7%91%D7%AA%D7%9C%D7%B4%D7%90"
+                className="btn-commercial-banner-contact"
+                title="יצירת קשר למידע נוסף: info@matala.education"
+              >
+                <Mail size={13} />
+                <span>info@matala.education</span>
+              </a>
+            </div>
+          </div>
+        </aside>
+
         {/* Top Full-Bleed Warm Glassmorphic Navigation Bar */}
         <header className="saas-landing-navbar" aria-label="סרגל ניווט ראשי">
           <div className="saas-navbar-inner">
@@ -362,11 +395,11 @@ export function AllowlistAuthGate({
                   <span className="auth-title saas-brand-name">מערכת TALA</span>
                   <span className="auth-badge-pill saas-nav-badge">
                     <Sparkles size={12} className="auth-badge-sparkle" />
-                    <span>סביבת עבודה פדגוגית חכמה ומעקב שוטף</span>
+                    <span>מטלה?! מה? תל״א! • סביבת עבודה פדגוגית חכמה</span>
                   </span>
                 </div>
                 <span className="saas-navbar-tagline">
-                  צמח מתוך השטח • מותאם באהבה למורות שילוב, גננות שיח וצוותי חינוך מיוחד
+                  צמח מתוך השטח • מותאם באהבה למורות שילוב, גננות שיח וצוותי חינוך מיוחד • matala.education
                 </span>
               </div>
             </div>
@@ -387,7 +420,7 @@ export function AllowlistAuthGate({
                 onClick={handleOpenTrialSignup}
               >
                 <UserPlus size={15} />
-                <span>פתיחת חשבון התנסות</span>
+                <span>פתיחת חשבון התנסות (7 ימים חינם)</span>
               </button>
             </div>
           </div>
@@ -400,7 +433,13 @@ export function AllowlistAuthGate({
             <div className="auth-showcase-top saas-hero-copy">
               <div className="saas-eyebrow-pill">
                 <Sparkles size={13} className="saas-eyebrow-icon" />
-                <span>סביבת עבודה פדגוגית חכמה ומעקב שוטף</span>
+                <span>סביבת עבודה פדגוגית חכמה ומעקב שוטף • matala.education</span>
+              </div>
+
+              <div className="saas-hero-slogan-callout">
+                <span className="saas-hero-slogan-bubble">
+                  מטלה?! מה? תל״א!
+                </span>
               </div>
 
               <h1 className="saas-hero-headline">
@@ -412,25 +451,38 @@ export function AllowlistAuthGate({
                 סביבת עבודה חכמה לאנשי חינוך, המאפשרת לנהל מטרות, מעקב התקדמות, תיעוד ודוחות במקום אחד.
               </p>
 
-              <div className="saas-hero-cta-group">
-                <button
-                  type="button"
-                  className="btn-saas-primary-trial"
-                  onClick={handleOpenTrialSignup}
-                >
-                  <UserPlus size={17} />
-                  <span>פתיחת חשבון התנסות חינם</span>
-                </button>
+              {/* High-Converting Pedagogical Promo Card */}
+              <div className="saas-hero-promo-card">
+                <div className="promo-card-badge">
+                  <Award size={14} />
+                  <span>הצעה מיוחדת לצוותי הוראה</span>
+                </div>
+                <strong className="promo-card-title">
+                  פתיחת 7 ימי התנסות מלאים חינם לכל מורה
+                </strong>
+                <p className="promo-card-description">
+                  תלמיד/ה לדוגמה נטען מיידית • ללא התחייבות • תיעוד קולי, יומן יעדים והפקת דוחות תל״א ותח״י מלאים
+                </p>
+                <div className="saas-hero-cta-group">
+                  <button
+                    type="button"
+                    className="btn-saas-primary-trial"
+                    onClick={handleOpenTrialSignup}
+                  >
+                    <UserPlus size={17} />
+                    <span>פתיחת חשבון התנסות חינם (7 ימים לכל מורה)</span>
+                  </button>
 
-                <button
-                  type="button"
-                  className="btn-auth-watch-video"
-                  onClick={() => setShowIntroVideoModal(true)}
-                  title="צפייה בסרטון היכרות והדרכה קצר על מערכת TALA"
-                >
-                  <Play size={15} className="btn-auth-play-icon" />
-                  <span>צפייה בסרטון היכרות והדרכה (3 דק׳)</span>
-                </button>
+                  <button
+                    type="button"
+                    className="btn-auth-watch-video"
+                    onClick={() => setShowIntroVideoModal(true)}
+                    title="צפייה בסרטון היכרות והדרכה קצר על מערכת TALA"
+                  >
+                    <Play size={15} className="btn-auth-play-icon" />
+                    <span>צפייה בסרטון היכרות והדרכה (3 דק׳)</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -959,10 +1011,23 @@ export function AllowlistAuthGate({
         <footer className="saas-landing-footer" aria-label="מידע משלים וזכויות">
           <div className="saas-landing-footer-inner">
             <div className="saas-landing-footer-brand">
-              <strong className="saas-footer-logo-title">מערכת TALA</strong>
+              <strong className="saas-footer-logo-title">מערכת TALA • matala.education</strong>
               <span className="saas-footer-tagline">
                 סביבת עבודה פדגוגית חכמה • פחות בירוקרטיה, יותר זמן לכל ילד
               </span>
+              <div className="saas-footer-contact-emails">
+                <a href="mailto:info@matala.education" className="saas-footer-email-link" title="פניות כלליות ושירות">
+                  <Mail size={12} /> info@matala.education
+                </a>
+                <span className="saas-footer-email-sep">•</span>
+                <a href="mailto:admin@matala.education" className="saas-footer-email-link" title="תמיכה טכנית ומנהל מערכת">
+                  <Mail size={12} /> admin@matala.education
+                </a>
+                <span className="saas-footer-email-sep">•</span>
+                <a href="mailto:zivit.reshef@matala.education" className="saas-footer-email-link" title="ליווי פדגוגי אישי מזיוית">
+                  <Mail size={12} /> zivit.reshef@matala.education
+                </a>
+              </div>
             </div>
             <div className="saas-landing-footer-links">
               <button
@@ -1438,7 +1503,7 @@ export function AllowlistAuthGate({
                 }}
               >
                 <a
-                  href={`mailto:zivit.reshef@gmail.com?subject=${encodeURIComponent(
+                  href={`mailto:${contactTopic.includes('חסימ') || contactTopic.includes('סיסמ') ? 'admin@matala.education' : 'info@matala.education'}?subject=${encodeURIComponent(
                     `פנייה ממערכת TALA: ${contactTopic}`
                   )}&body=${encodeURIComponent(
                     `שלום,\nשמי: ${contactName}\nאימייל: ${contactEmail}\nנושא: ${contactTopic}\n\n${contactNotes}`

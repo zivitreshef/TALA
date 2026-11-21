@@ -469,6 +469,213 @@ input, textarea, select, button {
   box-sizing: border-box;
 }
 
+/* High-Impact Top Commercial Announcement Banner */
+.saas-top-commercial-banner {
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(90deg, #1e3a5f 0%, #2b4c73 35%, #3b6ea5 70%, #5c4b85 100%);
+  color: #ffffff;
+  padding: 8px clamp(12px, 3vw, 32px);
+  box-shadow: 0 2px 10px rgba(30, 58, 95, 0.15);
+  position: relative;
+  z-index: 40;
+}
+
+.saas-commercial-banner-inner {
+  width: 100%;
+  max-width: 1720px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.saas-commercial-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.saas-commercial-slogan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  padding: 3px 12px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+  letter-spacing: -0.2px;
+}
+
+.slogan-sparkle-icon {
+  color: #fffbeb;
+}
+
+.saas-commercial-banner-text {
+  font-size: 13.5px;
+  color: #f1f5f9;
+  font-weight: 500;
+}
+
+.saas-commercial-banner-text strong {
+  color: #ffffff;
+  text-decoration: underline #f59e0b 2px;
+  text-underline-offset: 3px;
+}
+
+.saas-commercial-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-commercial-banner-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  color: #1e3a5f;
+  border: none;
+  border-radius: 9999px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-commercial-banner-cta:hover {
+  transform: translateY(-1px) scale(1.02);
+  background: #f8fafc;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.btn-commercial-banner-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-commercial-banner-contact:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Hero Slogan & High-Converting Promo Card */
+.saas-hero-slogan-callout {
+  margin-bottom: 8px;
+}
+
+.saas-hero-slogan-bubble {
+  display: inline-block;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(217, 119, 6, 0.2) 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.5);
+  color: #b45309;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  letter-spacing: -0.2px;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+}
+
+.saas-hero-promo-card {
+  margin: 18px 0 22px 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 249, 255, 0.92) 100%);
+  border: 1.5px solid #bfdbfe;
+  border-radius: 16px;
+  padding: 18px 22px;
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.12), 0 4px 12px rgba(59, 130, 246, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.saas-hero-promo-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #f59e0b 0%, #3b82f6 50%, #8b5cf6 100%);
+}
+
+.promo-card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.promo-card-title {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e3a5f;
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+
+.promo-card-description {
+  margin: 0 0 16px 0;
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* Footer Contact Emails Row */
+.saas-footer-contact-emails {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.saas-footer-email-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.saas-footer-email-link:hover {
+  color: #0284c7;
+  text-decoration: underline;
+}
+
+.saas-footer-email-sep {
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
 /* Full-Bleed Top Warm Navigation Bar */
 .saas-landing-navbar {
   width: 100%;
