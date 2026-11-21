@@ -70,6 +70,13 @@ import UpgradeBanner from './components/UpgradeBanner';
 import NewVersionBanner from './components/NewVersionBanner';
 import NetworkOfflineBanner from './components/NetworkOfflineBanner';
 import EmergencyRescueBar from './components/EmergencyRescueBar';
+import {
+  readV4WorkspaceEnabled,
+  writeV4WorkspaceEnabled
+} from './components/v4/workspaceFlag';
+import { SmartAlertSlot, SmartAlertBell } from './components/v4/SmartAlertSlot';
+import { TeacherLandingV4 } from './components/v4/TeacherLandingV4';
+import './styles/v4Workspace.css';
 import { isEmergencyRescueMode } from './domain/emergencyRescue';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useAppVersionCheck } from './services/versionChecker';
@@ -626,6 +633,16 @@ export default function App() {
     }
   }, [effectiveCurrentUser?.role]);
   const [showDailyTracker, setShowDailyTracker] = useState(false);
+  const [useModernWorkspaceV4, setUseModernWorkspaceV4] = useState<boolean>(() =>
+    readV4WorkspaceEnabled()
+  );
+  const handleToggleModernWorkspaceV4 = () => {
+    setUseModernWorkspaceV4((prev) => {
+      const next = !prev;
+      writeV4WorkspaceEnabled(next);
+      return next;
+    });
+  };
   const [isMobileScreen, setIsMobileScreen] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= 768;
@@ -2866,8 +2883,39 @@ export default function App() {
     );
   }
 
+  const smartAlertsProps = {
+    isOnline,
+    justReconnected,
+    isDirty: Boolean(unsavedDraftState?.isDirty),
+    onSaveCurrentWork: handleQuickSaveFromBanner,
+    upgradeBanner,
+    lockedOutUsersCount: isUserAdmin(currentUser) ? lockedOutUsers.length : 0,
+    lockedOutUsersNames: isUserAdmin(currentUser)
+      ? lockedOutUsers.map((u: any) => u.name)
+      : [],
+    onOpenAdminRequests: () => {
+      setAdminModalInitialTab('requests');
+      setShowAdminModal(true);
+    },
+    hasAppUpdate,
+    newPublishedVersion,
+    isAppUpdateDismissed,
+    onRefreshApp: refreshAppNow,
+    onDismissAppUpdate: dismissAppUpdate,
+    showWhatsNew: Boolean(SHOW_NEW_USER_JOURNEY && !whatsNewDismissed),
+    onStartTour: () => {
+      handleResumeOnboarding();
+      handleDismissWhatsNewBanner();
+    },
+    onOpenHelpCenter: () => {
+      setShowTrialUpgradeModal(true);
+      handleDismissWhatsNewBanner();
+    },
+    onDismissWhatsNew: handleDismissWhatsNewBanner
+  };
+
   return (
-    <div className="tala-app-root" dir="rtl">
+    <div className={`tala-app-root ${useModernWorkspaceV4 ? 'tala-v4-root' : ''}`} dir="rtl">
       {isMobileScreen && forceDesktopMode && (
         <div className="desktop-force-return-banner">
           <span>את נמצאת בתצוגת מחשב מלאה</span>
@@ -2890,27 +2938,33 @@ export default function App() {
           onClose={() => setIsEmergencyRescueDismissed(true)}
         />
       )}
-      <NetworkOfflineBanner
-        isOnline={isOnline}
-        justReconnected={justReconnected}
-        onSaveCurrentWork={handleQuickSaveFromBanner}
-        isDirty={Boolean(unsavedDraftState?.isDirty)}
-      />
-      {/* Real-Time Deployment & Upgrade Warning Banner */}
-      <UpgradeBanner
-        bannerData={upgradeBanner}
-        onSaveCurrentWork={handleQuickSaveFromBanner}
-        isDirty={Boolean(unsavedDraftState?.isDirty)}
-      />
-      {/* Top Stained-Glass Accent Strip */}
-      <NewVersionBanner
-        latestVersion={newPublishedVersion}
-        hasUpdate={hasAppUpdate}
-        dismissed={isAppUpdateDismissed}
-        onRefresh={refreshAppNow}
-        onDismiss={dismissAppUpdate}
-        isDirty={Boolean(unsavedDraftState?.isDirty)}
-      />
+      {useModernWorkspaceV4 ? (
+        <SmartAlertSlot {...smartAlertsProps} />
+      ) : (
+        <>
+          <NetworkOfflineBanner
+            isOnline={isOnline}
+            justReconnected={justReconnected}
+            onSaveCurrentWork={handleQuickSaveFromBanner}
+            isDirty={Boolean(unsavedDraftState?.isDirty)}
+          />
+          {/* Real-Time Deployment & Upgrade Warning Banner */}
+          <UpgradeBanner
+            bannerData={upgradeBanner}
+            onSaveCurrentWork={handleQuickSaveFromBanner}
+            isDirty={Boolean(unsavedDraftState?.isDirty)}
+          />
+          {/* Top Stained-Glass Accent Strip */}
+          <NewVersionBanner
+            latestVersion={newPublishedVersion}
+            hasUpdate={hasAppUpdate}
+            dismissed={isAppUpdateDismissed}
+            onRefresh={refreshAppNow}
+            onDismiss={dismissAppUpdate}
+            isDirty={Boolean(unsavedDraftState?.isDirty)}
+          />
+        </>
+      )}
       <div className="stained-glass-top-strip" />
       {/* Top Header */}
       <header className={`tala-header ${selectedStudentId ? 'compact-mode' : ''}`}>
@@ -2961,20 +3015,37 @@ export default function App() {
             aria-label="ניווט ראשי"
             style={{ position: 'relative' }}
           >
-            <button
-              type="button"
-              className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker && !showGoalBankOverview && !showClassOverview ? 'active' : ''}`}
-              onClick={() => {
-                setSelectedStudentId(null);
-                setShowClassOverview(false);
-                setShowDailyTracker(false);
-                setShowGoalBankOverview(false);
-              }}
-              title="ניהול תלמידים"
-            >
-              <Users size={15} />
-              <span>ניהול תלמידים</span>
-            </button>
+            {useModernWorkspaceV4 ? (
+              <button
+                type="button"
+                className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker && !showGoalBankOverview && !showClassOverview ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedStudentId(null);
+                  setShowClassOverview(false);
+                  setShowDailyTracker(false);
+                  setShowGoalBankOverview(false);
+                }}
+                title="התלמידים שלי"
+              >
+                <Users size={15} />
+                <span>התלמידים שלי</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={`header-nav-btn ${selectedStudentId === null && !showDailyTracker && !showGoalBankOverview && !showClassOverview ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedStudentId(null);
+                  setShowClassOverview(false);
+                  setShowDailyTracker(false);
+                  setShowGoalBankOverview(false);
+                }}
+                title="ניהול תלמידים"
+              >
+                <Users size={15} />
+                <span>ניהול תלמידים</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -3039,6 +3110,22 @@ export default function App() {
 
           {/* Zone 2: Secondary Utilities (Archive, Help, Trial) */}
           <div className="header-tools-group">
+            {useModernWorkspaceV4 && (
+              <SmartAlertBell alertsProps={smartAlertsProps} />
+            )}
+            <button
+              type="button"
+              className="v4-mode-toggle-btn"
+              onClick={handleToggleModernWorkspaceV4}
+              title={
+                useModernWorkspaceV4
+                  ? 'מעבר חזרה לממשק הקלאסי'
+                  : 'מעבר לסביבת העבודה המשודרגת'
+              }
+              data-testid="v4-mode-toggle-btn"
+            >
+              <span>{useModernWorkspaceV4 ? 'ממשק קלאסי' : 'ממשק חדש'}</span>
+            </button>
             <button
               type="button"
               className={`header-tool-btn ${
@@ -3183,7 +3270,7 @@ export default function App() {
       </header>
 
       {/* New Feature Announcement Banner for All Users: Help Center & 10-Step Interactive User Journey */}
-      {SHOW_NEW_USER_JOURNEY && !whatsNewDismissed && (
+      {!useModernWorkspaceV4 && SHOW_NEW_USER_JOURNEY && !whatsNewDismissed && (
         <div
           data-testid="whats-new-help-journey-banner"
           style={{
@@ -3279,7 +3366,7 @@ export default function App() {
       )}
 
       {/* Admin Security Lockout Notification Banner Under Site Header */}
-      {isUserAdmin(currentUser) && lockedOutUsers.length > 0 && (
+      {!useModernWorkspaceV4 && isUserAdmin(currentUser) && lockedOutUsers.length > 0 && (
         <div
           style={{
             background: '#fef2f2',
@@ -3735,6 +3822,7 @@ export default function App() {
                   onboardingSpotlightTick={onboardingSpotlightTick}
                   onGoHome={() => setSelectedStudentId(null)}
                   onSaveAsRealStudent={handleSaveDemoAsRealStudent}
+                  useModernWorkspaceV4={useModernWorkspaceV4}
                 />
               )}
             </ErrorBoundary>
@@ -3814,6 +3902,39 @@ export default function App() {
                 }}
               />
             </ErrorBoundary>
+          ) : useModernWorkspaceV4 ? (
+            <TeacherLandingV4
+              currentUser={effectiveCurrentUser}
+              userStudents={userStudents}
+              filteredStudents={filteredStudents}
+              frameworkClusters={frameworkClusters as [string, any[]][]}
+              studentSearch={studentSearch}
+              onChangeSearch={setStudentSearch}
+              studentSortBy={studentSortBy as 'framework' | 'name'}
+              onChangeSortBy={handleChangeStudentSortBy}
+              userPreferences={userPreferences}
+              isStudentOwnedByUser={isStudentOwnedByUser}
+              onAddNewStudent={handleAddNewStudent}
+              onSelectStudent={(stId) => setSelectedStudentId(stId)}
+              onQuickRecordStudent={(st) => setQuickCaptureStudent(st)}
+              onArchiveStudent={handleRequestArchiveStudent}
+              onDeleteStudent={handleDeleteStudent}
+              onOpenDailyTracker={() => setShowDailyTracker(true)}
+              onOpenTeamReport={() => setShowTeamMeetingReport(true)}
+              onOptInReminder={() => {
+                handleSaveUserPreferences({
+                  ...userPreferences,
+                  pedagogicalReminderEnabled: true,
+                  monthlyPedagogicalReminder: true,
+                  pedagogicalReminderFrequency: 'weekly',
+                  pedagogicalReminderWeeklyDay: 'thursday'
+                });
+              }}
+              onSelectDemoMode={
+                SHOW_NEW_USER_JOURNEY ? () => handleSelectOnboardingMode('demo') : undefined
+              }
+              onOpenIntroVideo={() => setShowIntroVideoModal(true)}
+            />
           ) : (
             <div className="inside-landing-page">
               <div className="inside-landing-hero">
