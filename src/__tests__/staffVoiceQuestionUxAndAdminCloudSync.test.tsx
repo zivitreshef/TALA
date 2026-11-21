@@ -154,6 +154,33 @@ describe('Staff Voice Questionnaire UX & Admin Cloud Sync Resilience', () => {
 
       expect(html).toContain('💾 מקומי');
     });
+
+    it('displays "מתחבר לענן..." when auth currentUser is authenticated but sync has not finished yet, avoiding false local flicker', async () => {
+      const html = renderToStaticMarkup(
+        React.createElement(AdminAllowlistModal, {
+          isOpen: true,
+          onClose: vi.fn(),
+          allowedUsers: [mockAdminUser],
+          onUpdateAllowedUsers: vi.fn(),
+          enforcePasswordPolicy: false,
+          onChangeEnforcePasswordPolicy: vi.fn(),
+          geminiApiKey: '',
+          onChangeGeminiApiKey: vi.fn(),
+          adminRequests: [],
+          onDismissAdminRequest: vi.fn(),
+          cloudSyncState: { connected: false, status: 'connecting' },
+          students: [],
+          healthEvents: [],
+          healthReviewedMs: 0,
+          onMarkHealthReviewed: vi.fn(),
+          onClearHealthEvents: vi.fn(),
+          currentUser: mockAdminUser
+        })
+      );
+
+      expect(html).toContain('🔄 מתחבר לענן...');
+      expect(html).not.toContain('💾 מקומי');
+    });
   });
 
   describe('3. subscribeToTalaBackend Auth Listener Lifecycle', () => {

@@ -334,10 +334,10 @@ export default function App() {
   const [showTrialUpgradeModal, setShowTrialUpgradeModal] = useState(false);
   const [isSupportChatOpen, setIsSupportChatOpen] = useState(false);
   const [surveySnoozedInSession, setSurveySnoozedInSession] = useState(false);
-  const [cloudSyncState, setCloudSyncState] = useState({
+  const [cloudSyncState, setCloudSyncState] = useState(() => ({
     connected: false,
-    status: 'local_only'
-  });
+    status: safeGetStorageJson(SESSION_USER_KEY, null) ? 'connecting' : 'local_only'
+  }));
 
   // Contact Admin requests from landing page
   const [adminRequests, setAdminRequests] = useState(() => {
