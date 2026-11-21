@@ -800,7 +800,7 @@ async function generateSignedNdaPdfBlob(htmlString: string, filename = 'TALA_Sig
  */
 export async function sendSignedNdaEmailToAdmin({
   config,
-  adminEmail = 'zivit.reshef@gmail.com',
+  adminEmail = 'admin@matala.education',
   signerName,
   signerEmail,
   signerIdNumber,
@@ -1019,7 +1019,7 @@ export function buildUserSurveyEmailHtml({
  */
 export async function sendUserSurveyEmailToAdmin({
   config,
-  adminEmail = 'zivit.reshef@gmail.com',
+  adminEmail = 'admin@matala.education',
   userName,
   userEmail,
   userTitle,
@@ -1455,7 +1455,7 @@ export function buildCustomerReceiptEmailHtml({
  */
 export async function sendCustomerReceiptEmailToAdmin({
   config,
-  adminEmail = 'zivit.reshef@gmail.com',
+  adminEmail = 'admin@matala.education',
   customerName,
   customerEmail,
   receiptNumber,

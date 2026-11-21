@@ -645,7 +645,10 @@ export function isUserAdmin(user?: any): boolean {
   const emailLower = (user.email || '').trim().toLowerCase();
   const primaryAdmins = [
     'zivit.reshef@gmail.com',
+    'zivit.reshef@matala.education',
     'moti.reshef@gmail.com',
+    'admin@matala.education',
+    'info@matala.education',
     'moti_reshef@bmc.com',
     'admin@tala.education'
   ];

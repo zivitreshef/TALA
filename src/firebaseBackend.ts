@@ -382,7 +382,7 @@ export function subscribeToTalaBackend({
   }
 
   const me = String(email || '').trim().toLowerCase();
-  const PRIMARY_ADMIN_EMAILS = [PRIMARY_ADMIN_EMAIL, 'moti_reshef@bmc.com'];
+  const PRIMARY_ADMIN_EMAILS = [PRIMARY_ADMIN_EMAIL, 'moti_reshef@bmc.com', 'admin@matala.education', 'zivit.reshef@matala.education'];
   const sawAll = Boolean(isAdmin) || PRIMARY_ADMIN_EMAILS.includes(me);
   const unsubscribers: Unsubscribe[] = [];
   let cancelled = false;

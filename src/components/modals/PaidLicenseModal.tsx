@@ -345,7 +345,7 @@ export default function PaidLicenseModal({
                 fontSize: '13px'
               }}
             >
-              <div><strong>כתובת דוא"ל:</strong> zivit.reshef@gmail.com</div>
+              <div><strong>כתובת דוא"ל:</strong> info@matala.education | zivit.reshef@matala.education</div>
               <div style={{ marginTop: '4px' }}><strong>וואטסאפ / טלפון:</strong> 052-4286501</div>
               <div style={{ marginTop: '4px' }}><strong>שעות פעילות התמיכה:</strong> ימים א'-ה', בין השעות 09:00 - 17:00</div>
             </div>

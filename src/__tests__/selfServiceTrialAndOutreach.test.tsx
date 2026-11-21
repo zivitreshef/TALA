@@ -150,7 +150,7 @@ describe('Self-Service Trial Registration & Proactive Outreach Domain Logic', ()
     expect(waUrl).toContain(encodeURIComponent('רחל כהן'));
 
     const mailUrl = createTrialOutreachEmailUrl('רחל כהן', 'rachel@school.il');
-    expect(mailUrl).toContain('mailto:zivit.reshef@gmail.com');
+    expect(mailUrl).toContain('mailto:zivit.reshef@matala.education');
     expect(mailUrl).toContain(encodeURIComponent('רחל כהן'));
   });
 });

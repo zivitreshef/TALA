@@ -1198,7 +1198,7 @@ export default function TrialUpgradeModal({
                     />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                       <div style={{ fontSize: '11.5px', color: '#64748b' }}>
-                        מייל ישיר: <strong>zivit.reshef@gmail.com</strong>
+                        מייל ישיר: <strong>zivit.reshef@matala.education (zivit.reshef@gmail.com) | info@matala.education</strong>
                       </div>
                       <button
                         type="submit"
@@ -1612,7 +1612,7 @@ export default function TrialUpgradeModal({
                   <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', lineHeight: 1.5 }}>
                     • <strong>תמיכה טכנית:</strong> סיוע בכניסה, תפעול, שמירת נתונים, הפקת דוחות (PDF) וטיפול בשגיאות מערכת (ללא ייעוץ פדגוגי פרטני).<br />
                     • <strong>ביטול עסקה כדין:</strong> בהתאם לחוק הגנת הצרכן, ביטול בתוך 14 ימים ממועד העסקה מזכה בהחזר כספי מלא (בניכוי דמי ביטול כדין של עד 5% או 100 ₪, הנמוך מביניהם). לאחר 14 ימים לא יינתן החזר בגין אי-שימוש.<br />
-                    • <strong>פרטי התקשרות:</strong> דוא"ל zivit.reshef@gmail.com | וואטסאפ / טלפון 052-4286501 (ימים א'-ה' 09:00–17:00).
+                    • <strong>פרטי התקשרות:</strong> דוא"ל info@matala.education | zivit.reshef@matala.education | וואטסאפ / טלפון 052-4286501 (ימים א'-ה' 09:00–17:00).
                   </div>
                 </div>
 
