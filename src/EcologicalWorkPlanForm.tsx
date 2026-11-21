@@ -230,6 +230,7 @@ export interface EcologicalWorkPlanFormProps {
   onSaveAsRealStudent?: (studentData: any) => void;
   userPreferences?: any;
   privateGoals?: any[];
+  useModernWorkspaceV4?: boolean;
   [key: string]: any;
 }
 
@@ -254,7 +255,8 @@ export default function EcologicalWorkPlanForm({
   onGoHome,
   onSaveAsRealStudent,
   userPreferences = {},
-  privateGoals = []
+  privateGoals = [],
+  useModernWorkspaceV4 = false
 }: EcologicalWorkPlanFormProps) {
   const containerRef = useRef<any>(null);
   const section1Ref = useRef<any>(null);
@@ -293,6 +295,38 @@ export default function EcologicalWorkPlanForm({
   const [viewingDocText, setViewingDocText] = useState<any>(null);
   const [saveBanner, setSaveBanner] = useState(false);
   const [autoSavedTime, setAutoSavedTime] = useState('');
+
+  // v4 Progressive Disclosure for goals: Goal 1 expanded by default, rest collapsed;
+  // session state preserved across edits/autosave, reset only on student switch.
+  const [collapsedGoalsById, setCollapsedGoalsById] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    setCollapsedGoalsById({});
+  }, [student?.id]);
+
+  const isGoalCollapsed = (goalId: string, index: number): boolean => {
+    if (!useModernWorkspaceV4) return false;
+    if (Object.prototype.hasOwnProperty.call(collapsedGoalsById, goalId)) {
+      return Boolean(collapsedGoalsById[goalId]);
+    }
+    return index > 0;
+  };
+
+  const toggleGoalCollapsed = (goalId: string, index: number) => {
+    setCollapsedGoalsById((prev) => {
+      const current = Object.prototype.hasOwnProperty.call(prev, goalId)
+        ? Boolean(prev[goalId])
+        : index > 0;
+      return { ...prev, [goalId]: !current };
+    });
+  };
+
+  const setAllGoalsCollapsed = (collapsed: boolean) => {
+    const next: Record<string, boolean> = {};
+    (formData.goals || []).forEach((g: any) => {
+      if (g?.id) next[g.id] = collapsed;
+    });
+    setCollapsedGoalsById(next);
+  };
   const { isOnline } = useOnlineStatus();
   const [isReverseEngineering, setIsReverseEngineering] = useState(false);
   const [reverseEngineerStepIdx, setReverseEngineerStepIdx] = useState(0);
@@ -1187,6 +1221,7 @@ export default function EcologicalWorkPlanForm({
       ...prev,
       goals: [...(prev.goals || []), newGoalObj]
     }));
+    setCollapsedGoalsById((prev) => ({ ...prev, [newId]: false }));
     setOpenPickerGoalId(newId);
     setPickerSearch('');
     setPickerEnvFilter('הכל');
@@ -6270,8 +6305,36 @@ ${JSON.stringify(studentCardPayload, null, 2)}
           </div>
         )}
 
+        {useModernWorkspaceV4 && Array.isArray(formData.goals) && formData.goals.length > 1 && (
+          <div className="v4-goals-collapse-toolbar" data-testid="v4-goals-collapse-toolbar">
+            <span>
+              מוצגות {formData.goals.length} מטרות · מטרה ראשונה פתוחה כברירת מחדל
+            </span>
+            <div className="v4-goals-collapse-actions">
+              <button
+                type="button"
+                className="v4-goals-collapse-link"
+                onClick={() => setAllGoalsCollapsed(false)}
+                data-testid="v4-expand-all-goals"
+              >
+                הרחב הכל
+              </button>
+              <span aria-hidden="true">|</span>
+              <button
+                type="button"
+                className="v4-goals-collapse-link"
+                onClick={() => setAllGoalsCollapsed(true)}
+                data-testid="v4-collapse-all-goals"
+              >
+                כווץ הכל
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="goals-blocks-list">
           {(formData.goals || []).map((goalRow: any, index: any) => {
+            const isCollapsed = isGoalCollapsed(goalRow.id, index);
             const isPickerOpen = openPickerGoalId === goalRow.id;
             const isAiOpen = activeAiGoalId === goalRow.id;
             const matchedBankItem =
@@ -6550,9 +6613,51 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       <Trash2 size={16} />
                       <span>הסר מטרה</span>
                     </button>
+
+                    {useModernWorkspaceV4 && (
+                      <button
+                        type="button"
+                        className="v4-goal-toggle-btn"
+                        onClick={() => toggleGoalCollapsed(goalRow.id, index)}
+                        aria-expanded={!isCollapsed}
+                        aria-label={isCollapsed ? `הרחבת מטרה ${index + 1}` : `כיווץ מטרה ${index + 1}`}
+                        title={isCollapsed ? 'הרחבת פרטי המטרה' : 'כיווץ פרטי המטרה'}
+                        data-testid={`v4-goal-toggle-${goalRow.id}`}
+                      >
+                        {isCollapsed ? '+' : '−'}
+                      </button>
+                    )}
                   </div>
                 </div>
 
+                {isCollapsed && (
+                  <div
+                    className="v4-goal-collapsed-summary"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggleGoalCollapsed(goalRow.id, index)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleGoalCollapsed(goalRow.id, index);
+                      }
+                    }}
+                    data-testid={`v4-goal-summary-${goalRow.id}`}
+                  >
+                    <span>
+                      <strong>{goalRow.title?.trim() || 'מטרה ללא כותרת עדיין'}</strong>
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>
+                      פתיחה לעריכה
+                    </span>
+                  </div>
+                )}
+
+                <div
+                  style={isCollapsed ? { display: 'none' } : undefined}
+                  aria-hidden={isCollapsed}
+                  data-testid={`v4-goal-body-${goalRow.id}`}
+                >
                 {/* In תח"י mode, Activity & Participation appears as a top full-width row above the 6 columns */}
                 {!isTalaMode && (
                   <div className="activity-participation-box">
@@ -7528,6 +7633,7 @@ ${JSON.stringify(studentCardPayload, null, 2)}
                       </div>
                     </div>
                   )}
+                </div>
                 </div>
               </div>
             );
