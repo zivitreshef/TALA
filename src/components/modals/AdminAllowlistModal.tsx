@@ -203,14 +203,14 @@ export default function AdminAllowlistModal({
     };
   }, [isOpen]);
 
-  // Proactively reconcile cloud sync session when entering admin control center
+  // Proactively reconcile cloud sync session when entering admin control center if auth session is missing
   useEffect(() => {
     if (!isOpen) return;
     const auth = typeof getFirebaseAuth === 'function' ? getFirebaseAuth() : null;
-    if (auth?.currentUser && !cloudSyncState?.connected && typeof ensureFirebaseAuthSession === 'function') {
-      ensureFirebaseAuthSession(currentUser?.email).catch(() => {});
+    if (!auth?.currentUser && currentUser?.email && typeof ensureFirebaseAuthSession === 'function') {
+      ensureFirebaseAuthSession(currentUser.email).catch(() => {});
     }
-  }, [isOpen, cloudSyncState?.connected, currentUser?.email]);
+  }, [isOpen, currentUser?.email]);
 
   // Unify real-time support chat threads and legacy contact requests
   const unifiedInquiries = useMemo(() => {
