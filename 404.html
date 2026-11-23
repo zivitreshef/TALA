@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>העברה לאתר תל״א</title>
+  <meta http-equiv="refresh" content="0; url=https://www.matala.education/">
+  <script>
+    var path = window.location.pathname.replace(/^\/TALA\/?/, '/');
+    if (path.length > 1 && !path.startsWith('/')) path = '/' + path;
+    var target = 'https://www.matala.education' + (path === '/' ? '' : path) + window.location.search + window.location.hash;
+    window.location.replace(target);
+  </script>
+</head>
+<body style="font-family: system-ui, sans-serif; text-align: center; padding: 50px;">
+  <h2>מועברים לאתר תל״א החדש...</h2>
+  <p>אם אינך מועבר/ת אוטומטית, <a href="https://www.matala.education/">לחצו כאן למעבר לאתר matala.education</a>.</p>
+</body>
+</html>
